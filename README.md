@@ -1,108 +1,114 @@
-# Presense — Your External Brain
+<div align="center">
+  <img src="https://via.placeholder.com/1500x500/13111C/FFFFFF?text=PRESENSE" alt="Presense Banner" width="100%" style="border-radius: 12px;" />
 
-![Presense Banner](https://via.placeholder.com/1200x600/13111C/FFFFFF?text=Presense)
+  <br />
+  <br />
 
-**Presense** is a premium, personal productivity web application designed to act as an external brain. It goes beyond simple task management to capture thoughts, people, and resources, intelligently resurfacing them exactly when you need them.
+  # 🧠 Presense — Your External Brain
+  **A premium, unified ecosystem that acts as an extension of your mind.**
+  <br />
 
-Built with **Next.js 16**, **Supabase**, **Tailwind CSS**, and **Framer Motion**, Presense focuses on a stunning, dynamic aesthetic with glassmorphism, micro-animations, and high-performance offline-first data structures.
+  [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+  [![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)](https://www.framer.com/motion/)
 
----
-
-## 🧠 Core Philosophy
-
-Traditional productivity apps suffer from extreme siloing. Tasks live in one app, notes in another, and contacts in a CRM you never check. 
-
-Presense breaks this by combining five distinct spaces into a unified ecosystem, connected by an intelligent, NLP-driven capture router.
-
-### The Five Spaces
-1. **Do (Action)**: Tasks that move. Focus on the smallest physical step to start, not just finishing. Features a configurable Pomodoro timer and "Start Date" filtering to prevent board overwhelm.
-2. **Think (Reflection)**: Thoughts that stay. Threaded, continuous journaling that auto-generates daily notes and pins active threads.
-3. **Remember (People & Locations)**: A personal CRM. Log what people tell you, their preferences, and when you'll next see them. Includes a "Locations" tracker so you never lose your passport or keys again.
-4. **Explore (Resources)**: Things worth keeping. Save links, books, and concepts. Linked directly to Think threads for deeper context.
-5. **Dashboard (The Hub)**: A central hub displaying active focus tasks, today's meetings, pinned threads, and weekly Pomodoro statistics.
-
----
-
-## ✨ Key Features
-
-* **Universal NLP Capture**: Type "Meeting with Max next Tuesday at 2pm" — the system automatically extracts the date, creates the task, and routes it.
-* **If-Then Anchoring**: Define the exact physical location and time you will start a task (e.g., "When I sit at my desk after dinner, I will open Chapter 3").
-* **Focus Mode**: A deeply immersive, fullscreen Pomodoro timer with SVG progress rings and ambient glowing backgrounds.
-* **Cross-Space Linking**: Link captured Explore articles directly to active Think threads.
-* **Local-First Speed**: Built entirely on `useRealtime` hooks with Supabase for instant UI updates and seamless multi-device sync.
-* **Archive Ecosystem**: A 30-day soft-delete cycle with nightly Edge Functions for permanent cleanup, keeping the active database fast and clean.
-* **Premium Theming**: Switch between "Wahala" (coral/amber), "Deep Navy", and "Forest" themes, complete with dark/light mode support.
+  <p align="center">
+    <a href="#-the-five-spaces">The Five Spaces</a> • 
+    <a href="#-premium-features">Premium Features</a> • 
+    <a href="#-installation--setup">Setup</a> • 
+    <a href="#-architecture">Architecture</a>
+  </p>
+</div>
 
 ---
 
-## 🚀 Tech Stack
+## 🌌 The Problem with Productivity
+Traditional productivity apps suffer from extreme siloing. Your tasks live in one app, your notes in another, and your contacts in a CRM you never check. You spend more time managing the system than executing.
 
-* **Frontend**: Next.js 16 (App Router), React, TypeScript
-* **Styling**: Tailwind CSS, Vanilla CSS (`index.css`), Framer Motion, `clsx` + `tailwind-merge`
-* **Database & Auth**: Supabase (PostgreSQL, Row Level Security, Realtime Subscriptions)
-* **NLP**: Compromise & Compromise-Dates
-* **Icons**: Lucide React
-* **Typography**: Inter & JetBrains Mono (Google Fonts)
+**Presense breaks this.** By combining five distinct spaces into a single, seamless ecosystem connected by an intelligent NLP capture router, Presense stops being a to-do list and becomes your external brain.
 
 ---
 
-## 🛠️ Setup & Installation
+## 🧭 The Five Spaces
 
-### 1. Clone the repository
+| Space | Focus | Description | Highlight Feature |
+|:---:|:---|:---|:---|
+| ⚡ **Do** | Action | Tasks that move. Focus on the smallest physical step to start, not just the outcome. | *If-Then Anchoring* & *Start Date filtering* |
+| 💭 **Think** | Reflection | Thoughts that stay. Threaded, continuous journaling that builds a mental repository over time. | *Auto-generated Daily Notes* |
+| 👥 **Remember** | Relationships | A personal, lightweight CRM. Log what people tell you and exactly where you left your passport. | *Contextual Meeting Briefings* |
+| 🧭 **Explore** | Knowledge | Things worth keeping. Save links, books, and concepts for later processing. | *Cross-space linking to Think threads* |
+| 📊 **Dashboard** | Focus | A centralized hub displaying your active focus tasks, today's meetings, and weekly Pomodoro stats. | *Bento-grid Hero UI* |
+
+---
+
+## ✨ Premium Features
+
+> **Universal NLP Capture**
+> Type *"Meeting with Max next Tuesday at 2pm"* from anywhere in the app. Presense automatically extracts the date, creates the entry, and routes it to the correct space using local rule-based intelligence.
+
+> **If-Then Anchoring**
+> Stop setting vague goals. Define the exact physical location and time you will start a task (e.g., *"When I sit at my desk after dinner, I will open Chapter 3"*).
+
+> **Immersive Focus Sessions**
+> A deeply immersive, fullscreen Pomodoro timer featuring dynamic SVG progress rings, ambient glowing backgrounds, and configurable durations.
+
+> **The Archive Ecosystem**
+> Built for speed. A unified 30-day soft-delete cycle with nightly Edge Functions for permanent cleanup, keeping your active workspace pristine and lightning fast.
+
+> **Flawless Aesthetics**
+> Switch between curated, bespoke themes: **Wahala** (coral/amber), **Deep Navy**, and **Forest** (supporting both dark and light modes). Built with intense glassmorphism, translucency, and micro-animations.
+
+---
+
+## 🛠️ Installation & Setup
+
+Presense requires **Node.js 18+** and a **Supabase** instance.
+
+### 1. Clone & Install
 ```bash
 git clone https://github.com/mzaman001/Presense.git
 cd Presense
-```
-
-### 2. Install dependencies
-```bash
 npm install
 ```
 
-### 3. Configure Environment Variables
-Create a `.env.local` file in the root directory:
+### 2. Environment Variables
+Create a `.env.local` file at the root of the project:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 4. Setup the Database
-Run the SQL migrations found in the `supabase/migrations/` folder in your Supabase SQL Editor in order:
-* `001_schema.sql`
-* `002_rls.sql`
-* `003_search.sql`
-* ...through `013_pomodoro_settings.sql`
+### 3. Database Initialization
+Presense relies on a strictly typed, relational PostgreSQL database. Run the SQL migrations found in the `supabase/migrations/` folder in your Supabase SQL Editor in exact numerical order:
+1. `001_schema.sql` (Base tables)
+2. `002_rls.sql` (Row Level Security)
+3. `003_search.sql` (Text indexing)
+...through `013_pomodoro_settings.sql`
 
-### 5. Start the Development Server
+### 4. Start the Engine
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Navigate to `http://localhost:3000` to begin onboarding.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture & Codebase
 
-The codebase is heavily modularized for scale:
-* `src/app/`: Next.js App Router structure with `(app)` for authenticated spaces and `(auth)` for login/onboarding.
-* `src/components/features/`: Complex, stateful UI components (e.g., `TaskAddPanel`, `FocusSession`, `CaptureModal`).
-* `src/components/layout/`: Shell components (e.g., `Navigation`, `Topbar`, `AmbientBackground`).
-* `src/components/ui/`: Reusable, stateless design system components (e.g., `GlassCard`, `ContextualTip`).
-* `src/hooks/`: Custom React hooks, notably `useRealtime` for Supabase channels.
-* `src/store/`: Zustand global state management (`useAppStore.ts`).
-* `src/lib/`: Utilities, including the `capture-router.ts` rule-based NLP engine.
+Presense is architected for real-time scale, utilizing an offline-capable, highly modularized structure.
 
----
-
-## 🎨 Design System
-
-Presense uses a bespoke design system focusing on depth, translucency, and motion. 
-* **Glass Cards**: Built using heavy backdrop blurs, low-opacity white/black backgrounds, and subtle gradient borders.
-* **Micro-animations**: Extensive use of Framer Motion for slide-in panels, tab transitions, and list stagger effects.
-* **Colors**: Defined in `globals.css` as CSS variables to allow seamless, instant theme switching via JavaScript before React hydration.
+* 📁 `src/app/` — Next.js App Router hierarchy separating `(app)` (authenticated spaces) and `(auth)` (login/onboarding).
+* 📁 `src/components/features/` — Complex, state-driven panels (e.g., `TaskAddPanel`, `FocusSession`, `SettingsModal`).
+* 📁 `src/components/layout/` — Global shell wrappers (e.g., `Navigation`, `AmbientBackground`).
+* 📁 `src/components/ui/` — Stateless, reusable design system building blocks (`GlassCard`, `ContextualTip`).
+* 📁 `src/hooks/useRealtime.ts` — Custom Supabase channel subscriptions powering instant UI reactivity across devices.
+* 📁 `src/store/useAppStore.ts` — Zustand store for hyper-fast, prop-drilling-free UI state management.
 
 ---
 
-## 📝 License
-
-This project is private and proprietary. All rights reserved.
+<div align="center">
+  <p><i>"Your mind is for having ideas, not holding them."</i></p>
+  <p><b>Presense</b> © 2026. Built with purpose.</p>
+</div>
