@@ -1,0 +1,780 @@
+--- DIAGNOSTIC FROM LOGS ---
+<USER_REQUEST>
+Full Diagnostic
+What is actually broken with PRESENSE
+Not just the bugs you reported. The patterns underneath them — what causes them, what they predict, and what needs to change at the root level before any feature work continues.
+Root Causes
+Predicted Issues
+What's Missing
+Connection Failures
+The Fix Order
+Pattern Analysis
+The 5 Root Causes (not the symptoms)
+Root Cause 1: The database layer was never verified before the UI was built
+Every "adding does nothing" bug traces back to the same failure: SQL migrations were written and assumed to work without being verified in isolation first. When they broke silently, the UI had no error handling to expose what failed — so everything looked like a UI bug but was actually a DB bug. The pattern: schema → UI → discover it doesn't save → fix schema → UI still shows stale state because realtime wasn't wired. This sequence will repeat on every new feature if not stopped at the source.
+Root Cause 2: Features were built as isolated units, not as parts of a connected system
+The spec clearly defines 20 connection points between features. But in practice, each space (Do, Think, People, Explore, Locations) was built as its own mini-app with its own data fetch, its own save logic, and its own state — none of which talked to each other. The Home dashboard failed as a result because it had nothing to aggregate. People briefings never appeared because the People space never wrote data the Home could read. This is the "app of its own" feeling — because architecturally, they were.
+Root Cause 3: The spec was written but never enforced as a build contract
+The PRD (presense_doc.js) is thorough. But each time a new feature was built, it was built from scratch from memory rather than by reading the spec first. This is why the NLP date path was wrong (dates[0].start vs dates[0].dates.start), why "Add Person" was decorative, why "Focus Now" had no explained logic, why IF-then tags were confusing. None of these are hard problems — they are skipped-spec problems. The spec exists. It must be the primary input to every build session.
+Root Cause 4: No error boundaries, no loading states, no feedback loops
+When something fails (DB insert, NLP parse, realtime subscription), the user sees... nothing. The UI closes. The button does nothing. There are no toasts, no error messages, no console logs surfaced to the user, no retry mechanisms. This means every bug is invisible until the user reports it. The app has no observability. Silent failures in a personal productivity app are uniquely destructive — if the user captures something and it silently disappears, they lose trust in the system permanently. Trust is the entire value proposition.
+Root Cause 5: The onboarding gap means the app has no personalisation context
+The app skips from login directly into the dashboard. It does not know the user's name, working hours, timezone, or which spaces they care about most. Every piece of text is generic. The nudge notifications fire at a default time without knowing when the user is awake. The Home dashboard greets nobody. Without onboarding, the app is a framework — not a personal second brain. The entire premise of the app (it is built specifically for YOU) is immediately violated the first time you open it.                                                                                                                              Predictions
+Issues that will happen if root causes are not fixed first
+🔴 CRITICAL — Will definitely happen
+Realtime subscriptions will drift. As more spaces are built, the realtime Supabase subscriptions will start conflicting. Bento counts on Home will show stale numbers. Tasks completed on the Do page won't disappear on Home without a refresh. This will feel like the app is lying to the user.
+
+The capture router will make wrong guesses at scale. As the user's people list grows, compromise.js will start false-matching names in captures meant for tasks. 'Call Mamma' will get routed to People instead of Do. The router needs a disambiguation step — show the routing chip and let the user confirm before saving.
+
+The Push notification system will send duplicates. The boolean flags (notification_sent_72h etc.) on the items table are only reliable if the Edge Function is the only writer. If a user edits a deadline, those flags will not reset, and they will miss their notifications. Editing a task deadline must reset all notification flags.
+
+Session Capture notes will not attach to the right person. If a session is named "Gym with Riyaz" but "Riyaz" is stored in the DB as "Mohammed Riyaz", the name match will fail silently. Person matching needs to check both full name and first name, with a fallback "Which person did you mean?" prompt.
+🟠 HIGH — Very likely to happen in the first week of real use
+The Think space will feel useless without structure. Without the fleeting thoughts panel working and without the stale thread prompts firing, the Think space is just a list of things the user typed and forgot about. It will be the first space abandoned.
+
+Explore will fill up and never be revisited. Without the Sunday digest actually firing, Explore becomes a graveyard of saved links. The Sunday digest is not a nice-to-have — it is the feature that makes Explore worth using. Without it, the user will stop saving things within 2 weeks.
+
+People will have no data to brief from. If notes are not being saved (the silent save failure pattern), then when the briefing fires 30 min before a meeting, it will show empty bullets. This is worse than no briefing — it actively misleads the user into thinking they prepared.
+
+The NLP item name extraction will keep getting it wrong. "My purse is in the jacket" → item: "My" is not a one-time bug. It is a structural problem with how the noun extraction is being applied. Any sentence starting with a possessive ("My", "The", "Our") will fail the same way. This will erode trust in Quick Capture entirely.
+🟡 MEDIUM — Will surface once the core is stable
+The Focus Hero will always show the same task. Without a "snooze" or "Later" mechanism that actually moves the task down the priority stack, the same overdue task will dominate the hero card every day. The user will start ignoring it — which breaks the entire purpose of the hero card.
+
+Task editing will feel like a missing feature the first time someone tries. Currently clicking a task does nothing. For a productivity app, this is a fundamental gap. Users try to edit tasks — to update deadlines, change first steps after starting, mark partial progress. None of this is possible.
+
+The "Where I Put It" search will fail for partial names. If the user logs "Laptop charger" and searches "charger", pg_trgm should find it. But if the LIKE query is not set up correctly with the trigram index, it will return nothing — and the user will think the item was never saved.
+
+Settings will feel pointless until notifications work end-to-end. Most settings control notifications. If the notification system is not verified working, all settings changes feel like they do nothing. Settings should be built after notifications are confirmed working.
+🟢 Will work fine once foundation is solid
+Universal Search (it is just Supabase queries), the Design System (it is isolated CSS), the Locations page (it is simple CRUD), the Explore feed (it is a simple list), and the Thread detail view (it is append-only). These features have no complex dependencies and will work once the database layer is verified and error handling is in place.                                                                                                  Missing Features
+What is not there at all
+Onboarding Flow — Critical
+The app has no onboarding. It does not know the user's name, timezone, working hours, or which spaces they want to use. Everything is generic. This must be the first screen after signup — before the dashboard — and it must feed data into every feature (name into the greeting, timezone into notification scheduling, etc.)
+Error Handling Layer — Critical
+No toast notifications. No error boundaries. No loading states on async operations. No retry mechanisms. Every failed DB insert is invisible to the user. A global error/success toast system must be built before any feature work — it is infrastructure, not a feature.
+Task Editing — Critical
+Clicking a task does nothing. Users need to edit title, deadline, first step, if-then trigger, and category after creation. The slide-in panel used for Add Task should double as the Edit Task panel, pre-filled with existing values.
+Add Person Modal — Missing
+The button exists but has no panel behind it. Adding a person is a core feature — without it, the People space can never be used at all. Must be built as part of the People page, not as an afterthought.
+Task Snooze / "Later" Mechanism
+The "Later" button on the Focus Hero has no implementation. Without it, the same overdue task dominates the hero card forever. "Later" should push the task down the urgency stack by 4 hours — not reschedule the deadline, just defer the hero card display.
+Deadline Edit Must Reset Notification Flags
+When a task's deadline is changed, all 5 notification_sent_* flags must be reset to false. Otherwise the Edge Function will not resend notifications for the new deadline. This is a data integrity rule that must be enforced in the PATCH handler.
+Capture Disambiguation UI
+When the router is unsure or returns 'unknown', there is no UI for the user to pick a space. The routing chips need a dropdown: "Route this to: Do / People / Think / Explore / Locations". This is the fallback that prevents silent misrouting.
+NLP Result Inline Editing
+When the capture router extracts an item name for Locations (e.g. "My" instead of "purse"), the user needs to be able to tap the extracted field and edit it before saving. The routing chip must be editable, not just confirmable.
+Empty States for Every Space
+Every space currently shows placeholders instead of meaningful empty states. First-use empty states should be welcoming and guide the user to add their first item. "No tasks yet. What do you need to do?" with a direct Add button is infinitely better than a generic empty list.
+Focus Hero Logic Explanation
+The hero card should show a small label explaining why this task was chosen: "Most overdue" or "Due in 3 hours" or "You marked this as priority". Currently the user has no idea why this specific task appears. Transparency builds trust.
+Sunday Digest Edge Function
+The Explore digest is defined in the spec but not implemented. Without it, Explore is a graveyard. This Edge Function is the feature that makes Explore worth using at all — it must be built as part of the Explore page, not as a bonus.
+Notification Deep Links
+Notifications currently exist but clicking them does not deep-link to the right context. A deadline notification should open /do with that specific task highlighted. A briefing notification should open /people/[id]. Without deep links, notifications are alerts without action.                                        Connection Failures
+Why everything feels like a separate app
+The spec defines 20 feature connections. Here is the status of each critical one:
+❌ Quick Capture → People: BROKEN
+When the user types "Riyaz said to check that repo", the router should detect Riyaz's name, match it against the people table, and create a note on his profile. Instead: the capture fires, the item routes to People generically, and nothing appears on Riyaz's profile page. The link between a capture and a specific person's note timeline is not implemented. The People space and Quick Capture have never been wired together.
+❌ Do → Home Focus Hero: BROKEN
+The Focus Hero should always show the most urgent active task from the Do space. If no realtime subscription is wired, adding a task in Do does not update Home's hero card. If the DB insert silently fails (Root Cause 1), the hero card never has data to show. These two failures together mean the most prominent element on the most important page is always empty or stale.
+❌ People → Home Briefing: BROKEN
+When a person has next_meeting set to today, Home should show their briefing card. This connection requires: (a) people table has next_meeting populated (requires Add Person to work), (b) Home queries people WHERE next_meeting::date = CURRENT_DATE, (c) the briefing JS function has notes to read (requires note-saving to work). All three preconditions are broken, so the connection is impossible to test.
+⚠️ Think → Home Stale Prompt: NOT IMPLEMENTED
+Stale threads (last_updated > 14 days) should surface a prompt on Home. The Edge Function to generate stale_prompt has never been written. The Home query for threads with stale prompts has never been written. The nudge card UI has never been built. This entire connection is spec-only — zero implementation.
+⚠️ Explore → Sunday Digest → Notifications: NOT IMPLEMENTED
+The Sunday digest Edge Function has never been written. weekly_digests table may not exist. The digest card on the Explore page has never been built. Tapping a digest item to mark it as revisited has never been implemented. This entire chain — the primary mechanism that keeps Explore from becoming a graveyard — does not exist.
+⚠️ Session Capture → People Notes: NOT IMPLEMENTED
+Session mode exists in the spec but Session Capture → People note auto-attachment is not wired. When a session is named after a person, captured notes should auto-append to their profile. Without this, session capture is just another capture flow with a name — it has no special behaviour.
+✅ What IS connected (partially)
+Universal Search (when it works) does read from multiple tables. The notification system reads from the items table for deadline alerts. The bento grid reads live counts from multiple tables. These are the only cross-space connections that were attempted — and even these have reliability issues from the save failures.                                                                                                                 The Fix Order
+What to rebuild, in what order, before any feature work
+Do not fix features. Fix the foundation. Every feature problem traces back to one of the five root causes. Fix the root causes and most feature problems disappear automatically.
+1
+Verify the database layer in complete isolation
+Open Supabase Table Editor. Manually insert one row into every table. Verify it appears. Verify RLS is not blocking your own user_id. Run SELECT auth.uid() in the SQL editor while logged in to confirm auth context. Do not write a single line of UI code until this passes. This takes 20 minutes and eliminates Root Cause 1.
+2
+Build the global error/toast system before any feature
+Create a ToastProvider in the root layout. Every async operation (Supabase insert, capture route, notification send) must call toast.success() or toast.error(). This single change transforms silent failures into visible feedback. Use the free sonner npm package — it is the toast library used in shadcn/ui and takes 10 minutes to wire up.
+3
+Build the onboarding flow as a prerequisite to everything else
+Three screens after signup: (1) Name + preferred greeting time, (2) Timezone + quiet hours, (3) "What matters most right now?" (task quick-add). This data populates user_settings and is used by every feature. Without it, the app is impersonal. Onboarding is not a UX nicety — it is data infrastructure.
+4
+Rebuild Quick Capture as the true central hub
+The capture modal must be rebuilt with: editable routing chips (not just confirmable), a disambiguation dropdown when routing is uncertain, inline editing of extracted fields (item name, person match, deadline), and a mandatory confirmation step before any Supabase write. Every write must show a toast. This one feature, done correctly, makes every space feel connected because all data flows through it.
+5
+Wire all realtime subscriptions in a central useRealtime hook
+Create one custom hook (useRealtime) that wraps all Supabase channel subscriptions. Every page that displays live data uses this hook. When a task is added in Do, the Home bento count updates. When a note is added in People, their briefing rebuilds. Centralising this prevents the drift problem where subscriptions conflict or go stale.
+6
+Fix the three broken cross-space connections before new features
+In order: (1) Quick Capture → People note (the most used connection), (2) Do → Home Focus Hero realtime (the most visible), (3) People → Home briefing card (the most impressive when it works). These three connections, working correctly, will make the app feel like a unified system for the first time.
+7
+Add task editing and the Add Person modal
+These are two missing features that block using the app at all. Task editing: the slide-in panel re-used for Edit, pre-filled. Add Person: the same panel pattern. Both should be built before any new spaces or features are added. They are not enhancements — they are missing core functionality.
+8
+Then and only then: implement the Explore digest and Think stale prompts
+Once data is saving reliably, connections are wired, and the user can actually use the app daily — the digest Edge Function and stale thread prompts will have real data to work with. Building them before the foundation is solid means they will be testing on empty databases and feel like they do nothing.
+The single most important insight
+The app does not feel like a connected second brain because the data does not actually flow between spaces. Not because of bad design. Not because of missing UI. Because the writes are silently failing and the reads have no realtime updates. Fix the data layer and the connective tissue of the app appears almost automatically — because the spec already defined all the connections. They just have no data to carry.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-14T15:43:51+05:30.
+</ADDITIONAL_METADATA>
+--- DOCX TEXT ---
+
+
+
+
+
+Table of Contents
+
+1.  The Problem — User Psychology & Research Foundation
+2.  Product Philosophy & Design Principles
+3.  Tech Stack & Architecture — 100% Free
+4.  Design System
+5.  Application Layout
+6.  Page: Home Dashboard
+7.  Page: Do (Task Management)
+8.  Page: People & Memory
+9.  Page: Think (Thoughts & Plans)
+10. Page: Explore (Saved Interests)
+11. Page: Where I Put It (Item Locator)
+12. Feature: Quick Capture & Smart Routing (Rule-Based, Free)
+13. Feature: Universal Search
+14. Feature: Notification & Nudge System (Web Push — Free)
+15. Feature: Smart Features Without Paid AI
+16. Database Schema (Supabase Free Tier)
+17. API Routes (Next.js — Free)
+18. Settings & Preferences
+19. Build Order & Deployment
+20. Connection Map Between All Features
+
+SECTION 1
+The Problem — User Psychology & Research Foundation
+
+PRESENSE is not a generic productivity app. It is purpose-built for a specific, well-researched set of cognitive difficulties. Every design and feature decision below traces back to this psychological profile.
+
+1.1 The User Profile
+The primary user is a college student with these self-reported difficulties:
+Forgetting what people say during conversations — often within the same day
+Forgetting tasks, appointments, and where physical items are placed
+Procrastinating on all types of tasks — daily, not occasionally
+Overthinking where to start tasks — not motivation failure but initiation failure
+Zoning out during activities (gym, lectures, conversations) so information does not fully encode
+No natural productive window during the day
+Only moving when external deadlines from others apply pressure
+Previous apps all failed because the user forgot to open them
+Wants step-by-step guidance, full feature control, and a beautiful frictionless interface
+
+1.2 Research Foundation
+Cognitive Disengagement Syndrome (CDS / Sluggish Cognitive Tempo)
+
+CDS explains zoning out during gym sessions with a friend (only registers information when social presence manages it), forgetting conversations, and having no natural productive window. The intervention: externalise all cognitive load. The app becomes the arousal system the brain does not self-generate.
+
+Prospective Memory Failure (Guynn et al.)
+
+This is why every notification in PRESENSE specifies both event and action. 'OS exam tomorrow — Open Chapter 3 to page 47 right now.' Never just 'OS exam tomorrow.' This is non-negotiable in the notification design.
+
+Implementation Intentions (Gollwitzer, 1999)
+
+Every task in PRESENSE prompts the user to set an if-then anchor at creation time: 'When I sit at my desk after dinner, I will open my OS notes to page 47.' The user fills this in guided by a prompt. Research shows self-generated if-then plans are more effective than externally generated ones — so this being user-filled is actually better than AI-generated.
+
+Executive Function Deficit & External Scaffolding (Barkley)
+
+The Zeigarnik Effect
+
+Quick Capture exists specifically to close Zeigarnik loops instantly. The moment something is captured, the brain can release it. This also explains why capturing random thoughts, plans, and interesting things is a core feature — it reduces the background noise of open loops.
+
+Building a Second Brain — Tiago Forte (CODE Framework)
+
+The four spaces of PRESENSE (Do, People, Think, Explore) directly implement CODE. The Sunday Digest resurfaces Explore items. The Think space enables ongoing reflection without requiring upfront organisation.
+
+Body Doubling & Social Accountability
+
+The 10-minute Start session is built on this principle. Rather than asking the user to commit to finishing a task, it asks for just 10 minutes of presence. The initiation threshold drops to near zero. Once started, momentum carries the work forward.
+
+SECTION 2
+Product Philosophy & Design Principles
+
+2.1 Three Laws of PRESENSE
+
+
+
+2.2 Design Principles
+Friction-free capture above everything — adding something must take less time than the thought lasts
+Information is surfaced, not searched — the right thing appears at the right moment without hunting
+No guilt, no streaks, no punishments — missed tasks recalibrate, they do not accumulate shame
+The interface recedes — glass cards, ambient gradients, and one accent colour create atmosphere not noise
+Every notification has both an event AND an action — never a generic reminder
+Mobile and desktop parity — same features on any device via browser, no app install needed
+Zero paid dependencies — every feature is achievable with permanently free tools
+
+2.3 Inspiration Sources
+
+SECTION 3
+Tech Stack & Architecture — 100% Free
+
+
+3.1 Technology Choices
+
+3.2 The Zero-Cost Smart Features Strategy
+Instead of paying for AI APIs, PRESENSE achieves intelligent features through three free approaches:
+
+
+
+
+3.3 Architecture Overview
+Request Flow
+User opens presense.app in any browser
+Next.js App Router serves the layout shell (sidebar + ambient background) as a Server Component — fast first paint
+Page content is a Client Component that fetches from Supabase using the JS client
+User types in Quick Capture — JavaScript router (rule-based + compromise.js) classifies text instantly client-side
+Routing results shown as chips — user confirms — data written to Supabase simultaneously for all items
+Realtime Supabase subscription updates any open views instantly (bento counts, task lists)
+Supabase Edge Function cron runs hourly — checks deadlines and meeting times — fires Web Push notifications
+
+Security
+Supabase Row Level Security ensures every query is scoped to auth.uid() = user_id automatically
+Next.js middleware validates Supabase session cookie on every protected route
+VAPID keys for Web Push stored as Vercel environment variables — never in the codebase
+Ollama runs locally — no data ever leaves the user's machine
+No analytics, no trackers, no third-party data sharing
+
+Environment Variables
+
+3.4 Folder Structure
+
+SECTION 4
+Design System
+
+4.1 Design Philosophy
+PRESENSE uses a dark-first design drawing from three reference aesthetics. First: the ambient gradient atmosphere of high-end apps — soft radial gradient blobs give the background life rather than a flat dark colour. Second: the restrained information density of Linear and Vercel — glass cards with ultra-thin borders, a single accent colour, generous breathing room. Third: confident typographic hierarchy — bold display text that earns its size. Together they create a space that feels alive but quiet, designed to reduce cognitive noise.
+
+4.2 Color System
+Base Variables — defined in globals.css
+
+Space Accent Colours
+
+4.3 Ambient Background System
+The background is not a flat colour. Four radial-gradient orbs sit behind all content using position:fixed. They breathe slowly via CSS animation. This is the single most impactful visual element — it transforms the interface from a dark app into a space that feels considered and alive.
+
+
+All orbs: position:absolute inside a fixed container, border-radius:50%, pointer-events:none, z-index:0
+Breathing animation: CSS @keyframes that scales 1 → 1.05 → 1 over 12s ease-in-out infinite alternate
+Noise texture: an SVG filter overlay at 4% opacity adds subtle grain that prevents the blobs looking synthetic
+Mobile: orb sizes reduced 40%, blur reduced to 50px for performance on weaker GPUs
+
+4.4 Glass Card Recipe
+
+Hover state: --surface-hover background + --border-strong border + translateY(-2px)
+Active / focused: box-shadow: inset 0 0 0 0.5px rgba(139,124,248,0.4)
+Space-coloured cards: space colour at 10% opacity background + space colour at 25% opacity border
+Hero card: linear-gradient(135deg, rgba(accent,0.12), rgba(secondary,0.06)) over the standard glass base
+
+4.5 Typography Scale
+
+Font: Inter loaded via next/font/google — zero layout shift, no runtime network request
+Monospace (times, code): JetBrains Mono via next/font/google
+Line heights: 1.2 for display/headings, 1.6 for body text, 1.4 for labels and meta
+
+4.6 Spacing System
+
+4.7 Animation System
+
+4.8 Responsive Breakpoints
+
+SECTION 5
+Application Layout
+
+5.1 Root Layout — Three Persistent Layers
+
+
+
+5.2 Sidebar Anatomy
+Logo block: 28px gradient logomark (purple→pink square) + 'Presense' wordmark (15px weight 600) + 'Your second brain' (10px text-3)
+Navigation items: 16px Lucide icon + 13px label. Active = accent colour + dim background + 0.5px accent border
+Section labels: 'Spaces' and 'Tools' — 10px uppercase text-3, non-interactive separators
+Bottom area: Quick Capture button (full width, gradient purple, always visible) + 'Cmd+K' hint below on desktop
+
+5.3 Navigation Items
+
+5.4 Topbar
+Left: page title (26px weight 500, dynamic) + subtitle (13px text-3, describes current view)
+Right: search input (200px glass) + notification bell icon button
+Mobile: hamburger menu icon + page title only. Search moves to a dedicated icon button.
+
+5.5 Mobile Bottom Tab Bar
+On screens under 768px, the bottom tab bar replaces the sidebar. It floats above content with glass background, detached from screen edges (border-radius:24px), and a purple FAB in the centre.
+
+5.6 Global Keyboard Shortcuts
+
+SECTION 6
+Page: Home Dashboard
+
+Home is the daily command centre. It aggregates live data from all spaces and presents it in order of urgency. It is deliberately the last space built — it depends on all others being functional first.
+
+6.1 Focus Hero Card (Top, Full Width)
+The single most prominent element. Shows the highest-urgency active task from Do.
+Eyebrow: '⚡ FOCUS NOW' in 10px uppercase accent purple
+Task title: 22px weight 500 white
+First step: 13px — 'First step: Open Chapter 3 to page 47' with the step highlighted in accent colour
+If-then trigger: 11px text-3 — 'When you sit at your desk after dinner, do this'
+'Start 10 min →' button (gradient purple) + 'Later' ghost button
+Decorative conic-gradient orb: 100×100px, conic-gradient(from 0deg, #8B7CF8, #DB2777, #2DD4BF, #8B7CF8), border-radius:50%, filter:blur(1px), rotating at 8s linear infinite. Hollow centre via ::after with --bg-base colour.
+Card: linear-gradient(135deg, rgba(139,124,248,0.12), rgba(219,39,119,0.06)) over glass
+
+'Start 10 min' opens the Focus Session overlay: full-screen, task name + first step prominent, SVG countdown timer 10:00→0:00, pause/end controls. At 0:00: 'Keep going?' prompt. Built in React with setInterval — no library needed.
+
+6.2 Bento Overview Grid
+4 equal cards (1×4 desktop, 2×2 mobile). Each taps to navigate to its space.
+
+Each card has a space-colour radial glow orb top-right (120×120px, filter:blur(40px), opacity:0.35) — a micro version of the ambient background system at card level.
+
+6.3 Two-Column Row
+
+6.4 Data Sources
+
+SECTION 7
+Page: Do (Task Management)
+
+The Do space is engineered around the research on task initiation failure and implementation intentions. It does not look or behave like a standard task manager.
+
+7.1 Core Principle: First Step Only
+
+7.2 Three-Column Urgency Board
+
+
+
+Mobile: columns stack vertically, Overdue always on top. A horizontal scroll strip shows column tabs.
+
+7.3 Task Card Anatomy
+Eyebrow label: urgency (10px uppercase, space colour) — 'OVERDUE', 'DUE TODAY', 'TOMORROW'
+Task title: 14px weight 500 white
+First step: 12px in space colour preceded by '→' arrow — the most important line on the card
+If-then trigger: 11px text-3 — 'When [context], I will [first_step]' — set by user at creation
+Category tag: small pill — Work, Study, Personal, Errand, Health
+Footer: deadline date (left, 11px text-3) + 'Start 10 min' button (right, small gradient)
+
+7.4 Adding a Task
+Slide-in panel from the right (preserves context — no full-page navigation). Fields:
+Task title — large, auto-focused
+Deadline — date/time picker styled as glass selector. Natural language via compromise.js: 'next Friday' parses automatically if typed in title
+'What is the very first physical action to start this task?' — text input. Placeholder: 'e.g. Open the document, call the number, put it in my bag, open the browser...' — guides the user to be specific
+'When and where will you be able to start?' — text input for if-then context. Placeholder: 'e.g. At my desk after dinner, on the bus tomorrow morning, as soon as I wake up...'
+App auto-formats: 'When [context input], I will [first step input].' and stores as ifthen_trigger
+Category selector: Work / Study / Personal / Errand / Health
+Save — writes to Supabase, closes panel, card animates into correct column
+
+7.5 The Start 10 Min Focus Session
+Full-screen overlay with ambient blobs still visible at 30% opacity
+Task name (22px) + first step (13px accent colour) displayed prominently at top
+SVG circular timer: 10:00 → 0:00. Implemented with stroke-dashoffset animation driven by React useEffect + setInterval. The SVG circle's circumference is used as the dash length, and dashoffset counts down each second. Pure React — no library.
+Pause button (halts interval), End early button (closes overlay, marks partial progress)
+At 0:00: timer pulses gently → overlay shifts to 'That is 10 minutes. Keep going?' with 'Yes, continue' (adds 10 more min) and 'Done for now' buttons
+'Distraction log': a small '+' button to tap each time the user felt pulled away. Stored in session_logs table. Shown as personal data in settings — not as judgement.
+
+7.6 Deadline Pressure Engine
+Escalating push notifications simulate the external pressure this user needs, each with both event and action:
+
+No notifications between 10pm and 8am (configurable quiet hours). Overdue alert fires at 9am.
+Boolean columns on items table (notification_sent_72h etc.) prevent duplicate sends on repeated cron runs
+
+7.7 Task Completion
+Checkbox tap: SVG checkmark draws in (stroke-dashoffset, 300ms ease-in)
+Card fades + slides to 'Completed' section at bottom with Framer Motion layout animation
+Small green pulse from checkbox (CSS box-shadow keyframes, 400ms)
+Completed tasks visible all day, auto-archived at midnight by Edge Function (status → 'archived')
+'Show completed' toggle reveals archived tasks — never deleted
+
+7.8 Filters and Views
+Filter pills: All / Work / Study / Personal / Errand / Health
+Sort options: By deadline (default) / By category / By date added
+Week strip: 7-day mini-calendar at top showing task density per day as coloured dot indicators
+
+SECTION 8
+Page: People & Memory
+
+People solves one of the user's most painful problems: forgetting what people said, and feeling embarrassed when the topic comes up again. It is a structured personal memory system for every significant person in the user's life.
+
+8.1 People List View
+
+8.2 Adding a Person
+Form: Name + Relationship + Next meeting date (optional) + avatar colour picker (6 colour options)
+Once created, person is available as routing target in Quick Capture (compromise.js detects their name in captures)
+
+8.3 Person Detail (/people/[id])
+Briefing Panel
+'Refresh Briefing' button — runs client-side JS function: reads person's notes array, sorts by created_at descending, returns top 3 as bullet points. Zero API call, instant, accurate.
+'BRIEFING READY' badge appears when next_meeting is within 24 hours
+The same 3 bullets are sent as the push notification 30 min before the meeting time
+
+Notes Timeline
+All notes in reverse chronological order (newest first)
+Each note: timestamp (text-3) + note text. Optional tag: 'They told me' / 'I promised' / 'Context'
+Append-only — no editing past notes. Preserves accurate record.
+Text input always at top: 'Add note about [Name]...' — expands on focus, Cmd+Enter to save
+
+Meeting Log
+'Last seen: 2 days ago' + 'Next meeting: Friday 5pm'
+'Update next meeting' → date-time picker
+Edge Function: when next_meeting passes, moves value to last_seen and clears next_meeting
+
+8.4 Where I Put It — Item Locator (/locations)
+Search bar at top — primary interaction, instant filter via .ilike() on item_name and location_text
+All items as dense list: emoji + item name + location text + 'Updated X days ago'
+Emoji suggestions: hardcoded JS map (keys→🔑, headphones→🎧, charger→🔌, notebook→📒)
+'+' inline form — saves in under 5 seconds. Optional photo stored in Supabase Storage (free 1GB).
+Items older than 30 days: amber 'Stale?' badge. Tap 'Still here' to refresh timestamp.
+Items older than 90 days: greyed out with 'Probably moved?' text
+
+SECTION 9
+Page: Think (Thoughts & Plans)
+
+Think is the space for the user's ongoing internal life — questions being worked through, plans being formed, fleeting thoughts with no home yet. It is the Zeigarnik effect solution: capturing open loops so the brain can release them.
+
+9.1 Two Content Types
+
+
+9.2 Thread List View
+Thread cards: 2px left border in thread's accent colour (the thread's visual identity)
+Shows: title (14px weight 500) + last entry preview (11px text-3, 2 lines) + 'Active X weeks' + last updated timestamp
+Sorted by last_updated descending
+'+ New Thread' button at top
+
+9.3 Thread Detail View
+Thread title editable inline — click to edit
+Accent colour picker: 6 options from the space palette
+Entry input: large text area always at top, auto-focused. Cmd+Enter to append.
+Timeline: all entries newest first. Each: timestamp + text. Cannot edit past entries (append-only).
+Starred entries: tap star to pin to top of thread. Used for key realisations.
+
+9.4 Stale Thread Resurfacing — Template Based, Free
+No AI required. Edge Function runs weekly, finds threads where last_updated < 14 days ago, generates a template prompt from the title only:
+
+Prompt stored in threads.stale_prompt. Displayed on Home as a nudge card.
+Push notification sent Sunday evening for threads stale > 14 days
+
+9.5 Fleeting Thoughts Panel
+Slide-out from right edge (desktop) or bottom sheet (mobile)
+Each thought: text + timestamp + 'Assign to thread' dropdown + 'Dismiss' button
+Count badge on Think nav item shows unassigned count
+
+SECTION 10
+Page: Explore (Saved Interests)
+
+Explore is the user's personal collection of things worth keeping — articles, quotes, concepts, books, ideas. It replaces the 'saved to group chat and immediately forgotten' pattern.
+
+10.1 Content Types
+
+10.2 Saved Items Feed
+Two-column grid on desktop, single column on mobile
+Each item: type icon in coloured square + title + source + note preview + saved date
+Filter pills: All / Links / Quotes / Concepts / Books
+Full-text search via Supabase pg_trgm across title, note, tags
+'Unread' badge on items where revisited_at IS NULL
+
+10.3 Adding an Item
+Via Quick Capture (URL detected or 'interesting'/'save this' keywords) — fully routed
+Via '+' button on page: small form with type selector
+'Why I saved this' note field is always required — the most valuable field for future recall
+
+10.4 Sunday Digest — Date Logic, No AI
+Edge Function runs Sunday 10am. Fetches explores WHERE revisited_at IS NULL ORDER BY saved_at ASC LIMIT 3
+These are the 3 oldest unread items — the most at risk of permanent forgetting
+Stores them in weekly_digests table with: 'You saved this [X] weeks ago and haven't revisited it'
+Sends push notification: 'Your Sunday digest — 3 things you saved but haven't revisited'
+User opens Explore — digest card shown at top. Tapping an item sets revisited_at.
+
+10.5 Tags
+Free-form tags on every item (#productivity #career #psychology)
+Shown as small pills below each item. Clicking a tag filters the feed.
+Tags panel: sidebar showing all tags with item counts
+
+SECTION 11
+Page: Where I Put It (Item Locator)
+
+Single-purpose. The user logs where physical items are. When they cannot find something, they search and the location appears. No AI, no complexity.
+
+11.1 Layout & Interaction
+Prominent search bar at top — the primary action, instant filter via Supabase .ilike()
+All items as a dense list: emoji + item name (14px weight 500) + location (13px text-2) + 'Updated X days ago' (text-3)
+'+ Log item' opens inline form within the list — not a modal. Takes under 5 seconds to add.
+No result found: 'Not found — log it now?' with Add form pre-filled with search query
+
+11.2 Adding a Location
+Item name + Location description + optional photo (Supabase Storage, 1GB free)
+Emoji auto-suggestion from hardcoded JS map of common item names
+Saves instantly with Framer Motion animation into list
+
+11.3 Stale Location Alerts
+30 days: amber 'Stale?' badge. 'Still here' refreshes timestamp. 'Update' opens edit form.
+90 days: greyed out with 'Probably moved?' indicator
+Monthly Edge Function identifies all stale locations and sends one push notification listing them
+
+SECTION 12
+Feature: Quick Capture & Smart Routing (Rule-Based, Free)
+
+Quick Capture is the most critical feature in PRESENSE. It is the universal entry point for all content. Its intelligence is implemented entirely in JavaScript using keyword pattern matching and the free compromise.js NLP library.
+
+12.1 Access Points
+Cmd+K keyboard shortcut — fastest path, available from any page
+Sidebar 'Quick Capture' button — always visible at the bottom
+Mobile FAB — centre button in the bottom tab bar
+Any list page '+ Add' button — opens capture with context pre-set
+
+12.2 The Modal
+Large text area: 14px, auto-focused, min-height 90px, expands as user types
+Placeholder examples: 'Riyaz said to check that GitHub repo... remind me to buy glucon-d... keys are in my jacket...'
+Routing result chips appear 500ms after user stops typing (debounced)
+Each chip: space colour dot + '→ [Space]: [Extracted title]'
+User can tap chip to reassign routing before confirming
+
+12.3 The Rule-Based Router (lib/capture-router.ts)
+Full routing pattern table:
+
+12.4 compromise.js Usage
+Person detection: nlp(text).people().json() — extracts likely names to match against the People database
+Date parsing: nlp(text).dates().json() — 'next Tuesday', 'in 3 days', 'by Friday' → Date objects for task deadlines
+Noun extraction: used as fallback to suggest item names for location captures
+Install: npm install compromise. Size: ~200KB. No API key. No network call. Runs anywhere JS runs.
+
+12.5 Confirmation & Saving
+'Capture →' sends all routed items to Supabase simultaneously via Promise.all()
+Task items: slide-in form pre-fills title and deadline — user fills in first step and if-then context
+Person notes: checks if person exists in people table; if not, prompts to create them first
+Modal closes with green checkmark success animation
+Zustand optimistic update: bento counts update immediately before Supabase confirms
+
+12.6 Session Capture Mode
+'+ Start Session' opens session naming: 'Gym with Riyaz', 'OS lecture Ch.4'
+A floating strip appears at the bottom of any page — persistent capture field
+User types fragments as events happen — raw, unformatted
+Session end: review panel shows all fragments. Router classifies each item.
+If session named after a person: all notes automatically appended to their People profile
+
+SECTION 13
+Feature: Universal Search
+
+Universal Search retrieves from all spaces simultaneously using Supabase's built-in PostgreSQL trigram search. No external search service, no cost.
+
+13.1 Setup — One-Time SQL Commands
+
+13.2 Search Implementation
+Parallel queries via Promise.all() to all 5 tables — effectively a single round trip
+Each query uses Supabase .textSearch() or .ilike() with the pg_trgm-indexed columns
+Debounce: 200ms after last keypress before firing
+Results grouped by space: Tasks, People, Thoughts, Explore, Locations — up to 3 per group
+
+13.3 Result Display
+Each result: space colour dot + space label + item title + excerpt with search term highlighted in accent colour
+'Show all in [Space] →' link at bottom of each group navigates with query pre-filled
+Keyboard navigable: arrow keys move through results, Enter opens selected
+Empty state: 'Nothing found — capture it now?' with Quick Capture pre-filled with the query
+Recent searches: last 5 stored in localStorage, shown when search bar is focused but empty
+
+SECTION 14
+Feature: Notification & Nudge System (Web Push — Free)
+
+The notification system makes PRESENSE reach out to the user instead of waiting for the user to remember to open it. Every notification specifies both event and action — the only format proven to work by prospective memory research.
+
+14.1 Web Push Setup — 100% Free
+Generate VAPID keys once: npx web-push generate-vapid-keys — free npm command
+Store as Vercel environment variables. Never commit to git.
+On first login: show browser permission prompt. User grants once.
+Subscription saved to push_subscriptions table. No third-party push service needed.
+Works on Chrome, Edge, Firefox, and Safari (iOS 16.4+) natively
+
+14.2 All Notification Types
+
+14.3 Quiet Hours & Timezone
+Default quiet hours: 10pm – 8am. No notifications fire in this window.
+Deadlines falling in quiet hours: notification deferred to 8am the next morning
+All timing uses the user's timezone stored in user_settings. Edge Functions convert to UTC for scheduling.
+Configurable: user sets their own quiet window in Settings
+
+14.4 Daily Nudge — 5 Rotating Prompts
+'What is the one thing your future self would thank you for doing today?'
+'One thing you have been avoiding. Just the first step. That is all.'
+'You have [X] tasks overdue. Pick one. 10 minutes.'
+'What did you mean to do yesterday that did not happen?'
+'Name one task. Open it. Start the timer.'
+Prompt selected by day-of-week index (deterministic, not random) — builds a predictable rhythm without being mechanical.
+
+14.5 Edge Function Implementation
+hourly_check.ts: Queries items for tasks hitting the 72h, 24h, 6h, 1h, overdue thresholds. Checks notification_log to prevent duplicates. Sends Web Push via /api/push/send. Logs each send. Free tier: 500K invocations/month. Hourly runs = 8,760/year — well within limit.
+daily_nudge.ts: Runs every hour. Checks which users' nudge_time falls in the current hour (accounting for timezone). Fetches their most overdue task. Selects rotating prompt by day-of-week. Sends notification.
+weekly_tasks.ts: Runs Sunday 10am UTC. For each user: selects 3 oldest unread Explore items → sends digest notification. Finds stale threads → generates template prompt → stores and sends.
+meeting_briefing.ts: Runs every 30 minutes. Checks people table for next_meeting within 30 minutes. Reads last 3 notes sorted by date. Sends briefing notification with bullet points.
+
+SECTION 15
+Feature: Smart Features Without Paid AI
+
+This section documents exactly how every feature that might seem to need a paid AI API is achieved for free. No Anthropic API, no OpenAI API, no paid NLP service — ever.
+
+15.1 Capture Routing
+
+15.2 Task First Step
+
+15.3 People Briefing
+
+15.4 Explore Digest
+
+15.5 Thread Resurfacing
+
+15.6 Natural Language Date Parsing
+
+15.7 Optional Ollama Enhancement
+Install Ollama: curl -fsSL https://ollama.ai/install.sh | sh — free, no account needed
+Pull a model: ollama pull llama3.2:3b (fast on most laptops with 4GB+ RAM)
+Ollama exposes a REST API at http://localhost:11434/v1/chat/completions (OpenAI-compatible format)
+PRESENSE detects Ollama on page load: fetch('http://localhost:11434/api/tags').then/catch
+If detected: enables richer task first-step suggestions and deeper thread prompts using actual thread content
+If not detected: all features work exactly as described in 15.1–15.6
+Data never leaves the user's machine. Models run offline. Completely private.
+Recommended: llama3.2:3b for speed, mistral:7b for quality (needs 8GB RAM)
+
+SECTION 16
+Database Schema (Supabase Free Tier)
+
+7 tables, all with Row Level Security enabled. Free tier includes 500MB database and 1GB file storage — more than sufficient for years of personal use.
+
+16.1 items — Do Space
+
+16.2 people
+
+16.3 threads — Think Space
+
+16.4 explores
+
+16.5 locations — Where I Put It
+
+16.6 push_subscriptions
+
+16.7 user_settings
+
+16.8 RLS Policy (Applied to All Tables)
+
+SECTION 17
+API Routes (Next.js — All Free)
+
+
+17.1 Capture Router Implementation (lib/capture-router.ts)
+
+SECTION 18
+Settings & Preferences
+
+Settings are minimal. The app works with defaults. Settings exist only for things the user genuinely needs to control.
+
+18.1 Notification Settings
+Daily Nudge: toggle on/off + time picker (or 'Random — vary time day to day')
+Quiet hours: start and end time pickers (default 10pm–8am)
+Deadline alerts: per-level toggles: 72h / 24h / 6h / 1h / overdue
+People briefings: toggle on/off
+Weekly digest: toggle on/off
+Stale thread prompts: toggle on/off
+'Send test notification' button — fires test push immediately to verify setup works
+Notification permission status: Granted / Denied / Not requested + 'Request permission' button if denied
+
+18.2 AI Settings (Ollama — Optional)
+Ollama integration: toggle on/off
+Ollama URL: text field (default: http://localhost:11434)
+'Test connection' button — checks if Ollama is reachable, shows detected models
+Model selector: dropdown of installed models detected from Ollama
+'What is Ollama?' expandable info panel + link to ollama.ai
+Status indicator: 'AI Enhanced features active' (green) or 'Using smart rules — no local AI detected' (amber)
+
+18.3 Account Settings
+Display name (editable)
+Email — read-only (linked to Supabase auth)
+Avatar colour picker
+Timezone — auto-detected from browser Intl API, editable dropdown
+Sign out button
+Delete account — confirmation dialog with 'Export data first' link
+
+18.4 Data Settings
+Export all data: generates ZIP with JSON files for all 5 spaces. Built with JSZip (free open-source npm package). Download triggers in browser.
+Clear completed tasks: archives all done items (status → 'archived')
+Clear stale locations: deletes location entries not updated in 90+ days
+Clear all data: nuclear option with two-step confirmation dialog
+
+18.5 Appearance
+Theme: Dark only in v1. Light theme is a future addition.
+Ambient background: on (default) / off — disables orbs for users who prefer a flat background or need battery savings
+Reduce motion: disables Framer Motion animations. Respects prefers-reduced-motion CSS media query automatically.
+
+SECTION 19
+Build Order & Deployment
+
+Build in this exact sequence. Each phase produces something working in the browser. Never build the Home dashboard before the individual space pages — Home depends on all of them.
+
+Phase 1: Foundation (Days 1–3)
+npx create-next-app@latest presense --typescript --tailwind --app. Push to GitHub immediately.
+Connect GitHub to Vercel. Every future push auto-deploys in 30 seconds. URL is live from day 1.
+Create Supabase project (free). Run migration SQL to create all 7 tables. Enable RLS. Write policies.
+Set up Supabase Auth with Google OAuth (free — enable in Supabase dashboard). Test login.
+Add all environment variables to Vercel dashboard. Test that the app connects to Supabase.
+
+Phase 2: Design System (Day 4)
+globals.css: add all CSS custom properties (colours, blur values, spacing).
+AmbientBackground component: 4 orbs + noise overlay + breathing animation. Verify it looks correct on all screen sizes.
+Build base UI components: GlassCard, Badge, Avatar, Button variants, Modal. These are the atoms — every other component uses them.
+Build Sidebar with all nav items. Wire active state to usePathname. Build mobile bottom tab bar.
+Build root layout.tsx with all three persistent layers. Test all breakpoints. Fix everything before moving on.
+
+Phase 3: Quick Capture (Days 5–6)
+npm install compromise. Write lib/capture-router.ts with the full routing pattern table.
+Build the Capture Modal UI (no routing logic yet — just the visual). Test Cmd+K shortcut.
+Create /api/capture route wired to capture-router.ts. Test with curl or Postman.
+Wire the modal to the API. Render routing chips. Test with 20 realistic sample inputs.
+Add Supabase writes for all routing types simultaneously. This is the most important build step.
+
+Phase 4: Space Pages (Days 7–15)
+Do page: three-column board, task cards with all fields, slide-in add-task panel with guided form.
+People page: list + detail + note timeline + briefing button + /api/briefing/[id] route.
+Think page: thread list + thread detail + entry input + fleeting thoughts panel.
+Explore page: item feed + add form + filter pills + tag system.
+Locations page: search + item list + inline add form + stale alerts.
+
+Phase 5: Home Dashboard (Days 16–17)
+Build Home page. Wire all Supabase queries with Promise.all(). Set up realtime subscriptions for Do counts and task list.
+Build Focus Hero card with the rotating conic-gradient orb (CSS animation only — no JS).
+Build the 10-minute focus session overlay with the SVG countdown timer (pure React useEffect + setInterval).
+Build bento grid with live counts. Test that counts update in real-time when tasks are added or completed.
+
+Phase 6: Notifications (Days 18–20)
+Generate VAPID keys: npx web-push generate-vapid-keys. Add to Vercel environment variables.
+npm install web-push. Build /api/push/subscribe and /api/push/send routes.
+Build the permission request UI shown on first login after authentication.
+Write and deploy Supabase Edge Functions: hourly_check.ts, daily_nudge.ts, weekly_tasks.ts, meeting_briefing.ts.
+Test each notification type individually using the Supabase Edge Function test tools in the dashboard.
+
+Phase 7: Search & Settings (Days 21–22)
+Run pg_trgm SQL commands in Supabase SQL editor. Add all GIN indexes. Build /api/search route.
+Build Universal Search UI with grouped results and full keyboard navigation.
+Build Settings page. Wire all controls to user_settings table reads and writes.
+Add Ollama detection health check on app load. Wire the toggle in Settings to switch between rule-based and Ollama-enhanced modes.
+
+Phase 8: Polish & Ship (Days 23–25)
+Add Framer Motion to all card entries, list items, modal opens, and task state transitions.
+Responsive QA across mobile (375px), tablet (768px), desktop (1280px), and wide (1440px). Fix all issues.
+Lighthouse audit. Ensure: next/font for fonts (no layout shift), next/image for photos, check JS bundle size.
+Add custom domain in Vercel (free with any domain you own). Total infrastructure cost to deploy: zero.
+Use it daily. Iterate from real use. The best productivity app is the one you actually use.
+
+Total Cost Summary
+
+SECTION 20
+Connection Map Between All Features
+
+Every feature in PRESENSE is connected to at least two others. This section documents the full data flow so nothing is built in isolation and no connection is missed.
+
+
+
+
+
+
+
+
+
+
+

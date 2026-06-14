@@ -1,26 +1,208 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono-val);
+  
+  --color-background: var(--bg-base);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  
+  --color-accent: var(--accent);
+  --color-accent-hot: var(--accent-hot);
+  --color-accent-deep: var(--accent-deep);
+  --color-bg-dark: var(--bg-dark);
+
+  --color-do: var(--color-do-val);
+  --color-people: var(--color-people-val);
+  --color-think: var(--color-think-val);
+  --color-explore: var(--color-explore-val);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  /* Font */
+  --font-mono-val: 'JetBrains Mono', monospace;
+
+  /* Wahala (Orange/Amber) DEFAULT DARK */
+  --bg-base: #0F0A00;
+  --bg-dark: #3B1814;
+  --surface: rgba(255, 255, 255, 0.055);
+  --border: rgba(255, 255, 255, 0.10);
+  
+  --text-1: #ffffff;
+  --text-2: rgba(255, 255, 255, 0.65);
+  --text-3: rgba(255, 255, 255, 0.38);
+  
+  --accent: #E5B41E;
+  --accent-hot: #EB4233;
+  --accent-deep: #A76011;
+
+  /* Ambient Orbs */
+  --orb-1: #A76011;
+  --orb-2: #EB4233;
+  --orb-3: #E5B41E;
+  --orb-4: #3B1814;
+
+  /* Legacy space colors mapped */
+  --color-do-val: #f87171;
+  --color-people-val: #f472b6;
+  --color-think-val: #2dd4bf;
+  --color-explore-val: #fbbf24;
+
+  color-scheme: dark;
+}
+
+/* Light mode for Default Orange */
+html.light {
+  --bg-base: #FFF8EE;
+  --bg-dark: #FFF3DC;
+  --surface: rgba(255, 255, 255, 0.6);
+  --border: rgba(0, 0, 0, 0.10);
+  
+  --text-1: #2A1800;
+  --text-2: rgba(42, 24, 0, 0.7);
+  --text-3: rgba(42, 24, 0, 0.4);
+  color-scheme: light;
+}
+
+/* Theme 2: Deep Navy (Blue) */
+html.theme-blue {
+  --accent: #7692FF;
+  --accent-hot: #1B2CC1;
+  --accent-deep: #3D518C;
+  --bg-base: #050B20;
+  --bg-dark: #091540;
+
+  --orb-1: #1B2CC1;
+  --orb-2: #7692FF;
+  --orb-3: #3D518C;
+  --orb-4: #091540;
+}
+html.theme-blue.light {
+  --bg-base: #EEF3FF;
+  --bg-dark: #DDE5FF;
+  --surface: rgba(255, 255, 255, 0.6);
+  --text-1: #050B20;
+  --text-2: rgba(5, 11, 32, 0.7);
+  --text-3: rgba(5, 11, 32, 0.4);
+}
+
+/* Theme 3: Forest (Green/Earth) */
+html.theme-forest {
+  --accent: #EFDD8D;
+  --accent-hot: #65743A;
+  --accent-deep: #394F49;
+  --bg-base: #0D0F08;
+  --bg-dark: #210124;
+
+  --orb-1: #65743A;
+  --orb-2: #394F49;
+  --orb-3: #F4FDAF;
+  --orb-4: #210124;
+}
+html.theme-forest.light {
+  --bg-base: #F7FAF0;
+  --bg-dark: #E8F0D0;
+  --surface: rgba(255, 255, 255, 0.6);
+  --text-1: #0D0F08;
+  --text-2: rgba(13, 15, 8, 0.7);
+  --text-3: rgba(13, 15, 8, 0.4);
+  --accent: #65743A; /* In light mode for forest, accent becomes Fern green */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text-2);
+  font-family: var(--font-sans), sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-text-1);
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--color-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 0.5px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-panel:hover, .glass-panel.active {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Typography Scale */
+.text-page-title {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--color-text-1);
+}
+
+.text-section-title {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--color-text-1);
+}
+
+.text-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-text-1);
+}
+
+.text-body {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.text-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.text-big-number {
+  font-size: 32px;
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  color: var(--color-text-1);
+}
+
+/* Animations */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+@keyframes orb-breathe {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+.animate-orb-breathe {
+  animation: orb-breathe linear infinite alternate;
 }
