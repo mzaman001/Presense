@@ -7,19 +7,47 @@ import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { CornerDownLeft, Sparkles, Loader2, Check, X, Search, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { useDebounce } from "use-debounce";
 import type { RoutedItem } from "@/lib/capture-router";
+import { Dropdown } from "@/components/ui/Dropdown";
+
+function formatCaptureDeadline(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const isToday = d.toDateString() === now.toDateString();
+  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = d.toDateString() === tomorrow.toDateString();
+  
+  if (isToday) return `Today ${time}`;
+  if (isTomorrow) return `Tomorrow ${time}`;
+  
+  const diffTime = d.getTime() - now.getTime();
+  const diffDays = diffTime / (1000 * 3600 * 24);
+  if (diffDays > 0 && diffDays < 7) {
+    return `Next ${d.toLocaleDateString('en-US', { weekday: 'long' })} ${time}`;
+  }
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${time}`;
+}
 
 const SPACE_COLORS: Record<string, string> = {
   Do: "var(--color-do)",
-  People: "var(--color-people)",
+  "Remember → People": "var(--color-people)",
   Think: "var(--color-think)",
   Explore: "var(--color-explore)",
-  Locations: "#4ADE80",
+  "Remember → Locations": "#4ADE80",
   Inbox: "#FBBF24",
   "Choose space...": "var(--color-text-3)",
 };
 
-const SPACES = ["Do", "People", "Think", "Explore", "Locations", "Inbox"];
+const SPACE_OPTIONS = [
+  { value: "Do", label: "Do" },
+  { value: "Think", label: "Think" },
+  { value: "Remember → People", label: "People" },
+  { value: "Remember → Locations", label: "Locations" },
+  { value: "Explore", label: "Explore" },
+  { value: "Inbox", label: "Inbox" }
+];
 
 export function CaptureModal() {
   const { isCaptureModalOpen, setCaptureModalOpen } = useAppStore();
@@ -29,8 +57,8 @@ export function CaptureModal() {
   const [routedItems, setRoutedItems] = useState<RoutedItem[] | null>(null);
   const [taskExtras, setTaskExtras] = useState<{ [idx: number]: { first_step: string; ifthen_trigger: string } }>({});
   const [saved, setSaved] = useState(false);
-  const [openDropdownIdx, setOpenDropdownIdx] = useState<number | null>(null);
   const supabase = createClient();
+  const [debouncedInput] = useDebounce(input, 800);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -44,12 +72,7 @@ export function CaptureModal() {
     return () => window.removeEventListener("keydown", down);
   }, [setCaptureModalOpen]);
 
-  useEffect(() => {
-    if (openDropdownIdx === null) return;
-    const handler = () => setOpenDropdownIdx(null);
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [openDropdownIdx]);
+
 
   useEffect(() => {
     if (!isCaptureModalOpen) {
@@ -62,7 +85,7 @@ export function CaptureModal() {
     }
   }, [isCaptureModalOpen]);
 
-  const handleRoute = async () => {
+  const handleRoute = useCallback(async () => {
     if (!input.trim()) return;
     setIsRouting(true);
     try {
@@ -79,7 +102,13 @@ export function CaptureModal() {
     } finally {
       setIsRouting(false);
     }
-  };
+  }, [input]);
+
+  useEffect(() => {
+    if (debouncedInput && !routedItems && !isRouting && !saved) {
+      handleRoute();
+    }
+  }, [debouncedInput, routedItems, isRouting, saved, handleRoute]);
 
   const changeDestination = (idx: number, destination: string) => {
     setRoutedItems((prev) =>
@@ -116,7 +145,7 @@ export function CaptureModal() {
               status: item.destination === "Inbox" ? "inbox" : "active",
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
-          } else if (item.destination === "People") {
+          } else if (item.destination === "Remember → People") {
             const { data: person } = await supabase
               .from("people")
               .select("id, notes")
@@ -151,7 +180,7 @@ export function CaptureModal() {
               note: item.title,
             });
             if (error) throw new Error(`Explore: ${error.message}`);
-          } else if (item.destination === "Locations") {
+          } else if (item.destination === "Remember → Locations") {
             const { error } = await supabase.from("locations").insert({
               user_id: user.id,
               item_name: item.item_name || item.title.split(" ")[0] || "Item",
@@ -191,11 +220,11 @@ export function CaptureModal() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 16 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full max-w-2xl bg-[#0d0b18] border border-[rgba(255,255,255,0.12)] rounded-2xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-2xl bg-[#0d0b18] border border-[rgba(255,255,255,0.12)] rounded-2xl shadow-2xl"
           style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 32px 64px rgba(0,0,0,0.6)" }}
         >
           {/* Input row */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)]">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl">
             {routedItems ? (
               <Sparkles className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" />
             ) : (
@@ -234,49 +263,29 @@ export function CaptureModal() {
                   
                   <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
                     <span className="font-semibold">Space:</span>
-                    <div className="relative">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setOpenDropdownIdx(openDropdownIdx === idx ? null : idx); }}
-                        className="px-3 py-1 rounded-full border text-xs font-semibold transition-colors"
-                        style={{ 
-                          borderColor: SPACE_COLORS[item.destination] ?? 'rgba(255,255,255,0.2)', 
-                          color: SPACE_COLORS[item.destination] ?? 'rgba(255,255,255,0.5)',
-                          backgroundColor: `${SPACE_COLORS[item.destination]}20`
-                        }}
-                      >
-                        {item.destination} ▾
-                      </button>
-                      <AnimatePresence>
-                        {openDropdownIdx === idx && (
-                          <motion.div 
-                            initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                            className="absolute left-0 top-full mt-2 w-44 p-1 rounded-xl bg-[#13111C] border border-[rgba(255,255,255,0.12)] shadow-2xl z-50 flex flex-col gap-0.5"
-                          >
-                            {SPACES.map(space => (
-                              <button 
-                                key={space} 
-                                onClick={(e) => { e.stopPropagation(); changeDestination(idx, space); setOpenDropdownIdx(null); }}
-                                className="text-left px-3 py-2 text-xs rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-white flex items-center gap-2"
-                              >
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: SPACE_COLORS[space] ?? 'rgba(255,255,255,0.3)' }} />
-                                {space}
-                              </button>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                    <Dropdown
+                      value={item.destination}
+                      onChange={(val) => changeDestination(idx, val)}
+                      options={SPACE_OPTIONS}
+                      colors={SPACE_COLORS}
+                      placeholder="Choose space..."
+                    />
                     
                     {item.destination === "Do" && (
                       <>
                         <span className="text-[var(--color-text-3)]">·</span>
                         <span className="font-semibold">Deadline:</span>
-                        <input
-                          type="datetime-local"
-                          value={item.deadline ? new Date(new Date(item.deadline).getTime() - new Date(item.deadline).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
-                          onChange={(e) => updateRoutedItem(idx, { deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                          className="px-2 py-1 rounded-full border border-[var(--color-border)] bg-transparent outline-none focus:border-[var(--color-accent)] text-xs text-[var(--color-text-1)] [color-scheme:dark]"
-                        />
+                        <div className="relative inline-flex items-center">
+                          <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-white pointer-events-none whitespace-nowrap">
+                            {item.deadline ? formatCaptureDeadline(item.deadline) : "No deadline"} ▾
+                          </span>
+                          <input
+                            type="datetime-local"
+                            value={item.deadline ? new Date(new Date(item.deadline).getTime() - new Date(item.deadline).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
+                            onChange={(e) => updateRoutedItem(idx, { deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
+                          />
+                        </div>
                       </>
                     )}
                     
@@ -320,7 +329,7 @@ export function CaptureModal() {
           )}
 
           {/* Action bar */}
-          <div className="flex items-center justify-between px-5 py-3 border-t border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.2)]">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.2)] rounded-b-2xl">
             {!routedItems ? (
               <>
                 <span className="text-xs text-[rgba(255,255,255,0.3)]">
@@ -329,7 +338,7 @@ export function CaptureModal() {
                 <button
                   onClick={handleRoute}
                   disabled={!input.trim() || isRouting}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(139,124,248,0.15)] border border-[rgba(139,124,248,0.3)] text-[var(--color-accent)] text-sm font-medium hover:bg-[rgba(139,124,248,0.25)] transition-colors disabled:opacity-40"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/30 text-[var(--color-accent)] text-sm font-medium hover:bg-[var(--color-accent)]/25 transition-colors disabled:opacity-40"
                 >
                   {isRouting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   {isRouting ? "Routing..." : "Route & Capture"}

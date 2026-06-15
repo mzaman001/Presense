@@ -178,21 +178,14 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
     }
   };
 
-  const getPhaseColor = () => {
-    if (isDone) return "text-[#4ADE80] stroke-[#4ADE80]";
-    if (phase === "work") return "text-[#8B7CF8] stroke-[#8B7CF8]";
+  const getColors = () => {
+    if (phase === "work") return "text-[var(--color-accent)] stroke-[var(--color-accent)]";
     return "text-[#4ADE80] stroke-[#4ADE80]"; // breaks are green
   };
 
-  const getPhaseGlow = () => {
-    if (phase === "work") return "bg-[#8B7CF8]/20";
+  const getBgColors = () => {
+    if (phase === "work") return "bg-[var(--color-accent)]/20";
     return "bg-[#4ADE80]/20";
-  };
-
-  const getPhaseText = () => {
-    if (phase === "work") return "Focus Session";
-    if (phase === "short_break") return "Short Break";
-    return "Long Break";
   };
 
   return (
@@ -205,27 +198,28 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
           className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 bg-[#0B0914]/90 backdrop-blur-xl"
         >
           {/* Ambient glow */}
-          <div className={cn("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000", getPhaseGlow())} />
+          <div className={cn("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000", getBgColors())} />
 
           <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[rgba(255,255,255,0.5)] hover:text-white">
             <X className="w-6 h-6" />
           </button>
 
-          <div className="text-center mb-12 max-w-lg z-10">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              {phase !== "work" && <Coffee className={cn("w-4 h-4", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[#8B7CF8]" : "text-[#4ADE80]")} />}
-              <p className={cn("text-[12px] uppercase tracking-widest font-bold", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[#8B7CF8]" : "text-[#4ADE80]")}>
-                {getPhaseText()}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12 max-w-lg z-10">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              {phase === "work" && <Briefcase className={cn("w-4 h-4", isDone ? "text-[var(--color-accent)]" : "text-[var(--color-accent)]")} />}
+              {phase !== "work" && <Coffee className={cn("w-4 h-4", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[var(--color-accent)]" : "text-[#4ADE80]")} />}
+              <p className={cn("text-[12px] uppercase tracking-widest font-bold", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[var(--color-accent)]" : "text-[#4ADE80]")}>
+                {phase === "work" ? `Work Session ${sessionCount + 1}` : phase === "short_break" ? "Short Break" : "Long Break"}
               </p>
             </div>
             <h1 className="text-3xl font-semibold text-white mb-4 leading-tight">{task.title}</h1>
-            {task.first_step && (
-              <div className="inline-flex items-center gap-2 bg-[rgba(139,124,248,0.1)] border border-[rgba(139,124,248,0.2)] px-4 py-2 rounded-full">
-                <ChevronRight className="w-4 h-4 text-[#8B7CF8]" />
-                <span className="text-[#8B7CF8] font-medium">{task.first_step}</span>
+            {task.first_step && phase === "work" && !isDone && (
+              <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition-colors">
+                <ChevronRight className="w-4 h-4 text-[var(--color-accent)]" />
+                <span className="text-[var(--color-accent)] font-medium">{task.first_step}</span>
               </div>
             )}
-          </div>
+          </motion.div>
 
           <div className="relative flex items-center justify-center mb-16 z-10">
             <svg width="300" height="300" className="transform -rotate-90">

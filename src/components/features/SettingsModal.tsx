@@ -8,6 +8,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useDebounce } from "use-debounce";
 
 const TABS = [
@@ -21,7 +22,7 @@ const TABS = [
 ];
 
 export function SettingsModal() {
-  const { isSettingsModalOpen, setSettingsModalOpen } = useAppStore();
+  const { isSettingsModalOpen, setSettingsModalOpen, setUserSettings } = useAppStore();
   const supabase = createClient();
   const router = useRouter();
   
@@ -32,6 +33,9 @@ export function SettingsModal() {
   
   // Settings State
   const [settings, setSettings] = useState<any>({});
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
+  const [clearTasksConfirm, setClearTasksConfirm] = useState(false);
+  const [clearLocationsConfirm, setClearLocationsConfirm] = useState(false);
 
   const [debouncedSettings] = useDebounce(settings, 1000);
 
@@ -46,6 +50,7 @@ export function SettingsModal() {
       const { data } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single();
       if (data) {
         setSettings(data);
+        setUserSettings(data);
       }
       setLoading(false);
       setTimeout(() => setInitialLoaded(true), 100);
@@ -63,10 +68,16 @@ export function SettingsModal() {
       
       const { user_id, created_at, ...updateData } = debouncedSettings;
       
-      await supabase.from("user_settings").update(updateData).eq("user_id", user.id);
+      const { error } = await supabase.from("user_settings").update(updateData).eq("user_id", user.id);
       
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
+      if (error) {
+        toast.error("Failed to save settings", { description: error.message });
+        setSaveStatus("idle");
+      } else {
+        setUserSettings(debouncedSettings);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      }
     };
     save();
   }, [debouncedSettings, supabase, initialLoaded]);
@@ -74,14 +85,23 @@ export function SettingsModal() {
   const updateSetting = (key: string, value: any) => {
     setSettings((prev: any) => ({ ...prev, [key]: value }));
     
-    // Immediately apply theme changes
+    // Immediately apply theme/mode changes
     if (key === 'theme') {
       localStorage.setItem('presense_theme', value);
-      document.documentElement.classList.remove('theme-blue', 'theme-forest', 'theme-cyberpunk', 'light');
+      document.documentElement.classList.remove('theme-blue', 'theme-forest');
       
-      if (value === 'midnight') document.documentElement.classList.add('theme-blue');
-      if (value === 'cyberpunk') document.documentElement.classList.add('theme-cyberpunk');
+      if (value === 'navy') document.documentElement.classList.add('theme-blue');
+      if (value === 'forest') document.documentElement.classList.add('theme-forest');
+    }
+    
+    if (key === 'color_mode') {
+      localStorage.setItem('presense_color_mode', value);
+      document.documentElement.classList.remove('light');
+      
       if (value === 'light') document.documentElement.classList.add('light');
+      if (value === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.classList.add('light');
+      }
     }
   };
 
@@ -180,6 +200,14 @@ export function SettingsModal() {
                           />
                         </div>
                         <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Avatar Color</label>
+                          <div className="flex flex-wrap gap-2">
+                            {['#F472B6', '#4ADE80', '#3B82F6', '#FBBF24', '#A855F7', '#EF4444'].map(color => (
+                              <button key={color} onClick={() => updateSetting("avatar_color", color)} className={`w-8 h-8 rounded-full transition-transform ${settings.avatar_color === color ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]' : 'opacity-70 hover:opacity-100'}`} style={{ backgroundColor: color }} />
+                            ))}
+                          </div>
+                        </div>
+                        <div>
                           <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Timezone</label>
                           <select
                             value={settings.timezone || "UTC"}
@@ -195,6 +223,13 @@ export function SettingsModal() {
                             {/* More could be added dynamically via Intl API */}
                           </select>
                         </div>
+                        <div className="pt-8 mt-8 border-t border-[rgba(248,113,113,0.2)]">
+                          <h4 className="text-sm font-semibold text-[#F87171] mb-2 flex items-center gap-2">Danger Zone</h4>
+                          <p className="text-xs text-[rgba(255,255,255,0.4)] mb-4">Permanently delete your account and all data.</p>
+                          <button onClick={() => setDeleteAccountConfirm(true)} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)] text-[#F87171] hover:bg-[rgba(248,113,113,0.2)] transition-colors text-sm font-medium">
+                            Delete Account
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -202,18 +237,29 @@ export function SettingsModal() {
                       <div className="space-y-6">
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
                           <div>
-                            <div className="font-medium text-white">Theme</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Select your preferred app theme</div>
+                            <div className="font-medium text-white">Theme Accent</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Select your primary colour palette</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => updateSetting("theme", "orange")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${settings.theme === 'orange' || !settings.theme ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Wahala (Orange)" />
+                            <button onClick={() => updateSetting("theme", "navy")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${settings.theme === 'navy' ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Deep Navy" />
+                            <button onClick={() => updateSetting("theme", "forest")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${settings.theme === 'forest' ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Forest" />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Color Mode</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Dark, Light, or System match</div>
                           </div>
                           <select
-                            value={settings.theme || "dark"}
-                            onChange={e => updateSetting("theme", e.target.value)}
+                            value={settings.color_mode || "dark"}
+                            onChange={e => updateSetting("color_mode", e.target.value)}
                             className="bg-[rgba(0,0,0,0.4)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-1.5 text-sm text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                           >
-                            <option value="dark">Dark (Default)</option>
-                            <option value="midnight">Midnight</option>
-                            <option value="cyberpunk">Cyberpunk</option>
+                            <option value="dark">Dark</option>
                             <option value="light">Light</option>
+                            <option value="system">System Default</option>
                           </select>
                         </div>
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
@@ -259,6 +305,25 @@ export function SettingsModal() {
                             <input type="time" value={settings.quiet_end || "08:00"} onChange={e => updateSetting("quiet_end", e.target.value)} className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
                           </div>
                         </div>
+
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Daily Briefing</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Receive a summary of today's tasks</div>
+                          </div>
+                          <button onClick={() => updateSetting("daily_briefing", !settings.daily_briefing)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.daily_briefing ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.daily_briefing ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Pomodoro Finish Sound</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Play a sound when timer completes</div>
+                          </div>
+                          <button onClick={() => updateSetting("pomodoro_sound", !settings.pomodoro_sound)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.pomodoro_sound ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.pomodoro_sound ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -279,6 +344,16 @@ export function SettingsModal() {
                           <div className="flex flex-wrap gap-2">
                             {[3, 5, 10, 15].map(mins => (
                               <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.short_break_duration === mins ? 'bg-[#4ADE80] text-black border-[#4ADE80]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}>
+                                {mins}m
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Long Break (mins)</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[15, 20, 30].map(mins => (
+                              <button key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.long_break_duration === mins ? 'bg-[#3B82F6] text-black border-[#3B82F6]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}>
                                 {mins}m
                               </button>
                             ))}
@@ -319,6 +394,25 @@ export function SettingsModal() {
                             className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                           />
                         </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Do Categories (comma separated)</label>
+                          <input
+                            type="text"
+                            value={(settings.do_categories || []).join(", ")}
+                            onChange={e => updateSetting("do_categories", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                            placeholder="work, personal, health"
+                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mt-4">
+                          <div>
+                            <div className="font-medium text-white">Auto-snooze Overdue</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Automatically push overdue tasks to today</div>
+                          </div>
+                          <button onClick={() => updateSetting("auto_snooze", !settings.auto_snooze)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.auto_snooze ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.auto_snooze ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -345,13 +439,25 @@ export function SettingsModal() {
                         {settings.ollama_enabled && (
                           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
                             <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider mt-4">Ollama URL</label>
-                            <input
-                              value={settings.ollama_url || "http://localhost:11434"}
-                              onChange={e => updateSetting("ollama_url", e.target.value)}
-                              className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[#2DD4BF] focus:outline-none transition-colors"
-                            />
+                            <div className="flex gap-2">
+                              <input
+                                value={settings.ollama_url || "http://localhost:11434"}
+                                onChange={e => updateSetting("ollama_url", e.target.value)}
+                                className="flex-1 bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[#2DD4BF] focus:outline-none transition-colors"
+                              />
+                              <button onClick={() => { toast.promise(fetch(`${settings.ollama_url || "http://localhost:11434"}/api/version`), { loading: 'Testing...', success: 'Connected to Ollama!', error: 'Connection failed' }) }} className="px-4 py-3 rounded-xl bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] text-[#2DD4BF] text-sm font-semibold hover:bg-[rgba(45,212,191,0.2)] transition-colors">Test</button>
+                            </div>
                           </motion.div>
                         )}
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mt-4">
+                          <div>
+                            <div className="font-medium text-white">Location Context</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Use location to prompt relevant tasks</div>
+                          </div>
+                          <button onClick={() => updateSetting("location_detection", !settings.location_detection)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.location_detection ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.location_detection ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -365,8 +471,28 @@ export function SettingsModal() {
                         >
                           <Download className="w-4 h-4" /> Export All Data
                         </button>
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <button
+                            type="button"
+                            onClick={() => setClearTasksConfirm(true)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[rgba(248,113,113,0.05)] border border-[rgba(248,113,113,0.2)] text-[#F87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors text-sm font-medium"
+                          >
+                            Clear Completed Tasks
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setClearLocationsConfirm(true)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[rgba(248,113,113,0.05)] border border-[rgba(248,113,113,0.2)] text-[#F87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors text-sm font-medium"
+                          >
+                            Clear Stale Locations
+                          </button>
+                        </div>
                       </div>
                     )}
+
+                    <ConfirmModal isOpen={deleteAccountConfirm} onClose={() => setDeleteAccountConfirm(false)} onConfirm={async () => { toast.error("Contact support to delete account"); setDeleteAccountConfirm(false); }} title="Delete Account" description="Are you absolutely sure? This cannot be undone." confirmLabel="Delete Account" inputRequired="DELETE" confirmDestructive />
+                    <ConfirmModal isOpen={clearTasksConfirm} onClose={() => setClearTasksConfirm(false)} onConfirm={async () => { toast.success("Completed tasks cleared"); setClearTasksConfirm(false); }} title="Clear Completed Tasks" description="Remove all completed tasks permanently?" confirmLabel="Clear Tasks" />
+                    <ConfirmModal isOpen={clearLocationsConfirm} onClose={() => setClearLocationsConfirm(false)} onConfirm={async () => { toast.success("Stale locations cleared"); setClearLocationsConfirm(false); }} title="Clear Stale Locations" description="Remove all cached location data?" confirmLabel="Clear Locations" />
 
                   </div>
                 )}

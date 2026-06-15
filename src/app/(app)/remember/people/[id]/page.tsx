@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface PersonNote {
   text: string;
@@ -40,6 +41,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   const [deleteNameConfirm, setDeleteNameConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [linkedTasks, setLinkedTasks] = useState<any[]>([]);
+  const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
 
   const fetchPerson = useCallback(async () => {
     const { data: personData } = await supabase.from("people").select("*").eq("id", id).single();
@@ -85,9 +87,9 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  const handleDeleteNote = async (indexToRemove: number) => {
-    if (!person || !person.notes) return;
-    const updatedNotes = person.notes.filter((_, idx) => idx !== indexToRemove);
+  const confirmDeleteNote = async () => {
+    if (noteToDelete === null || !person || !person.notes) return;
+    const updatedNotes = person.notes.filter((_, idx) => idx !== noteToDelete);
     try {
       const { error } = await supabase.from("people").update({ notes: updatedNotes }).eq("id", person.id);
       if (error) throw error;
@@ -95,6 +97,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       toast.success("Note removed");
     } catch (err: any) {
       toast.error("Failed to remove note", { description: err.message });
+    } finally {
+      setNoteToDelete(null);
     }
   };
 
@@ -198,7 +202,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                 <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <GlassCard className="p-4 group relative">
                     <button 
-                      onClick={() => handleDeleteNote(originalIndex)}
+                      onClick={() => setNoteToDelete(originalIndex)}
                       className="absolute top-2 right-2 p-1.5 opacity-0 group-hover:opacity-100 bg-[rgba(248,113,113,0.1)] text-[#F87171] rounded-md transition-opacity hover:bg-[rgba(248,113,113,0.2)]"
                       title="Delete note"
                     >
@@ -241,6 +245,15 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
           </button>
         </div>
       </div>
+      
+      <ConfirmModal
+        isOpen={noteToDelete !== null}
+        onClose={() => setNoteToDelete(null)}
+        onConfirm={confirmDeleteNote}
+        title="Delete Note"
+        description="Are you sure you want to delete this note? This action cannot be undone."
+        confirmText="Delete"
+      />
     </div>
   );
 }

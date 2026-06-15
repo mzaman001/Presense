@@ -26,7 +26,7 @@ interface Task {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  work: "#8B7CF8", study: "#2DD4BF", personal: "#F472B6",
+  work: "var(--color-accent)", study: "#2DD4BF", personal: "#F472B6",
   errand: "#FBBF24", health: "#4ADE80", other: "rgba(255,255,255,0.4)",
 };
 
@@ -88,22 +88,21 @@ export default function DoPage() {
     if (showArchive) fetchArchived();
   }, [fetchTasks, fetchArchived, showArchive]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('items-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'items' }, () => fetchTasks())
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'items' }, () => fetchTasks())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, fetchTasks]);
+  useRealtime("items", fetchTasks);
 
   const completeTask = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setCompleting(id);
+    
+    // Optimistic UI
+    const taskIndex = tasks.findIndex(t => t.id === id);
+    if (taskIndex === -1) return;
+    const task = tasks[taskIndex];
+    setTasks(prev => prev.filter(t => t.id !== id));
+    
     try {
       const { error } = await supabase.from("items").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
-      setTasks((prev) => prev.filter((t) => t.id !== id));
+      
       toast.success("Task completed", {
         action: {
           label: "Undo",
@@ -118,8 +117,12 @@ export default function DoPage() {
       if (showArchive) fetchArchived();
     } catch (err: any) {
       toast.error("Failed to complete task", { description: err.message });
-    } finally {
-      setCompleting(null);
+      // Revert optimistic update
+      setTasks(prev => {
+        const newTasks = [...prev];
+        newTasks.splice(taskIndex, 0, task);
+        return newTasks;
+      });
     }
   };
 
@@ -269,7 +272,7 @@ export default function DoPage() {
               )}
               <button
                 onClick={(e) => { e.stopPropagation(); setFocusTask(task); }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[rgba(139,124,248,0.1)] text-[#8B7CF8] hover:bg-[rgba(139,124,248,0.2)] transition-colors text-[11px] font-semibold"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition-colors text-[11px] font-semibold"
               >
                 Start 10 min <Play className="w-3 h-3" />
               </button>

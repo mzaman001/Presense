@@ -11,7 +11,7 @@ interface AddPersonPanelProps {
   onPersonAdded?: () => void;
 }
 
-const COLORS = ["#8B7CF8", "#FBBF24", "#F472B6", "#2DD4BF", "#4ADE80", "#F87171"];
+const COLORS = ["#E5B41E", "#FBBF24", "#F472B6", "#2DD4BF", "#4ADE80", "#F87171"];
 const CATEGORIES = ["work", "study", "personal", "errand", "health", "other"];
 
 export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPanelProps) {

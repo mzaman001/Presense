@@ -100,11 +100,10 @@ export default function LocationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
-          <h1 className="text-[22px] font-medium text-white tracking-tight">Where I Put It</h1>
-        </div>
+      <div className="flex items-center justify-end">
+        <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(74,222,128,0.12)] border border-[rgba(74,222,128,0.25)] text-[#4ADE80] text-sm font-medium hover:bg-[rgba(74,222,128,0.2)] transition-colors">
+          <Plus className="w-4 h-4" /> Log Location
+        </button>
       </div>
 
       {/* Search bar — primary interaction */}

@@ -9,6 +9,7 @@ interface ConfirmModalProps {
   description: string;
   confirmLabel: string;
   confirmDestructive?: boolean;
+  inputRequired?: string;
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -19,9 +20,18 @@ export function ConfirmModal({
   description,
   confirmLabel,
   confirmDestructive = false,
+  inputRequired,
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
+  const [inputValue, setInputValue] = React.useState("");
+
+  React.useEffect(() => {
+    if (isOpen) setInputValue("");
+  }, [isOpen]);
+
+  const isConfirmDisabled = inputRequired ? inputValue !== inputRequired : false;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -50,6 +60,20 @@ export function ConfirmModal({
               <h2 className="text-white font-semibold text-lg mb-2">{title}</h2>
               <p className="text-[var(--color-text-2)] text-sm">{description}</p>
             </div>
+            {inputRequired && (
+              <div className="mb-6">
+                <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2">
+                  Type <span className="text-white font-bold">{inputRequired}</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder={inputRequired}
+                  className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                />
+              </div>
+            )}
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={onClose}
@@ -58,12 +82,15 @@ export function ConfirmModal({
                 Cancel
               </button>
               <button
+                disabled={isConfirmDisabled}
                 onClick={() => {
-                  onConfirm();
-                  onClose();
+                  if (!isConfirmDisabled) {
+                    onConfirm();
+                    onClose();
+                  }
                 }}
                 className={cn(
-                  "px-5 py-2 rounded-xl text-sm font-semibold transition-colors",
+                  "px-5 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                   confirmDestructive
                     ? "bg-[#F87171]/10 text-[#F87171] border border-[#F87171]/20 hover:bg-[#F87171]/20"
                     : "bg-[var(--color-accent)] text-black hover:bg-[var(--color-accent)]/90"

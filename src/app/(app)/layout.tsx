@@ -4,6 +4,7 @@ import { CaptureModal } from "@/components/features/CaptureModal";
 import { FAB } from "@/components/features/FAB";
 import { AppContentWrapper } from "@/components/layout/AppContentWrapper";
 import { SettingsModal } from "@/components/features/SettingsModal";
+import { SearchModal } from "@/components/features/SearchModal";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -32,6 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AmbientBackground />
       <Sidebar />
       <CaptureModal />
+      <SearchModal />
       <SettingsModal />
       <FAB />
       <AppContentWrapper>

@@ -114,19 +114,7 @@ html.theme-forest.light {
   --accent: #65743A; /* In light mode for forest, accent becomes Fern green */
 }
 
-/* Theme 4: Cyberpunk */
-html.theme-cyberpunk {
-  --accent: #FCE22A;
-  --accent-hot: #FF0055;
-  --accent-deep: #00F0FF;
-  --bg-base: #0B0B11;
-  --bg-dark: #1A0B2E;
 
-  --orb-1: #FF0055;
-  --orb-2: #00F0FF;
-  --orb-3: #FCE22A;
-  --orb-4: #1A0B2E;
-}
 
 body {
   background-color: var(--color-background);

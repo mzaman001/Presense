@@ -105,27 +105,17 @@ export default function PeoplePage() {
   const [loading, setLoading] = useState(true);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"people" | "locations">("people");
-  const [locations, setLocations] = useState<any[]>([]);
-
   const fetchPeople = useCallback(async () => {
     const { data } = await supabase.from("people").select("*").order("sort_order", { ascending: true, nullsFirst: false });
     setPeople(data ?? []);
     setLoading(false);
   }, [supabase]);
 
-  const fetchLocations = useCallback(async () => {
-    const { data } = await supabase.from("locations").select("*").order("created_at", { ascending: false });
-    setLocations(data ?? []);
-  }, [supabase]);
-
   useEffect(() => { 
     fetchPeople(); 
-    fetchLocations();
-  }, [fetchPeople, fetchLocations]);
+  }, [fetchPeople]);
   
   useRealtime("people", fetchPeople);
-  useRealtime("locations", fetchLocations);
 
   const now = new Date();
   const today = people.filter((p) => p.next_meeting && new Date(p.next_meeting).toDateString() === now.toDateString());
@@ -168,48 +158,17 @@ export default function PeoplePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
-          <h1 className="text-[22px] font-medium text-white tracking-tight">Remember</h1>
-        </div>
-        {activeTab === "people" ? (
-          <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-sm font-medium hover:bg-[rgba(244,114,182,0.2)] transition-colors">
-            <Plus className="w-4 h-4" /> Add person
-          </button>
-        ) : (
-          <Link href="/locations" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(74,222,128,0.12)] border border-[rgba(74,222,128,0.25)] text-[#4ADE80] text-sm font-medium hover:bg-[rgba(74,222,128,0.2)] transition-colors">
-            <Plus className="w-4 h-4" /> Add location
-          </Link>
-        )}
-      </div>
-
-      <div className="flex gap-2 mb-6 border-b border-[rgba(255,255,255,0.05)] pb-4">
-        <button 
-          onClick={() => setActiveTab("people")}
-          className={cn("text-sm font-semibold px-4 py-2 rounded-lg transition-colors", activeTab === "people" ? "text-white bg-[rgba(255,255,255,0.1)]" : "text-[rgba(255,255,255,0.5)] hover:text-white")}
-        >
-          People
-        </button>
-        <button 
-          onClick={() => setActiveTab("locations")}
-          className={cn("text-sm font-semibold px-4 py-2 rounded-lg transition-colors", activeTab === "locations" ? "text-white bg-[rgba(255,255,255,0.1)]" : "text-[rgba(255,255,255,0.5)] hover:text-white")}
-        >
-          Locations
+      <div className="flex items-center justify-end mb-2">
+        <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-sm font-medium hover:bg-[rgba(244,114,182,0.2)] transition-colors">
+          <Plus className="w-4 h-4" /> Add person
         </button>
       </div>
-
-      <ContextualTip 
-        id="remember_space" 
-        title="What they told you, where things are" 
-        description="This is the Remember space. Log gifts people like, or where you put your keys." 
-      />
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
         </div>
-      ) : activeTab === "people" ? (
+      ) : (
         <>
           {/* Today's meetings */}
           {today.length > 0 && (
@@ -271,23 +230,6 @@ export default function PeoplePage() {
             )}
           </div>
         </>
-      ) : (
-        <div className="space-y-3">
-          {locations.length === 0 ? (
-            <GlassCard className="p-8 text-center">
-              <p className="text-sm text-[rgba(255,255,255,0.3)]">No locations yet. Try capturing &ldquo;My passport is in the blue safe.&rdquo;</p>
-            </GlassCard>
-          ) : (
-            locations.map((loc, i) => (
-              <motion.div key={loc.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <GlassCard className="p-5 flex flex-col gap-2 border-[rgba(74,222,128,0.2)]">
-                  <h3 className="text-lg font-medium text-white">{loc.item_name}</h3>
-                  <p className="text-sm text-[#4ADE80]">{loc.location_text}</p>
-                </GlassCard>
-              </motion.div>
-            ))
-          )}
-        </div>
       )}
 
       <AddPersonPanel isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} onPersonAdded={fetchPeople} />

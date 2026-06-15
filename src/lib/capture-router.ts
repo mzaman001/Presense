@@ -19,7 +19,7 @@ const PERSON_KW = [
 ];
 
 const LOCATION_KW = [
-  'is in', 'is at', 'is on', 'put it', 'put them', 'left it', 'left them',
+  'is in', 'is at', 'is on', 'are in', 'are at', 'are on', 'put it', 'put them', 'left it', 'left them',
   'placed', 'stored', 'kept', 'found it in', 'located in', 'sits in',
 ];
 
@@ -93,7 +93,7 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
     results.push({
       type: 'person_note',
       title: text,
-      destination: 'People',
+      destination: 'Remember → People',
       person: matchedName,
     });
     return results;
@@ -102,46 +102,80 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
   // 3. Location
   const matchedLocKw = LOCATION_KW.find((k) => lower.includes(k));
   if (matchedLocKw) {
-    // Split by the keyword to try and guess the item name
     let itemName = "Item";
-    const parts = lower.split(matchedLocKw);
+    let locationText = text;
+    
+    // Preserve original case by splitting with a case-insensitive regex
+    const splitRegex = new RegExp(`\\b${matchedLocKw}\\b`, 'i');
+    const parts = text.split(splitRegex);
+    
     if (parts.length > 1 && parts[0].trim().length > 0) {
-      // E.g. "my keys are in..." -> "my keys" -> drop "my", "the" if possible
-      itemName = parts[0].trim().replace(/^(my|the|our|your)\s+/i, "");
+      let rawItem = parts[0].trim();
+      rawItem = rawItem.replace(/^(my|the|our|his|her|their|a|an|your)\s+/i, '');
+      if (rawItem.length > 0) {
+        itemName = rawItem.charAt(0).toUpperCase() + rawItem.slice(1);
+      }
+      
+      let rawLoc = parts[1].trim();
+      rawLoc = rawLoc.replace(/^(my|the|our|his|her|their|a|an|your)\s+/i, '');
+      if (rawLoc.length > 0) {
+        locationText = rawLoc;
+      }
     }
     
     results.push({
       type: 'location',
-      title: text,
-      destination: 'Locations',
-      item_name: itemName.charAt(0).toUpperCase() + itemName.slice(1),
+      title: locationText,
+      destination: 'Remember → Locations',
+      item_name: itemName,
     });
     return results;
   }
 
   // 4a. Recurrence detection
-  const recurrencePatterns: Record<string, string> = {
-    'every day': 'FREQ=DAILY',
-    'daily': 'FREQ=DAILY',
-    'every monday and wednesday': 'FREQ=WEEKLY;BYDAY=MO,WE',
-    'every mon and wed': 'FREQ=WEEKLY;BYDAY=MO,WE',
-    'every week': 'FREQ=WEEKLY',
-    'weekly': 'FREQ=WEEKLY',
-    'every month': 'FREQ=MONTHLY',
-    'monthly': 'FREQ=MONTHLY',
-    'every monday': 'FREQ=WEEKLY;BYDAY=MO',
-    'every tuesday': 'FREQ=WEEKLY;BYDAY=TU',
-    'every wednesday': 'FREQ=WEEKLY;BYDAY=WE',
-    'every thursday': 'FREQ=WEEKLY;BYDAY=TH',
-    'every friday': 'FREQ=WEEKLY;BYDAY=FR',
-    'every saturday': 'FREQ=WEEKLY;BYDAY=SA',
-    'every sunday': 'FREQ=WEEKLY;BYDAY=SU',
-  };
   let detectedRRule: string | null = null;
-  for (const [pattern, rrule] of Object.entries(recurrencePatterns)) {
-    if (lower.includes(pattern)) {
-      detectedRRule = rrule;
-      break;
+  const dayMap: Record<string, string> = {
+    monday: 'MO', mon: 'MO', tuesday: 'TU', tue: 'TU', wednesday: 'WE', wed: 'WE',
+    thursday: 'TH', thu: 'TH', friday: 'FR', fri: 'FR', saturday: 'SA', sat: 'SA', sunday: 'SU', sun: 'SU'
+  };
+
+  if (lower.includes('every weekday')) {
+    detectedRRule = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
+  } else if (lower.includes('every other day')) {
+    detectedRRule = 'FREQ=DAILY;INTERVAL=2';
+  } else {
+    const intervalMatch = lower.match(/every\s+(\d+)\s+(day|week|month|year)s?/);
+    if (intervalMatch) {
+      const interval = intervalMatch[1];
+      const freq = intervalMatch[2].toUpperCase() + 'LY';
+      detectedRRule = `FREQ=${freq};INTERVAL=${interval}`;
+    } else {
+      const everyDaysMatch = lower.match(/every\s+([a-z,\s]+(?:and\s+[a-z]+)?)/);
+      if (everyDaysMatch) {
+        const daysStr = everyDaysMatch[1];
+        const matchedDays = Object.keys(dayMap).filter(d => new RegExp(`\\b${d}\\b`).test(daysStr));
+        if (matchedDays.length > 0) {
+          const byDay = [...new Set(matchedDays.map(d => dayMap[d]))].join(',');
+          detectedRRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
+        }
+      }
+    }
+  }
+
+  if (!detectedRRule) {
+    const recurrencePatterns: Record<string, string> = {
+      'every day': 'FREQ=DAILY',
+      'daily': 'FREQ=DAILY',
+      'every week': 'FREQ=WEEKLY',
+      'weekly': 'FREQ=WEEKLY',
+      'every month': 'FREQ=MONTHLY',
+      'monthly': 'FREQ=MONTHLY',
+    };
+    for (const [pattern, rrule] of Object.entries(recurrencePatterns)) {
+      if (lower.includes(pattern)) {
+        detectedRRule = rrule;
+        break;
+      }
     }
   }
 
@@ -152,7 +186,7 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
     let cleanTitle = text;
     
     if (dates.length > 0) {
-      deadline = dates[0].start ?? null;
+      deadline = dates[0].dates?.start ?? null;
       // Remove the date phrase from the title
       const dateText = dates[0].text ?? '';
       if (dateText) {

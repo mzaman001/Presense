@@ -28,14 +28,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}>
       <head>
         <script
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                let theme = localStorage.getItem('presense_theme') || 'dark';
+                let theme = localStorage.getItem('presense_theme') || 'orange';
+                let mode = localStorage.getItem('presense_color_mode') || 'dark';
                 
-                if (theme === 'midnight') document.documentElement.classList.add('theme-blue');
-                if (theme === 'cyberpunk') document.documentElement.classList.add('theme-cyberpunk');
-                if (theme === 'light') document.documentElement.classList.add('light');
+                if (theme === 'navy') document.documentElement.classList.add('theme-blue');
+                if (theme === 'forest') document.documentElement.classList.add('theme-forest');
+                
+                if (mode === 'light' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+                  document.documentElement.classList.add('light');
+                }
               } catch (e) {}
             `,
           }}

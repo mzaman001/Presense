@@ -1,5 +1,5 @@
 ALTER TABLE user_settings
-ADD COLUMN IF NOT EXISTS avatar_color text DEFAULT '#8B7CF8',
+ADD COLUMN IF NOT EXISTS avatar_color text DEFAULT '#E5B41E',
 ADD COLUMN IF NOT EXISTS short_break_duration int DEFAULT 5,
 ADD COLUMN IF NOT EXISTS long_break_duration int DEFAULT 15,
 ADD COLUMN IF NOT EXISTS auto_start_breaks boolean DEFAULT false,

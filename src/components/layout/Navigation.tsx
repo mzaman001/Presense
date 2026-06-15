@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard },
   { href: "/do", label: "Do", icon: CheckCircle2, color: "text-[var(--color-do)]" },
-  { href: "/people", label: "Remember", icon: Brain, color: "text-[var(--color-people)]" },
+  { href: "/remember/people", label: "Remember", icon: Brain, color: "text-[var(--color-people)]" },
   { href: "/think", label: "Think", icon: MessageSquare, color: "text-[var(--color-think)]" },
   { href: "/explore", label: "Explore", icon: Compass, color: "text-[var(--color-explore)]" },
 ];
@@ -56,7 +56,7 @@ export function Sidebar() {
 
       <nav className="flex-1 flex flex-col gap-1 w-full">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = pathname === item.href || (item.href === "/remember/people" ? pathname.startsWith("/remember") : pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
           return (
             <Link

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight, Brain, Zap, BellRing } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [initError, setInitError] = useState<string | null>(null);
@@ -73,8 +74,8 @@ export default function LoginPage() {
     {
       title: "Your brain is for thinking.",
       desc: "Not for storing. Presense offloads your memory so you can focus on the present. Tasks, thoughts, and what people said — captured instantly.",
-      icon: <Brain className="w-10 h-10 text-[#8B7CF8]" />,
-      color: "#8B7CF8",
+      icon: <Brain className="w-10 h-10 text-[var(--color-accent)]" />,
+      color: "var(--color-accent)",
     },
     {
       title: "The app comes to you.",
@@ -112,7 +113,7 @@ export default function LoginPage() {
         )}
         {/* Logo */}
         <div className="flex flex-col items-center justify-center gap-3 mb-12">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#8B7CF8] to-[#DB2777] flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-deep)] flex items-center justify-center shadow-lg shadow-amber-500/20">
             <div className="w-5 h-5 bg-white rounded-full" />
           </div>
           <div className="text-center">
@@ -152,7 +153,7 @@ export default function LoginPage() {
                     try {
                       setStep((prev) => prev + 1);
                     } catch (err: any) {
-                      alert("Error: " + err.message);
+                      toast.error("Error: " + err.message);
                     }
                   }}
                   className="relative z-50 pointer-events-auto flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black font-semibold hover:bg-gray-200 active:scale-95 transition-all cursor-pointer shadow-xl"
@@ -205,12 +206,12 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3.5 text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none focus:border-[#8B7CF8] focus:bg-[rgba(139,124,248,0.05)] transition-all"
+                      className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3.5 text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none focus:border-[var(--color-accent)] focus:bg-[var(--color-accent)]/5 transition-all"
                     />
                     <button
                       type="submit"
                       disabled={!!loading || !email.trim()}
-                      className="w-full flex items-center justify-center gap-2 bg-[rgba(139,124,248,0.15)] border border-[rgba(139,124,248,0.3)] text-[#8B7CF8] font-semibold py-3.5 px-4 rounded-xl hover:bg-[rgba(139,124,248,0.25)] transition-all disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 text-[var(--color-accent)] font-semibold py-3.5 px-4 rounded-xl hover:bg-[var(--color-accent)]/20 transition-all disabled:opacity-50"
                     >
                       {loading === "email" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                       Send Magic Link

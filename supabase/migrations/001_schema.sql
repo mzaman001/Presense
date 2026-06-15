@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS people (
   name         text NOT NULL,
   relationship text DEFAULT 'other' CHECK (relationship IN ('friend','family','professor','colleague','other')),
   initials     text,
-  color        text DEFAULT '#8B7CF8',
+  color        text DEFAULT '#E5B41E',
   notes        jsonb[] DEFAULT '{}',
   last_seen    timestamptz,
   next_meeting timestamptz,

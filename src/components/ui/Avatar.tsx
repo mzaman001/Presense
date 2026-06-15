@@ -15,7 +15,7 @@ function getInitials(name?: string): string {
 }
 
 export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
-  ({ className, src, name, initials, color = "#8B7CF8", size = "md", style, ...props }, ref) => {
+  ({ className, src, name, initials, color = "#E5B41E", size = "md", style, ...props }, ref) => {
     const sizeClasses = { sm: "w-8 h-8 text-xs", md: "w-10 h-10 text-sm", lg: "w-14 h-14 text-base" };
     const displayInitials = initials ?? getInitials(name);
 

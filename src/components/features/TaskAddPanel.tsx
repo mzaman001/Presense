@@ -161,9 +161,20 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           if (days.length > 0) finalRecurrence += `;BYDAY=${days.join(',')}`;
         }
 
+        let finalTitle = title.trim();
+        if (!deadline && !deadlineText && parsedDeadline) {
+          const doc = nlp(finalTitle) as any;
+          const dates = doc.dates().json();
+          if (dates && dates.length > 0 && dates[0].text) {
+            finalTitle = finalTitle.replace(new RegExp(dates[0].text, 'i'), '').replace(/\s+/g, ' ').trim();
+            finalTitle = finalTitle.replace(/^(remind me to|remember to|need to|have to|must|gotta)\s+/i, '');
+            if (finalTitle.length > 0) finalTitle = finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
+          }
+        }
+
         const payload: any = {
           user_id: user.id,
-          title: title.trim(),
+          title: finalTitle || title.trim(),
           first_step: firstStep.trim() || null,
           ifthen_trigger: triggerText || null,
           deadline: parsedDeadline ? parsedDeadline.toISOString() : null,
@@ -270,7 +281,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       placeholder="e.g. next Friday"
                       value={deadlineText}
                       onChange={handleDeadlineTextChange}
-                      className="w-full bg-transparent border-b border-[rgba(255,255,255,0.1)] pb-2 text-sm text-white placeholder:text-[rgba(255,255,255,0.25)] outline-none focus:border-[#8B7CF8] transition-colors"
+                      className="w-full bg-transparent border-b border-[rgba(255,255,255,0.1)] pb-2 text-sm text-white placeholder:text-[rgba(255,255,255,0.25)] outline-none focus:border-[var(--color-accent)] transition-colors"
                     />
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-[rgba(255,255,255,0.3)] uppercase">Exact:</span>
@@ -278,7 +289,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                         type="datetime-local"
                         value={deadline || ""}
                         onChange={handleManualDateChange}
-                        className="flex-1 bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#8B7CF8] transition-colors [color-scheme:dark]"
+                        className="flex-1 bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[var(--color-accent)] transition-colors [color-scheme:dark]"
                       />
                     </div>
                   </div>
@@ -296,7 +307,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       setStartDate(e.target.value);
                       setParsedStartDate(e.target.value ? new Date(e.target.value) : null);
                     }}
-                    className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#8B7CF8] transition-colors [color-scheme:dark]"
+                    className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[var(--color-accent)] transition-colors [color-scheme:dark]"
                   />
                 </div>
               </div>

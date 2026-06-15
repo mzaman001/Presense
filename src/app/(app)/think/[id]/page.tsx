@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface ThreadEntry {
   text: string;
@@ -36,6 +37,9 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   const [newEntry, setNewEntry] = useState("");
   const [saving, setSaving] = useState(false);
   const [linkedExplores, setLinkedExplores] = useState<any[]>([]);
+  
+  const [deleteThreadOpen, setDeleteThreadOpen] = useState(false);
+  const [deleteEntryIndex, setDeleteEntryIndex] = useState<number | null>(null);
 
   const fetchThread = useCallback(async () => {
     const { data: threadData } = await supabase.from("threads").select("*").eq("id", id).single();
@@ -91,7 +95,6 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
   const handleDelete = async () => {
     if (!thread) return;
-    if (!confirm("Delete this thread? It will be permanently removed in 30 days.")) return;
     try {
       const { error } = await supabase.from("threads").update({ status: "deleted" }).eq("id", id);
       if (error) throw error;
@@ -99,6 +102,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       router.push("/think");
     } catch (err: any) {
       toast.error("Failed to delete", { description: err.message });
+    } finally {
+      setDeleteThreadOpen(false);
     }
   };
 
@@ -138,16 +143,18 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     return <div className="text-center py-20 text-[rgba(255,255,255,0.5)]">Thread not found.</div>;
   }
 
-  const handleDeleteEntry = async (indexToDelete: number) => {
-    if (!thread || !confirm("Delete this entry?")) return;
+  const handleDeleteEntry = async () => {
+    if (!thread || deleteEntryIndex === null) return;
     try {
-      const updatedEntries = thread.entries.filter((_, i) => i !== indexToDelete);
+      const updatedEntries = thread.entries.filter((_, i) => i !== deleteEntryIndex);
       const { error } = await supabase.from("threads").update({ entries: updatedEntries }).eq("id", thread.id);
       if (error) throw error;
       setThread({ ...thread, entries: updatedEntries });
       toast.success("Entry deleted");
     } catch (err: any) {
       toast.error("Failed to delete entry", { description: err.message });
+    } finally {
+      setDeleteEntryIndex(null);
     }
   };
 
@@ -198,7 +205,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             <Archive className="w-4 h-4" />
           </button>
           <button 
-            onClick={handleDelete}
+            onClick={() => setDeleteThreadOpen(true)}
             className="p-2 rounded-lg hover:bg-[rgba(248,113,113,0.1)] text-[rgba(255,255,255,0.5)] hover:text-[#F87171] transition-colors"
             title="Delete thread"
           >
@@ -268,6 +275,23 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
           </form>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={deleteThreadOpen}
+        onClose={() => setDeleteThreadOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Thread?"
+        description="This thread will be moved to the trash and permanently removed in 30 days."
+        destructive
+      />
+
+      <ConfirmModal
+        isOpen={deleteEntryIndex !== null}
+        onClose={() => setDeleteEntryIndex(null)}
+        onConfirm={handleDeleteEntry}
+        title="Delete Entry?"
+        description="Are you sure you want to delete this thought? This action cannot be undone."
+        destructive
+      />
     </div>
   );
 }

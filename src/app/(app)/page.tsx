@@ -11,6 +11,7 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/useAppStore";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function HomeDashboard() {
@@ -21,13 +22,15 @@ export default function HomeDashboard() {
   const [explores, setExplores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [focusTask, setFocusTask] = useState<any | null>(null);
-  const [settings, setSettings] = useState<any>(null);
+  const { userSettings, setUserSettings } = useAppStore();
   const [taskToEdit, setTaskToEdit] = useState<any | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
 
   const [inboxItems, setInboxItems] = useState<any[]>([]);
   const [showReview, setShowReview] = useState(false);
   const [doneTasks, setDoneTasks] = useState<any[]>([]);
+
+  const [pomodorosThisWeek, setPomodorosThisWeek] = useState(0);
 
   const fetchDashboardData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -36,25 +39,54 @@ export default function HomeDashboard() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const [tasksRes, inboxRes, peopleRes, threadsRes, exploresRes, settingsRes, doneRes] = await Promise.all([
-      supabase.from("items").select("*").in("status", ["active", "overdue"]).or(`snoozed_until.is.null,snoozed_until.lte.${new Date().toISOString()}`).order("priority", { ascending: true, nullsFirst: false }).order("deadline", { ascending: true, nullsFirst: false }),
+    const [tasksRes, inboxRes, peopleRes, threadsRes, exploresRes, settingsRes, doneRes, sessionsRes] = await Promise.all([
+      supabase.from("items").select("*").in("status", ["active", "overdue", "inbox"]).or(`snoozed_until.is.null,snoozed_until.lte.${new Date().toISOString()}`),
       supabase.from("items").select("*").eq("status", "inbox"),
       supabase.from("people").select("*"),
       supabase.from("threads").select("*"),
       supabase.from("explores").select("*").is("revisited_at", null),
       supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
-      supabase.from("items").select("*").eq("status", "done").gte("completed_at", sevenDaysAgo.toISOString()).order("completed_at", { ascending: false })
+      supabase.from("items").select("*").eq("status", "done").gte("completed_at", sevenDaysAgo.toISOString()).order("completed_at", { ascending: false }),
+      supabase.from("session_logs").select("*").gte("completed_at", sevenDaysAgo.toISOString()).eq("session_type", "work")
     ]);
     
-    if (tasksRes.data) setTasks(tasksRes.data);
+    if (tasksRes.data) {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      
+      const sorted = tasksRes.data.sort((a, b) => {
+        const aOverdue = a.deadline && new Date(a.deadline) < now;
+        const bOverdue = b.deadline && new Date(b.deadline) < now;
+        if (aOverdue && !bOverdue) return -1;
+        if (!aOverdue && bOverdue) return 1;
+
+        const aToday = a.deadline && new Date(a.deadline).getTime() >= todayStart && new Date(a.deadline).getTime() < todayStart + 86400000;
+        const bToday = b.deadline && new Date(b.deadline).getTime() >= todayStart && new Date(b.deadline).getTime() < todayStart + 86400000;
+
+        if (aToday && a.priority === "P1" && (!bToday || b.priority !== "P1")) return -1;
+        if (bToday && b.priority === "P1" && (!aToday || a.priority !== "P1")) return 1;
+
+        if (aToday && a.priority === "P2" && (!bToday || b.priority !== "P2")) return -1;
+        if (bToday && b.priority === "P2" && (!aToday || a.priority !== "P2")) return 1;
+
+        if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        if (a.deadline) return -1;
+        if (b.deadline) return 1;
+
+        const pWeight = { P1: 1, P2: 2, P3: 3, P4: 4 };
+        return (pWeight[a.priority as keyof typeof pWeight] || 4) - (pWeight[b.priority as keyof typeof pWeight] || 4);
+      });
+      setTasks(sorted);
+    }
     if (inboxRes.data) setInboxItems(inboxRes.data);
     if (peopleRes.data) setPeople(peopleRes.data);
     if (threadsRes.data) setThreads(threadsRes.data);
     if (exploresRes.data) setExplores(exploresRes.data);
-    if (settingsRes.data) setSettings(settingsRes.data);
+    if (settingsRes.data) setUserSettings(settingsRes.data);
     if (doneRes.data) setDoneTasks(doneRes.data);
+    if (sessionsRes.data) setPomodorosThisWeek(sessionsRes.data.length);
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, setUserSettings]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -80,7 +112,7 @@ export default function HomeDashboard() {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
       <header className="mb-8 flex items-end justify-between">
         <div>
-          <h1 className="text-page-title text-3xl">{greeting}{settings?.display_name ? `, ${settings.display_name.split(' ')[0]}` : ''}.</h1>
+          <h1 className="text-page-title text-3xl">{greeting}{userSettings?.display_name ? `, ${userSettings.display_name.split(' ')[0]}` : ''}.</h1>
           <p className="text-[var(--color-text-3)] mt-1">Here is your focus for today.</p>
         </div>
         <button 
@@ -105,7 +137,7 @@ export default function HomeDashboard() {
               <div className="text-xs text-[var(--color-text-3)]">Tasks Completed</div>
             </GlassCard>
             <GlassCard className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="text-3xl font-light text-white mb-1">{settings?.pomodoros_completed || 0}</div>
+              <div className="text-3xl font-light text-white mb-1">{pomodorosThisWeek}</div>
               <div className="text-xs text-[var(--color-text-3)]">Focus Sessions</div>
             </GlassCard>
           </div>
@@ -154,7 +186,7 @@ export default function HomeDashboard() {
             <div 
               className="w-24 h-24 rounded-full relative animate-spin-slow" 
               style={{ 
-                background: 'conic-gradient(from 0deg, #8b7cf8, #db2777, #2dd4bf, #8b7cf8)', 
+                background: 'conic-gradient(from 0deg, var(--color-accent), var(--color-accent-hot), var(--color-accent-deep), var(--color-accent))', 
                 filter: 'blur(1px)',
                 WebkitMaskImage: 'radial-gradient(circle, transparent 40px, black 41px)',
                 maskImage: 'radial-gradient(circle, transparent 40px, black 41px)'
@@ -163,7 +195,7 @@ export default function HomeDashboard() {
           </div>
           
           <div className="relative z-10 p-10 flex flex-col items-center justify-center text-center h-full">
-            <span className="text-[10px] font-bold tracking-widest text-[#8B7CF8] uppercase mb-4 px-3 py-1 rounded-full bg-[rgba(139,124,248,0.1)] border border-[rgba(139,124,248,0.2)]">
+            <span className="text-[10px] font-bold tracking-widest text-[var(--color-accent)] uppercase mb-4 px-3 py-1 rounded-full bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20">
               ⚡ FOCUS NOW
             </span>
             <h2 className="text-3xl font-medium text-white mb-2">{primaryTask.title}</h2>
@@ -171,7 +203,7 @@ export default function HomeDashboard() {
             
             <button onClick={() => setFocusTask(primaryTask)} className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-medium hover:scale-[1.02] transition-transform">
               <Play className="w-4 h-4 fill-black" />
-              Start 10m Timer
+              <span className="text-sm font-semibold tracking-wide">Start {userSettings?.pomodoro_duration || 25}m Timer</span>
             </button>
             <button 
               onClick={async () => {
@@ -239,10 +271,10 @@ export default function HomeDashboard() {
           <div className="flex items-center justify-between">
             <h3 className="text-section-title text-lg">Up Next</h3>
             <Link href="/do" className="text-xs text-[var(--color-text-3)] hover:text-white flex items-center gap-1">
-              View all <ArrowRight className="w-3 h-3" />
+              {tasks.length > 1 ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — ` : ""}View all <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          {tasks.slice(1, 4).map(task => (
+          {tasks.slice(1, 6).map(task => (
             <GlassCard
               key={task.id}
               className="p-4 flex justify-between items-center cursor-pointer hover:scale-[1.01] transition-transform"
