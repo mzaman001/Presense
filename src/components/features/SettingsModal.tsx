@@ -400,6 +400,16 @@ export function SettingsModal() {
                             className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                           />
                         </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Do Categories (comma separated)</label>
+                          <input
+                            type="text"
+                            value={(settings.do_categories || []).join(", ")}
+                            onChange={e => updateSetting("do_categories", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                            placeholder="work, personal, health"
+                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                          />
+                        </div>
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mt-4">
                           <div>
                             <div className="font-medium text-white">Auto-snooze Overdue</div>
