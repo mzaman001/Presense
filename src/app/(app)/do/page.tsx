@@ -9,7 +9,7 @@ import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { FocusSession } from "@/components/features/FocusSession";
 import { Plus, ChevronRight, CheckCircle2, Circle, Loader2, Zap, Clock, Calendar, Play, RotateCw } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
-import { cn } from "@/lib/utils";
+import { cn, formatRRule } from "@/lib/utils";
 import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 
@@ -266,7 +266,7 @@ export default function DoPage() {
                 <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)]">
                   <RotateCw className="w-3 h-3 text-[rgba(255,255,255,0.4)]" />
                   <span className="text-[10px] text-[rgba(255,255,255,0.4)] truncate max-w-[80px]">
-                    {task.recurrence.includes('DAILY') ? 'Daily' : task.recurrence.includes('MONTHLY') ? 'Monthly' : 'Weekly'}
+                    {formatRRule(task.recurrence)}
                   </span>
                 </div>
               )}

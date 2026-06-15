@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { cn, formatRRule } from "@/lib/utils";
 import { CornerDownLeft, Sparkles, Loader2, Check, X, Search, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
@@ -269,6 +269,15 @@ export function CaptureModal() {
                     
                     {item.destination === "Do" && (
                       <>
+                        {item.recurrence && (
+                          <>
+                            <span className="text-[var(--color-text-3)]">·</span>
+                            <span className="font-semibold">Recurrence:</span>
+                            <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-white">
+                              {formatRRule(item.recurrence)}
+                            </span>
+                          </>
+                        )}
                         <span className="text-[var(--color-text-3)]">·</span>
                         <span className="font-semibold">Deadline:</span>
                         <div className="relative inline-flex items-center">
