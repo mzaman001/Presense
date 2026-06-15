@@ -165,17 +165,17 @@ export default function HomeDashboard() {
       ) : (
         <>
           {inboxItems.length > 0 && (
-            <div className="bg-[rgba(251,191,36,0.1)] border border-[rgba(251,191,36,0.3)] rounded-2xl p-4 flex items-center justify-between">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[rgba(251,191,36,0.2)] flex items-center justify-center text-[#FBBF24]">
+                <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
                   <Compass className="w-4 h-4" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[var(--color-text-1)]">{inboxItems.length} {inboxItems.length === 1 ? "thing needs" : "things need"} sorting</p>
-                  <p className="text-xs text-[rgba(251,191,36,0.8)]">We weren't sure where to put these.</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400/80">We weren't sure where to put these.</p>
                 </div>
               </div>
-              <Link href="/do?filter=inbox" className="px-4 py-2 bg-[#FBBF24] text-[var(--color-background)] text-xs font-bold rounded-xl hover:bg-[#FCD34D] transition-colors">
+              <Link href="/do?filter=inbox" className="px-4 py-2 bg-amber-400 dark:bg-amber-500 text-amber-950 text-xs font-bold rounded-xl hover:bg-amber-500 dark:hover:bg-amber-400 transition-colors">
                 Sort Inbox
               </Link>
             </div>

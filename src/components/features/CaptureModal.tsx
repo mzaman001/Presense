@@ -216,7 +216,7 @@ export function CaptureModal() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 16 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full max-w-2xl bg-[#0d0b18] border border-[var(--color-border)] rounded-2xl shadow-2xl"
+          className="relative w-full max-w-2xl bg-[var(--color-background)] border border-[var(--color-border)] rounded-2xl shadow-2xl"
           style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 32px 64px rgba(0,0,0,0.6)" }}
         >
           {/* Input row */}
@@ -237,7 +237,7 @@ export function CaptureModal() {
               onKeyDown={(e) => { if (e.key === "Enter" && !routedItems) handleRoute(); }}
             />
             {!routedItems && (
-              <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[rgba(255,255,255,0.04)]">
+              <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[var(--color-surface)]">
                 Enter
               </kbd>
             )}
@@ -273,7 +273,7 @@ export function CaptureModal() {
                           <>
                             <span className="text-[var(--color-text-3)]">·</span>
                             <span className="font-semibold">Recurrence:</span>
-                            <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-[var(--color-text-1)]">
+                            <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)]">
                               {formatRRule(item.recurrence)}
                             </span>
                           </>
@@ -281,7 +281,7 @@ export function CaptureModal() {
                         <span className="text-[var(--color-text-3)]">·</span>
                         <span className="font-semibold">Deadline:</span>
                         <div className="relative inline-flex items-center">
-                          <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-[var(--color-text-1)] pointer-events-none whitespace-nowrap">
+                          <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)] pointer-events-none whitespace-nowrap">
                             {item.deadline ? formatCaptureDeadline(item.deadline) : "No deadline"} ▾
                           </span>
                           <input
@@ -334,7 +334,7 @@ export function CaptureModal() {
           )}
 
           {/* Action bar */}
-          <div className="flex items-center justify-between px-5 py-3 border-t border-[rgba(255,255,255,0.06)] bg-[var(--color-surface)] rounded-b-2xl">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] rounded-b-2xl">
             {!routedItems ? (
               <>
                 <span className="text-xs text-[var(--color-text-3)]">

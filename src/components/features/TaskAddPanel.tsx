@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, ArrowRight, Flag, Loader2, RotateCw, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { toast } from "sonner";
 import * as chrono from "chrono-node";
+import nlp from "compromise";
 
 import { useAppStore } from "@/store/useAppStore";
 
@@ -312,7 +312,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     placeholder="Task title (e.g. Finish the OS assignment...)"
                     value={title}
                     onChange={handleTitleChange}
-                    className="w-full bg-transparent text-xl font-medium text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none border-b border-transparent focus:border-[var(--color-border)] pb-2 transition-colors"
+                    className="w-full pr-28 bg-transparent text-xl font-medium text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none border-b border-transparent focus:border-[var(--color-border)] pb-2 transition-colors"
                   />
                   {parsedDeadline && !deadlineText && (
                     <div className="absolute right-0 bottom-2 text-xs text-[#4ADE80] font-medium bg-[rgba(74,222,128,0.1)] border border-[rgba(74,222,128,0.2)] px-2 py-1 rounded-md flex items-center gap-1 shadow-lg shadow-[rgba(74,222,128,0.05)]">
@@ -324,7 +324,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
               </div>
 
               {/* Deadline & Start Date */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-4">
                 <div className="bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)]">
                   <label className="flex items-center justify-between text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
                     <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5" /> Deadline</span>

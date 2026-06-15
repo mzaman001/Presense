@@ -254,7 +254,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Fixed bottom input for thoughts */}
-      <div className="fixed bottom-0 left-0 right-0 md:pl-[220px] p-4 bg-gradient-to-t from-[#0B0914] via-[#0B0914]/90 to-transparent z-40">
+      <div className="fixed bottom-0 left-0 right-0 md:pl-[220px] p-4 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent z-40">
         <div className="max-w-2xl mx-auto">
           <form onSubmit={handleAddEntry} className="relative">
             <textarea

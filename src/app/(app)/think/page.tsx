@@ -46,28 +46,6 @@ export default function ThinkPage() {
     setLoading(false);
   }, [supabase, showArchive]);
 
-  useEffect(() => {
-    async function ensureDailyNote() {
-      const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      const title = `Daily Note: ${dateStr}`;
-      const { data: existing } = await supabase.from("threads").select("id").eq("title", title).eq("status", "active").maybeSingle();
-      
-      if (!existing) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from("threads").insert({
-            user_id: user.id,
-            title,
-            color_accent: "#FBBF24",
-            is_pinned: true
-          });
-        }
-      }
-    }
-    ensureDailyNote();
-    fetchThreads();
-  }, [fetchThreads, supabase]);
-
   useRealtime("threads", fetchThreads);
 
   const timeAgo = (dt: string) => {
