@@ -2,11 +2,14 @@
 
 import React, { useEffect, useState, useCallback, use } from "react";
 import { createClient } from "@/lib/supabase";
-import { ArrowLeft, Loader2, Save, Trash2, Archive, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Archive, ExternalLink, X, Plus, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { motion, AnimatePresence } from "framer-motion";
+
+const PRESET_TYPES = ["link", "book", "quote", "concept", "other"];
 
 export default function ExploreDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -17,21 +20,40 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
 
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  
+  // Custom type support
   const [type, setType] = useState("other");
-  const [tagsStr, setTagsStr] = useState("");
+  const [isCustomType, setIsCustomType] = useState(false);
+  const [customTypeInput, setCustomTypeInput] = useState("");
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+
+  // Pill component for tags
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+
   const [note, setNote] = useState("");
   const [status, setStatus] = useState("active");
   const [linkedThreadId, setLinkedThreadId] = useState<string | null>(null);
   
   const [threads, setThreads] = useState<any[]>([]);
+  const [isThreadDropdownOpen, setIsThreadDropdownOpen] = useState(false);
 
   const fetchItem = useCallback(async () => {
     const { data: item } = await supabase.from("explores").select("*").eq("id", id).single();
     if (item) {
       setTitle(item.title);
       setUrl(item.url || "");
-      setType(item.type);
-      setTagsStr((item.tags || []).join(", "));
+      
+      if (PRESET_TYPES.includes(item.type)) {
+        setType(item.type);
+        setIsCustomType(false);
+      } else {
+        setType("custom");
+        setIsCustomType(true);
+        setCustomTypeInput(item.type);
+      }
+
+      setTags(item.tags || []);
       setNote(item.note || "");
       setStatus(item.status || "active");
       setLinkedThreadId(item.linked_thread_id);
@@ -49,24 +71,45 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => { fetchItem(); }, [fetchItem]);
 
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const closeAll = () => { setIsTypeDropdownOpen(false); setIsThreadDropdownOpen(false); };
+    document.addEventListener("click", closeAll);
+    return () => document.removeEventListener("click", closeAll);
+  }, []);
+
+  const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (newTag.trim() && !tags.includes(newTag.trim())) {
+        setTags([...tags, newTag.trim()]);
+      }
+      setNewTag("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const tags = tagsStr.split(",").map(t => t.trim()).filter(Boolean);
+      const finalType = isCustomType ? (customTypeInput.trim() || "other") : type;
       const { error } = await supabase.from("explores").update({
         title,
         url: url || null,
-        type,
+        type: finalType,
         note,
         tags,
         linked_thread_id: linkedThreadId || null
       }).eq("id", id);
       if (error) throw error;
       toast.success("Saved");
+      router.push("/explore");
     } catch (err: any) {
       toast.error("Failed to save", { description: err.message });
-    } finally {
       setSaving(false);
     }
   };
@@ -127,7 +170,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24]"
+              className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24] transition-colors"
             />
           </div>
 
@@ -136,47 +179,124 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24]"
+              className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24] transition-colors"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Type</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24]"
-              >
-                <option value="link">Link</option>
-                <option value="book">Book</option>
-                <option value="quote">Quote</option>
-                <option value="concept">Concept</option>
-                <option value="other">Other</option>
-              </select>
+              
+              <div className="relative">
+                <button 
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setIsTypeDropdownOpen(!isTypeDropdownOpen); setIsThreadDropdownOpen(false); }}
+                  className="w-full flex items-center justify-between bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white hover:border-[#FBBF24] transition-colors"
+                >
+                  <span className="capitalize">{isCustomType ? (customTypeInput || "Custom") : type}</span>
+                  <ChevronDown className="w-4 h-4 text-[rgba(255,255,255,0.5)]" />
+                </button>
+                <AnimatePresence>
+                  {isTypeDropdownOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                      className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[#13111C] border border-[rgba(255,255,255,0.12)] shadow-2xl z-50 flex flex-col gap-0.5"
+                    >
+                      {PRESET_TYPES.map(preset => (
+                        <button 
+                          key={preset} type="button"
+                          onClick={(e) => { e.stopPropagation(); setType(preset); setIsCustomType(false); setIsTypeDropdownOpen(false); }}
+                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-white capitalize"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                      <div className="my-1 border-t border-[rgba(255,255,255,0.05)]" />
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setIsCustomType(true); setIsTypeDropdownOpen(false); }}
+                        className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[#FBBF24] flex items-center gap-2"
+                      >
+                        <Plus className="w-3 h-3" /> Custom Type
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {isCustomType && (
+                <motion.input
+                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                  autoFocus
+                  placeholder="Enter custom type..."
+                  value={customTypeInput}
+                  onChange={(e) => setCustomTypeInput(e.target.value)}
+                  className="w-full mt-3 bg-[rgba(255,255,255,0.05)] border border-[#FBBF24] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24] transition-colors"
+                />
+              )}
             </div>
+            
             <div>
-              <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Tags (comma separated)</label>
-              <input
-                value={tagsStr}
-                onChange={(e) => setTagsStr(e.target.value)}
-                className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24]"
-              />
+              <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Tags</label>
+              <div className="p-2 border border-[rgba(255,255,255,0.1)] rounded-lg bg-[rgba(255,255,255,0.05)] focus-within:border-[#FBBF24] transition-colors flex flex-wrap gap-2">
+                {tags.map(t => (
+                  <span key={t} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(251,191,36,0.15)] text-[#FBBF24] text-xs font-medium">
+                    {t}
+                    <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-white transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={handleAddTag}
+                  placeholder="Add tag and press Enter..."
+                  className="flex-1 min-w-[120px] bg-transparent text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none"
+                />
+              </div>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Link to Think Thread</label>
-            <select
-              value={linkedThreadId || ""}
-              onChange={(e) => setLinkedThreadId(e.target.value || null)}
-              className="w-full bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24]"
-            >
-              <option value="">-- No Thread Linked --</option>
-              {threads.map(t => (
-                <option key={t.id} value={t.id}>{t.title}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
+                className="w-full flex items-center justify-between bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white hover:border-[#FBBF24] transition-colors"
+              >
+                <span className="truncate pr-4">
+                  {linkedThreadId ? threads.find(t => t.id === linkedThreadId)?.title || "Unknown Thread" : "-- No Thread Linked --"}
+                </span>
+                <ChevronDown className="w-4 h-4 text-[rgba(255,255,255,0.5)] shrink-0" />
+              </button>
+              <AnimatePresence>
+                {isThreadDropdownOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                    className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[#13111C] border border-[rgba(255,255,255,0.12)] shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
+                  >
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setLinkedThreadId(null); setIsThreadDropdownOpen(false); }}
+                      className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.5)]"
+                    >
+                      -- No Thread Linked --
+                    </button>
+                    {threads.map(t => (
+                      <button 
+                        key={t.id} type="button"
+                        onClick={(e) => { e.stopPropagation(); setLinkedThreadId(t.id); setIsThreadDropdownOpen(false); }}
+                        className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-white truncate"
+                      >
+                        {t.title}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           <div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Pause, Play, CheckCircle2, ChevronRight } from "lucide-react";
+import { X, Pause, Play, CheckCircle2, ChevronRight, SkipForward, Coffee } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -15,25 +15,38 @@ interface FocusSessionProps {
   onComplete: () => void;
 }
 
+type SessionPhase = "work" | "short_break" | "long_break";
+
 export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
-  const [totalTime, setTotalTime] = useState(10 * 60); // Default 10 mins
-  const [timeLeft, setTimeLeft] = useState(10 * 60);
+  const [phase, setPhase] = useState<SessionPhase>("work");
+  const [pomodorosCompleted, setPomodorosCompleted] = useState(0);
+
+  const [durations, setDurations] = useState({ work: 25 * 60, short_break: 5 * 60, long_break: 15 * 60 });
+  const [autoStartBreaks, setAutoStartBreaks] = useState(false);
+
+  const [totalTime, setTotalTime] = useState(25 * 60);
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  
   const [isPaused, setIsPaused] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [completing, setCompleting] = useState(false);
 
-  // Fetch duration setting
+  // Fetch durations
   useEffect(() => {
     async function loadDuration() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const { data } = await supabase.from("user_settings").select("pomodoro_duration").eq("user_id", user.id).single();
-      if (data && data.pomodoro_duration) {
-        const secs = data.pomodoro_duration * 60;
-        setTotalTime(secs);
-        setTimeLeft(secs);
+      const { data } = await supabase.from("user_settings").select("pomodoro_duration, short_break_duration, long_break_duration, auto_start_breaks").eq("user_id", user.id).single();
+      if (data) {
+        const w = (data.pomodoro_duration || 25) * 60;
+        const sb = (data.short_break_duration || 5) * 60;
+        const lb = (data.long_break_duration || 15) * 60;
+        setDurations({ work: w, short_break: sb, long_break: lb });
+        setAutoStartBreaks(data.auto_start_breaks || false);
+        setTotalTime(w);
+        setTimeLeft(w);
       }
     }
     if (task) loadDuration();
@@ -45,7 +58,7 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          setIsDone(true);
+          handlePhaseComplete();
           return 0;
         }
         return prev - 1;
@@ -54,6 +67,62 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
 
     return () => clearInterval(interval);
   }, [task, isPaused, isDone, timeLeft]);
+
+  const handlePhaseComplete = async () => {
+    setIsDone(true);
+    // Log session to DB
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && task) {
+      const durationMins = Math.floor(totalTime / 60);
+      await supabase.from("session_logs").insert({
+        user_id: user.id,
+        task_id: task.id,
+        duration_minutes: durationMins,
+        type: phase
+      });
+
+      if (phase === "work") {
+        // Also update total pomodoros completed count for the user
+        const { data: currentSettings } = await supabase.from("user_settings").select("pomodoros_completed").eq("user_id", user.id).single();
+        if (currentSettings) {
+          await supabase.from("user_settings").update({ pomodoros_completed: (currentSettings.pomodoros_completed || 0) + 1 }).eq("user_id", user.id);
+        }
+      }
+    }
+
+    // Determine next phase automatically if setting is enabled (and if we just finished work)
+    if (autoStartBreaks && phase === "work") {
+      const completed = pomodorosCompleted + 1;
+      setPomodorosCompleted(completed);
+      // Every 4th pomodoro is a long break
+      if (completed % 4 === 0) {
+        startPhase("long_break");
+      } else {
+        startPhase("short_break");
+      }
+    }
+  };
+
+  const startPhase = (nextPhase: SessionPhase) => {
+    setPhase(nextPhase);
+    const newTotal = durations[nextPhase];
+    setTotalTime(newTotal);
+    setTimeLeft(newTotal);
+    setIsDone(false);
+    setIsPaused(false);
+  };
+
+  const skipToNextPhase = () => {
+    if (phase === "work") {
+      const completed = pomodorosCompleted + 1;
+      setPomodorosCompleted(completed);
+      if (completed % 4 === 0) startPhase("long_break");
+      else startPhase("short_break");
+    } else {
+      startPhase("work");
+    }
+  };
 
   // SVG Circle calculations
   const radius = 120;
@@ -79,7 +148,7 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
       const title = `Daily Note: ${dateStr}`;
       
       const { data: existingThread } = await supabase.from("threads").select("id, entries").eq("title", title).single();
-      const logEntry = { text: `🎯 Completed focus session for: ${task.title}`, created_at: new Date().toISOString() };
+      const logEntry = { text: `🎯 Completed: ${task.title} (took ${pomodorosCompleted} sessions)`, created_at: new Date().toISOString() };
       
       if (existingThread) {
         await supabase.from("threads").update({ 
@@ -99,15 +168,6 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
         }
       }
 
-      // Increment pomodoro stat
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        const { data: currentSettings } = await supabase.from("user_settings").select("pomodoros_completed").eq("user_id", currentUser.id).single();
-        if (currentSettings) {
-          await supabase.from("user_settings").update({ pomodoros_completed: (currentSettings.pomodoros_completed || 0) + 1 }).eq("user_id", currentUser.id);
-        }
-      }
-
       toast.success("Task marked complete!");
       onComplete();
       onClose();
@@ -116,6 +176,23 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
     } finally {
       setCompleting(false);
     }
+  };
+
+  const getPhaseColor = () => {
+    if (isDone) return "text-[#4ADE80] stroke-[#4ADE80]";
+    if (phase === "work") return "text-[#8B7CF8] stroke-[#8B7CF8]";
+    return "text-[#4ADE80] stroke-[#4ADE80]"; // breaks are green
+  };
+
+  const getPhaseGlow = () => {
+    if (phase === "work") return "bg-[#8B7CF8]/20";
+    return "bg-[#4ADE80]/20";
+  };
+
+  const getPhaseText = () => {
+    if (phase === "work") return "Focus Session";
+    if (phase === "short_break") return "Short Break";
+    return "Long Break";
   };
 
   return (
@@ -127,15 +204,20 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
           exit={{ opacity: 0, scale: 0.95 }}
           className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 bg-[#0B0914]/90 backdrop-blur-xl"
         >
-          {/* Ambient glow specifically for focus mode */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#8B7CF8]/20 rounded-full blur-[100px] pointer-events-none" />
+          {/* Ambient glow */}
+          <div className={cn("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000", getPhaseGlow())} />
 
           <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[rgba(255,255,255,0.5)] hover:text-white">
             <X className="w-6 h-6" />
           </button>
 
           <div className="text-center mb-12 max-w-lg z-10">
-            <p className="text-[12px] uppercase tracking-widest text-[#8B7CF8] font-bold mb-3">Focus Session</p>
+            <div className="flex items-center justify-center gap-2 mb-3">
+              {phase !== "work" && <Coffee className={cn("w-4 h-4", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[#8B7CF8]" : "text-[#4ADE80]")} />}
+              <p className={cn("text-[12px] uppercase tracking-widest font-bold", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[#8B7CF8]" : "text-[#4ADE80]")}>
+                {getPhaseText()}
+              </p>
+            </div>
             <h1 className="text-3xl font-semibold text-white mb-4 leading-tight">{task.title}</h1>
             {task.first_step && (
               <div className="inline-flex items-center gap-2 bg-[rgba(139,124,248,0.1)] border border-[rgba(139,124,248,0.2)] px-4 py-2 rounded-full">
@@ -147,67 +229,54 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
 
           <div className="relative flex items-center justify-center mb-16 z-10">
             <svg width="300" height="300" className="transform -rotate-90">
-              {/* Background track */}
-              <circle
-                cx="150"
-                cy="150"
-                r={radius}
-                className="stroke-[rgba(255,255,255,0.05)]"
-                strokeWidth="6"
-                fill="none"
-              />
-              {/* Progress track */}
+              <circle cx="150" cy="150" r={radius} className="stroke-[rgba(255,255,255,0.05)]" strokeWidth="6" fill="none" />
               <motion.circle
-                cx="150"
-                cy="150"
-                r={radius}
-                className={cn("transition-all duration-1000 ease-linear", isDone ? "stroke-[#4ADE80]" : "stroke-[#8B7CF8]")}
-                strokeWidth="6"
-                fill="none"
+                cx="150" cy="150" r={radius}
+                className={cn("transition-all duration-1000 ease-linear", getPhaseColor().split(" ")[1])}
+                strokeWidth="6" fill="none"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
               />
             </svg>
             <div className="absolute flex flex-col items-center">
-              <span className={cn("text-5xl font-mono tracking-tighter font-light", isDone ? "text-[#4ADE80]" : "text-white")}>
+              <span className={cn("text-5xl font-mono tracking-tighter font-light", getPhaseColor().split(" ")[0])}>
                 {formatTime(timeLeft)}
               </span>
-              {isDone && <span className="text-sm text-[#4ADE80] font-medium mt-2">{Math.floor(totalTime / 60)} Min Complete!</span>}
+              {isDone && <span className="text-sm text-[#4ADE80] font-medium mt-2">Phase Complete!</span>}
             </div>
           </div>
 
           <div className="flex items-center gap-4 z-10">
             {!isDone ? (
               <>
-                <button
-                  onClick={() => setIsPaused(!isPaused)}
-                  className="w-14 h-14 flex items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-white"
-                >
+                <button onClick={() => setIsPaused(!isPaused)} className="w-14 h-14 flex items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-white">
                   {isPaused ? <Play className="w-6 h-6 ml-1" /> : <Pause className="w-6 h-6" />}
                 </button>
-                <button
-                  onClick={onClose}
-                  className="px-6 py-4 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-white font-medium"
-                >
+                <button onClick={skipToNextPhase} className="w-14 h-14 flex items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-white" title="Skip phase">
+                  <SkipForward className="w-5 h-5" />
+                </button>
+                <button onClick={onClose} className="px-6 py-4 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-white font-medium">
                   End early
                 </button>
               </>
             ) : (
               <>
                 <button
-                  onClick={() => { setTimeLeft(totalTime); setIsDone(false); }}
-                  className="px-8 py-4 rounded-xl bg-[rgba(139,124,248,0.15)] border border-[rgba(139,124,248,0.3)] text-[#8B7CF8] font-semibold hover:bg-[rgba(139,124,248,0.25)] transition-colors"
+                  onClick={skipToNextPhase}
+                  className="px-8 py-4 rounded-xl bg-[rgba(74,222,128,0.15)] border border-[rgba(74,222,128,0.3)] text-[#4ADE80] font-semibold hover:bg-[rgba(74,222,128,0.25)] transition-colors flex items-center gap-2"
                 >
-                  Keep going ({Math.floor(totalTime / 60)}m)
+                  Start Next Phase <ChevronRight className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={handleCompleteTask}
-                  disabled={completing}
-                  className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#4ADE80] text-black font-bold hover:bg-[#22c55e] transition-colors disabled:opacity-50"
-                >
-                  {completing ? "Saving..." : "Mark Complete"} <CheckCircle2 className="w-5 h-5" />
-                </button>
+                {phase === "work" && (
+                  <button
+                    onClick={handleCompleteTask}
+                    disabled={completing}
+                    className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#4ADE80] text-black font-bold hover:bg-[#22c55e] transition-colors disabled:opacity-50"
+                  >
+                    {completing ? "Saving..." : "Mark Complete"} <CheckCircle2 className="w-5 h-5" />
+                  </button>
+                )}
               </>
             )}
           </div>

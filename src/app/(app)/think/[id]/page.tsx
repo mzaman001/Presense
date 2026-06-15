@@ -64,6 +64,18 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  const handleColorChange = async (color: string) => {
+    if (!thread) return;
+    try {
+      const { error } = await supabase.from("threads").update({ color_accent: color }).eq("id", thread.id);
+      if (error) throw error;
+      setThread({ ...thread, color_accent: color });
+      toast.success("Color updated");
+    } catch (error: any) {
+      toast.error("Failed to update color", { description: error.message });
+    }
+  };
+
   const handleArchive = async () => {
     if (!thread) return;
     try {
@@ -147,7 +159,19 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="w-1.5 h-12 rounded-full shrink-0" style={{ backgroundColor: thread.color_accent }} />
+          <div className="relative group pt-1">
+            <div className="w-1.5 h-10 rounded-full shrink-0 cursor-pointer" style={{ backgroundColor: thread.color_accent }} />
+            <div className="absolute left-0 top-full mt-2 hidden group-hover:flex bg-[#13111C] border border-[rgba(255,255,255,0.1)] p-2 rounded-xl shadow-xl gap-2 z-50">
+              {["#FBBF24", "#F472B6", "#2DD4BF", "#A78BFA", "#60A5FA", "#F87171"].map(c => (
+                <button 
+                  key={c} 
+                  onClick={() => handleColorChange(c)}
+                  className="w-4 h-4 rounded-full border border-[rgba(255,255,255,0.2)] hover:scale-110 transition-transform"
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
           <div>
             <h1 className="text-[26px] font-semibold text-white tracking-tight leading-snug">{thread.title}</h1>
             {thread.stale_prompt && (

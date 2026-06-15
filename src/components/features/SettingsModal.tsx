@@ -3,30 +3,37 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
-import { X, Loader2, LogOut, Download, CheckCircle2 } from "lucide-react";
+import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDebounce } from "use-debounce";
 
+const TABS = [
+  { id: "account", label: "Account", icon: User },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "focus", label: "Focus", icon: Timer },
+  { id: "tasks", label: "Tasks", icon: CheckSquare },
+  { id: "routing", label: "Smart Routing", icon: Brain },
+  { id: "data", label: "Data", icon: Database },
+];
+
 export function SettingsModal() {
   const { isSettingsModalOpen, setSettingsModalOpen } = useAppStore();
   const supabase = createClient();
   const router = useRouter();
   
+  const [activeTab, setActiveTab] = useState("account");
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [initialLoaded, setInitialLoaded] = useState(false);
   
-  const [displayName, setDisplayName] = useState("");
-  const [pomodoroDuration, setPomodoroDuration] = useState(25);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [ollamaEnabled, setOllamaEnabled] = useState(false);
-  const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
+  // Settings State
+  const [settings, setSettings] = useState<any>({});
 
-  const [debouncedDisplayName] = useDebounce(displayName, 1000);
-  const [debouncedOllamaUrl] = useDebounce(ollamaUrl, 1000);
+  const [debouncedSettings] = useDebounce(settings, 1000);
 
   useEffect(() => {
     if (!isSettingsModalOpen) return;
@@ -38,11 +45,7 @@ export function SettingsModal() {
       
       const { data } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single();
       if (data) {
-        setDisplayName(data.display_name || "");
-        setPomodoroDuration(data.pomodoro_duration != null ? Number(data.pomodoro_duration) : 25);
-        setNotificationsEnabled(data.notifications_enabled !== false);
-        setOllamaEnabled(data.ollama_enabled || false);
-        setOllamaUrl(data.ollama_url || "http://localhost:11434");
+        setSettings(data);
       }
       setLoading(false);
       setTimeout(() => setInitialLoaded(true), 100);
@@ -58,19 +61,19 @@ export function SettingsModal() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      await supabase.from("user_settings").update({
-        display_name: debouncedDisplayName,
-        pomodoro_duration: pomodoroDuration,
-        notifications_enabled: notificationsEnabled,
-        ollama_enabled: ollamaEnabled,
-        ollama_url: debouncedOllamaUrl
-      }).eq("user_id", user.id);
+      const { user_id, created_at, ...updateData } = debouncedSettings;
+      
+      await supabase.from("user_settings").update(updateData).eq("user_id", user.id);
       
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     };
     save();
-  }, [debouncedDisplayName, pomodoroDuration, notificationsEnabled, ollamaEnabled, debouncedOllamaUrl, supabase, initialLoaded]);
+  }, [debouncedSettings, supabase, initialLoaded]);
+
+  const updateSetting = (key: string, value: any) => {
+    setSettings((prev: any) => ({ ...prev, [key]: value }));
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -92,139 +95,256 @@ export function SettingsModal() {
         >
           <motion.div 
             initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }}
-            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar"
+            className="relative w-full max-w-4xl h-[80vh] flex overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            <GlassCard className="p-6">
-              <button 
-                onClick={() => setSettingsModalOpen(false)}
-                className="absolute top-4 right-4 p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:text-white transition-colors z-10"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center justify-between mb-6 pr-8">
-                <h2 className="text-xl font-semibold text-white">Settings</h2>
-                <div className="flex items-center gap-2 text-xs font-medium h-6">
-                  <AnimatePresence mode="wait">
-                    {saveStatus === "saving" && (
-                      <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-text-3)]">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
-                      </motion.div>
-                    )}
-                    {saveStatus === "saved" && (
-                      <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-think)]">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Saved
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+            <GlassCard className="w-full flex">
+              {/* Sidebar Tabs */}
+              <div className="w-64 border-r border-[rgba(255,255,255,0.05)] bg-[rgba(0,0,0,0.2)] flex flex-col p-4">
+                <h2 className="text-xl font-bold text-white mb-8 px-2">Settings</h2>
+                <nav className="flex-1 space-y-1">
+                  {TABS.map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        activeTab === tab.id 
+                          ? "bg-[rgba(255,255,255,0.1)] text-white" 
+                          : "text-[rgba(255,255,255,0.5)] hover:bg-[rgba(255,255,255,0.05)] hover:text-white"
+                      }`}
+                    >
+                      <tab.icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
+                
+                <div className="mt-auto pt-4 border-t border-[rgba(255,255,255,0.05)]">
+                  <div className="flex items-center gap-2 text-xs font-medium h-6 px-2 mb-2">
+                    <AnimatePresence mode="wait">
+                      {saveStatus === "saving" && (
+                        <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-text-3)]">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
+                        </motion.div>
+                      )}
+                      {saveStatus === "saved" && (
+                        <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-think)]">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#F87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors">
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
                 </div>
               </div>
 
-              {loading ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Account */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-[rgba(255,255,255,0.8)] border-b border-[rgba(255,255,255,0.1)] pb-2">Account</h3>
-                    <div>
-                      <label className="block text-xs font-medium text-[rgba(255,255,255,0.6)] mb-2 uppercase tracking-wider">Display Name</label>
-                      <input
-                        value={displayName}
-                        onChange={e => setDisplayName(e.target.value)}
-                        className="w-full bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white placeholder-[rgba(255,255,255,0.3)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
+              {/* Main Content Area */}
+              <div className="flex-1 relative overflow-y-auto no-scrollbar">
+                <button 
+                  onClick={() => setSettingsModalOpen(false)}
+                  className="absolute top-4 right-4 p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:text-white transition-colors z-10"
+                >
+                  <X className="w-5 h-5" />
+                </button>
 
-                  {/* Preferences */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-[rgba(255,255,255,0.8)] border-b border-[rgba(255,255,255,0.1)] pb-2">Preferences</h3>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-[rgba(255,255,255,0.6)] mb-2 uppercase tracking-wider">Pomodoro Duration</label>
-                      <div className="flex flex-wrap gap-2">
-                        {[15, 20, 25, 30, 45, 60].map(mins => (
-                          <button
-                            key={mins}
-                            type="button"
-                            onClick={() => setPomodoroDuration(mins)}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${pomodoroDuration === mins ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-transparent text-[var(--color-text-2)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}
+                {loading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
+                  </div>
+                ) : (
+                  <div className="p-10 max-w-2xl">
+                    <h3 className="text-2xl font-bold text-white mb-8 border-b border-[rgba(255,255,255,0.1)] pb-4">
+                      {TABS.find(t => t.id === activeTab)?.label}
+                    </h3>
+
+                    {activeTab === "account" && (
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Display Name</label>
+                          <input
+                            value={settings.display_name || ""}
+                            onChange={e => updateSetting("display_name", e.target.value)}
+                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white placeholder-[rgba(255,255,255,0.3)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Timezone</label>
+                          <select
+                            value={settings.timezone || "UTC"}
+                            onChange={e => updateSetting("timezone", e.target.value)}
+                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors appearance-none"
                           >
-                            {mins}m
-                          </button>
-                        ))}
+                            <option value="America/New_York">Eastern Time (ET)</option>
+                            <option value="America/Chicago">Central Time (CT)</option>
+                            <option value="America/Denver">Mountain Time (MT)</option>
+                            <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                            <option value="Asia/Kolkata">India Standard Time (IST)</option>
+                            <option value="UTC">Coordinated Universal Time (UTC)</option>
+                            {/* More could be added dynamically via Intl API */}
+                          </select>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="flex items-center justify-between bg-[rgba(255,255,255,0.02)] p-4 rounded-xl border border-[rgba(255,255,255,0.05)]">
-                      <div>
-                        <div className="text-sm font-medium text-white">Push Notifications</div>
-                        <div className="text-xs text-[rgba(255,255,255,0.5)]">Receive nudges and digests</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                        className={`w-12 h-6 rounded-full transition-colors relative ${notificationsEnabled ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}
-                      >
-                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${notificationsEnabled ? 'left-7' : 'left-1'}`} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Advanced / AI */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-[rgba(255,255,255,0.8)] border-b border-[rgba(255,255,255,0.1)] pb-2">Advanced (AI Routing)</h3>
-                    <div className="flex items-center justify-between bg-[rgba(255,255,255,0.02)] p-4 rounded-xl border border-[rgba(255,255,255,0.05)]">
-                      <div>
-                        <div className="text-sm font-medium text-white">Local AI Routing (Ollama)</div>
-                        <div className="text-xs text-[rgba(255,255,255,0.5)]">Use local LLM for smart routing</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setOllamaEnabled(!ollamaEnabled)}
-                        className={`w-12 h-6 rounded-full transition-colors relative ${ollamaEnabled ? 'bg-[#2DD4BF]' : 'bg-[rgba(255,255,255,0.1)]'}`}
-                      >
-                        <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${ollamaEnabled ? 'left-7' : 'left-1'}`} />
-                      </button>
-                    </div>
-                    {ollamaEnabled && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                        <label className="block text-xs font-medium text-[rgba(255,255,255,0.6)] mb-2 uppercase tracking-wider mt-2">Ollama URL</label>
-                        <input
-                          value={ollamaUrl}
-                          onChange={e => setOllamaUrl(e.target.value)}
-                          className="w-full bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white placeholder-[rgba(255,255,255,0.3)] focus:border-[#2DD4BF] focus:outline-none transition-colors"
-                        />
-                      </motion.div>
                     )}
-                  </div>
 
-                  {/* Data Export */}
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={handleExportData}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white hover:bg-[rgba(255,255,255,0.1)] transition-colors text-sm font-medium"
-                    >
-                      <Download className="w-4 h-4" /> Export All Data
-                    </button>
+                    {activeTab === "appearance" && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Ambient Background</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Show moving gradients in the background</div>
+                          </div>
+                          <button onClick={() => updateSetting("ambient_bg", !settings.ambient_bg)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.ambient_bg ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.ambient_bg ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Reduce Motion</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Minimize UI animations</div>
+                          </div>
+                          <button onClick={() => updateSetting("reduce_motion", !settings.reduce_motion)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.reduce_motion ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.reduce_motion ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "notifications" && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mb-6">
+                          <div>
+                            <div className="font-medium text-white">Master Toggle</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Enable all notifications</div>
+                          </div>
+                          <button onClick={() => updateSetting("notifications_enabled", !settings.notifications_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.notifications_enabled ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.notifications_enabled ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Quiet Start</label>
+                            <input type="time" value={settings.quiet_start || "22:00"} onChange={e => updateSetting("quiet_start", e.target.value)} className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Quiet End</label>
+                            <input type="time" value={settings.quiet_end || "08:00"} onChange={e => updateSetting("quiet_end", e.target.value)} className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "focus" && (
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Work Duration (mins)</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[15, 20, 25, 30, 45, 60].map(mins => (
+                              <button key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.pomodoro_duration === mins ? 'bg-[var(--color-do)] text-black border-[var(--color-do)]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}>
+                                {mins}m
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Short Break (mins)</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[3, 5, 10, 15].map(mins => (
+                              <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.short_break_duration === mins ? 'bg-[#4ADE80] text-black border-[#4ADE80]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}>
+                                {mins}m
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mt-4">
+                          <div>
+                            <div className="font-medium text-white">Auto-start Breaks</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Automatically begin break timer when work finishes</div>
+                          </div>
+                          <button onClick={() => updateSetting("auto_start_breaks", !settings.auto_start_breaks)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.auto_start_breaks ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.auto_start_breaks ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "tasks" && (
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Default View</label>
+                          <select
+                            value={settings.default_view || "list"}
+                            onChange={e => updateSetting("default_view", e.target.value)}
+                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors appearance-none"
+                          >
+                            <option value="list">List View</option>
+                            <option value="board">Kanban Board</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Auto-archive completed tasks after (days)</label>
+                          <input
+                            type="number"
+                            min={1} max={30}
+                            value={settings.auto_archive_days || 7}
+                            onChange={e => updateSetting("auto_archive_days", parseInt(e.target.value))}
+                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "routing" && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Smart NLP Routing</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Automatically route captures based on natural language</div>
+                          </div>
+                          <button onClick={() => updateSetting("smart_routing_enabled", !settings.smart_routing_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.smart_routing_enabled ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.smart_routing_enabled ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Local AI (Ollama)</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Use local LLM for advanced routing</div>
+                          </div>
+                          <button onClick={() => updateSetting("ollama_enabled", !settings.ollama_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.ollama_enabled ? 'bg-[#2DD4BF]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.ollama_enabled ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+                        {settings.ollama_enabled && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider mt-4">Ollama URL</label>
+                            <input
+                              value={settings.ollama_url || "http://localhost:11434"}
+                              onChange={e => updateSetting("ollama_url", e.target.value)}
+                              className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[#2DD4BF] focus:outline-none transition-colors"
+                            />
+                          </motion.div>
+                        )}
+                      </div>
+                    )}
+
+                    {activeTab === "data" && (
+                      <div className="space-y-6">
+                        <p className="text-sm text-[rgba(255,255,255,0.5)]">Manage your data and account. All data stays synced across devices.</p>
+                        <button
+                          type="button"
+                          onClick={handleExportData}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white hover:bg-[rgba(255,255,255,0.1)] transition-colors text-sm font-medium"
+                        >
+                          <Download className="w-4 h-4" /> Export All Data
+                        </button>
+                      </div>
+                    )}
+
                   </div>
-                  
-                  <div className="pt-4 border-t border-[rgba(255,255,255,0.1)] flex justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={handleSignOut}
-                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[rgba(248,113,113,0.1)] text-[#F87171] font-medium hover:bg-[rgba(248,113,113,0.2)] transition-colors flex-1"
-                    >
-                      <LogOut className="w-4 h-4" /> Sign Out
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </GlassCard>
           </motion.div>
         </motion.div>
