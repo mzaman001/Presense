@@ -281,7 +281,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         onConfirm={handleDelete}
         title="Delete Thread?"
         description="This thread will be moved to the trash and permanently removed in 30 days."
-        destructive
+        confirmDestructive
       />
 
       <ConfirmModal
@@ -290,7 +290,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         onConfirm={handleDeleteEntry}
         title="Delete Entry?"
         description="Are you sure you want to delete this thought? This action cannot be undone."
-        destructive
+        confirmDestructive
+        confirmLabel="Delete"
       />
     </div>
   );
