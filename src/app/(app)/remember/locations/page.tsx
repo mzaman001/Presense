@@ -143,6 +143,7 @@ export default function LocationsPage() {
   const noResults = !loading && items.length === 0 && search.trim();
 
   return (
+    <>
     <div className="space-y-6">
       <div className="flex items-center justify-end">
         <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(74,222,128,0.12)] border border-[rgba(74,222,128,0.25)] text-[#4ADE80] text-sm font-medium hover:bg-[rgba(74,222,128,0.2)] transition-colors">
