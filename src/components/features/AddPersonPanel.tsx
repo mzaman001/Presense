@@ -81,12 +81,12 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-[#13111C] border-l border-[rgba(255,255,255,0.1)] z-50 flex flex-col shadow-2xl"
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-background)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
           >
-            <div className="flex items-center justify-between p-6 border-b border-[rgba(255,255,255,0.05)]">
-              <h2 className="text-lg font-semibold text-white">Add Person</h2>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors">
-                <X className="w-5 h-5 text-[rgba(255,255,255,0.5)]" />
+            <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
+              <h2 className="text-lg font-semibold text-[var(--color-text-1)]">Add Person</h2>
+              <button onClick={onClose} className="p-2 rounded-full hover:bg-[var(--color-surface)] transition-colors">
+                <X className="w-5 h-5 text-[var(--color-text-3)]" />
               </button>
             </div>
 
@@ -98,13 +98,13 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                   placeholder="Person's name..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-transparent text-xl font-medium text-white placeholder:text-[rgba(255,255,255,0.2)] outline-none border-b border-transparent focus:border-[rgba(255,255,255,0.1)] pb-2 transition-colors"
+                  className="w-full bg-transparent text-xl font-medium text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none border-b border-transparent focus:border-[var(--color-border)] pb-2 transition-colors"
                 />
               </div>
 
               {/* Relationship */}
               <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-3">
+                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
                   Relationship
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -114,8 +114,8 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                       onClick={() => setRelationship(rel)}
                       className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
                         relationship === rel
-                          ? "bg-white text-black border-white font-medium"
-                          : "bg-transparent text-[rgba(255,255,255,0.5)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]"
+                          ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-medium"
+                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]"
                       }`}
                     >
                       {rel}
@@ -126,7 +126,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
 
               {/* Color */}
               <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-3">
+                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
                   Avatar Color
                 </label>
                 <div className="flex gap-3">
@@ -146,25 +146,25 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
               </div>
 
               {/* Next Meeting */}
-              <div className="bg-[rgba(255,255,255,0.02)] p-4 rounded-xl border border-[rgba(255,255,255,0.05)]">
-                <label className="flex items-center justify-between text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-3">
+              <div className="bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)]">
+                <label className="flex items-center justify-between text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
                   <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5" /> Next Meeting (Optional)</span>
                 </label>
                 <input
                   type="datetime-local"
                   value={nextMeeting}
                   onChange={(e) => setNextMeeting(e.target.value)}
-                  className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#F472B6] transition-colors [color-scheme:dark]"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-4 py-3 text-sm text-[var(--color-text-1)] outline-none focus:border-[#F472B6] transition-colors [color-scheme:dark]"
                 />
               </div>
             </div>
 
-            <div className="p-6 border-t border-[rgba(255,255,255,0.05)] bg-[#13111C]">
+            <div className="p-6 border-t border-[var(--color-border)] bg-[var(--color-background)]">
               {errorMsg && <p className="text-xs text-red-400 mb-3 text-center">{errorMsg}</p>}
               <button
                 onClick={handleSave}
                 disabled={saving || !name.trim()}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#F472B6] text-black font-semibold hover:bg-[#ec4899] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#F472B6] text-[var(--color-background)] font-semibold hover:bg-[#ec4899] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><UserPlus className="w-4 h-4" /> Add Person</>}
               </button>

@@ -100,7 +100,7 @@ export default function HomeDashboard() {
   const primaryTask = tasks.length > 0 ? tasks[0] : null;
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="w-8 h-8 animate-spin text-[rgba(255,255,255,0.2)]" /></div>;
+    return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="w-8 h-8 animate-spin text-[var(--color-text-3)]" /></div>;
   }
 
   const hour = new Date().getHours();
@@ -119,7 +119,7 @@ export default function HomeDashboard() {
         </div>
         <button 
           onClick={() => setShowReview(!showReview)}
-          className={cn("text-xs px-4 py-2 rounded-xl transition-colors font-medium border", showReview ? "bg-white text-black border-white" : "border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.05)]")}
+          className={cn("text-xs px-4 py-2 rounded-xl transition-colors font-medium border", showReview ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
         >
           {showReview ? "Back to Dashboard" : "Week in Review"}
         </button>
@@ -135,15 +135,15 @@ export default function HomeDashboard() {
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 mb-6">
             <GlassCard className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="text-3xl font-light text-white mb-1">{doneTasks.length}</div>
+              <div className="text-3xl font-light text-[var(--color-text-1)] mb-1">{doneTasks.length}</div>
               <div className="text-xs text-[var(--color-text-3)]">Tasks Completed</div>
             </GlassCard>
             <GlassCard className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="text-3xl font-light text-white mb-1">{pomodorosThisWeek}</div>
+              <div className="text-3xl font-light text-[var(--color-text-1)] mb-1">{pomodorosThisWeek}</div>
               <div className="text-xs text-[var(--color-text-3)]">Focus Sessions</div>
             </GlassCard>
           </div>
-          <h2 className="text-xl font-semibold text-white mb-4">Completed This Week</h2>
+          <h2 className="text-xl font-semibold text-[var(--color-text-1)] mb-4">Completed This Week</h2>
           {doneTasks.length === 0 ? (
             <GlassCard className="p-8 text-center text-[var(--color-text-3)] border-dashed">
               No tasks completed in the last 7 days.
@@ -152,7 +152,7 @@ export default function HomeDashboard() {
             doneTasks.map(task => (
               <GlassCard key={task.id} className="p-4 flex justify-between items-center opacity-80">
                 <div>
-                  <h4 className="text-sm font-medium text-white line-through">{task.title}</h4>
+                  <h4 className="text-sm font-medium text-[var(--color-text-1)] line-through">{task.title}</h4>
                   <p className="text-xs text-[var(--color-text-3)] mt-0.5">
                     Completed {new Date(task.completed_at).toLocaleDateString()}
                   </p>
@@ -171,11 +171,11 @@ export default function HomeDashboard() {
                   <Compass className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">{inboxItems.length} {inboxItems.length === 1 ? "thing needs" : "things need"} sorting</p>
+                  <p className="text-sm font-medium text-[var(--color-text-1)]">{inboxItems.length} {inboxItems.length === 1 ? "thing needs" : "things need"} sorting</p>
                   <p className="text-xs text-[rgba(251,191,36,0.8)]">We weren't sure where to put these.</p>
                 </div>
               </div>
-              <Link href="/do?filter=inbox" className="px-4 py-2 bg-[#FBBF24] text-black text-xs font-bold rounded-xl hover:bg-[#FCD34D] transition-colors">
+              <Link href="/do?filter=inbox" className="px-4 py-2 bg-[#FBBF24] text-[var(--color-background)] text-xs font-bold rounded-xl hover:bg-[#FCD34D] transition-colors">
                 Sort Inbox
               </Link>
             </div>
@@ -200,10 +200,10 @@ export default function HomeDashboard() {
             <span className="text-[10px] font-bold tracking-widest text-[var(--color-accent)] uppercase mb-4 px-3 py-1 rounded-full bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20">
               ⚡ FOCUS NOW
             </span>
-            <h2 className="text-3xl font-medium text-white mb-2">{primaryTask.title}</h2>
+            <h2 className="text-3xl font-medium text-[var(--color-text-1)] mb-2">{primaryTask.title}</h2>
             <p className="text-[var(--color-text-2)] mb-6 text-lg">{primaryTask.first_step}</p>
             
-            <button onClick={() => setFocusTask(primaryTask)} className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-medium hover:scale-[1.02] transition-transform">
+            <button onClick={() => setFocusTask(primaryTask)} className="flex items-center gap-2 bg-[var(--color-text-1)] text-[var(--color-background)] px-6 py-3 rounded-full font-medium hover:scale-[1.02] transition-transform">
               <Play className="w-4 h-4 fill-black" />
               <span className="text-sm font-semibold tracking-wide">Start {userSettings?.pomodoro_duration || 25}m Timer</span>
             </button>
@@ -215,7 +215,7 @@ export default function HomeDashboard() {
                 // The realtime listener will hide it since snoozed_until is now in the future
                 toast.success("Snoozed until tomorrow");
               }}
-              className="mt-4 text-xs text-[var(--color-text-3)] hover:text-white transition-colors underline decoration-dashed underline-offset-4"
+              className="mt-4 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors underline decoration-dashed underline-offset-4"
             >
               Snooze until tomorrow
             </button>
@@ -233,7 +233,7 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <CheckCircle2 className="w-6 h-6 text-[var(--color-do)] mb-4" />
             <div>
-              <div className="text-2xl font-light text-white">{tasks.length}</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]">{tasks.length}</div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Active Tasks</div>
             </div>
           </GlassCard>
@@ -242,7 +242,7 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <Users className="w-6 h-6 text-[var(--color-people)] mb-4" />
             <div>
-              <div className="text-2xl font-light text-white">{people.filter(p => p.next_meeting).length}</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]">{people.filter(p => p.next_meeting).length}</div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Meetings Today</div>
             </div>
           </GlassCard>
@@ -251,7 +251,7 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <MessageSquare className="w-6 h-6 text-[var(--color-think)] mb-4" />
             <div>
-              <div className="text-2xl font-light text-white">{threads.length}</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]">{threads.length}</div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Open Threads</div>
             </div>
           </GlassCard>
@@ -260,7 +260,7 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <Compass className="w-6 h-6 text-[var(--color-explore)] mb-4" />
             <div>
-              <div className="text-2xl font-light text-white">{explores.length}</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]">{explores.length}</div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Saved Items</div>
             </div>
           </GlassCard>
@@ -273,7 +273,7 @@ export default function HomeDashboard() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-section-title text-lg">Up Next</h3>
-            <Link href="/do" className="text-xs text-[var(--color-text-3)] hover:text-white flex items-center gap-1">
+            <Link href="/do" className="text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] flex items-center gap-1">
               {tasks.length > 1 ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — ` : ""}View all <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
@@ -284,7 +284,7 @@ export default function HomeDashboard() {
               onClick={() => { setTaskToEdit(task); setIsTaskPanelOpen(true); }}
             >
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-white">{task.title}</h4>
+                <h4 className="text-sm font-medium text-[var(--color-text-1)]">{task.title}</h4>
                 <p className="text-xs text-[var(--color-text-3)] mt-0.5 truncate">{task.first_step}</p>
               </div>
               <ArrowRight className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2" />
@@ -301,18 +301,18 @@ export default function HomeDashboard() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-section-title text-lg">Upcoming Meeting</h3>
-            <Link href="/people" className="text-xs text-[var(--color-text-3)] hover:text-white flex items-center gap-1">
+            <Link href="/people" className="text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] flex items-center gap-1">
               View briefing <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
           {people.filter(p => p.next_meeting).map(person => (
             <GlassCard key={person.id} className="p-5 border-[var(--color-people)]/30">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-medium text-white text-sm" style={{ backgroundColor: 'var(--color-people)' }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-medium text-[var(--color-text-1)] text-sm" style={{ backgroundColor: 'var(--color-people)' }}>
                   {person.initials}
                 </div>
                 <div>
-                  <h4 className="text-base font-medium text-white">{person.name}</h4>
+                  <h4 className="text-base font-medium text-[var(--color-text-1)]">{person.name}</h4>
                   <p className="text-xs text-[var(--color-people)]">{person.next_meeting}</p>
                 </div>
               </div>

@@ -114,11 +114,11 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center justify-center gap-3 mb-12">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-deep)] flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <div className="w-5 h-5 bg-white rounded-full" />
+            <div className="w-5 h-5 bg-[var(--color-text-1)] rounded-full" />
           </div>
           <div className="text-center">
-            <span className="text-2xl font-bold text-white tracking-tight">Presense</span>
-            <p className="text-[11px] text-[rgba(255,255,255,0.4)] tracking-widest uppercase mt-1 font-semibold">Your External Brain</p>
+            <span className="text-2xl font-bold text-[var(--color-text-1)] tracking-tight">Presense</span>
+            <p className="text-[11px] text-[var(--color-text-3)] tracking-widest uppercase mt-1 font-semibold">Your External Brain</p>
           </div>
         </div>
 
@@ -130,21 +130,21 @@ export default function LoginPage() {
               className="bg-[rgba(255,255,255,0.03)] backdrop-blur-3xl border border-[rgba(255,255,255,0.08)] rounded-[24px] p-8 text-center shadow-2xl animate-in fade-in slide-in-from-right-4 duration-500"
               style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 32px 64px rgba(0,0,0,0.5)" }}
             >
-              <div className="w-20 h-20 mx-auto rounded-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)] flex items-center justify-center mb-6 transition-all duration-300"
+              <div className="w-20 h-20 mx-auto rounded-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] flex items-center justify-center mb-6 transition-all duration-300"
                 style={{ boxShadow: `inset 0 0 40px ${slides[step].color}20` }}>
                 {slides[step].icon}
               </div>
-              <h1 className="text-[22px] font-semibold text-white tracking-tight mb-3 transition-all duration-300">
+              <h1 className="text-[22px] font-semibold text-[var(--color-text-1)] tracking-tight mb-3 transition-all duration-300">
                 {slides[step].title}
               </h1>
-              <p className="text-[15px] text-[rgba(255,255,255,0.6)] leading-relaxed mb-10 transition-all duration-300">
+              <p className="text-[15px] text-[var(--color-text-3)] leading-relaxed mb-10 transition-all duration-300">
                 {slides[step].desc}
               </p>
               
               <div className="flex items-center justify-between">
                 <div className="flex gap-2">
                   {slides.map((_, i) => (
-                    <div key={i} className={`w-2 h-2 rounded-full transition-colors duration-300 ${i === step ? "bg-white" : "bg-[rgba(255,255,255,0.15)]"}`} />
+                    <div key={i} className={`w-2 h-2 rounded-full transition-colors duration-300 ${i === step ? "bg-[var(--color-text-1)]" : "bg-[rgba(255,255,255,0.15)]"}`} />
                   ))}
                 </div>
                 <button
@@ -156,7 +156,7 @@ export default function LoginPage() {
                       toast.error("Error: " + err.message);
                     }
                   }}
-                  className="relative z-50 pointer-events-auto flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black font-semibold hover:bg-gray-200 active:scale-95 transition-all cursor-pointer shadow-xl"
+                  className="relative z-50 pointer-events-auto flex items-center gap-2 px-6 py-2.5 rounded-full bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold hover:bg-gray-200 active:scale-95 transition-all cursor-pointer shadow-xl"
                 >
                   {step === slides.length - 1 ? "Get Started" : "Next"} <ArrowRight className="w-4 h-4" />
                 </button>
@@ -170,8 +170,8 @@ export default function LoginPage() {
               style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 32px 64px rgba(0,0,0,0.5)" }}
             >
               <div className="text-center mb-8">
-                <h1 className="text-[22px] font-semibold text-white tracking-tight mb-2">Welcome to Presense.</h1>
-                <p className="text-[14px] text-[rgba(255,255,255,0.5)]">Sign in to access your spaces.</p>
+                <h1 className="text-[22px] font-semibold text-[var(--color-text-1)] tracking-tight mb-2">Welcome to Presense.</h1>
+                <p className="text-[14px] text-[var(--color-text-3)]">Sign in to access your spaces.</p>
               </div>
 
               {emailSent ? (
@@ -179,15 +179,15 @@ export default function LoginPage() {
                   <div className="w-16 h-16 rounded-full bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] flex items-center justify-center mx-auto mb-5">
                     <Mail className="w-8 h-8 text-[#2DD4BF]" />
                   </div>
-                  <p className="text-white font-medium text-lg mb-2">Check your email</p>
-                  <p className="text-[14px] text-[rgba(255,255,255,0.5)]">We sent a secure magic link to <span className="text-white">{email}</span></p>
+                  <p className="text-[var(--color-text-1)] font-medium text-lg mb-2">Check your email</p>
+                  <p className="text-[14px] text-[var(--color-text-3)]">We sent a secure magic link to <span className="text-[var(--color-text-1)]">{email}</span></p>
                 </div>
               ) : (
                 <div className="space-y-4 animate-in fade-in duration-500">
                   <button
                     onClick={handleGoogle}
                     disabled={!!loading}
-                    className="w-full flex items-center justify-center gap-3 bg-white text-black font-semibold py-3.5 px-4 rounded-xl hover:bg-gray-100 transition-all disabled:opacity-60 shadow-[0_4px_14px_0_rgba(255,255,255,0.1)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.15)]"
+                    className="w-full flex items-center justify-center gap-3 bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold py-3.5 px-4 rounded-xl hover:bg-gray-100 transition-all disabled:opacity-60 shadow-[0_4px_14px_0_rgba(255,255,255,0.1)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.15)]"
                   >
                     {loading === "google" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe2 className="w-5 h-5" />}
                     Continue with Google
@@ -195,7 +195,7 @@ export default function LoginPage() {
 
                   <div className="flex items-center gap-4 py-2">
                     <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent to-[rgba(255,255,255,0.1)]" />
-                    <span className="text-[10px] text-[rgba(255,255,255,0.3)] uppercase tracking-widest font-semibold">or email</span>
+                    <span className="text-[10px] text-[var(--color-text-3)] uppercase tracking-widest font-semibold">or email</span>
                     <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent to-[rgba(255,255,255,0.1)]" />
                   </div>
 
@@ -206,7 +206,7 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3.5 text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none focus:border-[var(--color-accent)] focus:bg-[var(--color-accent)]/5 transition-all"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3.5 text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[var(--color-accent)] focus:bg-[var(--color-accent)]/5 transition-all"
                     />
                     <button
                       type="submit"

@@ -102,7 +102,7 @@ export function Dropdown({
                     onChange(optValue);
                     setIsOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-[rgba(255,255,255,0.05)] transition-colors flex items-center gap-2"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-[var(--color-surface)] transition-colors flex items-center gap-2"
                   style={{ color: optColor }}
                 >
                   <div

@@ -131,8 +131,8 @@ export function SettingsModal() {
           >
             <GlassCard className="w-full flex">
               {/* Sidebar Tabs */}
-              <div className="w-64 border-r border-[rgba(255,255,255,0.05)] bg-[rgba(0,0,0,0.2)] flex flex-col p-4">
-                <h2 className="text-xl font-bold text-white mb-8 px-2">Settings</h2>
+              <div className="w-64 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col p-4">
+                <h2 className="text-xl font-bold text-[var(--color-text-1)] mb-8 px-2">Settings</h2>
                 <nav className="flex-1 space-y-1">
                   {TABS.map(tab => (
                     <button
@@ -140,8 +140,8 @@ export function SettingsModal() {
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         activeTab === tab.id 
-                          ? "bg-[rgba(255,255,255,0.1)] text-white" 
-                          : "text-[rgba(255,255,255,0.5)] hover:bg-[rgba(255,255,255,0.05)] hover:text-white"
+                          ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" 
+                          : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
                       }`}
                     >
                       <tab.icon className="w-4 h-4" />
@@ -150,7 +150,7 @@ export function SettingsModal() {
                   ))}
                 </nav>
                 
-                <div className="mt-auto pt-4 border-t border-[rgba(255,255,255,0.05)]">
+                <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
                   <div className="flex items-center gap-2 text-xs font-medium h-6 px-2 mb-2">
                     <AnimatePresence mode="wait">
                       {saveStatus === "saving" && (
@@ -175,33 +175,33 @@ export function SettingsModal() {
               <div className="flex-1 relative overflow-y-auto no-scrollbar">
                 <button 
                   onClick={() => setSettingsModalOpen(false)}
-                  className="absolute top-4 right-4 p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:text-white transition-colors z-10"
+                  className="absolute top-4 right-4 p-2 rounded-full hover:bg-[var(--color-surface)] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors z-10"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
                 {loading ? (
                   <div className="h-full flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
+                    <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
                   </div>
                 ) : (
                   <div className="p-10 max-w-2xl">
-                    <h3 className="text-2xl font-bold text-white mb-8 border-b border-[rgba(255,255,255,0.1)] pb-4">
+                    <h3 className="text-2xl font-bold text-[var(--color-text-1)] mb-8 border-b border-[var(--color-border)] pb-4">
                       {TABS.find(t => t.id === activeTab)?.label}
                     </h3>
 
                     {activeTab === "account" && (
                       <div className="space-y-6">
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Display Name</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Display Name</label>
                           <input
                             value={settings.display_name || ""}
                             onChange={e => updateSetting("display_name", e.target.value)}
-                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white placeholder-[rgba(255,255,255,0.3)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] placeholder-[rgba(255,255,255,0.3)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Avatar Color</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-3 uppercase tracking-wider">Avatar Color</label>
                           <div className="flex flex-wrap gap-2">
                             {['#F472B6', '#4ADE80', '#3B82F6', '#FBBF24', '#A855F7', '#EF4444'].map(color => (
                               <button key={color} onClick={() => updateSetting("avatar_color", color)} className={`w-8 h-8 rounded-full transition-transform ${settings.avatar_color === color ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]' : 'opacity-70 hover:opacity-100'}`} style={{ backgroundColor: color }} />
@@ -209,7 +209,7 @@ export function SettingsModal() {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Timezone</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Timezone</label>
                           <SelectDropdown
                             value={settings.timezone || "UTC"}
                             onChange={val => updateSetting("timezone", val)}
@@ -225,7 +225,7 @@ export function SettingsModal() {
                         </div>
                         <div className="pt-8 mt-8 border-t border-[rgba(248,113,113,0.2)]">
                           <h4 className="text-sm font-semibold text-[#F87171] mb-2 flex items-center gap-2">Danger Zone</h4>
-                          <p className="text-xs text-[rgba(255,255,255,0.4)] mb-4">Permanently delete your account and all data.</p>
+                          <p className="text-xs text-[var(--color-text-3)] mb-4">Permanently delete your account and all data.</p>
                           <button onClick={() => setDeleteAccountConfirm(true)} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.3)] text-[#F87171] hover:bg-[rgba(248,113,113,0.2)] transition-colors text-sm font-medium">
                             Delete Account
                           </button>
@@ -235,22 +235,22 @@ export function SettingsModal() {
 
                     {activeTab === "appearance" && (
                       <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">Theme Accent</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Select your primary colour palette</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Theme Accent</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Select your primary colour palette</div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button onClick={() => updateSetting("theme", "orange")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${settings.theme === 'orange' || !settings.theme ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Wahala (Orange)" />
-                            <button onClick={() => updateSetting("theme", "navy")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${settings.theme === 'navy' ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Deep Navy" />
-                            <button onClick={() => updateSetting("theme", "forest")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${settings.theme === 'forest' ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Forest" />
+                            <button onClick={() => updateSetting("theme", "orange")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${settings.theme === 'orange' || !settings.theme ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Wahala (Orange)" />
+                            <button onClick={() => updateSetting("theme", "navy")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${settings.theme === 'navy' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Deep Navy" />
+                            <button onClick={() => updateSetting("theme", "forest")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${settings.theme === 'forest' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Forest" />
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">Color Mode</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Dark, Light, or System match</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Color Mode</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Dark, Light, or System match</div>
                           </div>
                           <div className="w-40">
                             <SelectDropdown
@@ -265,22 +265,22 @@ export function SettingsModal() {
                             />
                           </div>
                         </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">Ambient Background</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Show moving gradients in the background</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Ambient Background</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Show moving gradients in the background</div>
                           </div>
-                          <button onClick={() => updateSetting("ambient_bg", !settings.ambient_bg)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.ambient_bg ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.ambient_bg ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("ambient_bg", !settings.ambient_bg)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.ambient_bg ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.ambient_bg ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">Reduce Motion</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Minimize UI animations</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Reduce Motion</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Minimize UI animations</div>
                           </div>
-                          <button onClick={() => updateSetting("reduce_motion", !settings.reduce_motion)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.reduce_motion ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.reduce_motion ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("reduce_motion", !settings.reduce_motion)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.reduce_motion ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.reduce_motion ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
                       </div>
@@ -288,43 +288,43 @@ export function SettingsModal() {
 
                     {activeTab === "notifications" && (
                       <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mb-6">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mb-6">
                           <div>
-                            <div className="font-medium text-white">Master Toggle</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Enable all notifications</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Master Toggle</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Enable all notifications</div>
                           </div>
-                          <button onClick={() => updateSetting("notifications_enabled", !settings.notifications_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.notifications_enabled ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.notifications_enabled ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("notifications_enabled", !settings.notifications_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.notifications_enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.notifications_enabled ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Quiet Start</label>
-                            <input type="time" value={settings.quiet_start || "22:00"} onChange={e => updateSetting("quiet_start", e.target.value)} className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
+                            <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Quiet Start</label>
+                            <input type="time" value={settings.quiet_start || "22:00"} onChange={e => updateSetting("quiet_start", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Quiet End</label>
-                            <input type="time" value={settings.quiet_end || "08:00"} onChange={e => updateSetting("quiet_end", e.target.value)} className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
+                            <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Quiet End</label>
+                            <input type="time" value={settings.quiet_end || "08:00"} onChange={e => updateSetting("quiet_end", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">Daily Briefing</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Receive a summary of today's tasks</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Daily Briefing</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Receive a summary of today's tasks</div>
                           </div>
-                          <button onClick={() => updateSetting("daily_briefing", !settings.daily_briefing)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.daily_briefing ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.daily_briefing ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("daily_briefing", !settings.daily_briefing)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.daily_briefing ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.daily_briefing ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">Pomodoro Finish Sound</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Play a sound when timer completes</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Pomodoro Finish Sound</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Play a sound when timer completes</div>
                           </div>
-                          <button onClick={() => updateSetting("pomodoro_sound", !settings.pomodoro_sound)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.pomodoro_sound ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.pomodoro_sound ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("pomodoro_sound", !settings.pomodoro_sound)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.pomodoro_sound ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.pomodoro_sound ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
                       </div>
@@ -333,42 +333,42 @@ export function SettingsModal() {
                     {activeTab === "focus" && (
                       <div className="space-y-6">
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Work Duration (mins)</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-3 uppercase tracking-wider">Work Duration (mins)</label>
                           <div className="flex flex-wrap gap-2">
                             {[15, 20, 25, 30, 45, 60].map(mins => (
-                              <button key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.pomodoro_duration === mins ? 'bg-[var(--color-do)] text-black border-[var(--color-do)]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}>
+                              <button key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.pomodoro_duration === mins ? 'bg-[var(--color-do)] text-[var(--color-background)] border-[var(--color-do)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}>
                                 {mins}m
                               </button>
                             ))}
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Short Break (mins)</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-3 uppercase tracking-wider">Short Break (mins)</label>
                           <div className="flex flex-wrap gap-2">
                             {[3, 5, 10, 15].map(mins => (
-                              <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.short_break_duration === mins ? 'bg-[#4ADE80] text-black border-[#4ADE80]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}>
+                              <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.short_break_duration === mins ? 'bg-[#4ADE80] text-[var(--color-background)] border-[#4ADE80]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}>
                                 {mins}m
                               </button>
                             ))}
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Long Break (mins)</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-3 uppercase tracking-wider">Long Break (mins)</label>
                           <div className="flex flex-wrap gap-2">
                             {[15, 20, 30].map(mins => (
-                              <button key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.long_break_duration === mins ? 'bg-[#3B82F6] text-black border-[#3B82F6]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}>
+                              <button key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.long_break_duration === mins ? 'bg-[#3B82F6] text-[var(--color-background)] border-[#3B82F6]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}>
                                 {mins}m
                               </button>
                             ))}
                           </div>
                         </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mt-4">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
                           <div>
-                            <div className="font-medium text-white">Auto-start Breaks</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Automatically begin break timer when work finishes</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Auto-start Breaks</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Automatically begin break timer when work finishes</div>
                           </div>
-                          <button onClick={() => updateSetting("auto_start_breaks", !settings.auto_start_breaks)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.auto_start_breaks ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.auto_start_breaks ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("auto_start_breaks", !settings.auto_start_breaks)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.auto_start_breaks ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.auto_start_breaks ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
                       </div>
@@ -377,49 +377,49 @@ export function SettingsModal() {
                     {activeTab === "tasks" && (
                       <div className="space-y-6">
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Default View</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-3 uppercase tracking-wider">Default View</label>
                           <div className="flex gap-2">
                             <button
                               onClick={() => updateSetting("default_view", "list")}
-                              className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.default_view === "list" || !settings.default_view ? 'bg-[var(--color-do)] text-black border-[var(--color-do)]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}
+                              className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.default_view === "list" || !settings.default_view ? 'bg-[var(--color-do)] text-[var(--color-background)] border-[var(--color-do)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}
                             >
                               List View
                             </button>
                             <button
                               onClick={() => updateSetting("default_view", "board")}
-                              className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.default_view === "board" ? 'bg-[var(--color-do)] text-black border-[var(--color-do)]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}
+                              className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.default_view === "board" ? 'bg-[var(--color-do)] text-[var(--color-background)] border-[var(--color-do)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}
                             >
                               Kanban Board
                             </button>
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Auto-archive completed tasks after (days)</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Auto-archive completed tasks after (days)</label>
                           <input
                             type="number"
                             min={1} max={30}
                             value={settings.auto_archive_days || 7}
                             onChange={e => updateSetting("auto_archive_days", parseInt(e.target.value))}
-                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Do Categories (comma separated)</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Do Categories (comma separated)</label>
                           <input
                             type="text"
                             value={(settings.do_categories || []).join(", ")}
                             onChange={e => updateSetting("do_categories", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
                             placeholder="work, personal, health"
-                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                           />
                         </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mt-4">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
                           <div>
-                            <div className="font-medium text-white">Auto-snooze Overdue</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Automatically push overdue tasks to today</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Auto-snooze Overdue</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Automatically push overdue tasks to today</div>
                           </div>
-                          <button onClick={() => updateSetting("auto_snooze", !settings.auto_snooze)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.auto_snooze ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.auto_snooze ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("auto_snooze", !settings.auto_snooze)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.auto_snooze ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.auto_snooze ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
                       </div>
@@ -427,34 +427,34 @@ export function SettingsModal() {
 
                     {activeTab === "routing" && (
                       <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">Smart NLP Routing</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Automatically route captures based on natural language</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Smart NLP Routing</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Automatically route captures based on natural language</div>
                           </div>
-                          <button onClick={() => updateSetting("smart_routing_enabled", !settings.smart_routing_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.smart_routing_enabled ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.smart_routing_enabled ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("smart_routing_enabled", !settings.smart_routing_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.smart_routing_enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.smart_routing_enabled ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
 
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">NLP Date Parsing</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Extract dates naturally from capture text</div>
+                            <div className="font-medium text-[var(--color-text-1)]">NLP Date Parsing</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Extract dates naturally from capture text</div>
                           </div>
-                          <button onClick={() => updateSetting("nlp_date_parsing", settings.nlp_date_parsing !== false)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.nlp_date_parsing !== false ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.nlp_date_parsing !== false ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("nlp_date_parsing", settings.nlp_date_parsing !== false)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.nlp_date_parsing !== false ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.nlp_date_parsing !== false ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Routing Confidence</label>
+                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-3 uppercase tracking-wider">Routing Confidence</label>
                           <div className="flex flex-wrap gap-2">
                             {['High', 'Medium', 'Low'].map(conf => (
                               <button
                                 key={conf}
                                 onClick={() => updateSetting("routing_confidence", conf)}
-                                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.routing_confidence === conf || (!settings.routing_confidence && conf === 'Medium') ? 'bg-[#2DD4BF] text-black border-[#2DD4BF]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}
+                                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.routing_confidence === conf || (!settings.routing_confidence && conf === 'Medium') ? 'bg-[#2DD4BF] text-[var(--color-background)] border-[#2DD4BF]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}
                               >
                                 {conf} {conf === 'High' && '(Auto-route)'} {conf === 'Medium' && '(Review)'} {conf === 'Low' && '(Ask)'}
                               </button>
@@ -462,23 +462,23 @@ export function SettingsModal() {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
-                            <div className="font-medium text-white">Enhanced routing via Ollama</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Use local LLM for advanced routing decisions</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Enhanced routing via Ollama</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Use local LLM for advanced routing decisions</div>
                           </div>
-                          <button onClick={() => updateSetting("ollama_enabled", !settings.ollama_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.ollama_enabled ? 'bg-[#2DD4BF]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.ollama_enabled ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("ollama_enabled", !settings.ollama_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.ollama_enabled ? 'bg-[#2DD4BF]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.ollama_enabled ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
                         {settings.ollama_enabled && (
                           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider mt-4">Ollama URL</label>
+                            <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider mt-4">Ollama URL</label>
                             <div className="flex gap-2">
                               <input
                                 value={settings.ollama_url || "http://localhost:11434"}
                                 onChange={e => updateSetting("ollama_url", e.target.value)}
-                                className="flex-1 bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[#2DD4BF] focus:outline-none transition-colors"
+                                className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[#2DD4BF] focus:outline-none transition-colors"
                               />
                               <button 
                                 onClick={async () => { 
@@ -504,13 +504,13 @@ export function SettingsModal() {
                             </div>
                           </motion.div>
                         )}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] mt-4">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
                           <div>
-                            <div className="font-medium text-white">Location Context</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Use location to prompt relevant tasks</div>
+                            <div className="font-medium text-[var(--color-text-1)]">Location Context</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Use location to prompt relevant tasks</div>
                           </div>
-                          <button onClick={() => updateSetting("location_detection", !settings.location_detection)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.location_detection ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
-                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.location_detection ? 'left-7' : 'left-1'}`} />
+                          <button onClick={() => updateSetting("location_detection", !settings.location_detection)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.location_detection ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-surface)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.location_detection ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
                       </div>
@@ -518,11 +518,11 @@ export function SettingsModal() {
 
                     {activeTab === "data" && (
                       <div className="space-y-6">
-                        <p className="text-sm text-[rgba(255,255,255,0.5)]">Manage your data and account. All data stays synced across devices.</p>
+                        <p className="text-sm text-[var(--color-text-3)]">Manage your data and account. All data stays synced across devices.</p>
                         <button
                           type="button"
                           onClick={handleExportData}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white hover:bg-[rgba(255,255,255,0.1)] transition-colors text-sm font-medium"
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors text-sm font-medium"
                         >
                           <Download className="w-4 h-4" /> Export All Data
                         </button>

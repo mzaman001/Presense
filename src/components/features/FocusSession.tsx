@@ -200,7 +200,7 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
           {/* Ambient glow */}
           <div className={cn("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000", getBgColors())} />
 
-          <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[rgba(255,255,255,0.5)] hover:text-white">
+          <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full bg-[var(--color-surface)] hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-3)] hover:text-[var(--color-text-1)]">
             <X className="w-6 h-6" />
           </button>
 
@@ -212,7 +212,7 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
                 {phase === "work" ? `Work Session ${sessionCount + 1}` : phase === "short_break" ? "Short Break" : "Long Break"}
               </p>
             </div>
-            <h1 className="text-3xl font-semibold text-white mb-4 leading-tight">{task.title}</h1>
+            <h1 className="text-3xl font-semibold text-[var(--color-text-1)] mb-4 leading-tight">{task.title}</h1>
             {task.first_step && phase === "work" && !isDone && (
               <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition-colors">
                 <ChevronRight className="w-4 h-4 text-[var(--color-accent)]" />
@@ -244,13 +244,13 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
           <div className="flex items-center gap-4 z-10">
             {!isDone ? (
               <>
-                <button onClick={() => setIsPaused(!isPaused)} className="w-14 h-14 flex items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-white">
+                <button onClick={() => setIsPaused(!isPaused)} className="w-14 h-14 flex items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-1)]">
                   {isPaused ? <Play className="w-6 h-6 ml-1" /> : <Pause className="w-6 h-6" />}
                 </button>
-                <button onClick={skipToNextPhase} className="w-14 h-14 flex items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-white" title="Skip phase">
+                <button onClick={skipToNextPhase} className="w-14 h-14 flex items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-1)]" title="Skip phase">
                   <SkipForward className="w-5 h-5" />
                 </button>
-                <button onClick={onClose} className="px-6 py-4 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors text-white font-medium">
+                <button onClick={onClose} className="px-6 py-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-1)] font-medium">
                   End early
                 </button>
               </>
@@ -266,7 +266,7 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
                   <button
                     onClick={handleCompleteTask}
                     disabled={completing}
-                    className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#4ADE80] text-black font-bold hover:bg-[#22c55e] transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#4ADE80] text-[var(--color-background)] font-bold hover:bg-[#22c55e] transition-colors disabled:opacity-50"
                   >
                     {completing ? "Saving..." : "Mark Complete"} <CheckCircle2 className="w-5 h-5" />
                   </button>

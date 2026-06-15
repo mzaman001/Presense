@@ -37,13 +37,13 @@ export function SelectDropdown({ value, onChange, options, placeholder = "Select
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white text-sm focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+        className="w-full flex items-center justify-between bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] text-sm focus:border-[var(--color-accent)] focus:outline-none transition-colors"
       >
-        <span className={!selectedOption ? "text-[rgba(255,255,255,0.5)]" : ""}>
+        <span className={!selectedOption ? "text-[var(--color-text-3)]" : ""}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="w-4 h-4 text-[rgba(255,255,255,0.5)]" />
+          <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
         </motion.div>
       </button>
 
@@ -54,7 +54,7 @@ export function SelectDropdown({ value, onChange, options, placeholder = "Select
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 z-50 rounded-xl bg-[rgba(11,9,20,0.95)] backdrop-blur-xl border border-[rgba(255,255,255,0.1)] shadow-2xl overflow-hidden py-1 max-h-60 overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-2 z-50 rounded-xl bg-[rgba(11,9,20,0.95)] backdrop-blur-xl border border-[var(--color-border)] shadow-2xl overflow-hidden py-1 max-h-60 overflow-y-auto"
           >
             {options.map((opt) => (
               <button
@@ -68,7 +68,7 @@ export function SelectDropdown({ value, onChange, options, placeholder = "Select
                   "w-full text-left px-4 py-2.5 text-sm transition-colors",
                   value === opt.value 
                     ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium" 
-                    : "text-white hover:bg-[rgba(255,255,255,0.05)]"
+                    : "text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
                 )}
               >
                 {opt.label}

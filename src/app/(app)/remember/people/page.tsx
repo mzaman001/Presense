@@ -72,16 +72,16 @@ function SortablePersonRow({ person, formatMeeting }: { person: Person, formatMe
   return (
     <motion.div ref={setNodeRef} style={style} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={cn(isDragging && "opacity-50")}>
       <GlassCard className="p-0 hover:scale-[1.005] transition-transform overflow-hidden flex items-stretch">
-        <div {...attributes} {...listeners} className="w-8 flex items-center justify-center bg-[rgba(255,255,255,0.02)] border-r border-[rgba(255,255,255,0.05)] cursor-grab active:cursor-grabbing hover:bg-[rgba(255,255,255,0.05)] transition-colors">
-          <GripVertical className="w-4 h-4 text-[rgba(255,255,255,0.2)]" />
+        <div {...attributes} {...listeners} className="w-8 flex items-center justify-center bg-[var(--color-surface)] border-r border-[var(--color-border)] cursor-grab active:cursor-grabbing hover:bg-[var(--color-surface)] transition-colors">
+          <GripVertical className="w-4 h-4 text-[var(--color-text-3)]" />
         </div>
         <Link href={`/people/${person.id}`} className="flex-1 p-4">
           <div className="flex items-center gap-3">
             <Avatar name={person.name} color={relColor} size="sm" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white">{person.name}</p>
+              <p className="text-sm font-medium text-[var(--color-text-1)]">{person.name}</p>
               {person.notes?.length > 0 && (
-                <p className="text-[11px] text-[rgba(255,255,255,0.4)] truncate">{person.notes[person.notes.length - 1]?.text}</p>
+                <p className="text-[11px] text-[var(--color-text-3)] truncate">{person.notes[person.notes.length - 1]?.text}</p>
               )}
             </div>
             <div className="text-right shrink-0 flex flex-col items-end gap-1">
@@ -89,7 +89,7 @@ function SortablePersonRow({ person, formatMeeting }: { person: Person, formatMe
                 {person.relationship}
               </p>
               {person.next_meeting && (
-                <p className="text-[10px] text-[rgba(255,255,255,0.4)]">{formatMeeting(person.next_meeting)}</p>
+                <p className="text-[10px] text-[var(--color-text-3)]">{formatMeeting(person.next_meeting)}</p>
               )}
             </div>
           </div>
@@ -166,7 +166,7 @@ export default function PeoplePage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
         </div>
       ) : (
         <>
@@ -174,7 +174,7 @@ export default function PeoplePage() {
           {today.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-sm font-semibold text-white">Today&apos;s Briefings</h2>
+                <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Today&apos;s Briefings</h2>
                 <span className="w-2 h-2 rounded-full bg-[#F472B6] animate-pulse" />
               </div>
               <div className="space-y-3">
@@ -188,7 +188,7 @@ export default function PeoplePage() {
                             <div className="flex items-center gap-3">
                               <Avatar name={person.name} color={relColor} />
                               <div>
-                                <p className="text-sm font-semibold text-white">{person.name}</p>
+                                <p className="text-sm font-semibold text-[var(--color-text-1)]">{person.name}</p>
                                 <p className="text-xs text-[#F472B6] flex items-center gap-1">
                                   <Clock className="w-3 h-3" /> Meeting at {new Date(person.next_meeting!).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                                 </p>
@@ -197,7 +197,7 @@ export default function PeoplePage() {
                             <span className="text-[10px] font-bold uppercase tracking-widest text-[#F472B6] bg-[rgba(244,114,182,0.1)] border border-[rgba(244,114,182,0.2)] px-2 py-1 rounded-full">Briefing Ready</span>
                           </div>
                           {person.notes?.slice(-3).reverse().map((note, ni) => (
-                            <p key={ni} className="text-xs text-[rgba(255,255,255,0.5)] flex items-start gap-1.5 mt-1">
+                            <p key={ni} className="text-xs text-[var(--color-text-3)] flex items-start gap-1.5 mt-1">
                               <ChevronRight className="w-3 h-3 shrink-0 mt-0.5 text-[#F472B6]" /> {note.text}
                             </p>
                           ))}
@@ -212,10 +212,10 @@ export default function PeoplePage() {
 
           {/* All contacts with DND */}
           <div>
-            <h2 className="text-sm font-semibold text-white mb-3 mt-8">All Contacts</h2>
+            <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-3 mt-8">All Contacts</h2>
             {others.length === 0 && today.length === 0 ? (
               <GlassCard className="p-8 text-center">
-                <p className="text-sm text-[rgba(255,255,255,0.3)]">No people yet. Add someone or capture &ldquo;Riyaz said to...&rdquo;</p>
+                <p className="text-sm text-[var(--color-text-3)]">No people yet. Add someone or capture &ldquo;Riyaz said to...&rdquo;</p>
               </GlassCard>
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

@@ -205,7 +205,7 @@ export default function DoPage() {
           <div className="flex items-start gap-3">
             <button
               onClick={(e) => completeTask(e, task.id)}
-              className="mt-0.5 shrink-0 text-[rgba(255,255,255,0.3)] hover:text-[#4ADE80] transition-colors"
+              className="mt-0.5 shrink-0 text-[var(--color-text-3)] hover:text-[#4ADE80] transition-colors"
             >
               {completing === task.id
                 ? <Loader2 className="w-5 h-5 animate-spin text-[#4ADE80]" />
@@ -222,7 +222,7 @@ export default function DoPage() {
                   {task.category}
                 </span>
               </div>
-              <p className="text-sm font-semibold text-white leading-snug">{task.title}</p>
+              <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{task.title}</p>
               {task.first_step && (
                 <p className="text-xs mt-1 flex items-center gap-1" style={{ color: isOverdue ? "#F87171" : "#2DD4BF" }}>
                   <ChevronRight className="w-3 h-3 shrink-0" /> {task.first_step}
@@ -235,23 +235,23 @@ export default function DoPage() {
               )}
               {subtasks.length > 0 && (
                 <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 h-1 bg-[rgba(255,255,255,0.1)] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1 bg-[var(--color-surface)] rounded-full overflow-hidden">
                     <div className="h-full bg-[rgba(255,255,255,0.3)] transition-all" style={{ width: `${(completedSubtasks / subtasks.length) * 100}%` }} />
                   </div>
-                  <span className="text-[10px] text-[rgba(255,255,255,0.4)] font-medium shrink-0">{completedSubtasks}/{subtasks.length}</span>
+                  <span className="text-[10px] text-[var(--color-text-3)] font-medium shrink-0">{completedSubtasks}/{subtasks.length}</span>
                 </div>
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-[rgba(255,255,255,0.05)]">
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--color-border)]">
             <span className="text-[11px] text-[rgba(255,255,255,0.35)] shrink-0">
               {label && label !== "Overdue" && label !== "Today" ? label : "Active"}
             </span>
             <div className="flex items-center gap-2">
               {(task.snoozed_until && new Date(task.snoozed_until) > new Date()) && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)]">
-                  <Clock className="w-3 h-3 text-[rgba(255,255,255,0.4)]" />
-                  <span className="text-[10px] text-[rgba(255,255,255,0.4)]">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)]">
+                  <Clock className="w-3 h-3 text-[var(--color-text-3)]" />
+                  <span className="text-[10px] text-[var(--color-text-3)]">
                     {new Date(task.snoozed_until).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                   </span>
                   <button
@@ -260,16 +260,16 @@ export default function DoPage() {
                       await supabase.from('items').update({ snoozed_until: null }).eq('id', task.id);
                       fetchTasks();
                     }}
-                    className="ml-1 text-[rgba(255,255,255,0.4)] hover:text-white"
+                    className="ml-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
                   >
                     ×
                   </button>
                 </div>
               )}
               {task.recurrence && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)]">
-                  <RotateCw className="w-3 h-3 text-[rgba(255,255,255,0.4)]" />
-                  <span className="text-[10px] text-[rgba(255,255,255,0.4)] truncate max-w-[80px]">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)]">
+                  <RotateCw className="w-3 h-3 text-[var(--color-text-3)]" />
+                  <span className="text-[10px] text-[var(--color-text-3)] truncate max-w-[80px]">
                     {formatRRule(task.recurrence)}
                   </span>
                 </div>
@@ -292,7 +292,7 @@ export default function DoPage() {
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-4">
         <Icon className="w-4 h-4" style={{ color: accent }} />
-        <h2 className="text-sm font-semibold text-white">{title}</h2>
+        <h2 className="text-sm font-semibold text-[var(--color-text-1)]">{title}</h2>
         {colTasks.length > 0 && (
           <Badge style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}44` }}>
             {colTasks.length}
@@ -302,7 +302,7 @@ export default function DoPage() {
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
           {colTasks.length === 0 ? (
-            <div className="text-sm text-[rgba(255,255,255,0.2)] text-center py-8 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl">
+            <div className="text-sm text-[var(--color-text-3)] text-center py-8 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl">
               Nothing here
             </div>
           ) : (
@@ -319,10 +319,10 @@ export default function DoPage() {
         <div>
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
-            <h1 className="text-[22px] font-medium text-white tracking-tight">Do</h1>
+            <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Do</h1>
             <button 
               onClick={() => setShowArchive(!showArchive)}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-white text-black border-white" : "border-[rgba(255,255,255,0.2)] text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.05)]")}
+              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
             >
               {showArchive ? "Hide Archive" : "Show Archive"}
             </button>
@@ -350,8 +350,8 @@ export default function DoPage() {
             className={cn(
               "text-xs px-3 py-1.5 rounded-full border transition-all capitalize",
               categoryFilter === cat
-                ? "bg-white text-black border-white font-semibold"
-                : "border-[rgba(255,255,255,0.12)] text-[rgba(255,255,255,0.5)] hover:border-[rgba(255,255,255,0.25)]"
+                ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-semibold"
+                : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
             )}
           >
             {cat}
@@ -361,13 +361,13 @@ export default function DoPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
         </div>
       ) : showArchive ? (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-white mb-4">Archived Tasks</h2>
+          <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-4">Archived Tasks</h2>
           {archivedTasks.length === 0 ? (
-            <div className="text-sm text-[rgba(255,255,255,0.2)] text-center py-8 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl">
+            <div className="text-sm text-[var(--color-text-3)] text-center py-8 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl">
               No completed tasks yet.
             </div>
           ) : (
@@ -382,11 +382,11 @@ export default function DoPage() {
                       • Completed {new Date((task as any).completed_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-sm font-semibold text-white line-through">{task.title}</p>
+                  <p className="text-sm font-semibold text-[var(--color-text-1)] line-through">{task.title}</p>
                 </div>
                 <button 
                   onClick={() => restoreTask(task.id)}
-                  className="px-3 py-1.5 rounded-lg border border-[rgba(255,255,255,0.1)] text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+                  className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors"
                 >
                   Restore
                 </button>

@@ -117,11 +117,11 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" /></div>;
   }
 
   if (!person) {
-    return <div className="text-center py-20 text-[rgba(255,255,255,0.5)]">Person not found.</div>;
+    return <div className="text-center py-20 text-[var(--color-text-3)]">Person not found.</div>;
   }
 
   // Reverse notes so newest is at the top of the timeline
@@ -130,15 +130,15 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
-      <Link href="/people" className="inline-flex items-center gap-2 text-sm text-[rgba(255,255,255,0.4)] hover:text-white transition-colors">
+      <Link href="/people" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to People
       </Link>
 
       <div className="flex items-center gap-4">
         <Avatar name={person.name} color={person.color} size="lg" className="w-16 h-16 text-xl" />
         <div>
-          <h1 className="text-[26px] font-semibold text-white tracking-tight leading-none mb-1">{person.name}</h1>
-          <p className="text-sm text-[rgba(255,255,255,0.4)] capitalize">{person.relationship}</p>
+          <h1 className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-none mb-1">{person.name}</h1>
+          <p className="text-sm text-[var(--color-text-3)] capitalize">{person.relationship}</p>
         </div>
       </div>
 
@@ -151,7 +151,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
           </div>
           <ul className="space-y-3">
             {briefing.map((note, i) => (
-              <li key={i} className="text-sm text-white leading-relaxed flex items-start gap-2">
+              <li key={i} className="text-sm text-[var(--color-text-1)] leading-relaxed flex items-start gap-2">
                 <span className="text-[#F472B6] mt-0.5">•</span> {note.text}
               </li>
             ))}
@@ -161,15 +161,15 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
 
       {linkedTasks.length > 0 && (
         <div className="mb-8">
-          <h3 className="text-xs font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-wider mb-4">Linked Tasks</h3>
+          <h3 className="text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-4">Linked Tasks</h3>
           <div className="space-y-2">
             {linkedTasks.map((task) => (
-              <GlassCard key={task.id} className="p-4 border-[rgba(255,255,255,0.05)] flex justify-between items-center">
+              <GlassCard key={task.id} className="p-4 border-[var(--color-border)] flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-medium text-white">{task.title}</p>
+                  <p className="text-sm font-medium text-[var(--color-text-1)]">{task.title}</p>
                   {task.first_step && <p className="text-xs text-[#2DD4BF] mt-1">{task.first_step}</p>}
                 </div>
-                <Link href={`/do`} className="text-xs px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+                <Link href={`/do`} className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
                   View in Do
                 </Link>
               </GlassCard>
@@ -184,17 +184,17 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
             placeholder={`Add a note about ${person.name}...`}
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
-            className="w-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-4 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none focus:border-[#F472B6] focus:bg-[rgba(244,114,182,0.03)] transition-all pr-12"
+            className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-4 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#F472B6] focus:bg-[rgba(244,114,182,0.03)] transition-all pr-12"
           />
           <button type="submit" disabled={!newNote.trim() || saving} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg bg-[rgba(244,114,182,0.15)] text-[#F472B6] hover:bg-[rgba(244,114,182,0.25)] transition-colors disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           </button>
         </form>
 
-        <h3 className="text-xs font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-wider mb-4">Timeline</h3>
+        <h3 className="text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-4">Timeline</h3>
         <div className="space-y-4">
           {timeline.length === 0 ? (
-            <p className="text-sm text-[rgba(255,255,255,0.3)] text-center py-8 border border-dashed border-[rgba(255,255,255,0.1)] rounded-xl">No notes yet.</p>
+            <p className="text-sm text-[var(--color-text-3)] text-center py-8 border border-dashed border-[var(--color-border)] rounded-xl">No notes yet.</p>
           ) : (
             timeline.map((note, i) => {
               const originalIndex = timeline.length - 1 - i;
@@ -208,8 +208,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
-                    <p className="text-sm text-white leading-relaxed mb-2 pr-6">{note.text}</p>
-                    <p className="text-[11px] text-[rgba(255,255,255,0.3)]">
+                    <p className="text-sm text-[var(--color-text-1)] leading-relaxed mb-2 pr-6">{note.text}</p>
+                    <p className="text-[11px] text-[var(--color-text-3)]">
                       {new Date(note.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     </p>
                   </GlassCard>
@@ -224,7 +224,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         <h3 className="text-sm font-semibold text-[#F87171] mb-2 flex items-center gap-2">
           <Trash2 className="w-4 h-4" /> Danger Zone
         </h3>
-        <p className="text-sm text-[rgba(255,255,255,0.4)] mb-4">
+        <p className="text-sm text-[var(--color-text-3)] mb-4">
           Deleting a person is permanent. It will remove all their notes and history.
         </p>
         <div className="flex items-center gap-3 bg-[rgba(248,113,113,0.05)] p-4 rounded-xl border border-[rgba(248,113,113,0.1)]">
@@ -233,12 +233,12 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
             placeholder={`Type "${person.name}" to confirm`}
             value={deleteNameConfirm}
             onChange={(e) => setDeleteNameConfirm(e.target.value)}
-            className="flex-1 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[rgba(255,255,255,0.2)] outline-none focus:border-[#F87171]"
+            className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#F87171]"
           />
           <button 
             onClick={handleDeletePerson}
             disabled={deleteNameConfirm !== person.name || isDeleting}
-            className="px-4 py-2 bg-[rgba(248,113,113,0.2)] text-[#F87171] rounded-lg text-sm font-medium hover:bg-[#F87171] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-4 py-2 bg-[rgba(248,113,113,0.2)] text-[#F87171] rounded-lg text-sm font-medium hover:bg-[#F87171] hover:text-[var(--color-text-1)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isDeleting && <Loader2 className="w-3 h-3 animate-spin" />}
             Delete Person

@@ -117,10 +117,10 @@ export default function ThinkPage() {
         <div>
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
-            <h1 className="text-[22px] font-medium text-white tracking-tight">Think</h1>
+            <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Think</h1>
             <button 
               onClick={() => setShowArchive(!showArchive)}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-white text-black border-white" : "border-[rgba(255,255,255,0.2)] text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.05)]")}
+              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
             >
               {showArchive ? "Hide Archive" : "Show Archive"}
             </button>
@@ -132,7 +132,7 @@ export default function ThinkPage() {
             placeholder="Search threads..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="hidden md:block w-48 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-xl px-3 py-2 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none focus:border-[#2DD4BF]"
+            className="hidden md:block w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#2DD4BF]"
           />
           <button onClick={handleDailyNote} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.25)] text-[#FBBF24] text-sm font-medium hover:bg-[rgba(251,191,36,0.2)] transition-colors hidden sm:flex">
             <Sparkles className="w-4 h-4" /> Daily Note
@@ -155,13 +155,13 @@ export default function ThinkPage() {
           placeholder="Search threads..." 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none focus:border-[#2DD4BF]"
+          className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#2DD4BF]"
         />
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
         </div>
       ) : (
         <>
@@ -169,7 +169,7 @@ export default function ThinkPage() {
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="w-4 h-4 text-[#2DD4BF]" />
-                <h2 className="text-sm font-semibold text-white">Stale Threads</h2>
+                <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Stale Threads</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredThreads.filter(t => t.stale_prompt).map((thread, i) => (
@@ -179,7 +179,7 @@ export default function ThinkPage() {
                         <div className="flex items-start gap-3">
                           <div className="w-1 self-stretch rounded-full shrink-0 bg-[#2DD4BF]" />
                           <div>
-                            <p className="text-sm font-semibold text-white mb-1">{thread.title}</p>
+                            <p className="text-sm font-semibold text-[var(--color-text-1)] mb-1">{thread.title}</p>
                             <p className="text-xs text-[#2DD4BF] font-medium leading-relaxed">{thread.stale_prompt}</p>
                           </div>
                         </div>
@@ -193,11 +193,11 @@ export default function ThinkPage() {
 
           {filteredThreads.length === 0 ? (
             <GlassCard className="p-8 text-center mt-6">
-              <p className="text-sm text-[rgba(255,255,255,0.3)]">No threads yet. Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo;</p>
+              <p className="text-sm text-[var(--color-text-3)]">No threads yet. Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo;</p>
             </GlassCard>
           ) : (
             <div>
-              <h2 className="text-sm font-semibold text-white mb-3 mt-6">All Threads</h2>
+              <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-3 mt-6">All Threads</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredThreads.map((thread, i) => (
             <motion.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -208,15 +208,15 @@ export default function ThinkPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         {thread.is_pinned && <Pin className="w-3.5 h-3.5 text-[#2DD4BF] fill-current" />}
-                        <p className="text-sm font-semibold text-white leading-snug">{thread.title}</p>
+                        <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{thread.title}</p>
                       </div>
                       {thread.entries?.length > 0 && (
-                        <p className="text-xs text-[rgba(255,255,255,0.4)] line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-[var(--color-text-3)] line-clamp-2 leading-relaxed">
                           {thread.entries[thread.entries.length - 1]?.text}
                         </p>
                       )}
                       <div className="flex items-center justify-between mt-3">
-                        <span className="text-[11px] text-[rgba(255,255,255,0.3)]">
+                        <span className="text-[11px] text-[var(--color-text-3)]">
                           {thread.entries?.length ?? 0} entries · Updated {timeAgo(thread.last_updated)}
                         </span>
                         {thread.stale_prompt && (

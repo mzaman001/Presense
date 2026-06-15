@@ -160,30 +160,30 @@ export default function LocationsPage() {
           placeholder="Search for anything you've placed somewhere..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none focus:border-[rgba(74,222,128,0.5)] transition-colors"
+          className="w-full bg-[rgba(255,255,255,0.06)] border border-[var(--color-border)] rounded-xl pl-11 pr-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[rgba(74,222,128,0.5)] transition-colors"
         />
       </div>
 
       {/* Not found state */}
       {noResults && (
         <GlassCard className="p-5 border-[rgba(74,222,128,0.2)]">
-          <p className="text-sm text-[rgba(255,255,255,0.5)] mb-3">
-            &ldquo;<span className="text-white">{search}</span>&rdquo; not found — log it now?
+          <p className="text-sm text-[var(--color-text-3)] mb-3">
+            &ldquo;<span className="text-[var(--color-text-1)]">{search}</span>&rdquo; not found — log it now?
           </p>
           <div className="flex gap-2">
             <input
               value={newName || search}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Item name"
-              className="flex-1 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none"
+              className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none"
             />
             <input
               value={newLoc}
               onChange={(e) => setNewLoc(e.target.value)}
               placeholder="Where is it?"
-              className="flex-1 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none"
+              className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none"
             />
-            <button onClick={saveLocation} disabled={saving} className="px-4 py-2 rounded-lg bg-[#4ADE80] text-black text-sm font-semibold disabled:opacity-60">
+            <button onClick={saveLocation} disabled={saving} className="px-4 py-2 rounded-lg bg-[#4ADE80] text-[var(--color-background)] text-sm font-semibold disabled:opacity-60">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Log"}
             </button>
           </div>
@@ -201,19 +201,19 @@ export default function LocationsPage() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Item name (e.g. Keys, Charger)"
-                  className="flex-1 min-w-[140px] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none"
+                  className="flex-1 min-w-[140px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none"
                 />
                 <input
                   value={newLoc}
                   onChange={(e) => setNewLoc(e.target.value)}
                   placeholder="Where is it?"
                   onKeyDown={(e) => e.key === "Enter" && saveLocation()}
-                  className="flex-1 min-w-[140px] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none"
+                  className="flex-1 min-w-[140px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none"
                 />
-                <button onClick={saveLocation} disabled={saving || !newName.trim() || !newLoc.trim()} className="px-4 py-2 rounded-lg bg-[#4ADE80] text-black text-sm font-semibold disabled:opacity-40">
+                <button onClick={saveLocation} disabled={saving || !newName.trim() || !newLoc.trim()} className="px-4 py-2 rounded-lg bg-[#4ADE80] text-[var(--color-background)] text-sm font-semibold disabled:opacity-40">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
                 </button>
-                <button onClick={() => setShowAdd(false)} className="px-3 py-2 rounded-lg text-[rgba(255,255,255,0.4)] hover:text-white text-sm transition-colors">Cancel</button>
+                <button onClick={() => setShowAdd(false)} className="px-3 py-2 rounded-lg text-[var(--color-text-3)] hover:text-[var(--color-text-1)] text-sm transition-colors">Cancel</button>
               </div>
             </GlassCard>
           </motion.div>
@@ -223,7 +223,7 @@ export default function LocationsPage() {
       <div className="flex items-center justify-between">
         <span className="text-xs text-[rgba(255,255,255,0.35)]">{items.length} item{items.length !== 1 ? "s" : ""} logged</span>
         {!showAdd && (
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 text-sm text-[#4ADE80] hover:text-white transition-colors">
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 text-sm text-[#4ADE80] hover:text-[var(--color-text-1)] transition-colors">
             <Plus className="w-4 h-4" /> Log item
           </button>
         )}
@@ -231,7 +231,7 @@ export default function LocationsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
         </div>
       ) : (
         <div className="space-y-2">
@@ -250,40 +250,40 @@ export default function LocationsPage() {
                       <input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        className="flex-1 min-w-[100px] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-1.5 text-sm text-white"
+                        className="flex-1 min-w-[100px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-1.5 text-sm text-[var(--color-text-1)]"
                       />
                       <input
                         value={editLoc}
                         onChange={(e) => setEditLoc(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && saveEdit()}
-                        className="flex-1 min-w-[100px] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-1.5 text-sm text-white"
+                        className="flex-1 min-w-[100px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-1.5 text-sm text-[var(--color-text-1)]"
                       />
-                      <button onClick={saveEdit} className="px-3 py-1.5 rounded-lg bg-[#4ADE80] text-black text-xs font-semibold">Save</button>
-                      <button onClick={() => setEditingId(null)} className="px-3 py-1.5 rounded-lg text-[rgba(255,255,255,0.4)] hover:text-white text-xs">Cancel</button>
+                      <button onClick={saveEdit} className="px-3 py-1.5 rounded-lg bg-[#4ADE80] text-[var(--color-background)] text-xs font-semibold">Save</button>
+                      <button onClick={() => setEditingId(null)} className="px-3 py-1.5 rounded-lg text-[var(--color-text-3)] hover:text-[var(--color-text-1)] text-xs">Cancel</button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-3">
                       <span className="text-2xl shrink-0">{getEmoji(item.item_name)}</span>
                       <div className="flex-1 min-w-0 pr-20">
-                        <p className={cn("text-sm font-semibold text-white", isVeryStale && "line-through opacity-60")}>{item.item_name}</p>
-                        <p className="text-xs text-[rgba(255,255,255,0.5)] truncate">{item.location_text}</p>
+                        <p className={cn("text-sm font-semibold text-[var(--color-text-1)]", isVeryStale && "line-through opacity-60")}>{item.item_name}</p>
+                        <p className="text-xs text-[var(--color-text-3)] truncate">{item.location_text}</p>
                       </div>
                       <div className="text-right shrink-0 space-y-1 group-hover:opacity-0 transition-opacity">
                         {isVeryStale ? (
-                          <span className="text-[10px] text-[rgba(255,255,255,0.3)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Probably moved?</span>
+                          <span className="text-[10px] text-[var(--color-text-3)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Probably moved?</span>
                         ) : isStale ? (
-                          <button onClick={() => markStillHere(item.id)} className="text-[10px] text-[#FBBF24] flex items-center gap-1 hover:text-white transition-colors border border-[rgba(251,191,36,0.3)] px-2 py-0.5 rounded-full">
+                          <button onClick={() => markStillHere(item.id)} className="text-[10px] text-[#FBBF24] flex items-center gap-1 hover:text-[var(--color-text-1)] transition-colors border border-[rgba(251,191,36,0.3)] px-2 py-0.5 rounded-full">
                             Stale · Still here
                           </button>
                         ) : (
-                          <span className="text-[11px] text-[rgba(255,255,255,0.3)] flex items-center gap-1">
+                          <span className="text-[11px] text-[var(--color-text-3)] flex items-center gap-1">
                             <Clock className="w-3 h-3" /> {days === 0 ? "Today" : `${days}d ago`}
                           </span>
                         )}
                       </div>
-                      <div className="absolute top-1/2 -translate-y-1/2 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[rgba(11,9,20,0.8)] p-1 rounded-lg border border-[rgba(255,255,255,0.05)] backdrop-blur-md z-10">
-                        <button onClick={(e) => startEdit(e, item)} className="text-xs px-2 py-1 hover:text-white text-[rgba(255,255,255,0.5)]">Edit</button>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteId(item.id); }} className="text-xs px-2 py-1 hover:text-[#F87171] text-[rgba(255,255,255,0.5)]">Delete</button>
+                      <div className="absolute top-1/2 -translate-y-1/2 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[var(--color-background)] p-1 rounded-lg border border-[var(--color-border)] backdrop-blur-md z-10">
+                        <button onClick={(e) => startEdit(e, item)} className="text-xs px-2 py-1 hover:text-[var(--color-text-1)] text-[var(--color-text-3)]">Edit</button>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteId(item.id); }} className="text-xs px-2 py-1 hover:text-[#F87171] text-[var(--color-text-3)]">Delete</button>
                       </div>
                     </div>
                   )}

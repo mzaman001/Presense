@@ -139,22 +139,22 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" /></div>;
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-20">
       <div className="flex items-center justify-between">
-        <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-[rgba(255,255,255,0.4)] hover:text-white transition-colors">
+        <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Explore
         </Link>
         <div className="flex items-center gap-2">
           {url && (
-            <a href={url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+            <a href={url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
               <ExternalLink className="w-4 h-4" />
             </a>
           )}
-          <button onClick={handleArchive} className="p-2 rounded-lg bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+          <button onClick={handleArchive} className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
             <Archive className="w-4 h-4" />
           </button>
           <button onClick={handleDelete} className="p-2 rounded-lg bg-[rgba(248,113,113,0.1)] text-[#F87171] hover:bg-[rgba(248,113,113,0.2)] transition-colors">
@@ -166,52 +166,52 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
       <GlassCard className="p-6">
         <form onSubmit={handleSave} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Title</label>
+            <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24] transition-colors"
+              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">URL</label>
+            <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">URL</label>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24] transition-colors"
+              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] transition-colors"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Type</label>
+              <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Type</label>
               
               <div className="relative">
                 <button 
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setIsTypeDropdownOpen(!isTypeDropdownOpen); setIsThreadDropdownOpen(false); }}
-                  className="w-full flex items-center justify-between bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white hover:border-[#FBBF24] transition-colors"
+                  className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[#FBBF24] transition-colors"
                 >
                   <span className="capitalize">{isCustomType ? (customTypeInput || "Custom") : type}</span>
-                  <ChevronDown className="w-4 h-4 text-[rgba(255,255,255,0.5)]" />
+                  <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
                 </button>
                 <AnimatePresence>
                   {isTypeDropdownOpen && (
                     <motion.div 
                       initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                      className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[#13111C] border border-[rgba(255,255,255,0.12)] shadow-2xl z-50 flex flex-col gap-0.5"
+                      className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5"
                     >
                       {PRESET_TYPES.map(preset => (
                         <button 
                           key={preset} type="button"
                           onClick={(e) => { e.stopPropagation(); setType(preset); setIsCustomType(false); setIsTypeDropdownOpen(false); }}
-                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-white capitalize"
+                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] capitalize"
                         >
                           {preset}
                         </button>
                       ))}
-                      <div className="my-1 border-t border-[rgba(255,255,255,0.05)]" />
+                      <div className="my-1 border-t border-[var(--color-border)]" />
                       <button 
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setIsCustomType(true); setIsTypeDropdownOpen(false); }}
@@ -231,18 +231,18 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                   placeholder="Enter custom type..."
                   value={customTypeInput}
                   onChange={(e) => setCustomTypeInput(e.target.value)}
-                  className="w-full mt-3 bg-[rgba(255,255,255,0.05)] border border-[#FBBF24] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24] transition-colors"
+                  className="w-full mt-3 bg-[var(--color-surface)] border border-[#FBBF24] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] transition-colors"
                 />
               )}
             </div>
             
             <div>
-              <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Tags</label>
-              <div className="p-2 border border-[rgba(255,255,255,0.1)] rounded-lg bg-[rgba(255,255,255,0.05)] focus-within:border-[#FBBF24] transition-colors flex flex-wrap gap-2">
+              <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Tags</label>
+              <div className="p-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] focus-within:border-[#FBBF24] transition-colors flex flex-wrap gap-2">
                 {tags.map(t => (
                   <span key={t} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(251,191,36,0.15)] text-[#FBBF24] text-xs font-medium">
                     {t}
-                    <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-white transition-colors">
+                    <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-[var(--color-text-1)] transition-colors">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
@@ -252,35 +252,35 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyDown={handleAddTag}
                   placeholder="Add tag and press Enter..."
-                  className="flex-1 min-w-[120px] bg-transparent text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none"
+                  className="flex-1 min-w-[120px] bg-transparent text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Link to Think Thread</label>
+            <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Link to Think Thread</label>
             <div className="relative">
               <button 
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
-                className="w-full flex items-center justify-between bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white hover:border-[#FBBF24] transition-colors"
+                className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[#FBBF24] transition-colors"
               >
                 <span className="truncate pr-4">
                   {linkedThreadId ? threads.find(t => t.id === linkedThreadId)?.title || "Unknown Thread" : "-- No Thread Linked --"}
                 </span>
-                <ChevronDown className="w-4 h-4 text-[rgba(255,255,255,0.5)] shrink-0" />
+                <ChevronDown className="w-4 h-4 text-[var(--color-text-3)] shrink-0" />
               </button>
               <AnimatePresence>
                 {isThreadDropdownOpen && (
                   <motion.div 
                     initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                    className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[#13111C] border border-[rgba(255,255,255,0.12)] shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
+                    className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
                   >
                     <button 
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setLinkedThreadId(null); setIsThreadDropdownOpen(false); }}
-                      className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.5)]"
+                      className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-3)]"
                     >
                       -- No Thread Linked --
                     </button>
@@ -288,7 +288,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                       <button 
                         key={t.id} type="button"
                         onClick={(e) => { e.stopPropagation(); setLinkedThreadId(t.id); setIsThreadDropdownOpen(false); }}
-                        className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-white truncate"
+                        className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] truncate"
                       >
                         {t.title}
                       </button>
@@ -300,19 +300,19 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">Notes</label>
+            <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Notes</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={5}
-              className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#FBBF24] resize-none"
+              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] resize-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg bg-[#FBBF24] text-black font-semibold hover:bg-[#F59E0B] transition-colors disabled:opacity-50"
+            className="flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg bg-[#FBBF24] text-[var(--color-background)] font-semibold hover:bg-[#F59E0B] transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Changes

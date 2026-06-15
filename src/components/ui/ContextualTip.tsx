@@ -41,7 +41,7 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
           </div>
           <button
             onClick={handleDismiss}
-            className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[var(--color-text-3)] hover:text-white"
+            className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
           >
             <X className="w-4 h-4" />
           </button>

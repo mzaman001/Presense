@@ -93,33 +93,33 @@ export function SearchModal() {
           initial={{ opacity: 0, scale: 0.95, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -20 }}
-          className="relative w-full max-w-2xl bg-[rgba(11,9,20,0.95)] backdrop-blur-3xl border border-[rgba(255,255,255,0.1)] shadow-2xl rounded-2xl overflow-hidden"
+          className="relative w-full max-w-2xl bg-[rgba(11,9,20,0.95)] backdrop-blur-3xl border border-[var(--color-border)] shadow-2xl rounded-2xl overflow-hidden"
         >
-          <div className="flex items-center px-4 border-b border-[rgba(255,255,255,0.1)]">
-            <Search className="w-5 h-5 text-[rgba(255,255,255,0.4)]" />
+          <div className="flex items-center px-4 border-b border-[var(--color-border)]">
+            <Search className="w-5 h-5 text-[var(--color-text-3)]" />
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search everything..."
-              className="flex-1 bg-transparent border-none text-white text-lg py-4 pl-4 focus:outline-none focus:ring-0 placeholder-[rgba(255,255,255,0.3)]"
+              className="flex-1 bg-transparent border-none text-[var(--color-text-1)] text-lg py-4 pl-4 focus:outline-none focus:ring-0 placeholder-[rgba(255,255,255,0.3)]"
             />
-            {loading && <Loader2 className="w-5 h-5 animate-spin text-[rgba(255,255,255,0.4)]" />}
-            <button onClick={() => setSearchModalOpen(false)} className="p-2 ml-2 text-[rgba(255,255,255,0.4)] hover:text-white rounded-lg hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+            {loading && <Loader2 className="w-5 h-5 animate-spin text-[var(--color-text-3)]" />}
+            <button onClick={() => setSearchModalOpen(false)} className="p-2 ml-2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface)] transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           <div className="max-h-[60vh] overflow-y-auto p-2">
             {!query && (
-              <div className="p-8 text-center text-[rgba(255,255,255,0.4)] text-sm">
+              <div className="p-8 text-center text-[var(--color-text-3)] text-sm">
                 Type to search across tasks, people, threads, explores, and locations.
               </div>
             )}
             
             {query && !loading && results.length === 0 && (
-              <div className="p-8 text-center text-[rgba(255,255,255,0.4)] text-sm">
+              <div className="p-8 text-center text-[var(--color-text-3)] text-sm">
                 No results found for &ldquo;{query}&rdquo;
               </div>
             )}
@@ -131,25 +131,25 @@ export function SearchModal() {
                   setSearchModalOpen(false);
                   router.push(result.path);
                 }}
-                className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-[rgba(255,255,255,0.05)] text-left transition-colors group"
+                className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-[var(--color-surface)] text-left transition-colors group"
               >
-                <div className="w-10 h-10 rounded-lg bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)] flex items-center justify-center text-[rgba(255,255,255,0.5)] group-hover:text-white group-hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-3)] group-hover:text-[var(--color-text-1)] group-hover:bg-[var(--color-surface)] transition-colors">
                   <result.icon className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-white font-medium truncate">{result.title}</div>
-                  <div className="text-xs text-[rgba(255,255,255,0.4)] capitalize">{result.type}</div>
+                  <div className="text-[var(--color-text-1)] font-medium truncate">{result.title}</div>
+                  <div className="text-xs text-[var(--color-text-3)] capitalize">{result.type}</div>
                 </div>
               </button>
             ))}
           </div>
           
-          <div className="p-3 border-t border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] flex items-center justify-between text-xs text-[rgba(255,255,255,0.4)]">
+          <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between text-xs text-[var(--color-text-3)]">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)]">↑</kbd><kbd className="px-1.5 py-0.5 rounded bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)]">↓</kbd> to navigate</span>
-              <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)]">Enter</kbd> to select</span>
+              <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">↑</kbd><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">↓</kbd> to navigate</span>
+              <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">Enter</kbd> to select</span>
             </div>
-            <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)]">Esc</kbd> to close</span>
+            <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">Esc</kbd> to close</span>
           </div>
         </motion.div>
       </div>

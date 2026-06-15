@@ -106,10 +106,10 @@ export default function ExplorePage() {
         <div>
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
-            <h1 className="text-[22px] font-medium text-white tracking-tight">Explore</h1>
+            <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Explore</h1>
             <button 
               onClick={() => setShowArchive(!showArchive)}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-white text-black border-white" : "border-[rgba(255,255,255,0.2)] text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.05)]")}
+              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
             >
               {showArchive ? "Hide Archive" : "Show Archive"}
             </button>
@@ -137,8 +137,8 @@ export default function ExplorePage() {
             className={cn(
               "text-xs px-3 py-1.5 rounded-full border transition-all",
               filter === f
-                ? "bg-[#FBBF24] text-black border-[#FBBF24] font-semibold"
-                : "border-[rgba(255,255,255,0.12)] text-[rgba(255,255,255,0.5)] hover:border-[rgba(255,255,255,0.25)]"
+                ? "bg-[#FBBF24] text-[var(--color-background)] border-[#FBBF24] font-semibold"
+                : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
             )}
           >{f}</button>
         ))}
@@ -146,11 +146,11 @@ export default function ExplorePage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
         </div>
       ) : items.length === 0 ? (
         <GlassCard className="p-8 text-center">
-          <p className="text-sm text-[rgba(255,255,255,0.3)]">Nothing saved yet. Capture &ldquo;interesting...&rdquo; or paste a URL.</p>
+          <p className="text-sm text-[var(--color-text-3)]">Nothing saved yet. Capture &ldquo;interesting...&rdquo; or paste a URL.</p>
         </GlassCard>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -163,10 +163,10 @@ export default function ExplorePage() {
                 <GlassCard
                   className={cn("p-5 hover:scale-[1.01] transition-transform relative group", isUnread && "border-[rgba(251,191,36,0.2)]")}
                 >
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[rgba(11,9,20,0.8)] p-1 rounded-lg border border-[rgba(255,255,255,0.05)] backdrop-blur-md">
-                    <button onClick={(e) => { e.stopPropagation(); setEditItem(item); }} className="text-xs px-2 py-1 hover:text-white text-[rgba(255,255,255,0.5)]">Edit</button>
-                    <button onClick={(e) => handleArchive(e, item)} className="text-xs px-2 py-1 hover:text-white text-[rgba(255,255,255,0.5)]">{showArchive ? "Restore" : "Archive"}</button>
-                    <button onClick={(e) => { e.stopPropagation(); setDeleteItem(item); }} className="text-xs px-2 py-1 hover:text-[#F87171] text-[rgba(255,255,255,0.5)]">Delete</button>
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[var(--color-background)] p-1 rounded-lg border border-[var(--color-border)] backdrop-blur-md">
+                    <button onClick={(e) => { e.stopPropagation(); setEditItem(item); }} className="text-xs px-2 py-1 hover:text-[var(--color-text-1)] text-[var(--color-text-3)]">Edit</button>
+                    <button onClick={(e) => handleArchive(e, item)} className="text-xs px-2 py-1 hover:text-[var(--color-text-1)] text-[var(--color-text-3)]">{showArchive ? "Restore" : "Archive"}</button>
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteItem(item); }} className="text-xs px-2 py-1 hover:text-[#F87171] text-[var(--color-text-3)]">Delete</button>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}22` }}>
@@ -174,10 +174,10 @@ export default function ExplorePage() {
                     </div>
                   <div className="flex-1 min-w-0 pr-24">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-white leading-snug">{item.title}</p>
+                      <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{item.title}</p>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24]" />}
-                        <span className="text-[10px] font-bold uppercase text-[rgba(255,255,255,0.3)]">{item.type}</span>
+                        <span className="text-[10px] font-bold uppercase text-[var(--color-text-3)]">{item.type}</span>
                       </div>
                     </div>
                     {item.note && item.note !== item.title && (
@@ -185,7 +185,7 @@ export default function ExplorePage() {
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {item.tags?.map((tag) => (
-                        <span key={tag} className="text-[10px] text-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.05)] px-2 py-0.5 rounded-full">#{tag}</span>
+                        <span key={tag} className="text-[10px] text-[rgba(255,255,255,0.35)] bg-[var(--color-surface)] px-2 py-0.5 rounded-full">#{tag}</span>
                       ))}
                       <span className="text-[11px] text-[rgba(255,255,255,0.25)] ml-auto">{timeAgo(item.saved_at)}</span>
                     </div>
@@ -208,13 +208,13 @@ export default function ExplorePage() {
               <h3 className="text-[#FBBF24] font-semibold flex items-center gap-2 mb-2">
                 <Star className="w-4 h-4" /> Sunday Digest
               </h3>
-              <p className="text-sm text-[rgba(255,255,255,0.6)] mb-4">
+              <p className="text-sm text-[var(--color-text-3)] mb-4">
                 We're compiling your saved items. You'll receive a beautiful summary of your explorations this Sunday.
               </p>
-              <div className="text-2xl font-light text-white mb-1">
+              <div className="text-2xl font-light text-[var(--color-text-1)] mb-1">
                 {items.filter(i => !i.revisited_at).length}
               </div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-[rgba(255,255,255,0.3)]">
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-[var(--color-text-3)]">
                 Unread Items
               </p>
             </div>

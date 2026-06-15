@@ -136,11 +136,11 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" /></div>;
   }
 
   if (!thread) {
-    return <div className="text-center py-20 text-[rgba(255,255,255,0.5)]">Thread not found.</div>;
+    return <div className="text-center py-20 text-[var(--color-text-3)]">Thread not found.</div>;
   }
 
   const handleDeleteEntry = async () => {
@@ -160,7 +160,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto pb-32">
-      <Link href="/think" className="inline-flex items-center gap-2 text-sm text-[rgba(255,255,255,0.4)] hover:text-white transition-colors">
+      <Link href="/think" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to Think
       </Link>
 
@@ -168,19 +168,19 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         <div className="flex items-start gap-4">
           <div className="relative group pt-1">
             <div className="w-1.5 h-10 rounded-full shrink-0 cursor-pointer" style={{ backgroundColor: thread.color_accent }} />
-            <div className="absolute left-0 top-full mt-2 hidden group-hover:flex bg-[#13111C] border border-[rgba(255,255,255,0.1)] p-2 rounded-xl shadow-xl gap-2 z-50">
+            <div className="absolute left-0 top-full mt-2 hidden group-hover:flex bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded-xl shadow-xl gap-2 z-50">
               {["#FBBF24", "#F472B6", "#2DD4BF", "#A78BFA", "#60A5FA", "#F87171"].map(c => (
                 <button 
                   key={c} 
                   onClick={() => handleColorChange(c)}
-                  className="w-4 h-4 rounded-full border border-[rgba(255,255,255,0.2)] hover:scale-110 transition-transform"
+                  className="w-4 h-4 rounded-full border border-[var(--color-border)] hover:scale-110 transition-transform"
                   style={{ backgroundColor: c }}
                 />
               ))}
             </div>
           </div>
           <div>
-            <h1 className="text-[26px] font-semibold text-white tracking-tight leading-snug">{thread.title}</h1>
+            <h1 className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-snug">{thread.title}</h1>
             {thread.stale_prompt && (
               <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] rounded-md">
                 <Sparkles className="w-3.5 h-3.5 text-[#2DD4BF]" />
@@ -192,21 +192,21 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         <div className="flex items-center gap-2">
           <button 
             onClick={handleTogglePin}
-            className={cn("p-2 rounded-lg transition-colors", thread.is_pinned ? "bg-[rgba(45,212,191,0.1)] text-[#2DD4BF]" : "hover:bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.5)]")}
+            className={cn("p-2 rounded-lg transition-colors", thread.is_pinned ? "bg-[rgba(45,212,191,0.1)] text-[#2DD4BF]" : "hover:bg-[var(--color-surface)] text-[var(--color-text-3)]")}
             title={thread.is_pinned ? "Unpin thread" : "Pin thread"}
           >
             <Pin className="w-4 h-4" />
           </button>
           <button 
             onClick={handleArchive}
-            className="p-2 rounded-lg hover:bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.5)] transition-colors"
+            className="p-2 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-3)] transition-colors"
             title={thread.status === "archived" ? "Restore thread" : "Archive thread"}
           >
             <Archive className="w-4 h-4" />
           </button>
           <button 
             onClick={() => setDeleteThreadOpen(true)}
-            className="p-2 rounded-lg hover:bg-[rgba(248,113,113,0.1)] text-[rgba(255,255,255,0.5)] hover:text-[#F87171] transition-colors"
+            className="p-2 rounded-lg hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171] transition-colors"
             title="Delete thread"
           >
             <Trash2 className="w-4 h-4" />
@@ -216,14 +216,14 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
       {linkedExplores.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-xs font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-wider mb-3">Linked Resources</h3>
+          <h3 className="text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">Linked Resources</h3>
           <div className="flex flex-wrap gap-3">
             {linkedExplores.map(item => (
               <Link key={item.id} href={`/explore/${item.id}`}>
-                <GlassCard className="px-4 py-2 flex items-center gap-2 hover:bg-[rgba(255,255,255,0.05)] transition-colors">
+                <GlassCard className="px-4 py-2 flex items-center gap-2 hover:bg-[var(--color-surface)] transition-colors">
                   <div className="w-2 h-2 rounded-full bg-[#FBBF24]" />
-                  <span className="text-sm text-white font-medium">{item.title}</span>
-                  <span className="text-[10px] uppercase text-[rgba(255,255,255,0.3)] ml-2">{item.type}</span>
+                  <span className="text-sm text-[var(--color-text-1)] font-medium">{item.title}</span>
+                  <span className="text-[10px] uppercase text-[var(--color-text-3)] ml-2">{item.type}</span>
                 </GlassCard>
               </Link>
             ))}
@@ -235,15 +235,15 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         {(thread.entries || []).map((entry, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <GlassCard className="p-5 border-l-2 border-l-transparent hover:border-l-[#2DD4BF] transition-all group relative">
-              <p className="text-[15px] text-white leading-relaxed whitespace-pre-wrap pr-8">{entry.text}</p>
+              <p className="text-[15px] text-[var(--color-text-1)] leading-relaxed whitespace-pre-wrap pr-8">{entry.text}</p>
               <div className="flex items-center justify-between mt-3">
-                <p className="text-[11px] text-[rgba(255,255,255,0.3)]">
+                <p className="text-[11px] text-[var(--color-text-3)]">
                   {new Date(entry.created_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                 </p>
               </div>
               <button 
                 onClick={() => handleDeleteEntry(i)}
-                className="absolute top-4 right-4 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-[rgba(248,113,113,0.1)] text-[rgba(255,255,255,0.3)] hover:text-[#F87171]"
+                className="absolute top-4 right-4 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171]"
                 title="Delete entry"
               >
                 <Trash2 className="w-4 h-4" />
@@ -264,10 +264,10 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddEntry(e);
               }}
-              className="w-full bg-[rgba(255,255,255,0.03)] backdrop-blur-xl border border-[rgba(255,255,255,0.1)] rounded-2xl px-5 py-4 text-sm text-white placeholder:text-[rgba(255,255,255,0.3)] outline-none focus:border-[#2DD4BF] focus:bg-[rgba(45,212,191,0.03)] transition-all pr-14 resize-none h-24 shadow-2xl"
+              className="w-full bg-[rgba(255,255,255,0.03)] backdrop-blur-xl border border-[var(--color-border)] rounded-2xl px-5 py-4 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#2DD4BF] focus:bg-[rgba(45,212,191,0.03)] transition-all pr-14 resize-none h-24 shadow-2xl"
             />
             <div className="absolute right-3 bottom-3 flex items-center gap-2">
-              <span className="text-[10px] text-[rgba(255,255,255,0.2)] font-mono hidden md:inline">Cmd+Enter</span>
+              <span className="text-[10px] text-[var(--color-text-3)] font-mono hidden md:inline">Cmd+Enter</span>
               <button type="submit" disabled={!newEntry.trim() || saving} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[rgba(45,212,191,0.15)] text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.25)] transition-colors disabled:opacity-50">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
               </button>

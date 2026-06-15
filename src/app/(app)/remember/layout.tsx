@@ -15,7 +15,7 @@ export default function RememberLayout({ children }: { children: React.ReactNode
       <div className="flex items-center justify-between mb-2">
         <div>
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
-          <h1 className="text-[22px] font-medium text-white tracking-tight">Remember</h1>
+          <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Remember</h1>
         </div>
       </div>
 
@@ -25,12 +25,12 @@ export default function RememberLayout({ children }: { children: React.ReactNode
         description="Track people you meet and where you put things. Switch between People and Locations below." 
       />
 
-      <div className="flex items-center gap-2 border-b border-[rgba(255,255,255,0.05)] pb-4">
+      <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-4">
         <Link 
           href="/remember/people"
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-            pathname.includes("/people") ? "bg-[rgba(255,255,255,0.1)] text-white" : "text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.05)]"
+            pathname.includes("/people") ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
           )}
         >
           <Users className="w-4 h-4" /> People
@@ -39,7 +39,7 @@ export default function RememberLayout({ children }: { children: React.ReactNode
           href="/remember/locations"
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-            pathname.includes("/locations") ? "bg-[rgba(255,255,255,0.1)] text-white" : "text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.05)]"
+            pathname.includes("/locations") ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
           )}
         >
           <MapPin className="w-4 h-4" /> Locations

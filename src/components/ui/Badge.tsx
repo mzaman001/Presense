@@ -9,7 +9,7 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
   ({ className, variant = "default", ...props }, ref) => {
     
     const variants = {
-      default: "bg-[rgba(255,255,255,0.1)] text-[var(--color-text-2)] border-[rgba(255,255,255,0.15)]",
+      default: "bg-[var(--color-surface)] text-[var(--color-text-2)] border-[var(--color-border)]",
       do: "bg-[rgba(248,113,113,0.15)] text-[var(--color-do)] border-[rgba(248,113,113,0.3)]",
       people: "bg-[rgba(244,114,182,0.15)] text-[var(--color-people)] border-[rgba(244,114,182,0.3)]",
       think: "bg-[rgba(45,212,191,0.15)] text-[var(--color-think)] border-[rgba(45,212,191,0.3)]",

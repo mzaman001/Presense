@@ -48,36 +48,36 @@ export function ConfirmModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", duration: 0.3, bounce: 0.2 }}
-            className="relative w-full max-w-md bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl p-6"
+            className="relative w-full max-w-md bg-[var(--color-background)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-6"
           >
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.4)] hover:text-white transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-[var(--color-surface)] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
             <div className="mb-6 pr-8">
-              <h2 className="text-white font-semibold text-lg mb-2">{title}</h2>
+              <h2 className="text-[var(--color-text-1)] font-semibold text-lg mb-2">{title}</h2>
               <p className="text-[var(--color-text-2)] text-sm">{description}</p>
             </div>
             {inputRequired && (
               <div className="mb-6">
-                <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2">
-                  Type <span className="text-white font-bold">{inputRequired}</span> to confirm
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2">
+                  Type <span className="text-[var(--color-text-1)] font-bold">{inputRequired}</span> to confirm
                 </label>
                 <input
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={inputRequired}
-                  className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                 />
               </div>
             )}
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--color-text-2)] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-colors"
+                className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--color-text-2)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors"
               >
                 Cancel
               </button>
@@ -93,7 +93,7 @@ export function ConfirmModal({
                   "px-5 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                   confirmDestructive
                     ? "bg-[#F87171]/10 text-[#F87171] border border-[#F87171]/20 hover:bg-[#F87171]/20"
-                    : "bg-[var(--color-accent)] text-black hover:bg-[var(--color-accent)]/90"
+                    : "bg-[var(--color-accent)] text-[var(--color-background)] hover:bg-[var(--color-accent)]/90"
                 )}
               >
                 {confirmLabel}

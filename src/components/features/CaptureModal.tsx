@@ -216,7 +216,7 @@ export function CaptureModal() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 16 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full max-w-2xl bg-[#0d0b18] border border-[rgba(255,255,255,0.12)] rounded-2xl shadow-2xl"
+          className="relative w-full max-w-2xl bg-[#0d0b18] border border-[var(--color-border)] rounded-2xl shadow-2xl"
           style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 32px 64px rgba(0,0,0,0.6)" }}
         >
           {/* Input row */}
@@ -224,20 +224,20 @@ export function CaptureModal() {
             {routedItems ? (
               <Sparkles className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" />
             ) : (
-              <Search className="w-5 h-5 text-[rgba(255,255,255,0.3)] shrink-0" />
+              <Search className="w-5 h-5 text-[var(--color-text-3)] shrink-0" />
             )}
             <input
               autoFocus
               type="text"
               placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
-              className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-white placeholder:text-[rgba(255,255,255,0.25)]"
+              className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={!!routedItems || isRouting}
               onKeyDown={(e) => { if (e.key === "Enter" && !routedItems) handleRoute(); }}
             />
             {!routedItems && (
-              <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[rgba(255,255,255,0.3)] border border-[rgba(255,255,255,0.1)] px-2 py-1 rounded-md bg-[rgba(255,255,255,0.04)]">
+              <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[rgba(255,255,255,0.04)]">
                 Enter
               </kbd>
             )}
@@ -254,7 +254,7 @@ export function CaptureModal() {
                   <input
                     value={item.title}
                     onChange={(e) => updateRoutedItem(idx, { title: e.target.value })}
-                    className="w-full bg-transparent text-lg text-white font-medium outline-none border-b border-[var(--color-border)] pb-2"
+                    className="w-full bg-transparent text-lg text-[var(--color-text-1)] font-medium outline-none border-b border-[var(--color-border)] pb-2"
                   />
                   
                   <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
@@ -273,7 +273,7 @@ export function CaptureModal() {
                           <>
                             <span className="text-[var(--color-text-3)]">·</span>
                             <span className="font-semibold">Recurrence:</span>
-                            <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-white">
+                            <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-[var(--color-text-1)]">
                               {formatRRule(item.recurrence)}
                             </span>
                           </>
@@ -281,7 +281,7 @@ export function CaptureModal() {
                         <span className="text-[var(--color-text-3)]">·</span>
                         <span className="font-semibold">Deadline:</span>
                         <div className="relative inline-flex items-center">
-                          <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-white pointer-events-none whitespace-nowrap">
+                          <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-[var(--color-text-1)] pointer-events-none whitespace-nowrap">
                             {item.deadline ? formatCaptureDeadline(item.deadline) : "No deadline"} ▾
                           </span>
                           <input
@@ -334,10 +334,10 @@ export function CaptureModal() {
           )}
 
           {/* Action bar */}
-          <div className="flex items-center justify-between px-5 py-3 border-t border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.2)] rounded-b-2xl">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-[rgba(255,255,255,0.06)] bg-[var(--color-surface)] rounded-b-2xl">
             {!routedItems ? (
               <>
-                <span className="text-xs text-[rgba(255,255,255,0.3)]">
+                <span className="text-xs text-[var(--color-text-3)]">
                   Smart routing via keyword detection — 100% free, no AI API
                 </span>
                 <button
@@ -353,14 +353,14 @@ export function CaptureModal() {
               <>
                 <button
                   onClick={() => setRoutedItems(null)}
-                  className="flex items-center gap-1.5 text-sm text-[rgba(255,255,255,0.4)] hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors"
                 >
                   <X className="w-4 h-4" /> Start over
                 </button>
                 <button
                   onClick={handleConfirm}
                   disabled={isSaving || routedItems.some((i) => i.destination === "Choose space...")}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-white text-black text-sm font-semibold hover:bg-gray-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--color-text-1)] text-[var(--color-background)] text-sm font-semibold hover:bg-gray-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   {isSaving ? "Saving..." : "Confirm & Save"}

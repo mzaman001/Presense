@@ -116,7 +116,7 @@ export default function VerifyDbPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0914] text-white p-8 font-mono">
+    <div className="min-h-screen bg-[#0B0914] text-[var(--color-text-1)] p-8 font-mono">
       <h1 className="text-2xl font-bold mb-4">DB & RLS Verification Tool</h1>
       <p className="text-gray-400 mb-8 max-w-2xl">
         This tool executes Step 1 of the PRESENSE Fix Order. It attempts to insert and delete a dummy row in every table using your authenticated user context to verify that RLS policies are not silently blocking writes.
@@ -125,7 +125,7 @@ export default function VerifyDbPage() {
       <button
         onClick={runTests}
         disabled={running}
-        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded mb-8 disabled:opacity-50 flex items-center gap-2"
+        className="bg-purple-600 hover:bg-purple-700 text-[var(--color-text-1)] px-6 py-2 rounded mb-8 disabled:opacity-50 flex items-center gap-2"
       >
         {running && <Loader2 className="w-4 h-4 animate-spin" />}
         {running ? "Running Tests..." : "Run DB Verification"}

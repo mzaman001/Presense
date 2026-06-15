@@ -68,7 +68,7 @@ export default function ExploreTrashPage() {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
       <header className="mb-8">
-        <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-[rgba(255,255,255,0.4)] hover:text-white transition-colors mb-4">
+        <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors mb-4">
           <ArrowLeft className="w-4 h-4" /> Back to Explore
         </Link>
         <h1 className="text-page-title text-3xl">Trash</h1>
@@ -77,13 +77,13 @@ export default function ExploreTrashPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-[rgba(255,255,255,0.2)]" />
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--color-text-3)]" />
         </div>
       ) : items.length === 0 ? (
-        <GlassCard className="p-12 text-center border-dashed border-[rgba(255,255,255,0.1)]">
-          <Trash2 className="w-8 h-8 text-[rgba(255,255,255,0.2)] mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">Trash is empty</h3>
-          <p className="text-sm text-[rgba(255,255,255,0.4)]">Nothing to see here.</p>
+        <GlassCard className="p-12 text-center border-dashed border-[var(--color-border)]">
+          <Trash2 className="w-8 h-8 text-[var(--color-text-3)] mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-2">Trash is empty</h3>
+          <p className="text-sm text-[var(--color-text-3)]">Nothing to see here.</p>
         </GlassCard>
       ) : (
         <div className="space-y-3">
@@ -91,10 +91,10 @@ export default function ExploreTrashPage() {
             <GlassCard key={item.id} className="p-4 flex items-center justify-between group">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)]">
+                  <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-text-3)]">
                     {item.__type}
                   </span>
-                  <h4 className="text-sm font-medium text-white">{item.title}</h4>
+                  <h4 className="text-sm font-medium text-[var(--color-text-1)]">{item.title}</h4>
                 </div>
                 <p className="text-xs text-[var(--color-text-3)] mt-1">
                   Deleted: {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString() : "Unknown"}
