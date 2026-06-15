@@ -8,6 +8,7 @@ import { Search, Plus, Loader2, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface LocationItem {
   id: string;
@@ -42,6 +43,49 @@ export default function LocationsPage() {
   const [newLoc, setNewLoc] = useState("");
   const [saving, setSaving] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editLoc, setEditLoc] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const startEdit = (e: React.MouseEvent, item: LocationItem) => {
+    e.stopPropagation();
+    setEditingId(item.id);
+    setEditName(item.item_name);
+    setEditLoc(item.location_text);
+  };
+
+  const saveEdit = async () => {
+    if (!editName.trim() || !editLoc.trim() || !editingId) return;
+    try {
+      const { error } = await supabase.from("locations").update({
+        item_name: editName.trim(),
+        location_text: editLoc.trim(),
+        updated_at: new Date().toISOString()
+      }).eq("id", editingId);
+      if (error) throw error;
+      setItems(prev => prev.map(i => i.id === editingId ? { ...i, item_name: editName.trim(), location_text: editLoc.trim(), updated_at: new Date().toISOString() } : i));
+      toast.success("Location updated");
+      setEditingId(null);
+    } catch (err: any) {
+      toast.error("Failed to update location", { description: err.message });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      const { error } = await supabase.from("locations").delete().eq("id", deleteId);
+      if (error) throw error;
+      setItems(prev => prev.filter(i => i.id !== deleteId));
+      toast.success("Location deleted");
+    } catch (err: any) {
+      toast.error("Failed to delete location", { description: err.message });
+    } finally {
+      setDeleteId(null);
+    }
+  };
 
   const fetchItems = useCallback(async () => {
     let query = supabase.from("locations").select("*").order("updated_at", { ascending: false });
@@ -196,28 +240,52 @@ export default function LocationsPage() {
             const isVeryStale = days >= 90;
             return (
               <motion.div key={item.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
-                <GlassCard className={cn("px-4 py-3 flex items-center gap-3",
+                <GlassCard className={cn("px-4 py-3 relative group",
                   isStale && "border-[rgba(251,191,36,0.25)]",
                   isVeryStale && "opacity-50"
                 )}>
-                  <span className="text-2xl shrink-0">{getEmoji(item.item_name)}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-sm font-semibold text-white", isVeryStale && "line-through opacity-60")}>{item.item_name}</p>
-                    <p className="text-xs text-[rgba(255,255,255,0.5)] truncate">{item.location_text}</p>
-                  </div>
-                  <div className="text-right shrink-0 space-y-1">
-                    {isVeryStale ? (
-                      <span className="text-[10px] text-[rgba(255,255,255,0.3)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Probably moved?</span>
-                    ) : isStale ? (
-                      <button onClick={() => markStillHere(item.id)} className="text-[10px] text-[#FBBF24] flex items-center gap-1 hover:text-white transition-colors border border-[rgba(251,191,36,0.3)] px-2 py-0.5 rounded-full">
-                        Stale · Still here
-                      </button>
-                    ) : (
-                      <span className="text-[11px] text-[rgba(255,255,255,0.3)] flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {days === 0 ? "Today" : `${days}d ago`}
-                      </span>
-                    )}
-                  </div>
+                  {editingId === item.id ? (
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="flex-1 min-w-[100px] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-1.5 text-sm text-white"
+                      />
+                      <input
+                        value={editLoc}
+                        onChange={(e) => setEditLoc(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+                        className="flex-1 min-w-[100px] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-1.5 text-sm text-white"
+                      />
+                      <button onClick={saveEdit} className="px-3 py-1.5 rounded-lg bg-[#4ADE80] text-black text-xs font-semibold">Save</button>
+                      <button onClick={() => setEditingId(null)} className="px-3 py-1.5 rounded-lg text-[rgba(255,255,255,0.4)] hover:text-white text-xs">Cancel</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl shrink-0">{getEmoji(item.item_name)}</span>
+                      <div className="flex-1 min-w-0 pr-20">
+                        <p className={cn("text-sm font-semibold text-white", isVeryStale && "line-through opacity-60")}>{item.item_name}</p>
+                        <p className="text-xs text-[rgba(255,255,255,0.5)] truncate">{item.location_text}</p>
+                      </div>
+                      <div className="text-right shrink-0 space-y-1 group-hover:opacity-0 transition-opacity">
+                        {isVeryStale ? (
+                          <span className="text-[10px] text-[rgba(255,255,255,0.3)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Probably moved?</span>
+                        ) : isStale ? (
+                          <button onClick={() => markStillHere(item.id)} className="text-[10px] text-[#FBBF24] flex items-center gap-1 hover:text-white transition-colors border border-[rgba(251,191,36,0.3)] px-2 py-0.5 rounded-full">
+                            Stale · Still here
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-[rgba(255,255,255,0.3)] flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {days === 0 ? "Today" : `${days}d ago`}
+                          </span>
+                        )}
+                      </div>
+                      <div className="absolute top-1/2 -translate-y-1/2 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[rgba(11,9,20,0.8)] p-1 rounded-lg border border-[rgba(255,255,255,0.05)] backdrop-blur-md z-10">
+                        <button onClick={(e) => startEdit(e, item)} className="text-xs px-2 py-1 hover:text-white text-[rgba(255,255,255,0.5)]">Edit</button>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteId(item.id); }} className="text-xs px-2 py-1 hover:text-[#F87171] text-[rgba(255,255,255,0.5)]">Delete</button>
+                      </div>
+                    </div>
+                  )}
                 </GlassCard>
               </motion.div>
             );
@@ -225,5 +293,15 @@ export default function LocationsPage() {
         </div>
       )}
     </div>
+    <ConfirmModal
+      isOpen={!!deleteId}
+      onClose={() => setDeleteId(null)}
+      onConfirm={confirmDelete}
+      title="Delete Location"
+      description="Are you sure you want to delete this location? This cannot be undone."
+      confirmLabel="Delete"
+      confirmVariant="danger"
+    />
+    </>
   );
 }

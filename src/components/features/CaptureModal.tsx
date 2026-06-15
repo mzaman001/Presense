@@ -104,11 +104,7 @@ export function CaptureModal() {
     }
   }, [input]);
 
-  useEffect(() => {
-    if (debouncedInput && !routedItems && !isRouting && !saved) {
-      handleRoute();
-    }
-  }, [debouncedInput, routedItems, isRouting, saved, handleRoute]);
+  // Auto-routing removed. Routing now only happens on Enter key press.
 
   const changeDestination = (idx: number, destination: string) => {
     setRoutedItems((prev) =>

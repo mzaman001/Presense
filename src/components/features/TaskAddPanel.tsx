@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, ArrowRight, Flag, Loader2, RotateCw } from "lucide-react";
+import { X, Calendar, ArrowRight, Flag, Loader2, RotateCw, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import nlp from "compromise";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,6 +35,23 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const [subtasks, setSubtasks] = useState<{title: string; completed: boolean}[]>([]);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!taskToEdit) return;
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("items").delete().eq("id", taskToEdit.id);
+      if (error) throw error;
+      toast.success("Task deleted");
+      if (onTaskAdded) onTaskAdded();
+      onClose();
+    } catch (err: any) {
+      toast.error("Failed to delete task", { description: err.message });
+    } finally {
+      setDeleteTaskConfirm(false);
+    }
+  };
 
   React.useEffect(() => {
     if (isOpen) {
@@ -245,9 +263,16 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           >
             <div className="flex items-center justify-between p-6 border-b border-[rgba(255,255,255,0.05)]">
               <h2 className="text-lg font-semibold text-white">{taskToEdit ? "Edit Task" : "Add Task"}</h2>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors">
-                <X className="w-5 h-5 text-[rgba(255,255,255,0.5)]" />
-              </button>
+              <div className="flex items-center gap-2">
+                {taskToEdit && (
+                  <button onClick={() => setDeleteTaskConfirm(true)} className="p-2 rounded-full hover:bg-[rgba(248,113,113,0.1)] text-[rgba(255,255,255,0.5)] hover:text-[#F87171] transition-colors">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+                  <X className="w-5 h-5 text-[rgba(255,255,255,0.5)]" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -492,5 +517,15 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         </>
       )}
     </AnimatePresence>
+    <ConfirmModal
+      isOpen={deleteTaskConfirm}
+      onClose={() => setDeleteTaskConfirm(false)}
+      onConfirm={confirmDelete}
+      title="Delete Task?"
+      description="This task will be permanently deleted. This action cannot be undone."
+      confirmLabel="Delete"
+      confirmVariant="danger"
+    />
+    </>
   );
 }
