@@ -125,7 +125,8 @@ export default function ExploreTrashPage() {
         onConfirm={handlePermanentDelete}
         title="Permanent Delete"
         description="Are you sure you want to permanently delete this item? This action cannot be undone."
-        confirmText="Delete Forever"
+        confirmLabel="Delete Forever"
+        confirmDestructive
       />
     </div>
   );
