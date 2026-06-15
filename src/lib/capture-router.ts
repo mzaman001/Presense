@@ -134,6 +134,7 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
 
   // 4a. Recurrence detection
   let detectedRRule: string | null = null;
+  let recurrencePhraseToRemove = '';
   const dayMap: Record<string, string> = {
     monday: 'MO', mon: 'MO', tuesday: 'TU', tue: 'TU', wednesday: 'WE', wed: 'WE',
     thursday: 'TH', thu: 'TH', friday: 'FR', fri: 'FR', saturday: 'SA', sat: 'SA', sunday: 'SU', sun: 'SU'
@@ -141,22 +142,28 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
 
   if (lower.includes('every weekday')) {
     detectedRRule = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
+    recurrencePhraseToRemove = 'every weekday';
   } else if (lower.includes('every other day')) {
     detectedRRule = 'FREQ=DAILY;INTERVAL=2';
+    recurrencePhraseToRemove = 'every other day';
   } else {
     const intervalMatch = lower.match(/every\s+(\d+)\s+(day|week|month|year)s?/);
     if (intervalMatch) {
       const interval = intervalMatch[1];
       const freq = intervalMatch[2].toUpperCase() + 'LY';
       detectedRRule = `FREQ=${freq};INTERVAL=${interval}`;
+      recurrencePhraseToRemove = intervalMatch[0];
     } else {
-      const everyDaysMatch = lower.match(/every\s+([a-z,\s]+(?:and\s+[a-z]+)?)/);
+      const dayNamesStr = Object.keys(dayMap).join('|');
+      const daysRegex = new RegExp(`every\\s+((?:(?:${dayNamesStr})(?:\\s*,\\s*|\\s+and\\s+|\\s+)?)+)`, 'i');
+      const everyDaysMatch = lower.match(daysRegex);
       if (everyDaysMatch) {
         const daysStr = everyDaysMatch[1];
         const matchedDays = Object.keys(dayMap).filter(d => new RegExp(`\\b${d}\\b`).test(daysStr));
         if (matchedDays.length > 0) {
           const byDay = [...new Set(matchedDays.map(d => dayMap[d]))].join(',');
           detectedRRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
+          recurrencePhraseToRemove = everyDaysMatch[0].trim();
         }
       }
     }
@@ -174,13 +181,14 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
     for (const [pattern, rrule] of Object.entries(recurrencePatterns)) {
       if (lower.includes(pattern)) {
         detectedRRule = rrule;
+        recurrencePhraseToRemove = pattern;
         break;
       }
     }
   }
 
   // 4. Task — extract natural language date
-  if (TASK_KW.some((k) => lower.includes(k)) || doc.dates().found) {
+  if (TASK_KW.some((k) => lower.includes(k)) || doc.dates().found || detectedRRule) {
     const dates = doc.dates().json();
     let deadline: string | null = null;
     let cleanTitle = text;
@@ -190,13 +198,18 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
       // Remove the date phrase from the title
       const dateText = dates[0].text ?? '';
       if (dateText) {
-        cleanTitle = text.replace(new RegExp(dateText, 'i'), '').replace(/\s+/g, ' ').trim();
-        // Also strip common prefix patterns like "remind me to", "remember to"
-        cleanTitle = cleanTitle.replace(/^(remind me to|remember to|need to|have to|must|gotta)\s+/i, '');
-        // Capitalize first letter
-        if (cleanTitle.length > 0) cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+        cleanTitle = cleanTitle.replace(new RegExp(dateText, 'i'), '').replace(/\s+/g, ' ').trim();
       }
     }
+    
+    if (recurrencePhraseToRemove) {
+      cleanTitle = cleanTitle.replace(new RegExp(recurrencePhraseToRemove, 'i'), '').replace(/\s+/g, ' ').trim();
+    }
+    
+    // Also strip common prefix patterns like "remind me to", "remember to"
+    cleanTitle = cleanTitle.replace(/^(remind me to|remember to|need to|have to|must|gotta)\s+/i, '');
+    // Capitalize first letter
+    if (cleanTitle.length > 0) cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
     
     results.push({
       type: 'task',

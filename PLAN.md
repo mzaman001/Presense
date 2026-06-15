@@ -112,7 +112,7 @@ Done when:
 "Keys are in my bag" produces item chip "Keys" and location chip "bag"
 Both chips are editable before confirming save
 
-[ ] TASK 2.4 — Add recurring task NLP to capture router
+[x] TASK 2.4 — Add recurring task NLP to capture router
 The problem: Capture does not detect recurring patterns like "every day brush teeth" or "every Monday and Wednesday see Max".
 What to do: In lib/capture-router.ts, add a recurrence detection step that runs before the main routing. Patterns to detect and their RRULE output:
 
