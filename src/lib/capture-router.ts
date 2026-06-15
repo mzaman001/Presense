@@ -195,6 +195,7 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
     
     if (recurrencePhraseToRemove) {
       cleanTitle = cleanTitle.replace(new RegExp(recurrencePhraseToRemove, 'i'), '').replace(/\s+/g, ' ').trim();
+      cleanTitle = cleanTitle.replace(/^(and\s+|,?\s*and\s+)/i, '').trim();
     }
     
     if (dates.length > 0) {
