@@ -282,6 +282,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         title="Delete Thread?"
         description="This thread will be moved to the trash and permanently removed in 30 days."
         confirmDestructive
+        confirmLabel="Delete Thread"
       />
 
       <ConfirmModal
