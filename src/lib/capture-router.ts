@@ -84,7 +84,10 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
   // 2. Person note — name detection via compromise + knownPeople
   const detectedNames = doc.people().json().map((p: { text: string }) => p.text);
   const matchedKnown = knownPeople.find((p) => lower.includes(p.toLowerCase()));
-  const matchedName = matchedKnown || (detectedNames.length > 0 ? detectedNames[0] : null);
+  let matchedName = matchedKnown || (detectedNames.length > 0 ? detectedNames[0] : null);
+  if (matchedName) {
+    matchedName = matchedName.replace(/['’]s$/i, '');
+  }
 
   if (matchedName && PERSON_KW.some((k) => lower.includes(k))) {
     results.push({
@@ -116,15 +119,57 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
     return results;
   }
 
+  // 4a. Recurrence detection
+  const recurrencePatterns: Record<string, string> = {
+    'every day': 'FREQ=DAILY',
+    'daily': 'FREQ=DAILY',
+    'every monday and wednesday': 'FREQ=WEEKLY;BYDAY=MO,WE',
+    'every mon and wed': 'FREQ=WEEKLY;BYDAY=MO,WE',
+    'every week': 'FREQ=WEEKLY',
+    'weekly': 'FREQ=WEEKLY',
+    'every month': 'FREQ=MONTHLY',
+    'monthly': 'FREQ=MONTHLY',
+    'every monday': 'FREQ=WEEKLY;BYDAY=MO',
+    'every tuesday': 'FREQ=WEEKLY;BYDAY=TU',
+    'every wednesday': 'FREQ=WEEKLY;BYDAY=WE',
+    'every thursday': 'FREQ=WEEKLY;BYDAY=TH',
+    'every friday': 'FREQ=WEEKLY;BYDAY=FR',
+    'every saturday': 'FREQ=WEEKLY;BYDAY=SA',
+    'every sunday': 'FREQ=WEEKLY;BYDAY=SU',
+  };
+  let detectedRRule: string | null = null;
+  for (const [pattern, rrule] of Object.entries(recurrencePatterns)) {
+    if (lower.includes(pattern)) {
+      detectedRRule = rrule;
+      break;
+    }
+  }
+
   // 4. Task — extract natural language date
-  if (TASK_KW.some((k) => lower.includes(k))) {
+  if (TASK_KW.some((k) => lower.includes(k)) || doc.dates().found) {
     const dates = doc.dates().json();
-    const deadline = dates.length > 0 ? dates[0].start ?? null : null;
+    let deadline: string | null = null;
+    let cleanTitle = text;
+    
+    if (dates.length > 0) {
+      deadline = dates[0].start ?? null;
+      // Remove the date phrase from the title
+      const dateText = dates[0].text ?? '';
+      if (dateText) {
+        cleanTitle = text.replace(new RegExp(dateText, 'i'), '').replace(/\s+/g, ' ').trim();
+        // Also strip common prefix patterns like "remind me to", "remember to"
+        cleanTitle = cleanTitle.replace(/^(remind me to|remember to|need to|have to|must|gotta)\s+/i, '');
+        // Capitalize first letter
+        if (cleanTitle.length > 0) cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+      }
+    }
+    
     results.push({
       type: 'task',
-      title: text,
+      title: cleanTitle || text,
       destination: 'Do',
       deadline,
+      recurrence: detectedRRule,
     });
     return results;
   }

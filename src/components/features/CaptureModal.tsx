@@ -29,6 +29,7 @@ export function CaptureModal() {
   const [routedItems, setRoutedItems] = useState<RoutedItem[] | null>(null);
   const [taskExtras, setTaskExtras] = useState<{ [idx: number]: { first_step: string; ifthen_trigger: string } }>({});
   const [saved, setSaved] = useState(false);
+  const [openDropdownIdx, setOpenDropdownIdx] = useState<number | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -42,6 +43,13 @@ export function CaptureModal() {
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
   }, [setCaptureModalOpen]);
+
+  useEffect(() => {
+    if (openDropdownIdx === null) return;
+    const handler = () => setOpenDropdownIdx(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [openDropdownIdx]);
 
   useEffect(() => {
     if (!isCaptureModalOpen) {
@@ -104,6 +112,7 @@ export function CaptureModal() {
                 ? `When ${extras.ifthen_trigger}, I will ${extras.first_step || "do this"}`
                 : null,
               deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
+              recurrence: (item as any).recurrence ?? null,
               status: item.destination === "Inbox" ? "inbox" : "active",
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
@@ -225,21 +234,37 @@ export function CaptureModal() {
                   
                   <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
                     <span className="font-semibold">Space:</span>
-                    <div className="relative group">
-                      <button className="px-3 py-1 rounded-full border border-[var(--color-accent)] text-[var(--color-accent)] bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 transition-colors">
-                        {item.destination}
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setOpenDropdownIdx(openDropdownIdx === idx ? null : idx); }}
+                        className="px-3 py-1 rounded-full border text-xs font-semibold transition-colors"
+                        style={{ 
+                          borderColor: SPACE_COLORS[item.destination] ?? 'rgba(255,255,255,0.2)', 
+                          color: SPACE_COLORS[item.destination] ?? 'rgba(255,255,255,0.5)',
+                          backgroundColor: `${SPACE_COLORS[item.destination]}20`
+                        }}
+                      >
+                        {item.destination} ▾
                       </button>
-                      <div className="absolute left-0 top-full mt-2 w-32 p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all z-10 flex flex-col gap-1">
-                        {SPACES.map(space => (
-                          <button 
-                            key={space} 
-                            onClick={() => changeDestination(idx, space)}
-                            className="text-left px-3 py-1.5 text-xs rounded-md hover:bg-[var(--color-surface)] text-[var(--color-text-1)]"
+                      <AnimatePresence>
+                        {openDropdownIdx === idx && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                            className="absolute left-0 top-full mt-2 w-44 p-1 rounded-xl bg-[#13111C] border border-[rgba(255,255,255,0.12)] shadow-2xl z-50 flex flex-col gap-0.5"
                           >
-                            {space}
-                          </button>
-                        ))}
-                      </div>
+                            {SPACES.map(space => (
+                              <button 
+                                key={space} 
+                                onClick={(e) => { e.stopPropagation(); changeDestination(idx, space); setOpenDropdownIdx(null); }}
+                                className="text-left px-3 py-2 text-xs rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-white flex items-center gap-2"
+                              >
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: SPACE_COLORS[space] ?? 'rgba(255,255,255,0.3)' }} />
+                                {space}
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                     
                     {item.destination === "Do" && (

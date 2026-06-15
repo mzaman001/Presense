@@ -37,7 +37,7 @@ export default function HomeDashboard() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const [tasksRes, inboxRes, peopleRes, threadsRes, exploresRes, settingsRes, doneRes] = await Promise.all([
-      supabase.from("items").select("*").in("status", ["active", "overdue"]).or(`start_date.is.null,start_date.lte.${new Date().toISOString()}`).order("deadline", { ascending: true }),
+      supabase.from("items").select("*").in("status", ["active", "overdue"]).or(`snoozed_until.is.null,snoozed_until.lte.${new Date().toISOString()}`).order("priority", { ascending: true, nullsFirst: false }).order("deadline", { ascending: true, nullsFirst: false }),
       supabase.from("items").select("*").eq("status", "inbox"),
       supabase.from("people").select("*"),
       supabase.from("threads").select("*"),
@@ -164,7 +164,7 @@ export default function HomeDashboard() {
           
           <div className="relative z-10 p-10 flex flex-col items-center justify-center text-center h-full">
             <span className="text-[10px] font-bold tracking-widest text-[#8B7CF8] uppercase mb-4 px-3 py-1 rounded-full bg-[rgba(139,124,248,0.1)] border border-[rgba(139,124,248,0.2)]">
-              ⚡ FOCUS NOW • HIGHEST PRIORITY (EARLIEST DEADLINE)
+              ⚡ FOCUS NOW
             </span>
             <h2 className="text-3xl font-medium text-white mb-2">{primaryTask.title}</h2>
             <p className="text-[var(--color-text-2)] mb-6 text-lg">{primaryTask.first_step}</p>
@@ -177,8 +177,8 @@ export default function HomeDashboard() {
               onClick={async () => {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
-                await supabase.from("items").update({ start_date: tomorrow.toISOString() }).eq("id", primaryTask.id);
-                // The realtime listener will hide it since start_date is now in the future
+                await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", primaryTask.id);
+                // The realtime listener will hide it since snoozed_until is now in the future
                 toast.success("Snoozed until tomorrow");
               }}
               className="mt-4 text-xs text-[var(--color-text-3)] hover:text-white transition-colors underline decoration-dashed underline-offset-4"

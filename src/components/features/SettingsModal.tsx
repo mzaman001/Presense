@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
-import { X, Loader2, Save, LogOut, Download } from "lucide-react";
+import { X, Loader2, LogOut, Download, CheckCircle2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDebounce } from "use-debounce";
 
 export function SettingsModal() {
   const { isSettingsModalOpen, setSettingsModalOpen } = useAppStore();
@@ -15,13 +16,17 @@ export function SettingsModal() {
   const router = useRouter();
   
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [initialLoaded, setInitialLoaded] = useState(false);
   
   const [displayName, setDisplayName] = useState("");
-  const [pomodoroDuration, setPomodoroDuration] = useState(10);
+  const [pomodoroDuration, setPomodoroDuration] = useState(25);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [ollamaEnabled, setOllamaEnabled] = useState(false);
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
+
+  const [debouncedDisplayName] = useDebounce(displayName, 1000);
+  const [debouncedOllamaUrl] = useDebounce(ollamaUrl, 1000);
 
   useEffect(() => {
     if (!isSettingsModalOpen) return;
@@ -34,40 +39,38 @@ export function SettingsModal() {
       const { data } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single();
       if (data) {
         setDisplayName(data.display_name || "");
-        setPomodoroDuration(data.pomodoro_duration != null ? Number(data.pomodoro_duration) : 10);
+        setPomodoroDuration(data.pomodoro_duration != null ? Number(data.pomodoro_duration) : 25);
         setNotificationsEnabled(data.notifications_enabled !== false);
         setOllamaEnabled(data.ollama_enabled || false);
         setOllamaUrl(data.ollama_url || "http://localhost:11434");
       }
       setLoading(false);
+      setTimeout(() => setInitialLoaded(true), 100);
     }
     loadSettings();
   }, [isSettingsModalOpen, supabase]);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
+  useEffect(() => {
+    if (!initialLoaded) return;
+    
+    const save = async () => {
+      setSaveStatus("saving");
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-
-      const { error } = await supabase.from("user_settings").update({
-        display_name: displayName,
+      if (!user) return;
+      
+      await supabase.from("user_settings").update({
+        display_name: debouncedDisplayName,
         pomodoro_duration: pomodoroDuration,
         notifications_enabled: notificationsEnabled,
         ollama_enabled: ollamaEnabled,
-        ollama_url: ollamaUrl
+        ollama_url: debouncedOllamaUrl
       }).eq("user_id", user.id);
       
-      if (error) throw error;
-      toast.success("Settings saved");
-      setSettingsModalOpen(false);
-    } catch (err: any) {
-      toast.error("Failed to save settings", { description: err.message });
-    } finally {
-      setSaving(false);
-    }
-  };
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    };
+    save();
+  }, [debouncedDisplayName, pomodoroDuration, notificationsEnabled, ollamaEnabled, debouncedOllamaUrl, supabase, initialLoaded]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -77,7 +80,6 @@ export function SettingsModal() {
   
   const handleExportData = async () => {
     toast.success("Data export started. You will receive an email shortly.");
-    // Simulated data export
   };
 
   return (
@@ -101,21 +103,36 @@ export function SettingsModal() {
                 <X className="w-5 h-5" />
               </button>
 
-              <h2 className="text-xl font-semibold text-white mb-6">Settings</h2>
+              <div className="flex items-center justify-between mb-6 pr-8">
+                <h2 className="text-xl font-semibold text-white">Settings</h2>
+                <div className="flex items-center gap-2 text-xs font-medium h-6">
+                  <AnimatePresence mode="wait">
+                    {saveStatus === "saving" && (
+                      <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-text-3)]">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
+                      </motion.div>
+                    )}
+                    {saveStatus === "saved" && (
+                      <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-think)]">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
 
               {loading ? (
                 <div className="flex justify-center py-10">
                   <Loader2 className="w-6 h-6 animate-spin text-[rgba(255,255,255,0.3)]" />
                 </div>
               ) : (
-                <form onSubmit={handleSave} className="space-y-6">
+                <div className="space-y-6">
                   {/* Account */}
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-[rgba(255,255,255,0.8)] border-b border-[rgba(255,255,255,0.1)] pb-2">Account</h3>
                     <div>
                       <label className="block text-xs font-medium text-[rgba(255,255,255,0.6)] mb-2 uppercase tracking-wider">Display Name</label>
                       <input
-                        required
                         value={displayName}
                         onChange={e => setDisplayName(e.target.value)}
                         className="w-full bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white placeholder-[rgba(255,255,255,0.3)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
@@ -128,15 +145,19 @@ export function SettingsModal() {
                     <h3 className="text-sm font-semibold text-[rgba(255,255,255,0.8)] border-b border-[rgba(255,255,255,0.1)] pb-2">Preferences</h3>
                     
                     <div>
-                      <label className="block text-xs font-medium text-[rgba(255,255,255,0.6)] mb-2 uppercase tracking-wider">Pomodoro Duration (minutes)</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={60}
-                        value={pomodoroDuration || ""}
-                        onChange={e => { const v = parseInt(e.target.value); setPomodoroDuration(isNaN(v) ? 0 : v); }}
-                        className="w-full bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white placeholder-[rgba(255,255,255,0.3)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
-                      />
+                      <label className="block text-xs font-medium text-[rgba(255,255,255,0.6)] mb-2 uppercase tracking-wider">Pomodoro Duration</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[15, 20, 25, 30, 45, 60].map(mins => (
+                          <button
+                            key={mins}
+                            type="button"
+                            onClick={() => setPomodoroDuration(mins)}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${pomodoroDuration === mins ? 'bg-[var(--color-accent)] text-black border-[var(--color-accent)]' : 'bg-transparent text-[var(--color-text-2)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}
+                          >
+                            {mins}m
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between bg-[rgba(255,255,255,0.02)] p-4 rounded-xl border border-[rgba(255,255,255,0.05)]">
@@ -171,14 +192,14 @@ export function SettingsModal() {
                       </button>
                     </div>
                     {ollamaEnabled && (
-                      <div>
-                        <label className="block text-xs font-medium text-[rgba(255,255,255,0.6)] mb-2 uppercase tracking-wider">Ollama URL</label>
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                        <label className="block text-xs font-medium text-[rgba(255,255,255,0.6)] mb-2 uppercase tracking-wider mt-2">Ollama URL</label>
                         <input
                           value={ollamaUrl}
                           onChange={e => setOllamaUrl(e.target.value)}
                           className="w-full bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white placeholder-[rgba(255,255,255,0.3)] focus:border-[#2DD4BF] focus:outline-none transition-colors"
                         />
-                      </div>
+                      </motion.div>
                     )}
                   </div>
 
@@ -201,16 +222,8 @@ export function SettingsModal() {
                     >
                       <LogOut className="w-4 h-4" /> Sign Out
                     </button>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-black font-semibold hover:bg-gray-200 transition-colors flex-1"
-                    >
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      Save
-                    </button>
                   </div>
-                </form>
+                </div>
               )}
             </GlassCard>
           </motion.div>

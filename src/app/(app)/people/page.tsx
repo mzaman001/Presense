@@ -68,9 +68,15 @@ export default function PeoplePage() {
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <h1 className="text-[22px] font-medium text-white tracking-tight">Remember</h1>
         </div>
-        <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-sm font-medium hover:bg-[rgba(244,114,182,0.2)] transition-colors">
-          <Plus className="w-4 h-4" /> Add person
-        </button>
+        {activeTab === "people" ? (
+          <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-sm font-medium hover:bg-[rgba(244,114,182,0.2)] transition-colors">
+            <Plus className="w-4 h-4" /> Add person
+          </button>
+        ) : (
+          <Link href="/locations" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(74,222,128,0.12)] border border-[rgba(74,222,128,0.25)] text-[#4ADE80] text-sm font-medium hover:bg-[rgba(74,222,128,0.2)] transition-colors">
+            <Plus className="w-4 h-4" /> Add location
+          </Link>
+        )}
       </div>
 
       <div className="flex gap-2 mb-6 border-b border-[rgba(255,255,255,0.05)] pb-4">

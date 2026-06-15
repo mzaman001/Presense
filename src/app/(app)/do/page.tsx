@@ -7,7 +7,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { FocusSession } from "@/components/features/FocusSession";
-import { Plus, ChevronRight, CheckCircle2, Circle, Loader2, Zap, Clock, Calendar, Play } from "lucide-react";
+import { Plus, ChevronRight, CheckCircle2, Circle, Loader2, Zap, Clock, Calendar, Play, RotateCw } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -21,6 +21,8 @@ interface Task {
   deadline: string | null;
   status: string;
   category: string;
+  snoozed_until?: string | null;
+  recurrence?: string | null;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -66,6 +68,7 @@ export default function DoPage() {
       .from("items")
       .select("*")
       .in("status", ["active", "overdue", "inbox"])
+      .order("priority", { ascending: true, nullsFirst: false })
       .order("deadline", { ascending: true, nullsFirst: false });
     setTasks(data ?? []);
     setLoading(false);
@@ -85,7 +88,14 @@ export default function DoPage() {
     if (showArchive) fetchArchived();
   }, [fetchTasks, fetchArchived, showArchive]);
 
-  useRealtime("items", fetchTasks);
+  useEffect(() => {
+    const channel = supabase
+      .channel('items-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'items' }, () => fetchTasks())
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'items' }, () => fetchTasks())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, fetchTasks]);
 
   const completeTask = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -230,12 +240,40 @@ export default function DoPage() {
             <span className="text-[11px] text-[rgba(255,255,255,0.35)] shrink-0">
               {label && label !== "Overdue" && label !== "Today" ? label : "Active"}
             </span>
-            <button
-              onClick={(e) => { e.stopPropagation(); setFocusTask(task); }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[rgba(139,124,248,0.1)] text-[#8B7CF8] hover:bg-[rgba(139,124,248,0.2)] transition-colors text-[11px] font-semibold"
-            >
-              Start 10 min <Play className="w-3 h-3" />
-            </button>
+            <div className="flex items-center gap-2">
+              {(task.snoozed_until && new Date(task.snoozed_until) > new Date()) && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)]">
+                  <Clock className="w-3 h-3 text-[rgba(255,255,255,0.4)]" />
+                  <span className="text-[10px] text-[rgba(255,255,255,0.4)]">
+                    {new Date(task.snoozed_until).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await supabase.from('items').update({ snoozed_until: null }).eq('id', task.id);
+                      fetchTasks();
+                    }}
+                    className="ml-1 text-[rgba(255,255,255,0.4)] hover:text-white"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              {task.recurrence && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)]">
+                  <RotateCw className="w-3 h-3 text-[rgba(255,255,255,0.4)]" />
+                  <span className="text-[10px] text-[rgba(255,255,255,0.4)] truncate max-w-[80px]">
+                    {task.recurrence.includes('DAILY') ? 'Daily' : task.recurrence.includes('MONTHLY') ? 'Monthly' : 'Weekly'}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); setFocusTask(task); }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[rgba(139,124,248,0.1)] text-[#8B7CF8] hover:bg-[rgba(139,124,248,0.2)] transition-colors text-[11px] font-semibold"
+              >
+                Start 10 min <Play className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </GlassCard>
       </motion.div>

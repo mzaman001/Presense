@@ -25,6 +25,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const [startDate, setStartDate] = useState("");
   const [parsedStartDate, setParsedStartDate] = useState<Date | null>(null);
   const [recurrence, setRecurrence] = useState("");
+  const [freq, setFreq] = useState("None");
+  const [days, setDays] = useState<string[]>([]);
   const [firstStep, setFirstStep] = useState("");
   const [ifThen, setIfThen] = useState("");
   const [category, setCategory] = useState("work");
@@ -43,6 +45,15 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setPriority(taskToEdit.priority || 4);
         setSubtasks(taskToEdit.subtasks || []);
         setRecurrence(taskToEdit.recurrence || "");
+        if (taskToEdit.recurrence) {
+          if (taskToEdit.recurrence.includes("DAILY")) setFreq("Daily");
+          else if (taskToEdit.recurrence.includes("MONTHLY")) setFreq("Monthly");
+          else if (taskToEdit.recurrence.includes("WEEKLY")) {
+            setFreq("Weekly");
+            const match = taskToEdit.recurrence.match(/BYDAY=([A-Z,]+)/);
+            if (match) setDays(match[1].split(','));
+          } else setFreq("None");
+        } else setFreq("None");
         if (taskToEdit.deadline) {
           const d = new Date(taskToEdit.deadline);
           setParsedDeadline(d);
@@ -67,6 +78,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setStartDate("");
         setParsedStartDate(null);
         setRecurrence("");
+        setFreq("None");
+        setDays([]);
         setFirstStep("");
         setIfThen("");
         setCategory("work");
@@ -140,6 +153,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           triggerText = `When ${triggerText}, I will ${firstStep.trim()}`;
         }
 
+        let finalRecurrence = null;
+        if (freq === "Daily") finalRecurrence = "FREQ=DAILY";
+        else if (freq === "Monthly") finalRecurrence = "FREQ=MONTHLY";
+        else if (freq === "Weekly") {
+          finalRecurrence = "FREQ=WEEKLY";
+          if (days.length > 0) finalRecurrence += `;BYDAY=${days.join(',')}`;
+        }
+
         const payload: any = {
           user_id: user.id,
           title: title.trim(),
@@ -147,7 +168,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           ifthen_trigger: triggerText || null,
           deadline: parsedDeadline ? parsedDeadline.toISOString() : null,
           start_date: parsedStartDate ? parsedStartDate.toISOString() : null,
-          recurrence: recurrence.trim() || null,
+          recurrence: finalRecurrence,
           category,
           status: "active",
           priority,
@@ -283,20 +304,41 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
               {/* Recurrence */}
               <div>
                 <label className="flex items-center gap-2 text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">
-                  <RotateCw className="w-3.5 h-3.5 text-[#E5B41E]" /> Recurrence (RRULE)
+                  <RotateCw className="w-3.5 h-3.5 text-[#E5B41E]" /> Recurrence
                 </label>
-                <input
-                  placeholder="e.g. FREQ=WEEKLY;BYDAY=MO,WE"
-                  value={recurrence}
-                  onChange={(e) => setRecurrence(e.target.value)}
-                  className="w-full bg-[rgba(229,180,30,0.05)] border border-[rgba(229,180,30,0.2)] rounded-xl px-4 py-3 text-sm text-white placeholder:text-[rgba(229,180,30,0.3)] outline-none focus:border-[#E5B41E] transition-colors"
-                />
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {["None", "Daily", "Weekly", "Monthly"].map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setFreq(f)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${freq === f ? 'bg-[rgba(229,180,30,0.15)] text-[#E5B41E] border-[rgba(229,180,30,0.3)]' : 'bg-transparent text-[rgba(255,255,255,0.4)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)] hover:text-white'}`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+                {freq === "Weekly" && (
+                  <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.05)]">
+                    {[
+                      { l: 'M', v: 'MO' }, { l: 'T', v: 'TU' }, { l: 'W', v: 'WE' }, 
+                      { l: 'T', v: 'TH' }, { l: 'F', v: 'FR' }, { l: 'S', v: 'SA' }, { l: 'S', v: 'SU' }
+                    ].map((d, i) => (
+                      <button
+                        key={`${d.v}-${i}`}
+                        onClick={() => setDays(prev => prev.includes(d.v) ? prev.filter(x => x !== d.v) : [...prev, d.v])}
+                        className={`w-8 h-8 rounded-full text-xs font-bold transition-colors ${days.includes(d.v) ? 'bg-[#E5B41E] text-black' : 'bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.4)] hover:bg-[rgba(255,255,255,0.1)] hover:text-white'}`}
+                      >
+                        {d.l}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* First Step */}
               <div>
                 <label className="flex items-center gap-2 text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">
-                  <ArrowRight className="w-3.5 h-3.5 text-[#2DD4BF]" /> First physical action
+                  <ArrowRight className="w-3.5 h-3.5 text-[#2DD4BF]" /> First Step (optional)
                 </label>
                 <p className="text-[11px] text-[rgba(255,255,255,0.3)] mb-2">What is the absolute smallest step to start this?</p>
                 <textarea
@@ -310,7 +352,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
               {/* If-Then Trigger */}
               <div>
                 <label className="flex items-center gap-2 text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-2">
-                  <Flag className="w-3.5 h-3.5 text-[#F472B6]" /> If-Then Anchor
+                  <Flag className="w-3.5 h-3.5 text-[#F472B6]" /> When and where will you start this?
                 </label>
                 <p className="text-[11px] text-[rgba(255,255,255,0.3)] mb-2">When and where will you start this?</p>
                 <div className="bg-[rgba(244,114,182,0.05)] border border-[rgba(244,114,182,0.2)] rounded-xl p-4">
