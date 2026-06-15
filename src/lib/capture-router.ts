@@ -155,7 +155,7 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
       recurrencePhraseToRemove = intervalMatch[0];
     } else {
       const dayNamesStr = Object.keys(dayMap).join('|');
-      const daysRegex = new RegExp(`every\\s+((?:(?:${dayNamesStr})(?:\\s*,\\s*|\\s+and\\s+|\\s+)?)+)`, 'i');
+      const daysRegex = new RegExp(`every\\s+((?:(?:\\b(?:${dayNamesStr})\\b)(?:\\s*,\\s*|\\s+and\\s+|\\s+)?)+)`, 'i');
       const everyDaysMatch = lower.match(daysRegex);
       if (everyDaysMatch) {
         const daysStr = everyDaysMatch[1];
