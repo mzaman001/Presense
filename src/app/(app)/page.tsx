@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { FocusSession } from "@/components/features/FocusSession";
+import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
@@ -21,6 +22,8 @@ export default function HomeDashboard() {
   const [loading, setLoading] = useState(true);
   const [focusTask, setFocusTask] = useState<any | null>(null);
   const [settings, setSettings] = useState<any>(null);
+  const [taskToEdit, setTaskToEdit] = useState<any | null>(null);
+  const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
 
   const [inboxItems, setInboxItems] = useState<any[]>([]);
   const [showReview, setShowReview] = useState(false);
@@ -240,11 +243,16 @@ export default function HomeDashboard() {
             </Link>
           </div>
           {tasks.slice(1, 4).map(task => (
-            <GlassCard key={task.id} className="p-4 flex justify-between items-center">
-              <div>
+            <GlassCard
+              key={task.id}
+              className="p-4 flex justify-between items-center cursor-pointer hover:scale-[1.01] transition-transform"
+              onClick={() => { setTaskToEdit(task); setIsTaskPanelOpen(true); }}
+            >
+              <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-medium text-white">{task.title}</h4>
-                <p className="text-xs text-[var(--color-text-3)] mt-0.5">{task.first_step}</p>
+                <p className="text-xs text-[var(--color-text-3)] mt-0.5 truncate">{task.first_step}</p>
               </div>
+              <ArrowRight className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2" />
             </GlassCard>
           ))}
           {tasks.length <= 1 && (
@@ -288,6 +296,7 @@ export default function HomeDashboard() {
       </>
       )}
       <FocusSession task={focusTask} onClose={() => setFocusTask(null)} onComplete={fetchDashboardData} />
+      <TaskAddPanel isOpen={isTaskPanelOpen} onClose={() => { setIsTaskPanelOpen(false); setTimeout(() => setTaskToEdit(null), 300); }} onTaskAdded={fetchDashboardData} taskToEdit={taskToEdit} />
     </div>
   );
 }
