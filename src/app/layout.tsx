@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 let theme = localStorage.getItem('presense_theme') || 'orange';
                 let mode = localStorage.getItem('presense_color_mode') || 'dark';
                 
-                if (theme === 'navy') document.documentElement.classList.add('theme-blue');
+                if (theme === 'blue') document.documentElement.classList.add('theme-blue');
                 if (theme === 'forest') document.documentElement.classList.add('theme-forest');
                 
                 if (mode === 'light' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) {

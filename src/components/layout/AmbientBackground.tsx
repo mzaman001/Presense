@@ -25,7 +25,7 @@ export function AmbientBackground() {
       {enabled && (
         <>
           <div 
-            className="absolute rounded-full mix-blend-screen opacity-45 animate-orb-float"
+            className="absolute rounded-full dark:mix-blend-screen mix-blend-multiply opacity-45 animate-orb-float"
             style={{
               width: '700px', height: '700px', top: '-200px', left: '-200px',
               background: 'radial-gradient(circle, var(--orb-1) 0%, transparent 70%)', filter: 'blur(90px)',
@@ -33,7 +33,7 @@ export function AmbientBackground() {
             }}
           />
           <div 
-            className="absolute rounded-full mix-blend-screen opacity-35 animate-orb-float"
+            className="absolute rounded-full dark:mix-blend-screen mix-blend-multiply opacity-35 animate-orb-float"
             style={{
               width: '500px', height: '500px', top: '200px', right: '-150px',
               background: 'radial-gradient(circle, var(--orb-2) 0%, transparent 70%)', filter: 'blur(90px)',
@@ -42,7 +42,7 @@ export function AmbientBackground() {
             }}
           />
           <div 
-            className="absolute rounded-full mix-blend-screen opacity-30 animate-orb-float"
+            className="absolute rounded-full dark:mix-blend-screen mix-blend-multiply opacity-30 animate-orb-float"
             style={{
               width: '400px', height: '400px', bottom: '-100px', left: '30%',
               background: 'radial-gradient(circle, var(--orb-3) 0%, transparent 70%)', filter: 'blur(90px)',
@@ -51,7 +51,7 @@ export function AmbientBackground() {
             }}
           />
           <div 
-            className="absolute rounded-full mix-blend-screen opacity-50 animate-orb-float"
+            className="absolute rounded-full dark:mix-blend-screen mix-blend-multiply opacity-50 animate-orb-float"
             style={{
               width: '300px', height: '300px', bottom: '100px', right: '10%',
               background: 'radial-gradient(circle, var(--orb-4) 0%, transparent 70%)', filter: 'blur(90px)',

@@ -14,7 +14,7 @@ export function AppInitializer() {
 
     // Apply Theme
     document.documentElement.classList.remove('theme-blue', 'theme-forest');
-    if (theme === 'navy') document.documentElement.classList.add('theme-blue');
+    if (theme === 'blue') document.documentElement.classList.add('theme-blue');
     if (theme === 'forest') document.documentElement.classList.add('theme-forest');
 
     // Apply Color Mode

@@ -242,7 +242,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
                 </p>
               </div>
               <button 
-                onClick={() => handleDeleteEntry(i)}
+                onClick={() => setDeleteEntryIndex(i)}
                 className="absolute top-4 right-4 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171]"
                 title="Delete entry"
               >

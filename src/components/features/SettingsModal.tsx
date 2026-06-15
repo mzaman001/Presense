@@ -91,7 +91,7 @@ export function SettingsModal() {
       localStorage.setItem('presense_theme', value);
       document.documentElement.classList.remove('theme-blue', 'theme-forest');
       
-      if (value === 'navy') document.documentElement.classList.add('theme-blue');
+      if (value === 'blue') document.documentElement.classList.add('theme-blue');
       if (value === 'forest') document.documentElement.classList.add('theme-forest');
     }
     
@@ -242,7 +242,7 @@ export function SettingsModal() {
                           </div>
                           <div className="flex items-center gap-2">
                             <button onClick={() => updateSetting("theme", "orange")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${settings.theme === 'orange' || !settings.theme ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Wahala (Orange)" />
-                            <button onClick={() => updateSetting("theme", "navy")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${settings.theme === 'navy' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Deep Navy" />
+                            <button onClick={() => updateSetting("theme", "blue")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${settings.theme === 'blue' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Deep Navy" />
                             <button onClick={() => updateSetting("theme", "forest")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${settings.theme === 'forest' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Forest" />
                           </div>
                         </div>

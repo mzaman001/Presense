@@ -54,7 +54,7 @@ export function SelectDropdown({ value, onChange, options, placeholder = "Select
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 z-50 rounded-xl bg-[rgba(11,9,20,0.95)] backdrop-blur-xl border border-[var(--color-border)] shadow-2xl overflow-hidden py-1 max-h-60 overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-2 z-50 rounded-xl bg-[var(--color-background)] backdrop-blur-xl border border-[var(--color-border)] shadow-2xl overflow-hidden py-1 max-h-60 overflow-y-auto"
           >
             {options.map((opt) => (
               <button

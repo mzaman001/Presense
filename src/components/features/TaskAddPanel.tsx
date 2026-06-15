@@ -4,10 +4,7 @@ import { X, Calendar, ArrowRight, Flag, Loader2, RotateCw, Trash2 } from "lucide
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
-import nlp from "compromise";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-import datePlugin from "compromise-dates";
-nlp.plugin(datePlugin as any);
+import * as chrono from "chrono-node";
 
 import { useAppStore } from "@/store/useAppStore";
 
@@ -147,11 +144,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     const val = e.target.value;
     setTitle(val);
     if (!deadline && !deadlineText && userSettings?.nlp_date_parsing !== false) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const doc = nlp(val) as any;
-      const dates = doc.dates().json();
-      if (dates && dates.length > 0 && dates[0].dates && dates[0].dates.start) {
-        setParsedDeadline(new Date(dates[0].dates.start));
+      const parsedResults = chrono.parse(val);
+      if (parsedResults && parsedResults.length > 0 && parsedResults[0].start) {
+        setParsedDeadline(parsedResults[0].start.date());
       } else {
         setParsedDeadline(null);
       }
@@ -162,11 +157,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     const val = e.target.value;
     setDeadlineText(val);
     if (val.trim() && userSettings?.nlp_date_parsing !== false) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const doc = nlp(val) as any;
-      const dates = doc.dates().json();
-      if (dates && dates.length > 0 && dates[0].dates && dates[0].dates.start) {
-        const d = new Date(dates[0].dates.start);
+      const parsedResults = chrono.parse(val);
+      if (parsedResults && parsedResults.length > 0 && parsedResults[0].start) {
+        const d = parsedResults[0].start.date();
         setParsedDeadline(d);
         setDeadline(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
       } else {

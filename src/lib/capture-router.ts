@@ -1,8 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// compromise.js types are incomplete — using any for .people() and .dates()
+import * as chrono from 'chrono-node';
 import nlp from 'compromise';
-import datePlugin from 'compromise-dates';
-nlp.plugin(datePlugin as any);
 
 // ─── Keyword arrays (from spec Section 12.3) ────────────────────────────────
 
@@ -197,8 +194,17 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
   }
 
   // 4. Task — extract natural language date
-  if (TASK_KW.some((k) => lower.includes(k)) || (doc && doc.dates().found) || detectedRRule) {
-    const dates = doc ? doc.dates().json() : [];
+  let parsedDate: Date | null = null;
+  let parsedText = '';
+  if (userSettings?.nlp_date_parsing !== false) {
+    const parsedResults = chrono.parse(text);
+    if (parsedResults.length > 0) {
+      parsedDate = parsedResults[0].start.date();
+      parsedText = parsedResults[0].text;
+    }
+  }
+
+  if (TASK_KW.some((k) => lower.includes(k)) || parsedDate || detectedRRule) {
     let deadline: string | null = null;
     let cleanTitle = text;
     
@@ -206,12 +212,10 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
       cleanTitle = cleanTitle.replace(new RegExp(recurrencePhraseToRemove, 'i'), '').replace(/\s+/g, ' ').trim();
     }
     
-    if (dates.length > 0) {
-      deadline = dates[0].dates?.start ?? null;
-      // Remove the date phrase from the title
-      const dateText = dates[0].text ?? '';
-      if (dateText && cleanTitle.toLowerCase().includes(dateText.toLowerCase())) {
-        cleanTitle = cleanTitle.replace(new RegExp(dateText, 'i'), '').replace(/\s+/g, ' ').trim();
+    if (parsedDate) {
+      deadline = parsedDate.toISOString();
+      if (parsedText && cleanTitle.toLowerCase().includes(parsedText.toLowerCase())) {
+        cleanTitle = cleanTitle.replace(new RegExp(parsedText, 'i'), '').replace(/\s+/g, ' ').trim();
       }
     }
     
