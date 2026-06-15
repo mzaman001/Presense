@@ -252,7 +252,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         onConfirm={confirmDeleteNote}
         title="Delete Note"
         description="Are you sure you want to delete this note? This action cannot be undone."
-        confirmText="Delete"
+        confirmLabel="Delete"
+        confirmDestructive
       />
     </div>
   );
