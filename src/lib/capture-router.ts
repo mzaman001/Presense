@@ -193,17 +193,17 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
     let deadline: string | null = null;
     let cleanTitle = text;
     
+    if (recurrencePhraseToRemove) {
+      cleanTitle = cleanTitle.replace(new RegExp(recurrencePhraseToRemove, 'i'), '').replace(/\s+/g, ' ').trim();
+    }
+    
     if (dates.length > 0) {
       deadline = dates[0].dates?.start ?? null;
       // Remove the date phrase from the title
       const dateText = dates[0].text ?? '';
-      if (dateText) {
+      if (dateText && cleanTitle.toLowerCase().includes(dateText.toLowerCase())) {
         cleanTitle = cleanTitle.replace(new RegExp(dateText, 'i'), '').replace(/\s+/g, ' ').trim();
       }
-    }
-    
-    if (recurrencePhraseToRemove) {
-      cleanTitle = cleanTitle.replace(new RegExp(recurrencePhraseToRemove, 'i'), '').replace(/\s+/g, ' ').trim();
     }
     
     // Also strip common prefix patterns like "remind me to", "remember to"
