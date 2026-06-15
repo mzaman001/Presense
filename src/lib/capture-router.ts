@@ -46,6 +46,7 @@ export interface RoutedItem {
   deadline?: string | null;
   url?: string;
   item_name?: string;
+  recurrence?: string;
 }
 
 // ─── Main router ────────────────────────────────────────────────────────────
