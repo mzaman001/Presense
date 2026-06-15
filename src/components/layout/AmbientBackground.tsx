@@ -1,44 +1,66 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useAppStore } from "@/store/useAppStore";
 
 export function AmbientBackground() {
+  const { userSettings } = useAppStore();
+  const [enabled, setEnabled] = useState(true);
+
+  useEffect(() => {
+    // Enable by default, override if explicitly set to false
+    if (userSettings && userSettings.ambient_bg === false) {
+      setEnabled(false);
+    } else {
+      setEnabled(true);
+    }
+  }, [userSettings?.ambient_bg]);
+
   return (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
       {/* Background base */}
       <div className="absolute inset-0 bg-[var(--color-background)] transition-colors duration-500" />
 
       {/* Orbs */}
-      <div 
-        className="absolute rounded-full mix-blend-screen opacity-45 animate-orb-breathe"
-        style={{
-          width: '700px', height: '700px', top: '-200px', left: '-200px',
-          background: 'radial-gradient(circle, var(--orb-1) 0%, transparent 70%)', filter: 'blur(90px)',
-          animationDuration: '12s'
-        }}
-      />
-      <div 
-        className="absolute rounded-full mix-blend-screen opacity-35 animate-orb-breathe"
-        style={{
-          width: '500px', height: '500px', top: '200px', right: '-150px',
-          background: 'radial-gradient(circle, var(--orb-2) 0%, transparent 70%)', filter: 'blur(90px)',
-          animationDuration: '14s'
-        }}
-      />
-      <div 
-        className="absolute rounded-full mix-blend-screen opacity-30 animate-orb-breathe"
-        style={{
-          width: '400px', height: '400px', bottom: '-100px', left: '30%',
-          background: 'radial-gradient(circle, var(--orb-3) 0%, transparent 70%)', filter: 'blur(90px)',
-          animationDuration: '16s'
-        }}
-      />
-      <div 
-        className="absolute rounded-full mix-blend-screen opacity-50 animate-orb-breathe"
-        style={{
-          width: '300px', height: '300px', bottom: '100px', right: '10%',
-          background: 'radial-gradient(circle, var(--orb-4) 0%, transparent 70%)', filter: 'blur(90px)',
-          animationDuration: '10s'
-        }}
-      />
+      {enabled && (
+        <>
+          <div 
+            className="absolute rounded-full mix-blend-screen opacity-45 animate-orb-float"
+            style={{
+              width: '700px', height: '700px', top: '-200px', left: '-200px',
+              background: 'radial-gradient(circle, var(--orb-1) 0%, transparent 70%)', filter: 'blur(90px)',
+              animationDuration: '24s'
+            }}
+          />
+          <div 
+            className="absolute rounded-full mix-blend-screen opacity-35 animate-orb-float"
+            style={{
+              width: '500px', height: '500px', top: '200px', right: '-150px',
+              background: 'radial-gradient(circle, var(--orb-2) 0%, transparent 70%)', filter: 'blur(90px)',
+              animationDuration: '28s',
+              animationDelay: '-5s'
+            }}
+          />
+          <div 
+            className="absolute rounded-full mix-blend-screen opacity-30 animate-orb-float"
+            style={{
+              width: '400px', height: '400px', bottom: '-100px', left: '30%',
+              background: 'radial-gradient(circle, var(--orb-3) 0%, transparent 70%)', filter: 'blur(90px)',
+              animationDuration: '32s',
+              animationDelay: '-10s'
+            }}
+          />
+          <div 
+            className="absolute rounded-full mix-blend-screen opacity-50 animate-orb-float"
+            style={{
+              width: '300px', height: '300px', bottom: '100px', right: '10%',
+              background: 'radial-gradient(circle, var(--orb-4) 0%, transparent 70%)', filter: 'blur(90px)',
+              animationDuration: '20s',
+              animationDelay: '-15s'
+            }}
+          />
+        </>
+      )}
 
       {/* Noise Texture Overlay */}
       <div 

@@ -113,7 +113,9 @@ export default function HomeDashboard() {
       <header className="mb-8 flex items-end justify-between">
         <div>
           <h1 className="text-page-title text-3xl">{greeting}{userSettings?.display_name ? `, ${userSettings.display_name.split(' ')[0]}` : ''}.</h1>
-          <p className="text-[var(--color-text-3)] mt-1">Here is your focus for today.</p>
+          {userSettings?.daily_briefing !== false && (
+            <p className="text-[var(--color-text-3)] mt-1">Here is your focus for today.</p>
+          )}
         </div>
         <button 
           onClick={() => setShowReview(!showReview)}
@@ -265,6 +267,7 @@ export default function HomeDashboard() {
         </Link>
       </div>
 
+      {userSettings?.daily_briefing !== false && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {/* Today's Tasks */}
         <div className="space-y-4">
@@ -325,6 +328,7 @@ export default function HomeDashboard() {
           ))}
         </div>
       </div>
+      )}
       </>
       )}
       <FocusSession task={focusTask} onClose={() => setFocusTask(null)} onComplete={fetchDashboardData} />

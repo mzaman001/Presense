@@ -580,7 +580,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       title="Delete Task?"
       description="This task will be permanently deleted. This action cannot be undone."
       confirmLabel="Delete"
-      confirmVariant="danger"
+      confirmDestructive
     />
     </>
   );

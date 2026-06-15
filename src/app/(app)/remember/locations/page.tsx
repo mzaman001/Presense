@@ -301,7 +301,7 @@ export default function LocationsPage() {
       title="Delete Location"
       description="Are you sure you want to delete this location? This cannot be undone."
       confirmLabel="Delete"
-      confirmVariant="danger"
+      confirmDestructive
     />
     </>
   );

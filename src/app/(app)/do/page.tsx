@@ -12,6 +12,7 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { cn, formatRRule } from "@/lib/utils";
 import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
+import { useAppStore } from "@/store/useAppStore";
 
 interface Task {
   id: string;
@@ -59,6 +60,9 @@ export default function DoPage() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [focusTask, setFocusTask] = useState<Task | null>(null);
+
+  const { userSettings } = useAppStore();
+  const isBoardView = userSettings?.default_view === "board";
 
   const [showArchive, setShowArchive] = useState(false);
   const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
@@ -391,10 +395,13 @@ export default function DoPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} />
-          <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} />
-          <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} />
+        <div className={cn(
+          "gap-6",
+          isBoardView ? "grid grid-cols-1 md:grid-cols-3 items-start" : "flex flex-col space-y-8 max-w-2xl mx-auto"
+        )}>
+          {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} /> : null}
+          {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} /> : null}
+          {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} /> : null}
         </div>
       )}
 

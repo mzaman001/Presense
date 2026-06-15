@@ -25,10 +25,11 @@ const navItems = [
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
+import { Avatar } from "@/components/ui/Avatar";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { isSidebarCollapsed, toggleSidebar } = useAppStore();
+  const { isSidebarCollapsed, toggleSidebar, userSettings } = useAppStore();
 
   return (
     <aside 
@@ -84,12 +85,31 @@ export function Sidebar() {
           title={isSidebarCollapsed ? "Settings" : undefined}
           className={cn(
             "flex items-center rounded-lg text-sm font-medium text-[var(--color-text-2)] hover:bg-[rgba(255,255,255,0.05)] hover:text-white transition-all",
-            isSidebarCollapsed ? "justify-center w-12 h-12 mx-auto" : "gap-3 px-3 py-2.5 w-full"
+            isSidebarCollapsed ? "justify-center w-12 h-12 mx-auto mb-2" : "gap-3 px-3 py-2.5 w-full mb-2"
           )}
         >
           <Settings className="w-5 h-5 text-[var(--color-text-3)]" />
           {!isSidebarCollapsed && <span>Settings</span>}
         </button>
+
+        {userSettings?.display_name && (
+          <div className={cn(
+            "flex items-center rounded-xl p-2 bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.05)]",
+            isSidebarCollapsed ? "justify-center" : "gap-3"
+          )}>
+            <Avatar 
+              name={userSettings.display_name} 
+              color={userSettings.avatar_color || "#7692FF"} 
+              size="sm"
+            />
+            {!isSidebarCollapsed && (
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-white truncate">{userSettings.display_name}</span>
+                <span className="text-[10px] text-[var(--color-text-3)]">Free Plan</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </aside>
   );

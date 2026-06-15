@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { SelectDropdown } from "@/components/ui/SelectDropdown";
 import { useDebounce } from "use-debounce";
 
 const TABS = [
@@ -209,19 +210,18 @@ export function SettingsModal() {
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Timezone</label>
-                          <select
+                          <SelectDropdown
                             value={settings.timezone || "UTC"}
-                            onChange={e => updateSetting("timezone", e.target.value)}
-                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors appearance-none"
-                          >
-                            <option value="America/New_York">Eastern Time (ET)</option>
-                            <option value="America/Chicago">Central Time (CT)</option>
-                            <option value="America/Denver">Mountain Time (MT)</option>
-                            <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                            <option value="Asia/Kolkata">India Standard Time (IST)</option>
-                            <option value="UTC">Coordinated Universal Time (UTC)</option>
-                            {/* More could be added dynamically via Intl API */}
-                          </select>
+                            onChange={val => updateSetting("timezone", val)}
+                            options={[
+                              { value: "America/New_York", label: "Eastern Time (ET)" },
+                              { value: "America/Chicago", label: "Central Time (CT)" },
+                              { value: "America/Denver", label: "Mountain Time (MT)" },
+                              { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+                              { value: "Asia/Kolkata", label: "India Standard Time (IST)" },
+                              { value: "UTC", label: "Coordinated Universal Time (UTC)" }
+                            ]}
+                          />
                         </div>
                         <div className="pt-8 mt-8 border-t border-[rgba(248,113,113,0.2)]">
                           <h4 className="text-sm font-semibold text-[#F87171] mb-2 flex items-center gap-2">Danger Zone</h4>
@@ -252,15 +252,18 @@ export function SettingsModal() {
                             <div className="font-medium text-white">Color Mode</div>
                             <div className="text-sm text-[rgba(255,255,255,0.5)]">Dark, Light, or System match</div>
                           </div>
-                          <select
-                            value={settings.color_mode || "dark"}
-                            onChange={e => updateSetting("color_mode", e.target.value)}
-                            className="bg-[rgba(0,0,0,0.4)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-1.5 text-sm text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
-                          >
-                            <option value="dark">Dark</option>
-                            <option value="light">Light</option>
-                            <option value="system">System Default</option>
-                          </select>
+                          <div className="w-40">
+                            <SelectDropdown
+                              value={settings.color_mode || "dark"}
+                              onChange={val => updateSetting("color_mode", val)}
+                              className="w-full"
+                              options={[
+                                { value: "dark", label: "Dark" },
+                                { value: "light", label: "Light" },
+                                { value: "system", label: "System Default" }
+                              ]}
+                            />
+                          </div>
                         </div>
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
                           <div>

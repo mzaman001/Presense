@@ -235,7 +235,8 @@ export default function ExplorePage() {
         onConfirm={handleDelete}
         title="Delete Item?"
         description="Are you sure you want to delete this? It will be removed permanently."
-        destructive
+        confirmLabel="Delete"
+        confirmDestructive
       />
     </div>
   );
