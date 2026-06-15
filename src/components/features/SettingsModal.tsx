@@ -374,15 +374,21 @@ export function SettingsModal() {
                     {activeTab === "tasks" && (
                       <div className="space-y-6">
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Default View</label>
-                          <select
-                            value={settings.default_view || "list"}
-                            onChange={e => updateSetting("default_view", e.target.value)}
-                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors appearance-none"
-                          >
-                            <option value="list">List View</option>
-                            <option value="board">Kanban Board</option>
-                          </select>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Default View</label>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => updateSetting("default_view", "list")}
+                              className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.default_view === "list" || !settings.default_view ? 'bg-[var(--color-do)] text-black border-[var(--color-do)]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}
+                            >
+                              List View
+                            </button>
+                            <button
+                              onClick={() => updateSetting("default_view", "board")}
+                              className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.default_view === "board" ? 'bg-[var(--color-do)] text-black border-[var(--color-do)]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}
+                            >
+                              Kanban Board
+                            </button>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Auto-archive completed tasks after (days)</label>
@@ -391,16 +397,6 @@ export function SettingsModal() {
                             min={1} max={30}
                             value={settings.auto_archive_days || 7}
                             onChange={e => updateSetting("auto_archive_days", parseInt(e.target.value))}
-                            className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-2 uppercase tracking-wider">Do Categories (comma separated)</label>
-                          <input
-                            type="text"
-                            value={(settings.do_categories || []).join(", ")}
-                            onChange={e => updateSetting("do_categories", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
-                            placeholder="work, personal, health"
                             className="w-full bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                           />
                         </div>
@@ -427,10 +423,36 @@ export function SettingsModal() {
                             <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.smart_routing_enabled ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
+
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
                           <div>
-                            <div className="font-medium text-white">Local AI (Ollama)</div>
-                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Use local LLM for advanced routing</div>
+                            <div className="font-medium text-white">NLP Date Parsing</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Extract dates naturally from capture text</div>
+                          </div>
+                          <button onClick={() => updateSetting("nlp_date_parsing", settings.nlp_date_parsing !== false)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.nlp_date_parsing !== false ? 'bg-[var(--color-accent)]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.nlp_date_parsing !== false ? 'left-7' : 'left-1'}`} />
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(255,255,255,0.5)] mb-3 uppercase tracking-wider">Routing Confidence</label>
+                          <div className="flex flex-wrap gap-2">
+                            {['High', 'Medium', 'Low'].map(conf => (
+                              <button
+                                key={conf}
+                                onClick={() => updateSetting("routing_confidence", conf)}
+                                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.routing_confidence === conf || (!settings.routing_confidence && conf === 'Medium') ? 'bg-[#2DD4BF] text-black border-[#2DD4BF]' : 'bg-transparent text-[rgba(255,255,255,0.6)] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.3)]'}`}
+                              >
+                                {conf} {conf === 'High' && '(Auto-route)'} {conf === 'Medium' && '(Review)'} {conf === 'Low' && '(Ask)'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Enhanced routing via Ollama</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Use local LLM for advanced routing decisions</div>
                           </div>
                           <button onClick={() => updateSetting("ollama_enabled", !settings.ollama_enabled)} className={`w-12 h-6 rounded-full transition-colors relative ${settings.ollama_enabled ? 'bg-[#2DD4BF]' : 'bg-[rgba(255,255,255,0.1)]'}`}>
                             <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${settings.ollama_enabled ? 'left-7' : 'left-1'}`} />
@@ -445,7 +467,27 @@ export function SettingsModal() {
                                 onChange={e => updateSetting("ollama_url", e.target.value)}
                                 className="flex-1 bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:border-[#2DD4BF] focus:outline-none transition-colors"
                               />
-                              <button onClick={() => { toast.promise(fetch(`${settings.ollama_url || "http://localhost:11434"}/api/version`), { loading: 'Testing...', success: 'Connected to Ollama!', error: 'Connection failed' }) }} className="px-4 py-3 rounded-xl bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] text-[#2DD4BF] text-sm font-semibold hover:bg-[rgba(45,212,191,0.2)] transition-colors">Test</button>
+                              <button 
+                                onClick={async () => { 
+                                  const url = settings.ollama_url || "http://localhost:11434";
+                                  try {
+                                    const res = await fetch(`${url}/api/tags`);
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      const models = data.models || [];
+                                      const modelName = models.length > 0 ? models[0].name : "No models found";
+                                      toast.success(`Connected — model: ${modelName}`);
+                                    } else {
+                                      toast.error("Not reachable");
+                                    }
+                                  } catch (e) {
+                                    toast.error("Not reachable");
+                                  }
+                                }} 
+                                className="px-4 py-3 rounded-xl bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] text-[#2DD4BF] text-sm font-semibold hover:bg-[rgba(45,212,191,0.2)] transition-colors whitespace-nowrap"
+                              >
+                                Test connection
+                              </button>
                             </div>
                           </motion.div>
                         )}

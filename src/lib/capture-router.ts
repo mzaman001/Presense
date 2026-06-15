@@ -53,10 +53,19 @@ export interface RoutedItem {
 
 // ─── Main router ────────────────────────────────────────────────────────────
 
-export function routeCapture(text: string, knownPeople: string[] = []): RoutedItem[] {
+export function routeCapture(text: string, knownPeople: string[] = [], userSettings: any = {}): RoutedItem[] {
   const lower = text.toLowerCase().trim();
-  const doc = nlp(text) as any;
+  let doc: any = null;
+  if (userSettings?.nlp_date_parsing !== false) {
+    doc = nlp(text);
+  }
   const results: RoutedItem[] = [];
+
+  // If smart routing is disabled, just return as Unknown (Inbox)
+  if (userSettings?.smart_routing_enabled === false) {
+    results.push({ type: 'unknown', title: text, destination: 'Inbox' });
+    return results;
+  }
 
   // Split on "also", "and also", ". " for multi-item captures
   const segments = text
@@ -66,7 +75,7 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
 
   if (segments.length > 1) {
     // Recursively route each segment
-    return segments.flatMap((segment) => routeCapture(segment, knownPeople));
+    return segments.flatMap((segment) => routeCapture(segment, knownPeople, userSettings));
   }
 
   // 1. URL → Explore
@@ -82,7 +91,7 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
   }
 
   // 2. Person note — name detection via compromise + knownPeople
-  const detectedNames = doc.people().json().map((p: { text: string }) => p.text);
+  const detectedNames = doc ? doc.people().json().map((p: { text: string }) => p.text) : [];
   const matchedKnown = knownPeople.find((p) => lower.includes(p.toLowerCase()));
   let matchedName = matchedKnown || (detectedNames.length > 0 ? detectedNames[0] : null);
   if (matchedName) {
@@ -155,7 +164,7 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
       recurrencePhraseToRemove = intervalMatch[0];
     } else {
       const dayNamesStr = Object.keys(dayMap).join('|');
-      const daysRegex = new RegExp(`every\\s+((?:(?:\\b(?:${dayNamesStr})\\b)(?:\\s*,\\s*|\\s+and\\s+|\\s+)?)+)`, 'i');
+      const daysRegex = new RegExp(`every\\s+((?:(?:${dayNamesStr})(?:\\s*,\\s*|\\s+and\\s+|\\s+)?)+)`, 'i');
       const everyDaysMatch = lower.match(daysRegex);
       if (everyDaysMatch) {
         const daysStr = everyDaysMatch[1];
@@ -188,14 +197,13 @@ export function routeCapture(text: string, knownPeople: string[] = []): RoutedIt
   }
 
   // 4. Task — extract natural language date
-  if (TASK_KW.some((k) => lower.includes(k)) || doc.dates().found || detectedRRule) {
-    const dates = doc.dates().json();
+  if (TASK_KW.some((k) => lower.includes(k)) || (doc && doc.dates().found) || detectedRRule) {
+    const dates = doc ? doc.dates().json() : [];
     let deadline: string | null = null;
     let cleanTitle = text;
     
     if (recurrencePhraseToRemove) {
       cleanTitle = cleanTitle.replace(new RegExp(recurrencePhraseToRemove, 'i'), '').replace(/\s+/g, ' ').trim();
-      cleanTitle = cleanTitle.replace(/^(and\s+|,?\s*and\s+)/i, '').trim();
     }
     
     if (dates.length > 0) {

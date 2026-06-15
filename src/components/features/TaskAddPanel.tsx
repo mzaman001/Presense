@@ -9,6 +9,8 @@ import nlp from "compromise";
 import datePlugin from "compromise-dates";
 nlp.plugin(datePlugin as any);
 
+import { useAppStore } from "@/store/useAppStore";
+
 interface TaskAddPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,9 +18,10 @@ interface TaskAddPanelProps {
   taskToEdit?: any; // To support edit mode
 }
 
-const CATEGORIES = ["work", "study", "personal", "errand", "health"];
+const DEFAULT_CATEGORIES = ["work", "study", "personal", "errand", "health"];
 
 export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskAddPanelProps) {
+  const { userSettings, updateUserSetting } = useAppStore();
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
   const [deadlineText, setDeadlineText] = useState("");
@@ -36,6 +39,37 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  const categoriesList = userSettings?.do_categories || DEFAULT_CATEGORIES;
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      setIsAddingCategory(false);
+      return;
+    }
+    const sanitized = newCategoryName.trim().toLowerCase();
+    if (!categoriesList.includes(sanitized)) {
+      const updatedCategories = [...categoriesList, sanitized];
+      updateUserSetting("do_categories", updatedCategories);
+      setCategory(sanitized);
+      
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("user_settings").update({ do_categories: updatedCategories }).eq("user_id", user.id);
+        }
+      } catch (err) {
+        console.error("Failed to persist new category", err);
+      }
+    } else {
+      setCategory(sanitized);
+    }
+    setNewCategoryName("");
+    setIsAddingCategory(false);
+  };
 
   const confirmDelete = async () => {
     if (!taskToEdit) return;
@@ -112,7 +146,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setTitle(val);
-    if (!deadline && !deadlineText) {
+    if (!deadline && !deadlineText && userSettings?.nlp_date_parsing !== false) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const doc = nlp(val) as any;
       const dates = doc.dates().json();
@@ -127,7 +161,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const handleDeadlineTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setDeadlineText(val);
-    if (val.trim()) {
+    if (val.trim() && userSettings?.nlp_date_parsing !== false) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const doc = nlp(val) as any;
       const dates = doc.dates().json();
@@ -414,8 +448,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 <label className="flex items-center gap-2 text-xs font-semibold text-[rgba(255,255,255,0.4)] uppercase tracking-wider mb-3">
                   Category
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map((cat) => (
+                <div className="flex flex-wrap gap-2 items-center">
+                  {categoriesList.map((cat: string) => (
                     <button
                       key={cat}
                       onClick={() => setCategory(cat)}
@@ -428,6 +462,27 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       {cat}
                     </button>
                   ))}
+                  {isAddingCategory ? (
+                    <input
+                      autoFocus
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddCategory();
+                        if (e.key === "Escape") setIsAddingCategory(false);
+                      }}
+                      onBlur={handleAddCategory}
+                      placeholder="Type & enter..."
+                      className="px-3 py-1.5 rounded-full text-xs bg-[rgba(255,255,255,0.1)] text-white outline-none border border-[var(--color-accent)] w-28"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setIsAddingCategory(true)}
+                      className="px-3 py-1.5 rounded-full text-xs bg-transparent text-[rgba(255,255,255,0.5)] border border-dashed border-[rgba(255,255,255,0.2)] hover:border-[rgba(255,255,255,0.5)] hover:text-white transition-all"
+                    >
+                      + New
+                    </button>
+                  )}
                 </div>
               </div>
               {/* Priority */}

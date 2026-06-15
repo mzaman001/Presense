@@ -50,7 +50,7 @@ const SPACE_OPTIONS = [
 ];
 
 export function CaptureModal() {
-  const { isCaptureModalOpen, setCaptureModalOpen } = useAppStore();
+  const { isCaptureModalOpen, setCaptureModalOpen, userSettings } = useAppStore();
   const [input, setInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -92,7 +92,7 @@ export function CaptureModal() {
       const res = await fetch("/api/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: input }),
+        body: JSON.stringify({ text: input, settings: userSettings }),
       });
       const data = await res.json();
       setRoutedItems(data.items ?? []);

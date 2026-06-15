@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { text } = await request.json();
+    const { text, settings } = await request.json();
     if (!text?.trim()) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });
     }
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const knownPeople = people?.map((p) => p.name) ?? [];
 
     // Run the rule-based NLP router
-    const items = routeCapture(text, knownPeople);
+    const items = routeCapture(text, knownPeople, settings || {});
 
     return NextResponse.json({ items });
   } catch (error) {
