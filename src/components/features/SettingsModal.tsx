@@ -34,7 +34,7 @@ export function SettingsModal() {
       const { data } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single();
       if (data) {
         setDisplayName(data.display_name || "");
-        setPomodoroDuration(data.pomodoro_duration || 10);
+        setPomodoroDuration(data.pomodoro_duration != null ? Number(data.pomodoro_duration) : 10);
         setNotificationsEnabled(data.notifications_enabled !== false);
         setOllamaEnabled(data.ollama_enabled || false);
         setOllamaUrl(data.ollama_url || "http://localhost:11434");
@@ -133,8 +133,8 @@ export function SettingsModal() {
                         type="number"
                         min={1}
                         max={60}
-                        value={pomodoroDuration}
-                        onChange={e => setPomodoroDuration(parseInt(e.target.value))}
+                        value={pomodoroDuration || ""}
+                        onChange={e => { const v = parseInt(e.target.value); setPomodoroDuration(isNaN(v) ? 0 : v); }}
                         className="w-full bg-[#13111C] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white placeholder-[rgba(255,255,255,0.3)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                       />
                     </div>
