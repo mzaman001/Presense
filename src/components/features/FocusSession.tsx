@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Pause, Play, CheckCircle2, ChevronRight, SkipForward, Coffee } from "lucide-react";
+import { X, Pause, Play, CheckCircle2, ChevronRight, SkipForward, Coffee, Briefcase } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
