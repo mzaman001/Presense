@@ -241,6 +241,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   };
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <>
