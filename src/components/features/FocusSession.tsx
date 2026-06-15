@@ -207,9 +207,9 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12 max-w-lg z-10">
             <div className="flex items-center justify-center gap-2 mb-4">
               {phase === "work" && <Briefcase className={cn("w-4 h-4", isDone ? "text-[var(--color-accent)]" : "text-[var(--color-accent)]")} />}
-              {phase !== "work" && <Coffee className={cn("w-4 h-4", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[var(--color-accent)]" : "text-[#4ADE80]")} />}
+              {phase !== "work" && <Coffee className={cn("w-4 h-4", isDone ? "text-[#4ADE80]" : "text-[#4ADE80]")} />}
               <p className={cn("text-[12px] uppercase tracking-widest font-bold", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[var(--color-accent)]" : "text-[#4ADE80]")}>
-                {phase === "work" ? `Work Session ${sessionCount + 1}` : phase === "short_break" ? "Short Break" : "Long Break"}
+                {phase === "work" ? `Work Session ${pomodorosCompleted + 1}` : phase === "short_break" ? "Short Break" : "Long Break"}
               </p>
             </div>
             <h1 className="text-3xl font-semibold text-[var(--color-text-1)] mb-4 leading-tight">{task.title}</h1>
@@ -226,7 +226,7 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
               <circle cx="150" cy="150" r={radius} className="stroke-[rgba(255,255,255,0.05)]" strokeWidth="6" fill="none" />
               <motion.circle
                 cx="150" cy="150" r={radius}
-                className={cn("transition-all duration-1000 ease-linear", getPhaseColor().split(" ")[1])}
+                className={cn("transition-all duration-1000 ease-linear", getColors().split(" ")[1])}
                 strokeWidth="6" fill="none"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
@@ -234,7 +234,7 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
               />
             </svg>
             <div className="absolute flex flex-col items-center">
-              <span className={cn("text-5xl font-mono tracking-tighter font-light", getPhaseColor().split(" ")[0])}>
+              <span className={cn("text-5xl font-mono tracking-tighter font-light", getColors().split(" ")[0])}>
                 {formatTime(timeLeft)}
               </span>
               {isDone && <span className="text-sm text-[#4ADE80] font-medium mt-2">Phase Complete!</span>}

@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, UserPlus, Loader2, Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase";
-
 import { toast } from "sonner";
+import { useAppStore } from "@/store/useAppStore";
 
 interface AddPersonPanelProps {
   isOpen: boolean;
@@ -11,16 +11,25 @@ interface AddPersonPanelProps {
   onPersonAdded?: () => void;
 }
 
-const COLORS = ["#E5B41E", "#FBBF24", "#F472B6", "#2DD4BF", "#4ADE80", "#F87171"];
-const CATEGORIES = ["work", "study", "personal", "errand", "health", "other"];
-
+const COLORS = ['#E5B41E', '#7692FF', '#2DD4BF', '#F472B6', '#4ADE80', '#8B7CF8'];
 export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPanelProps) {
   const [name, setName] = useState("");
-  const [relationship, setRelationship] = useState("work");
-  const [color, setColor] = useState(COLORS[0]);
+  const [relationship, setRelationship] = useState("Friend");
+  const [color, setColor] = useState<string | null>(null);
   const [nextMeeting, setNextMeeting] = useState("");
+  const [firstNote, setFirstNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { userSettings } = useAppStore();
+  const relationships = userSettings?.people_categories || ["friend", "family", "professor", "colleague", "teammate", "other"];
+
+  // Ensure initial relationship is valid
+  React.useEffect(() => {
+    if (isOpen && !relationships.includes(relationship.toLowerCase())) {
+      setRelationship(relationships[0] || "friend");
+    }
+  }, [isOpen, relationships]);
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -36,9 +45,9 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
           user_id: user.id,
           name: name.trim(),
           relationship,
-          color,
+          ...(color ? { color } : {}),
           next_meeting: nextMeeting ? new Date(nextMeeting).toISOString() : null,
-          notes: []
+          notes: firstNote.trim() ? [{ text: firstNote.trim(), created_at: new Date().toISOString() }] : []
         });
         
         if (error) {
@@ -49,11 +58,12 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
           return;
         }
         
-        toast.success("Person added successfully");
+        toast.success("Person added");
         setName("");
-        setRelationship("friend");
-        setColor(COLORS[0]);
+        setRelationship("Friend");
+        setColor(null);
         setNextMeeting("");
+        setFirstNote("");
         if (onPersonAdded) onPersonAdded();
         onClose();
       }
@@ -108,13 +118,13 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                   Relationship
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map((rel) => (
+                  {relationships.map((rel: string) => (
                     <button
                       key={rel}
                       onClick={() => setRelationship(rel)}
-                      className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
-                        relationship === rel
-                          ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-medium"
+                      className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all capitalize ${
+                        relationship.toLowerCase() === rel.toLowerCase()
+                          ? "bg-[#F472B6] text-[var(--color-background)] border-[#F472B6]"
                           : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]"
                       }`}
                     >
@@ -126,8 +136,13 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
 
               {/* Color */}
               <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
-                  Avatar Color
+                <label className="flex items-center justify-between text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
+                  <span>Avatar Color</span>
+                  {color && (
+                    <button onClick={() => setColor(null)} className="text-[10px] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] capitalize transition-colors">
+                      Clear
+                    </button>
+                  )}
                 </label>
                 <div className="flex gap-3">
                   {COLORS.map((c) => (
@@ -155,6 +170,19 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                   value={nextMeeting}
                   onChange={(e) => setNextMeeting(e.target.value)}
                   className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-4 py-3 text-sm text-[var(--color-text-1)] outline-none focus:border-[#F472B6] transition-colors [color-scheme:dark]"
+                />
+              </div>
+
+              {/* First Note */}
+              <div>
+                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
+                  First Note (Optional)
+                </label>
+                <textarea
+                  placeholder="What do you want to remember about them?"
+                  value={firstNote}
+                  onChange={(e) => setFirstNote(e.target.value)}
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#F472B6] transition-colors resize-none h-24"
                 />
               </div>
             </div>

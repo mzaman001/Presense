@@ -55,6 +55,9 @@ export default function HomeDashboard() {
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
       
       const sorted = tasksRes.data.sort((a, b) => {
+        const aPrio = a.priority ?? 4;
+        const bPrio = b.priority ?? 4;
+
         const aOverdue = a.deadline && new Date(a.deadline) < now;
         const bOverdue = b.deadline && new Date(b.deadline) < now;
         if (aOverdue && !bOverdue) return -1;
@@ -63,18 +66,19 @@ export default function HomeDashboard() {
         const aToday = a.deadline && new Date(a.deadline).getTime() >= todayStart && new Date(a.deadline).getTime() < todayStart + 86400000;
         const bToday = b.deadline && new Date(b.deadline).getTime() >= todayStart && new Date(b.deadline).getTime() < todayStart + 86400000;
 
-        if (aToday && a.priority === "P1" && (!bToday || b.priority !== "P1")) return -1;
-        if (bToday && b.priority === "P1" && (!aToday || a.priority !== "P1")) return 1;
+        // Any P1 task goes to the very top (Focus Hero), ignoring if it's today or not (but overdue still wins above)
+        if (aPrio === 1 && bPrio !== 1) return -1;
+        if (bPrio === 1 && aPrio !== 1) return 1;
 
-        if (aToday && a.priority === "P2" && (!bToday || b.priority !== "P2")) return -1;
-        if (bToday && b.priority === "P2" && (!aToday || a.priority !== "P2")) return 1;
+        // P2 tasks that are today go next
+        if (aToday && aPrio === 2 && (!bToday || bPrio !== 2)) return -1;
+        if (bToday && bPrio === 2 && (!aToday || aPrio !== 2)) return 1;
 
         if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
         if (a.deadline) return -1;
         if (b.deadline) return 1;
 
-        const pWeight = { P1: 1, P2: 2, P3: 3, P4: 4 };
-        return (pWeight[a.priority as keyof typeof pWeight] || 4) - (pWeight[b.priority as keyof typeof pWeight] || 4);
+        return aPrio - bPrio;
       });
       setTasks(sorted);
     }

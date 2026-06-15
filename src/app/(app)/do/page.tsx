@@ -13,6 +13,7 @@ import { cn, formatRRule } from "@/lib/utils";
 import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
+import { DEFAULT_DO_COLORS } from "@/lib/constants";
 
 interface Task {
   id: string;
@@ -25,11 +26,6 @@ interface Task {
   snoozed_until?: string | null;
   recurrence?: string | null;
 }
-
-const CATEGORY_COLORS: Record<string, string> = {
-  work: "var(--color-accent)", study: "#2DD4BF", personal: "#F472B6",
-  errand: "#FBBF24", health: "#4ADE80", other: "rgba(255,255,255,0.4)",
-};
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -63,6 +59,19 @@ export default function DoPage() {
 
   const { userSettings } = useAppStore();
   const isBoardView = userSettings?.default_view === "board";
+
+  const [viewMode, setViewMode] = useState<"board" | "today">("board");
+  useEffect(() => {
+    const saved = localStorage.getItem("presense_do_view");
+    if (saved === "today" || saved === "board") {
+      setViewMode(saved);
+    }
+  }, []);
+
+  const toggleViewMode = (mode: "board" | "today") => {
+    setViewMode(mode);
+    localStorage.setItem("presense_do_view", mode);
+  };
 
   const [showArchive, setShowArchive] = useState(false);
   const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
@@ -183,7 +192,8 @@ export default function DoPage() {
     return d > now && d.toDateString() !== now.toDateString();
   });
 
-  const CATEGORIES = ["all", "today", "work", "study", "personal", "errand", "health", "inbox"];
+  const doCats = userSettings?.do_categories || ["work", "study", "personal", "errand", "health"];
+  const CATEGORIES = ["all", ...doCats, "inbox"];
 
   const TaskCard = ({ task }: { task: Task }) => {
     const label = formatDeadline(task.deadline);
@@ -218,7 +228,7 @@ export default function DoPage() {
                 {isOverdue && <span className="text-[10px] font-bold uppercase tracking-widest text-[#F87171]">Overdue</span>}
                 {label === "Today" && <span className="text-[10px] font-bold uppercase tracking-widest text-[#FBBF24]">Due Today</span>}
                 <span className="text-[10px] font-semibold text-[rgba(255,255,255,0.35)] capitalize"
-                  style={{ color: CATEGORY_COLORS[task.category] ?? "rgba(255,255,255,0.35)" }}>
+                  style={{ color: (userSettings?.do_category_colors?.[task.category] || DEFAULT_DO_COLORS[task.category]) ?? "rgba(255,255,255,0.35)" }}>
                   {task.category}
                 </span>
               </div>
@@ -320,6 +330,20 @@ export default function DoPage() {
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
             <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Do</h1>
+            <div className="flex bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full p-0.5">
+              <button
+                onClick={() => toggleViewMode("board")}
+                className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "board" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
+              >
+                All
+              </button>
+              <button
+                onClick={() => toggleViewMode("today")}
+                className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "today" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
+              >
+                Today
+              </button>
+            </div>
             <button 
               onClick={() => setShowArchive(!showArchive)}
               className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
@@ -375,7 +399,7 @@ export default function DoPage() {
               <GlassCard key={task.id} className="p-4 opacity-70 hover:opacity-100 transition-opacity flex justify-between items-center">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-semibold text-[rgba(255,255,255,0.35)] capitalize" style={{ color: CATEGORY_COLORS[task.category] ?? "rgba(255,255,255,0.35)" }}>
+                    <span className="text-[10px] font-semibold text-[rgba(255,255,255,0.35)] capitalize" style={{ color: (userSettings?.do_category_colors?.[task.category] || DEFAULT_DO_COLORS[task.category]) ?? "rgba(255,255,255,0.35)" }}>
                       {task.category}
                     </span>
                     <span className="text-[10px] text-[rgba(255,255,255,0.35)]">
@@ -392,6 +416,19 @@ export default function DoPage() {
                 </button>
               </GlassCard>
             ))
+          )}
+        </div>
+      ) : viewMode === "today" ? (
+        <div className={cn(
+          "gap-6",
+          isBoardView ? "grid grid-cols-1 md:grid-cols-2 items-start max-w-3xl mx-auto" : "flex flex-col space-y-8 max-w-2xl mx-auto"
+        )}>
+          {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} />}
+          <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} />
+          {overdue.length === 0 && today.length === 0 && (
+            <div className="text-sm text-[var(--color-text-3)] text-center py-12 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl md:col-span-2">
+              No tasks due today. Take a breath.
+            </div>
           )}
         </div>
       ) : (

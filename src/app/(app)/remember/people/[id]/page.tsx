@@ -12,6 +12,8 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { RELATIONSHIP_COLORS } from "@/lib/constants";
+import { useAppStore } from "@/store/useAppStore";
 
 interface PersonNote {
   text: string;
@@ -38,10 +40,10 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [deleteNameConfirm, setDeleteNameConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [linkedTasks, setLinkedTasks] = useState<any[]>([]);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
+  const [personToDelete, setPersonToDelete] = useState(false);
 
   const fetchPerson = useCallback(async () => {
     const { data: personData } = await supabase.from("people").select("*").eq("id", id).single();
@@ -103,13 +105,13 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   };
 
   const handleDeletePerson = async () => {
-    if (!person || deleteNameConfirm !== person.name) return;
+    if (!person) return;
     setIsDeleting(true);
     try {
       const { error } = await supabase.from("people").delete().eq("id", person.id);
       if (error) throw error;
-      toast.success("Person deleted");
-      router.push("/people");
+      toast.success(`${person.name} deleted`);
+      router.push("/remember/people");
     } catch (err: any) {
       toast.error("Failed to delete person", { description: err.message });
       setIsDeleting(false);
@@ -128,17 +130,21 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   const timeline = [...(person.notes || [])].reverse();
   const briefing = timeline.slice(0, 3); // top 3 for briefing
 
+  const { userSettings } = useAppStore();
+  const relKey = (person.relationship || '').toLowerCase();
+  const relColor = person.color || userSettings?.relationship_colors?.[relKey] || RELATIONSHIP_COLORS[relKey] || RELATIONSHIP_COLORS.other;
+
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
-      <Link href="/people" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
+      <Link href="/remember/people" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to People
       </Link>
 
       <div className="flex items-center gap-4">
-        <Avatar name={person.name} color={person.color} size="lg" className="w-16 h-16 text-xl" />
+        <Avatar name={person.name} color={relColor} size="lg" className="w-16 h-16 text-xl" />
         <div>
           <h1 className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-none mb-1">{person.name}</h1>
-          <p className="text-sm text-[var(--color-text-3)] capitalize">{person.relationship}</p>
+          <p className="text-sm font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border bg-opacity-10 w-fit mt-2" style={{ color: relColor, borderColor: `${relColor}40`, backgroundColor: `${relColor}15` }}>{person.relationship}</p>
         </div>
       </div>
 
@@ -227,33 +233,34 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         <p className="text-sm text-[var(--color-text-3)] mb-4">
           Deleting a person is permanent. It will remove all their notes and history.
         </p>
-        <div className="flex items-center gap-3 bg-[rgba(248,113,113,0.05)] p-4 rounded-xl border border-[rgba(248,113,113,0.1)]">
-          <input 
-            type="text" 
-            placeholder={`Type "${person.name}" to confirm`}
-            value={deleteNameConfirm}
-            onChange={(e) => setDeleteNameConfirm(e.target.value)}
-            className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#F87171]"
-          />
-          <button 
-            onClick={handleDeletePerson}
-            disabled={deleteNameConfirm !== person.name || isDeleting}
-            className="px-4 py-2 bg-[rgba(248,113,113,0.2)] text-[#F87171] rounded-lg text-sm font-medium hover:bg-[#F87171] hover:text-[var(--color-text-1)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {isDeleting && <Loader2 className="w-3 h-3 animate-spin" />}
-            Delete Person
-          </button>
-        </div>
+        <button 
+          onClick={() => setPersonToDelete(true)}
+          className="px-4 py-2 bg-[rgba(248,113,113,0.1)] text-[#F87171] rounded-lg text-sm font-medium hover:bg-[rgba(248,113,113,0.2)] transition-colors flex items-center gap-2"
+        >
+          {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
+          Delete Person
+        </button>
       </div>
       
       <ConfirmModal
         isOpen={noteToDelete !== null}
         onClose={() => setNoteToDelete(null)}
         onConfirm={confirmDeleteNote}
-        title="Delete Note"
-        description="Are you sure you want to delete this note? This action cannot be undone."
+        title="Remove note?"
+        description="This cannot be undone."
+        confirmLabel="Remove"
+        confirmDestructive
+      />
+
+      <ConfirmModal
+        isOpen={personToDelete}
+        onClose={() => setPersonToDelete(false)}
+        onConfirm={handleDeletePerson}
+        title="Delete Person"
+        description="This action cannot be undone. All notes and history will be lost."
         confirmLabel="Delete"
         confirmDestructive
+        inputRequired={person.name}
       />
     </div>
   );

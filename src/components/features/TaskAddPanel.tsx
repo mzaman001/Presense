@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, ArrowRight, Flag, Loader2, RotateCw, Trash2 } from "lucide-react";
+import { X, Calendar, Flag, Loader2, RotateCw, Trash2, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { toast } from "sonner";
 import * as chrono from "chrono-node";
 import nlp from "compromise";
 
@@ -15,54 +16,60 @@ interface TaskAddPanelProps {
   taskToEdit?: any; // To support edit mode
 }
 
-const DEFAULT_CATEGORIES = ["work", "study", "personal", "errand", "health"];
-
 export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskAddPanelProps) {
-  const { userSettings, updateUserSetting } = useAppStore();
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [deadlineText, setDeadlineText] = useState("");
   const [parsedDeadline, setParsedDeadline] = useState<Date | null>(null);
   const [startDate, setStartDate] = useState("");
   const [parsedStartDate, setParsedStartDate] = useState<Date | null>(null);
-  const [recurrence, setRecurrence] = useState("");
-  const [freq, setFreq] = useState("None");
-  const [days, setDays] = useState<string[]>([]);
   const [firstStep, setFirstStep] = useState("");
   const [ifThen, setIfThen] = useState("");
   const [category, setCategory] = useState("work");
-  const [priority, setPriority] = useState(4);
-  const [subtasks, setSubtasks] = useState<{title: string; completed: boolean}[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
+  const [priority, setPriority] = useState<number | null>(null);
+  const [notes, setNotes] = useState("");
+
+  const [recurrence, setRecurrence] = useState("");
+  const [freq, setFreq] = useState("Does not repeat");
+  const [days, setDays] = useState<string[]>([]);
+  const [customRRule, setCustomRRule] = useState("");
+
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoriesList, setCategoriesList] = useState<string[]>([]);
 
-  const categoriesList = userSettings?.do_categories || DEFAULT_CATEGORIES;
+  const [saving, setSaving] = useState(false);
+  const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { userSettings } = useAppStore();
+
+  useEffect(() => {
+    if (isOpen) {
+      setCategoriesList(userSettings?.do_categories || ["work", "study", "personal", "errand", "health"]);
+    }
+  }, [isOpen, userSettings?.do_categories]);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
       setIsAddingCategory(false);
       return;
     }
-    const sanitized = newCategoryName.trim().toLowerCase();
-    if (!categoriesList.includes(sanitized)) {
-      const updatedCategories = [...categoriesList, sanitized];
-      updateUserSetting("do_categories", updatedCategories);
-      setCategory(sanitized);
+    const name = newCategoryName.trim().toLowerCase();
+    if (!categoriesList.includes(name)) {
+      const newList = [...categoriesList, name];
+      setCategoriesList(newList);
+      setCategory(name);
       
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from("user_settings").update({ do_categories: updatedCategories }).eq("user_id", user.id);
-        }
-      } catch (err) {
-        console.error("Failed to persist new category", err);
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Update userSettings in DB
+        const updatedSettings = { ...userSettings, do_categories: newList };
+        await supabase.from("user_settings").update({ do_categories: newList }).eq("user_id", user.id);
+        useAppStore.getState().setUserSettings(updatedSettings);
       }
     } else {
-      setCategory(sanitized);
+      setCategory(name);
     }
     setNewCategoryName("");
     setIsAddingCategory(false);
@@ -84,25 +91,32 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       if (taskToEdit) {
         setTitle(taskToEdit.title || "");
         setFirstStep(taskToEdit.first_step || "");
         setIfThen(taskToEdit.ifthen_trigger || "");
         setCategory(taskToEdit.category || "work");
-        setPriority(taskToEdit.priority || 4);
-        setSubtasks(taskToEdit.subtasks || []);
+        setPriority(taskToEdit.priority || null);
+        setNotes(taskToEdit.notes || "");
         setRecurrence(taskToEdit.recurrence || "");
+        
         if (taskToEdit.recurrence) {
-          if (taskToEdit.recurrence.includes("DAILY")) setFreq("Daily");
-          else if (taskToEdit.recurrence.includes("MONTHLY")) setFreq("Monthly");
-          else if (taskToEdit.recurrence.includes("WEEKLY")) {
+          if (taskToEdit.recurrence === "FREQ=DAILY") setFreq("Daily");
+          else if (taskToEdit.recurrence === "FREQ=MONTHLY") setFreq("Monthly");
+          else if (taskToEdit.recurrence.includes("FREQ=WEEKLY")) {
             setFreq("Weekly");
             const match = taskToEdit.recurrence.match(/BYDAY=([A-Z,]+)/);
             if (match) setDays(match[1].split(','));
-          } else setFreq("None");
-        } else setFreq("None");
+          } else {
+            setFreq("Custom");
+            setCustomRRule(taskToEdit.recurrence);
+          }
+        } else {
+          setFreq("Does not repeat");
+        }
+        
         if (taskToEdit.deadline) {
           const d = new Date(taskToEdit.deadline);
           setParsedDeadline(d);
@@ -111,6 +125,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           setParsedDeadline(null);
           setDeadline("");
         }
+        
         if (taskToEdit.start_date) {
           const d = new Date(taskToEdit.start_date);
           setParsedStartDate(d);
@@ -122,41 +137,27 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       } else {
         setTitle("");
         setDeadline("");
-        setDeadlineText("");
         setParsedDeadline(null);
         setStartDate("");
         setParsedStartDate(null);
         setRecurrence("");
-        setFreq("None");
+        setFreq("Does not repeat");
         setDays([]);
+        setCustomRRule("");
         setFirstStep("");
         setIfThen("");
         setCategory("work");
-        setPriority(4);
-        setSubtasks([]);
+        setPriority(null);
+        setNotes("");
       }
       setErrorMsg(null);
     }
   }, [isOpen, taskToEdit]);
 
-  // Parse natural language dates when title or deadline changes
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setTitle(val);
-    if (!deadline && !deadlineText && userSettings?.nlp_date_parsing !== false) {
-      const parsedResults = chrono.parse(val);
-      if (parsedResults && parsedResults.length > 0 && parsedResults[0].start) {
-        setParsedDeadline(parsedResults[0].start.date());
-      } else {
-        setParsedDeadline(null);
-      }
-    }
-  };
-
-  const handleDeadlineTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setDeadlineText(val);
-    if (val.trim() && userSettings?.nlp_date_parsing !== false) {
+    if (!deadline && userSettings?.nlp_date_parsing !== false) {
       const parsedResults = chrono.parse(val);
       if (parsedResults && parsedResults.length > 0 && parsedResults[0].start) {
         const d = parsedResults[0].start.date();
@@ -166,9 +167,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setParsedDeadline(null);
         setDeadline("");
       }
-    } else {
-      setParsedDeadline(null);
-      setDeadline("");
     }
   };
 
@@ -193,7 +191,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       
       if (user) {
         let triggerText = ifThen.trim();
-        // Only wrap if it doesn't already have the format (prevents double wrapping on edit)
         if (triggerText && !triggerText.startsWith("When ")) {
           triggerText = `When ${triggerText}, I will ${firstStep.trim()}`;
         }
@@ -204,10 +201,12 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         else if (freq === "Weekly") {
           finalRecurrence = "FREQ=WEEKLY";
           if (days.length > 0) finalRecurrence += `;BYDAY=${days.join(',')}`;
+        } else if (freq === "Custom") {
+          finalRecurrence = customRRule.trim() || null;
         }
 
         let finalTitle = title.trim();
-        if (!deadline && !deadlineText && parsedDeadline) {
+        if (parsedDeadline) {
           const doc = nlp(finalTitle) as any;
           const dates = doc.dates().json();
           if (dates && dates.length > 0 && dates[0].text) {
@@ -227,8 +226,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           recurrence: finalRecurrence,
           category,
           status: "active",
-          priority,
-          subtasks
+          priority: priority ?? 4,
+          notes: notes.trim() || null
         };
 
         if (taskToEdit && taskToEdit.deadline !== payload.deadline) {
@@ -272,7 +271,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -281,7 +279,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
           />
           
-          {/* Slide-in Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -289,70 +286,37 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-background)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
           >
-            <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
-              <h2 className="text-lg font-semibold text-[var(--color-text-1)]">{taskToEdit ? "Edit Task" : "Add Task"}</h2>
-              <div className="flex items-center gap-2">
-                {taskToEdit && (
-                  <button onClick={() => setDeleteTaskConfirm(true)} className="p-2 rounded-full hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171] transition-colors">
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-[var(--color-surface)] transition-colors">
-                  <X className="w-5 h-5 text-[var(--color-text-3)]" />
-                </button>
-              </div>
+            <div className="flex items-center justify-between p-6 pb-2">
+              <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-3)]">
+                <X className="w-6 h-6" />
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-8">
               {/* Title */}
               <div>
-                <div className="relative">
-                  <input
-                    autoFocus
-                    placeholder="Task title (e.g. Finish the OS assignment...)"
-                    value={title}
-                    onChange={handleTitleChange}
-                    className="w-full pr-28 bg-transparent text-xl font-medium text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none border-b border-transparent focus:border-[var(--color-border)] pb-2 transition-colors"
-                  />
-                  {parsedDeadline && !deadlineText && (
-                    <div className="absolute right-0 bottom-2 text-xs text-[#4ADE80] font-medium bg-[rgba(74,222,128,0.1)] border border-[rgba(74,222,128,0.2)] px-2 py-1 rounded-md flex items-center gap-1 shadow-lg shadow-[rgba(74,222,128,0.05)]">
-                      <Calendar className="w-3 h-3" />
-                      NLP: {parsedDeadline.toLocaleDateString("en-US", { weekday: "short", hour: "numeric" })}
-                    </div>
-                  )}
-                </div>
+                <input
+                  autoFocus
+                  placeholder="Task title..."
+                  value={title}
+                  onChange={handleTitleChange}
+                  className="w-full bg-transparent text-3xl font-bold text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none border-b border-transparent focus:border-[var(--color-border)] pb-2 transition-colors"
+                />
               </div>
 
-              {/* Deadline & Start Date */}
-              <div className="flex flex-col gap-4">
-                <div className="bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)]">
-                  <label className="flex items-center justify-between text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
-                    <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5" /> Deadline</span>
-                  </label>
-                  <div className="relative space-y-3">
-                    <input
-                      placeholder="e.g. next Friday"
-                      value={deadlineText}
-                      onChange={handleDeadlineTextChange}
-                      className="w-full bg-transparent border-b border-[var(--color-border)] pb-2 text-sm text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)] outline-none focus:border-[var(--color-accent)] transition-colors"
-                    />
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-[var(--color-text-3)] uppercase">Exact:</span>
-                      <input
-                        type="datetime-local"
-                        value={deadline || ""}
-                        onChange={handleManualDateChange}
-                        className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)] transition-colors [color-scheme:dark]"
-                      />
-                    </div>
-                  </div>
+              {/* Dates Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Deadline</label>
+                  <input
+                    type="datetime-local"
+                    value={deadline || ""}
+                    onChange={handleManualDateChange}
+                    className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-xl px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)] transition-colors [color-scheme:dark]"
+                  />
                 </div>
-
-                <div className="bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)]">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
-                    <Calendar className="w-3.5 h-3.5" /> Start Date
-                  </label>
-                  <p className="text-[10px] text-[var(--color-text-3)] mb-2 leading-tight">Hide from active lists until this date.</p>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Start Date</label>
                   <input
                     type="datetime-local"
                     value={startDate || ""}
@@ -360,22 +324,20 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       setStartDate(e.target.value);
                       setParsedStartDate(e.target.value ? new Date(e.target.value) : null);
                     }}
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)] transition-colors [color-scheme:dark]"
+                    className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-xl px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)] transition-colors [color-scheme:dark]"
                   />
                 </div>
               </div>
 
               {/* Recurrence */}
               <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">
-                  <RotateCw className="w-3.5 h-3.5 text-[#E5B41E]" /> Recurrence
-                </label>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Repeats</label>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {["None", "Daily", "Weekly", "Monthly"].map(f => (
+                  {["Does not repeat", "Daily", "Weekly", "Monthly", "Custom"].map(f => (
                     <button
                       key={f}
                       onClick={() => setFreq(f)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${freq === f ? 'bg-[rgba(229,180,30,0.15)] text-[#E5B41E] border-[rgba(229,180,30,0.3)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)] hover:text-[var(--color-text-1)]'}`}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border ${freq === f ? 'bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:text-[var(--color-text-1)]'}`}
                     >
                       {f}
                     </button>
@@ -384,63 +346,53 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 {freq === "Weekly" && (
                   <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                     {[
-                      { l: 'M', v: 'MO' }, { l: 'T', v: 'TU' }, { l: 'W', v: 'WE' }, 
-                      { l: 'T', v: 'TH' }, { l: 'F', v: 'FR' }, { l: 'S', v: 'SA' }, { l: 'S', v: 'SU' }
+                      { l: 'Mo', v: 'MO' }, { l: 'Tu', v: 'TU' }, { l: 'We', v: 'WE' }, 
+                      { l: 'Th', v: 'TH' }, { l: 'Fr', v: 'FR' }, { l: 'Sa', v: 'SA' }, { l: 'Su', v: 'SU' }
                     ].map((d, i) => (
                       <button
                         key={`${d.v}-${i}`}
                         onClick={() => setDays(prev => prev.includes(d.v) ? prev.filter(x => x !== d.v) : [...prev, d.v])}
-                        className={`w-8 h-8 rounded-full text-xs font-bold transition-colors ${days.includes(d.v) ? 'bg-[#E5B41E] text-[var(--color-background)]' : 'bg-[var(--color-surface)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]'}`}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${days.includes(d.v) ? 'bg-[#FBBF24] text-amber-950' : 'bg-[var(--color-surface)] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] border border-[var(--color-border)]'}`}
                       >
                         {d.l}
                       </button>
                     ))}
                   </div>
                 )}
+                {freq === "Custom" && (
+                  <input
+                    placeholder="e.g. FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1"
+                    value={customRRule}
+                    onChange={(e) => setCustomRRule(e.target.value)}
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                  />
+                )}
               </div>
 
-              {/* First Step */}
+              {/* Priority */}
               <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">
-                  <ArrowRight className="w-3.5 h-3.5 text-[#2DD4BF]" /> First Step (optional)
-                </label>
-                <p className="text-[11px] text-[var(--color-text-3)] mb-2">What is the absolute smallest step to start this?</p>
-                <textarea
-                  placeholder="e.g. Open Chapter 3 to page 47"
-                  value={firstStep}
-                  onChange={(e) => setFirstStep(e.target.value)}
-                  className="w-full bg-[rgba(45,212,191,0.05)] border border-[rgba(45,212,191,0.2)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[rgba(45,212,191,0.3)] outline-none focus:border-[#2DD4BF] resize-none h-20 transition-colors"
-                />
-              </div>
-
-              {/* If-Then Trigger */}
-              <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">
-                  <Flag className="w-3.5 h-3.5 text-[#F472B6]" /> When and where will you start this?
-                </label>
-                <p className="text-[11px] text-[var(--color-text-3)] mb-2">When and where will you start this?</p>
-                <div className="bg-[rgba(244,114,182,0.05)] border border-[rgba(244,114,182,0.2)] rounded-xl p-4">
-                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-1)] mb-2">
-                    <span className="font-bold text-[#F472B6]">When</span>
-                    <input
-                      placeholder="I sit at my desk after dinner"
-                      value={ifThen}
-                      onChange={(e) => setIfThen(e.target.value)}
-                      className="flex-1 bg-transparent border-b border-[rgba(244,114,182,0.3)] focus:border-[#F472B6] outline-none text-[var(--color-text-1)] placeholder:text-[rgba(244,114,182,0.4)] pb-0.5"
-                    />
-                  </div>
-                  <div className="flex items-start gap-2 text-sm text-[var(--color-text-1)] opacity-60">
-                    <span className="font-bold">I will</span>
-                    <span className="line-clamp-2">{firstStep || "..."}</span>
-                  </div>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Priority</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { val: 1, label: "Urgent", colorClass: "bg-[#F87171]/10 text-[#F87171] border-[#F87171]/30 hover:bg-[#F87171]/20", activeClass: "bg-[#F87171] text-white border-[#F87171]" },
+                    { val: 2, label: "High", colorClass: "bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/30 hover:bg-[#FBBF24]/20", activeClass: "bg-[#FBBF24] text-amber-950 border-[#FBBF24]" },
+                    { val: 3, label: "Medium", colorClass: "bg-[#2DD4BF]/10 text-[#2DD4BF] border-[#2DD4BF]/30 hover:bg-[#2DD4BF]/20", activeClass: "bg-[#2DD4BF] text-teal-950 border-[#2DD4BF]" },
+                    { val: 4, label: "Low", colorClass: "bg-[#9CA3AF]/10 text-[#9CA3AF] border-[#9CA3AF]/30 hover:bg-[#9CA3AF]/20", activeClass: "bg-[#9CA3AF] text-gray-950 border-[#9CA3AF]" }
+                  ].map((p) => (
+                    <button
+                      key={p.val}
+                      onClick={() => setPriority(priority === p.val ? null : p.val)}
+                      className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${priority === p.val ? p.activeClass : p.colorClass}`}
+                    >
+                      P{p.val} {p.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* Category */}
               <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
-                  Category
-                </label>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Category</label>
                 <div className="flex flex-wrap gap-2 items-center">
                   {categoriesList.map((cat: string) => (
                     <button
@@ -449,7 +401,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
                         category === cat
                           ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-medium"
-                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]"
+                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-text-3)]"
                       }`}
                     >
                       {cat}
@@ -473,94 +425,61 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       onClick={() => setIsAddingCategory(true)}
                       className="px-3 py-1.5 rounded-full text-xs bg-transparent text-[var(--color-text-3)] border border-dashed border-[var(--color-border)] hover:border-[rgba(255,255,255,0.5)] hover:text-[var(--color-text-1)] transition-all"
                     >
-                      + New
+                      + Add new category
                     </button>
                   )}
                 </div>
               </div>
-              {/* Priority */}
+
+              {/* First Step */}
               <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">
-                  Priority
-                </label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4].map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPriority(p)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
-                        priority === p
-                          ? p === 1 ? "bg-[rgba(248,113,113,0.2)] text-[#F87171] border-[rgba(248,113,113,0.5)]"
-                          : p === 2 ? "bg-[rgba(251,191,36,0.2)] text-[#FBBF24] border-[rgba(251,191,36,0.5)]"
-                          : p === 3 ? "bg-[rgba(45,212,191,0.2)] text-[#2DD4BF] border-[rgba(45,212,191,0.5)]"
-                          : "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]"
-                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]"
-                      }`}
-                    >
-                      P{p}
-                    </button>
-                  ))}
-                </div>
+                <textarea
+                  placeholder="What is the absolute smallest action to start this? (optional)"
+                  value={firstStep}
+                  onChange={(e) => setFirstStep(e.target.value)}
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#2DD4BF] resize-none h-20 transition-colors"
+                />
               </div>
 
-              {/* Subtasks */}
+              {/* If-Then Trigger */}
               <div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">
-                  Subtasks
-                </label>
-                <div className="space-y-2 mb-2">
-                  {subtasks.map((st, idx) => (
-                    <div key={idx} className="flex items-center gap-2 group">
-                      <button
-                        onClick={() => {
-                          const newSt = [...subtasks];
-                          newSt[idx].completed = !newSt[idx].completed;
-                          setSubtasks(newSt);
-                        }}
-                        className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${st.completed ? "bg-[#2DD4BF] border-[#2DD4BF]" : "border-[var(--color-border)]"}`}
-                      >
-                        {st.completed && <X className="w-3 h-3 text-[var(--color-background)]" />}
-                      </button>
-                      <input
-                        value={st.title}
-                        onChange={(e) => {
-                          const newSt = [...subtasks];
-                          newSt[idx].title = e.target.value;
-                          setSubtasks(newSt);
-                        }}
-                        placeholder="New subtask..."
-                        className={`flex-1 bg-transparent text-sm outline-none border-b border-transparent focus:border-[var(--color-border)] transition-colors ${st.completed ? "text-[var(--color-text-3)] line-through" : "text-[var(--color-text-1)]"}`}
-                      />
-                      <button
-                        onClick={() => {
-                          const newSt = [...subtasks];
-                          newSt.splice(idx, 1);
-                          setSubtasks(newSt);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-3)] hover:text-[#F87171] transition-opacity"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setSubtasks([...subtasks, { title: "", completed: false }])}
-                  className="text-xs font-medium text-[var(--color-text-3)] hover:text-[var(--color-text-1)] flex items-center gap-1 transition-colors mt-2"
-                >
-                  + Add subtask
-                </button>
+                <input
+                  placeholder="e.g. At my desk after dinner / On the bus tomorrow morning (optional)"
+                  value={ifThen}
+                  onChange={(e) => setIfThen(e.target.value)}
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#F472B6] transition-colors"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <textarea
+                  placeholder="Notes (optional)"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[var(--color-accent)] resize-none h-24 transition-colors"
+                />
               </div>
             </div>
 
-            <div className="p-6 border-t border-[var(--color-border)] bg-[var(--color-background)]">
+            {/* Sticky Bottom Bar */}
+            <div className="sticky bottom-0 p-6 pt-4 border-t border-[var(--color-border)] bg-[var(--color-background)] z-10 flex flex-col items-center gap-3">
               <button
                 onClick={handleSave}
                 disabled={saving || !title.trim()}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : taskToEdit ? "Save Changes" : "Save Task"}
+                {saving ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : "Save Changes"}
               </button>
+              
+              {taskToEdit && (
+                <button 
+                  onClick={() => setDeleteTaskConfirm(true)}
+                  className="text-sm font-semibold text-[#F87171] hover:text-red-400 transition-colors py-1"
+                >
+                  Delete Task
+                </button>
+              )}
             </div>
           </motion.div>
         </>

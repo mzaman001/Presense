@@ -11,6 +11,8 @@ import Link from "next/link";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { ContextualTip } from "@/components/ui/ContextualTip";
+import { RELATIONSHIP_COLORS } from "@/lib/constants";
+import { useAppStore } from "@/store/useAppStore";
 
 import {
   DndContext,
@@ -42,13 +44,6 @@ interface Person {
   sort_order: number;
 }
 
-const RELATIONSHIP_COLORS: Record<string, string> = {
-  friend: '#F472B6',
-  family: '#A78BFA',
-  colleague: '#60A5FA',
-  professor: '#FCD34D',
-  other: '#9CA3AF',
-};
 
 function SortablePersonRow({ person, formatMeeting }: { person: Person, formatMeeting: (d: string) => string }) {
   const {
@@ -67,15 +62,17 @@ function SortablePersonRow({ person, formatMeeting }: { person: Person, formatMe
     position: 'relative' as const,
   };
 
-  const relColor = RELATIONSHIP_COLORS[person.relationship] || RELATIONSHIP_COLORS.other;
+  const { userSettings } = useAppStore();
+  const relKey = (person.relationship || '').toLowerCase();
+  const relColor = person.color || userSettings?.relationship_colors?.[relKey] || RELATIONSHIP_COLORS[relKey] || RELATIONSHIP_COLORS.other;
 
   return (
-    <motion.div ref={setNodeRef} style={style} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={cn(isDragging && "opacity-50")}>
+    <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-50 z-50")}>
       <GlassCard className="p-0 hover:scale-[1.005] transition-transform overflow-hidden flex items-stretch">
         <div {...attributes} {...listeners} className="w-8 flex items-center justify-center bg-[var(--color-surface)] border-r border-[var(--color-border)] cursor-grab active:cursor-grabbing hover:bg-[var(--color-surface)] transition-colors">
           <GripVertical className="w-4 h-4 text-[var(--color-text-3)]" />
         </div>
-        <Link href={`/people/${person.id}`} className="flex-1 p-4">
+        <Link href={`/remember/people/${person.id}`} className="flex-1 p-4">
           <div className="flex items-center gap-3">
             <Avatar name={person.name} color={relColor} size="sm" />
             <div className="flex-1 min-w-0">
@@ -95,7 +92,7 @@ function SortablePersonRow({ person, formatMeeting }: { person: Person, formatMe
           </div>
         </Link>
       </GlassCard>
-    </motion.div>
+    </div>
   );
 }
 
@@ -104,9 +101,14 @@ export default function PeoplePage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchPeople = useCallback(async () => {
-    const { data } = await supabase.from("people").select("*").order("sort_order", { ascending: true, nullsFirst: false });
+    const { data, error } = await supabase.from("people").select("*").order("sort_order", { ascending: true, nullsFirst: false });
+    if (error) {
+      console.error("Fetch people error:", error);
+      setFetchError(error.message);
+    }
     setPeople(data ?? []);
     setLoading(false);
   }, [supabase]);
@@ -179,10 +181,11 @@ export default function PeoplePage() {
               </div>
               <div className="space-y-3">
                 {today.map((person, i) => {
-                  const relColor = RELATIONSHIP_COLORS[person.relationship] || RELATIONSHIP_COLORS.other;
+                  const relKey = (person.relationship || '').toLowerCase();
+                  const relColor = person.color || useAppStore.getState().userSettings?.relationship_colors?.[relKey] || RELATIONSHIP_COLORS[relKey] || RELATIONSHIP_COLORS.other;
                   return (
                     <motion.div key={person.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                      <Link href={`/people/${person.id}`}>
+                      <Link href={`/remember/people/${person.id}`}>
                         <GlassCard className="p-5 border-[rgba(244,114,182,0.3)] hover:scale-[1.01] transition-transform cursor-pointer">
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
@@ -215,7 +218,11 @@ export default function PeoplePage() {
             <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-3 mt-8">All Contacts</h2>
             {others.length === 0 && today.length === 0 ? (
               <GlassCard className="p-8 text-center">
-                <p className="text-sm text-[var(--color-text-3)]">No people yet. Add someone or capture &ldquo;Riyaz said to...&rdquo;</p>
+                {fetchError ? (
+                  <p className="text-sm text-red-400">Error loading people: {fetchError}</p>
+                ) : (
+                  <p className="text-sm text-[var(--color-text-3)]">No people yet. Add someone or capture &ldquo;Riyaz said to...&rdquo;</p>
+                )}
               </GlassCard>
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

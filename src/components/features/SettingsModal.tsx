@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
-import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database } from "lucide-react";
+import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database, Users, Plus, Trash2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,7 @@ const TABS = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "focus", label: "Focus", icon: Timer },
   { id: "tasks", label: "Tasks", icon: CheckSquare },
+  { id: "people", label: "People", icon: Users },
   { id: "routing", label: "Smart Routing", icon: Brain },
   { id: "data", label: "Data", icon: Database },
 ];
@@ -114,6 +115,134 @@ export function SettingsModal() {
   
   const handleExportData = async () => {
     toast.success("Data export started. You will receive an email shortly.");
+  };
+
+  const CategoryManager = ({ 
+    title, 
+    categoriesKey, 
+    colorsKey, 
+    defaultCategories 
+  }: { 
+    title: string, 
+    categoriesKey: string, 
+    colorsKey: string, 
+    defaultCategories: string[] 
+  }) => {
+    const cats: string[] = settings[categoriesKey] || defaultCategories;
+    const colors: Record<string, string> = settings[colorsKey] || {};
+    const [newCat, setNewCat] = useState("");
+
+    const handleAdd = () => {
+      const trimmed = newCat.trim().toLowerCase();
+      if (!trimmed || cats.includes(trimmed)) return;
+      updateSetting(categoriesKey, [...cats, trimmed]);
+      setNewCat("");
+    };
+
+    const handleDelete = (cat: string) => {
+      updateSetting(categoriesKey, cats.filter(c => c !== cat));
+    };
+
+    const handleColorChange = (cat: string, color: string) => {
+      updateSetting(colorsKey, { ...colors, [cat]: color });
+    };
+
+    const CategoryItem = ({ cat, initialColor }: { cat: string, initialColor: string }) => {
+      const [editName, setEditName] = useState(cat);
+      
+      const handleRename = async () => {
+        const trimmed = editName.trim().toLowerCase();
+        if (trimmed && trimmed !== cat && !cats.includes(trimmed)) {
+          const newCats = cats.map(c => c === cat ? trimmed : c);
+          updateSetting(categoriesKey, newCats);
+          if (colors[cat]) {
+            const newColors = { ...colors };
+            newColors[trimmed] = newColors[cat];
+            delete newColors[cat];
+            updateSetting(colorsKey, newColors);
+          }
+          
+          // Cascading update to tasks and people
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            if (categoriesKey === "do_categories") {
+              await supabase.from("items").update({ category: trimmed }).eq("user_id", user.id).ilike("category", cat);
+            } else if (categoriesKey === "people_categories") {
+              await supabase.from("people").update({ relationship: trimmed }).eq("user_id", user.id).ilike("relationship", cat);
+            }
+            toast.success(`Renamed category to ${trimmed}`);
+          }
+        } else {
+          setEditName(cat);
+        }
+      };
+
+      return (
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] group hover:border-[rgba(255,255,255,0.2)] transition-colors">
+          <input 
+            value={editName}
+            onChange={e => setEditName(e.target.value)}
+            onBlur={handleRename}
+            onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
+            className="flex-1 min-w-[80px] bg-transparent text-sm font-bold text-[var(--color-text-1)] capitalize tracking-wide focus:outline-none focus:bg-white/5 px-2 py-1 rounded"
+          />
+          <div className="flex items-center justify-end gap-1.5 shrink-0">
+            {['#F87171', '#FBBF24', '#4ADE80', '#2DD4BF', '#7692FF', '#8B7CF8', '#F472B6', '#9CA3AF'].map(preset => {
+              const isActive = initialColor === preset || (!initialColor && preset === '#9CA3AF');
+              return (
+                <button 
+                  key={preset}
+                  onClick={() => handleColorChange(cat, preset)}
+                  className="w-5 h-5 rounded-full transition-all hover:scale-125"
+                  style={{ 
+                    backgroundColor: preset, 
+                    border: isActive ? `2px solid white` : `1px solid rgba(255,255,255,0.1)`,
+                    transform: isActive ? 'scale(1.2)' : 'scale(1)',
+                    opacity: isActive ? 1 : 0.5
+                  }}
+                />
+              );
+            })}
+            <div className="w-[1px] h-4 bg-[var(--color-border)] mx-1" />
+            <label className="relative flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-125 shadow-sm" style={{ background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' }}>
+              <input 
+                type="color" 
+                value={initialColor || "#9CA3AF"} 
+                onChange={(e) => handleColorChange(cat, e.target.value)}
+                className="absolute opacity-0 w-full h-full cursor-pointer"
+              />
+            </label>
+            <button onClick={() => handleDelete(cat)} className="ml-1 p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-400/10 transition-all">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-3">
+        <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider">{title}</label>
+        <div className="space-y-2">
+          {cats.map(cat => (
+            <CategoryItem key={cat} cat={cat} initialColor={colors[cat]} />
+          ))}
+          <div className="flex items-center gap-2 mt-2">
+            <input 
+              type="text" 
+              value={newCat} 
+              onChange={e => setNewCat(e.target.value)} 
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="Add new category..." 
+              className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+            />
+            <button onClick={handleAdd} className="p-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-1)] hover:border-[var(--color-accent)] transition-colors">
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -403,16 +532,12 @@ export function SettingsModal() {
                             className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Do Categories (comma separated)</label>
-                          <input
-                            type="text"
-                            value={(settings.do_categories || []).join(", ")}
-                            onChange={e => updateSetting("do_categories", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
-                            placeholder="work, personal, health"
-                            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
-                          />
-                        </div>
+                        <CategoryManager 
+                          title="Task Categories" 
+                          categoriesKey="do_categories" 
+                          colorsKey="do_category_colors" 
+                          defaultCategories={["work", "study", "personal", "errand", "health"]} 
+                        />
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
                           <div>
                             <div className="font-medium text-[var(--color-text-1)]">Auto-snooze Overdue</div>
@@ -422,6 +547,17 @@ export function SettingsModal() {
                             <div className={`w-4 h-4 rounded-full bg-[var(--color-text-1)] absolute top-1 transition-transform ${settings.auto_snooze ? 'left-7' : 'left-1'}`} />
                           </button>
                         </div>
+                      </div>
+                    )}
+
+                    {activeTab === "people" && (
+                      <div className="space-y-6">
+                        <CategoryManager 
+                          title="Relationship Categories" 
+                          categoriesKey="people_categories" 
+                          colorsKey="relationship_colors" 
+                          defaultCategories={["friend", "family", "professor", "colleague", "teammate", "other"]} 
+                        />
                       </div>
                     )}
 

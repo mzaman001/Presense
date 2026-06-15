@@ -22,11 +22,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Check if onboarding is complete by looking for user_settings
   const { data: settings } = await supabase
     .from("user_settings")
-    .select("display_name")
+    .select("display_name, onboarding_complete")
     .eq("user_id", user.id)
     .single();
 
-  if (!settings) {
+  if (!settings || settings.onboarding_complete === false) {
     redirect("/onboarding");
   }
   return (
