@@ -73,6 +73,16 @@ export function SettingsModal() {
 
   const updateSetting = (key: string, value: any) => {
     setSettings((prev: any) => ({ ...prev, [key]: value }));
+    
+    // Immediately apply theme changes
+    if (key === 'theme') {
+      localStorage.setItem('presense_theme', value);
+      document.documentElement.classList.remove('theme-blue', 'theme-forest', 'theme-cyberpunk', 'light');
+      
+      if (value === 'midnight') document.documentElement.classList.add('theme-blue');
+      if (value === 'cyberpunk') document.documentElement.classList.add('theme-cyberpunk');
+      if (value === 'light') document.documentElement.classList.add('light');
+    }
   };
 
   const handleSignOut = async () => {
@@ -190,6 +200,22 @@ export function SettingsModal() {
 
                     {activeTab === "appearance" && (
                       <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                          <div>
+                            <div className="font-medium text-white">Theme</div>
+                            <div className="text-sm text-[rgba(255,255,255,0.5)]">Select your preferred app theme</div>
+                          </div>
+                          <select
+                            value={settings.theme || "dark"}
+                            onChange={e => updateSetting("theme", e.target.value)}
+                            className="bg-[rgba(0,0,0,0.4)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-1.5 text-sm text-white focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                          >
+                            <option value="dark">Dark (Default)</option>
+                            <option value="midnight">Midnight</option>
+                            <option value="cyberpunk">Cyberpunk</option>
+                            <option value="light">Light</option>
+                          </select>
+                        </div>
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
                           <div>
                             <div className="font-medium text-white">Ambient Background</div>

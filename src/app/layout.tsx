@@ -31,12 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                let theme = localStorage.getItem('presense_theme') || 'orange';
-                let mode = localStorage.getItem('presense_color_mode') || 'dark';
+                let theme = localStorage.getItem('presense_theme') || 'dark';
                 
-                if (theme === 'blue') document.documentElement.classList.add('theme-blue');
-                if (theme === 'forest') document.documentElement.classList.add('theme-forest');
-                if (mode === 'light') document.documentElement.classList.add('light');
+                if (theme === 'midnight') document.documentElement.classList.add('theme-blue');
+                if (theme === 'cyberpunk') document.documentElement.classList.add('theme-cyberpunk');
+                if (theme === 'light') document.documentElement.classList.add('light');
               } catch (e) {}
             `,
           }}
