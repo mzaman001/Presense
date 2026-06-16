@@ -35,7 +35,7 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`} style={{ transition: 'background-color 300ms ease, color 300ms ease' }}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}>
       <head>
         <Script
           id="theme-init"
@@ -44,14 +44,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `
               try {
                 var html = document.documentElement;
-                var theme = localStorage.getItem('presense_theme') || 'wahala';
+                var theme = localStorage.getItem('presense_theme') || 'orange';
                 var mode = localStorage.getItem('presense_color_mode') || 'dark';
                 var reduceMotion = localStorage.getItem('presense_reduce_motion') === 'true';
                 html.classList.remove('theme-blue', 'theme-forest', 'theme-navy', 'light', 'reduce-motion');
-                // Handle legacy 'blue' and 'orange' values
-                if (theme === 'navy' || theme === 'blue') html.classList.add('theme-navy');
+                if (theme === 'blue') html.classList.add('theme-navy');
                 else if (theme === 'forest') html.classList.add('theme-forest');
-                // wahala / orange = default, no extra class
                 if (mode === 'light') html.classList.add('light');
                 else if (mode === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches) html.classList.add('light');
                 if (reduceMotion) html.classList.add('reduce-motion');

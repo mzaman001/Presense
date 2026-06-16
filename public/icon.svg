@@ -1,37 +1,36 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Dark rounded square background -->
-  <rect width="512" height="512" rx="120" fill="#0F0A00"/>
+  <rect width="512" height="512" rx="110" fill="#0F0A00"/>
   
   <defs>
-    <!-- Left circle gradient (Amber) -->
-    <radialGradient id="gradLeft" cx="40%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="#FFD147"/>
-      <stop offset="100%" stop-color="#E59A1E"/>
-    </radialGradient>
+    <!-- Left-bottom circle gradient: yellow/amber to coral -->
+    <linearGradient id="grad1" x1="120" y1="380" x2="280" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E5B41E"/>
+      <stop offset="100%" stop-color="#EB4233"/>
+    </linearGradient>
     
-    <!-- Right circle gradient (Coral) -->
-    <radialGradient id="gradRight" cx="40%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="#FF7555"/>
-      <stop offset="100%" stop-color="#EB3323"/>
-    </radialGradient>
-    
-    <!-- Subtle grain filter -->
+    <!-- Right-top circle gradient: coral to amber -->
+    <linearGradient id="grad2" x1="220" y1="280" x2="400" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#EB4233"/>
+      <stop offset="100%" stop-color="#E5B41E"/>
+    </linearGradient>
+
+    <!-- Grain filter for texture -->
     <filter id="grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" stitchTiles="stitch"/>
       <feColorMatrix type="saturate" values="0"/>
       <feBlend in="SourceGraphic" mode="multiply" result="blend"/>
     </filter>
   </defs>
 
-  <!-- Overlapping circles with screen blend mode for the glow effect -->
-  <g style="mix-blend-mode: screen">
-    <!-- Left/Bottom Circle -->
-    <circle cx="216" cy="296" r="130" fill="url(#gradLeft)" opacity="0.9"/>
+  <g transform="translate(256, 256)">
+    <!-- Bottom-left circle -->
+    <circle cx="-45" cy="45" r="115" fill="url(#grad1)" />
     
-    <!-- Right/Top Circle -->
-    <circle cx="296" cy="216" r="130" fill="url(#gradRight)" opacity="0.9"/>
+    <!-- Top-right circle overlapping -->
+    <circle cx="45" cy="-45" r="115" fill="url(#grad2)" style="mix-blend-mode: screen" opacity="0.9" />
   </g>
 
-  <!-- Grain texture at 2% opacity over shapes only -->
-  <rect width="512" height="512" rx="120" fill="white" filter="url(#grain)" opacity="0.02" style="pointer-events: none"/>
+  <!-- Grain texture overlay at 3% opacity -->
+  <rect width="512" height="512" rx="110" fill="white" filter="url(#grain)" opacity="0.03" style="mix-blend-mode: overlay; pointer-events: none;"/>
 </svg>

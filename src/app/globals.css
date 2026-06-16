@@ -371,6 +371,10 @@ html.theme-navy {
   --border-focus: rgba(118, 146, 255, 0.60);
   --border-input-focus: rgba(118, 146, 255, 0.50);
   --toggle-track-on: var(--accent);
+  --surface-sidebar: rgba(2, 5, 15, 0.70);
+  --surface-modal: rgba(5, 11, 29, 0.92);
+  --surface-dropdown: rgba(6, 12, 31, 0.96);
+  --surface-toast: rgba(7, 13, 34, 0.95);
 }
 
 html.theme-navy.light {
@@ -395,6 +399,9 @@ html.theme-navy.light {
   --text-4: rgba(4, 9, 48, 0.24);
   --border-default: rgba(27, 44, 193, 0.12);
   --border-card: rgba(27, 44, 193, 0.09);
+  --surface-modal: rgba(238, 243, 255, 0.97);
+  --surface-dropdown: rgba(230, 240, 255, 0.98);
+  --surface-toast: rgba(228, 236, 255, 0.98);
 }
 
 html.theme-forest {
@@ -420,6 +427,10 @@ html.theme-forest {
   --border-focus: rgba(239, 221, 141, 0.55);
   --border-input-focus: rgba(239, 221, 141, 0.45);
   --toggle-track-on: var(--accent-hot);
+  --surface-sidebar: rgba(5, 8, 4, 0.70);
+  --surface-modal: rgba(10, 15, 8, 0.92);
+  --surface-dropdown: rgba(11, 16, 9, 0.96);
+  --surface-toast: rgba(13, 18, 10, 0.95);
 }
 
 html.theme-forest.light {
@@ -444,6 +455,9 @@ html.theme-forest.light {
   --text-4: rgba(13, 26, 8, 0.24);
   --border-default: rgba(74, 92, 30, 0.12);
   --border-card: rgba(74, 92, 30, 0.09);
+  --surface-modal: rgba(245, 249, 240, 0.97);
+  --surface-dropdown: rgba(235, 248, 225, 0.98);
+  --surface-toast: rgba(236, 250, 227, 0.98);
 }
 
 
@@ -455,7 +469,6 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 300ms ease, color 300ms ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -1117,27 +1130,6 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 
 html.reduce-motion .orb {
   animation: none !important;
-}
-
-/* ============================================================ */
-/* PART 15: SETTINGS                                            */
-/* ============================================================ */
-.theme-swatch {
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--border-default);
-  cursor: pointer;
-  overflow: hidden;
-  position: relative;
-  transition: border-color var(--transition-base), transform var(--transition-base);
-}
-
-.theme-swatch.active {
-  border-color: var(--accent);
-  transform: scale(1.02);
-}
-
-.theme-swatch:hover:not(.active) {
-  border-color: var(--border-strong);
 }
 
 /* ============================================================ */

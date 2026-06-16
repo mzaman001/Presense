@@ -184,21 +184,30 @@ export function OnboardingSplit({
 export function PresenseLogo({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="512" height="512" rx="120" fill="#0F0A00" />
+      <rect width="512" height="512" rx="110" fill="#0F0A00" />
       <defs>
-        <radialGradient id="pgLeft" cx="40%" cy="40%" r="60%">
-          <stop offset="0%" stopColor="#FFD147" />
-          <stop offset="100%" stopColor="#E59A1E" />
-        </radialGradient>
-        <radialGradient id="pgRight" cx="40%" cy="40%" r="60%">
-          <stop offset="0%" stopColor="#FF7555" />
-          <stop offset="100%" stopColor="#EB3323" />
-        </radialGradient>
+        <linearGradient id="pg1" x1="100" y1="100" x2="380" y2="380" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#E5B41E" />
+          <stop offset="100%" stopColor="#EB4233" />
+        </linearGradient>
+        <linearGradient id="pg2" x1="380" y1="120" x2="140" y2="360" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#EB4233" />
+          <stop offset="100%" stopColor="#E5B41E" />
+        </linearGradient>
       </defs>
-      <g style={{ mixBlendMode: "screen" }}>
-        <circle cx="216" cy="296" r="130" fill="url(#pgLeft)" opacity={0.9} />
-        <circle cx="296" cy="216" r="130" fill="url(#pgRight)" opacity={0.9} />
-      </g>
+      {/* Primary teardrop */}
+      <path
+        d="M230 170 C280 120, 360 160, 340 240 C320 310, 240 350, 190 310 C140 270, 180 220, 230 170Z"
+        fill="url(#pg1)"
+        opacity="1"
+      />
+      {/* Secondary teardrop */}
+      <path
+        d="M290 140 C340 110, 400 160, 370 230 C345 295, 270 320, 235 275 C200 230, 240 170, 290 140Z"
+        fill="url(#pg2)"
+        opacity="0.85"
+        style={{ mixBlendMode: "screen" }}
+      />
     </svg>
   );
 }
