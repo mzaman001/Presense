@@ -4,8 +4,8 @@
   <br />
   <br />
 
-  # 🧠 Presense — Your External Brain
-  **A premium, unified ecosystem that acts as an extension of your mind.**
+  # 🧠 Presense
+  **An opinionated, deeply immersive ecosystem for your mind.**
   <br />
 
   [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -15,56 +15,61 @@
   [![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)](https://www.framer.com/motion/)
 
   <p align="center">
-    <a href="#-the-five-spaces">The Five Spaces</a> • 
-    <a href="#-premium-features">Premium Features</a> • 
-    <a href="#-installation--setup">Setup</a> • 
-    <a href="#-architecture">Architecture</a>
+    <a href="#-the-philosophy-anti-sandbox">The Philosophy</a> • 
+    <a href="#-architecture-of-thought">Architecture of Thought</a> • 
+    <a href="#-engineering-immersion">Design & Immersion</a> • 
+    <a href="#-installation--setup">Setup</a>
   </p>
 </div>
 
 ---
 
-## 🌌 The Problem with Productivity
-Traditional productivity apps suffer from extreme siloing. Your tasks live in one app, your notes in another, and your contacts in a CRM you never check. You spend more time managing the system than executing.
+## 🌌 The Philosophy: Anti-Sandbox
 
-**Presense breaks this.** By combining five distinct spaces into a single, seamless ecosystem connected by an intelligent NLP capture router, Presense stops being a to-do list and becomes your external brain.
+Apps like Notion or Obsidian give you an infinite canvas. While powerful, they inevitably turn you into a systems architect rather than an executor. You spend hours designing databases, tweaking layouts, and organizing pages instead of actually doing the work.
 
----
+**Presense is the antithesis of the infinite canvas.**
 
-## 🧭 The Five Spaces
-
-| Space | Focus | Description | Highlight Feature |
-|:---:|:---|:---|:---|
-| ⚡ **Do** | Action | Tasks that move. Focus on the smallest physical step to start, not just the outcome. | *If-Then Anchoring* & *Start Date filtering* |
-| 💭 **Think** | Reflection | Thoughts that stay. Threaded, continuous journaling that builds a mental repository over time. | *Auto-generated Daily Notes* |
-| 👥 **Remember** | Relationships | A personal, lightweight CRM. Log what people tell you and exactly where you left your passport. | *Contextual Meeting Briefings* |
-| 🧭 **Explore** | Knowledge | Things worth keeping. Save links, books, and concepts for later processing. | *Cross-space linking to Think threads* |
-| 📊 **Dashboard** | Focus | A centralized hub displaying your active focus tasks, today's meetings, and weekly Pomodoro stats. | *Bento-grid Hero UI* |
+It is a deeply opinionated, structural extension of your mind. It does not want you to build a system; it *is* the system. Built on principles of cognitive science, Presense enforces boundaries, automated cleanup, and psychological framing (like If-Then anchoring) to ensure your workspace remains a pristine tool for action and reflection, not a sprawling digital graveyard.
 
 ---
 
-## ✨ Premium Features
+## 🧭 Architecture of Thought
 
-> **Universal NLP Capture**
-> Type *"Meeting with Max next Tuesday at 2pm"* from anywhere in the app. Presense automatically extracts the date, creates the entry, and routes it to the correct space using local rule-based intelligence.
+Your mind processes different types of information differently. Presense mirrors this reality by partitioning your life into exactly four distinct, interconnected spaces:
 
-> **If-Then Anchoring**
-> Stop setting vague goals. Define the exact physical location and time you will start a task (e.g., *"When I sit at my desk after dinner, I will open Chapter 3"*).
+| Space | Purpose | Cognitive Model |
+|:---:|:---|:---|
+| ⚡ **Do** | Action | **Implementation Intentions.** We don't do "tasks". We do "If-Then" anchors. You define exactly *where* and *when* an action happens. What matters is the starting friction, not the outcome. |
+| 💭 **Think** | Reflection | **Threaded Consciousness.** Not a document, but a conversation with yourself. Long-term ideas, daily journals, and profound thoughts live in continuous, searchable threads that resurface organically. |
+| 👥 **Remember** | Relationships | **Contextual Empathy.** A lightweight, personal CRM. When you meet someone, you instantly see what you talked about last time, their birthday, and any shared tasks. |
+| 🧭 **Explore** | Knowledge | **Curated Consumption.** A holding zone for articles, books, and links. If it sits untouched, the automated 30-day archive cycle sweeps it away to prevent digital hoarding. |
 
-> **Immersive Focus Sessions**
-> A deeply immersive, fullscreen Pomodoro timer featuring dynamic SVG progress rings, ambient glowing backgrounds, and configurable durations.
+*(All spaces roll up into the **Dashboard**, a centralized hub displaying your active focus tasks, today's meetings, and weekly Pomodoro statistics using a beautiful Bento-grid UI.)*
 
-> **The Archive Ecosystem**
-> Built for speed. A unified 30-day soft-delete cycle with nightly Edge Functions for permanent cleanup, keeping your active workspace pristine and lightning fast.
+---
 
-> **Flawless Aesthetics**
-> Switch between curated, bespoke themes: **Wahala** (coral/amber), **Deep Navy**, and **Forest** (supporting both dark and light modes). Built with intense glassmorphism, translucency, and micro-animations.
+## ✨ Engineering Immersion
+
+Productivity tools shouldn't look like spreadsheets. Presense is engineered to feel like a premium, almost physical space you want to inhabit.
+
+> **Universal NLP Capture**  
+> Hit `Cmd+K` anywhere. Type *"Meet Sarah about the design at 2pm tomorrow"*. Presense's local Natural Language Processing (`compromise`) instantly extracts the date, identifies the person, and routes the thought perfectly without you touching a dropdown menu.
+
+> **Deep-Focus Pomodoro Integration**  
+> When it's time to execute, Presense transforms. A fullscreen, immersive focus environment takes over with dynamic SVG progress rings, ambient glowing backgrounds, and configurable intervals. Distractions are hidden; only the current task exists.
+
+> **Bespoke Glassmorphic UI**  
+> Built with intense attention to visual hierarchy. Translucent layers (`backdrop-blur-3xl`), fluid `framer-motion` micro-interactions, and curated themes (like *Wahala*, *Deep Navy*, and *Forest*) ensure the app feels alive and reactive to your touch.
+
+> **Aggressive Auto-Cleanup**  
+> A workspace should be clean. Presense uses Supabase Edge Functions to enforce a strict 30-day soft-delete cycle for stale items, forcing you to engage with your data or let it go.
 
 ---
 
 ## 🛠️ Installation & Setup
 
-Presense requires **Node.js 18+** and a **Supabase** instance.
+Presense is a modern full-stack application requiring **Node.js 18+** and a **Supabase** instance.
 
 ### 1. Clone & Install
 ```bash
@@ -81,30 +86,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### 3. Database Initialization
-Presense relies on a strictly typed, relational PostgreSQL database. Run the SQL migrations found in the `supabase/migrations/` folder in your Supabase SQL Editor in exact numerical order:
-1. `001_schema.sql` (Base tables)
-2. `002_rls.sql` (Row Level Security)
-3. `003_search.sql` (Text indexing)
-...through `013_pomodoro_settings.sql`
+Presense relies on a strictly typed, relational PostgreSQL database. Run the SQL migrations to set up your schema, policies, and functions:
+```bash
+npx supabase db push
+```
 
-### 4. Start the Engine
+### 4. Ignite
 ```bash
 npm run dev
 ```
-Navigate to `http://localhost:3000` to begin onboarding.
-
----
-
-## 🏗️ Architecture & Codebase
-
-Presense is architected for real-time scale, utilizing an offline-capable, highly modularized structure.
-
-* 📁 `src/app/` — Next.js App Router hierarchy separating `(app)` (authenticated spaces) and `(auth)` (login/onboarding).
-* 📁 `src/components/features/` — Complex, state-driven panels (e.g., `TaskAddPanel`, `FocusSession`, `SettingsModal`).
-* 📁 `src/components/layout/` — Global shell wrappers (e.g., `Navigation`, `AmbientBackground`).
-* 📁 `src/components/ui/` — Stateless, reusable design system building blocks (`GlassCard`, `ContextualTip`).
-* 📁 `src/hooks/useRealtime.ts` — Custom Supabase channel subscriptions powering instant UI reactivity across devices.
-* 📁 `src/store/useAppStore.ts` — Zustand store for hyper-fast, prop-drilling-free UI state management.
+Navigate to `http://localhost:3000` to enter your new mind.
 
 ---
 
