@@ -173,7 +173,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
             {linkedTasks.map((task) => (
               <GlassCard key={task.id} className="p-4 border-[var(--color-border)] flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-medium text-[var(--color-text-1)]">{task.title}</p>
+                  <p className="text-card-title text-[var(--text-1)]">{task.title}</p>
                   {task.first_step && <p className="text-xs text-[#2DD4BF] mt-1">{task.first_step}</p>}
                 </div>
                 <Link href={`/do`} className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
@@ -236,7 +236,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         </p>
         <button 
           onClick={() => setPersonToDelete(true)}
-          className="px-4 py-2 bg-[rgba(248,113,113,0.1)] text-[#F87171] rounded-lg text-sm font-medium hover:bg-[rgba(248,113,113,0.2)] transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-[rgba(248,113,113,0.1)] text-[#F87171] rounded-lg text-card-title hover:bg-[rgba(248,113,113,0.2)] transition-colors flex items-center gap-2"
         >
           {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
           Delete Person

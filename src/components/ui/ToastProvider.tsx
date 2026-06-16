@@ -2,6 +2,8 @@
 
 import { Toaster } from "sonner";
 
+import { CheckCircle2, AlertCircle, Info } from "lucide-react";
+
 export function ToastProvider() {
   return (
     <Toaster 
@@ -9,15 +11,12 @@ export function ToastProvider() {
       position="bottom-right"
       style={{ zIndex: 9999 }}
       toastOptions={{
-        style: {
-          background: 'var(--color-surface)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '0.5px solid var(--color-border)',
-          color: 'var(--color-text-1)',
-          borderRadius: '16px',
-        },
-        className: 'font-sans',
+        className: 'toast font-sans !text-[var(--text-1)]',
+      }}
+      icons={{
+        success: <CheckCircle2 size={16} strokeWidth={1.5} className="text-[var(--status-done)] shrink-0" />,
+        error: <AlertCircle size={16} strokeWidth={1.5} className="text-[var(--status-danger)] shrink-0" />,
+        info: <Info size={16} strokeWidth={1.5} className="text-[var(--accent)] shrink-0" />,
       }}
     />
   );

@@ -11,7 +11,7 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
       <div
         ref={ref}
         className={cn(
-          "glass-panel p-6",
+          "glass-card p-6",
           hoverable && "cursor-pointer",
           className
         )}

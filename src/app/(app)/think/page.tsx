@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Plus, Loader2, Sparkles, Pin } from "lucide-react";
+import { Plus, Loader2, Sparkles, Pin, Search } from "lucide-react";
 import Link from "next/link";
 import { useAppStore } from "@/store/useAppStore";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -181,17 +181,20 @@ export default function ThinkPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <input 
-            type="text" 
-            placeholder="Search threads..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="hidden md:block w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#2DD4BF]"
-          />
-          <button onClick={handleDailyNote} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.25)] text-[#FBBF24] text-sm font-medium hover:bg-[rgba(251,191,36,0.2)] transition-colors hidden sm:flex">
+          <div className="relative">
+            <Search size={13} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+            <input 
+              type="text" 
+              placeholder="Search threads..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input-search hidden md:block !w-48"
+            />
+          </div>
+          <button onClick={handleDailyNote} className="btn-secondary !text-[#FBBF24] !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] hover:!bg-[rgba(251,191,36,0.2)] hidden sm:flex">
             <Sparkles className="w-4 h-4" /> Daily Note
           </button>
-          <button onClick={handleNewThread} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(45,212,191,0.12)] border border-[rgba(45,212,191,0.25)] text-[#2DD4BF] text-sm font-medium hover:bg-[rgba(45,212,191,0.2)] transition-colors">
+          <button onClick={handleNewThread} className="btn-secondary !text-[#2DD4BF] !border-[rgba(45,212,191,0.25)] !bg-[rgba(45,212,191,0.12)] hover:!bg-[rgba(45,212,191,0.2)]">
             <Plus className="w-4 h-4" /> New thread
           </button>
         </div>
@@ -204,13 +207,16 @@ export default function ThinkPage() {
       />
 
       <div className="md:hidden">
-        <input 
-          type="text" 
-          placeholder="Search threads..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#2DD4BF]"
-        />
+        <div className="relative">
+          <Search size={13} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+          <input 
+            type="text" 
+            placeholder="Search threads..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-search w-full md:hidden"
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -263,10 +269,10 @@ export default function ThinkPage() {
                       "absolute right-3 top-3 p-1.5 rounded-lg transition-all",
                       thread.is_pinned 
                         ? "opacity-100 text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.1)]" 
-                        : "opacity-0 group-hover:opacity-100 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
+                        : "opacity-0 group-hover:opacity-100 text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--color-surface)]"
                     )}
                   >
-                    <Pin className={cn("w-4 h-4", thread.is_pinned && "fill-current")} />
+                    <Pin size={14} strokeWidth={1.5} className={cn(thread.is_pinned && "fill-current")} />
                   </button>
                   <div className="flex items-start gap-3">
                     <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: thread.color_accent }} />
@@ -304,3 +310,4 @@ export default function ThinkPage() {
     </div>
   );
 }
+

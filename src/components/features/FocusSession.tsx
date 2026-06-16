@@ -179,103 +179,93 @@ export function FocusSession({ task, onClose, onComplete }: FocusSessionProps) {
   };
 
   const getColors = () => {
-    if (phase === "work") return "text-[var(--color-accent)] stroke-[var(--color-accent)]";
-    return "text-[#4ADE80] stroke-[#4ADE80]"; // breaks are green
+    if (phase === "work") return "text-[var(--text-1)] stroke-[var(--accent)]";
+    return "text-[var(--text-1)] stroke-[var(--space-think)]";
   };
 
   const getBgColors = () => {
-    if (phase === "work") return "bg-[var(--color-accent)]/20";
-    return "bg-[#4ADE80]/20";
+    if (phase === "work") return "bg-[var(--accent)]/10";
+    return "bg-[var(--space-think)]/10";
   };
+
+  useEffect(() => {
+    if (phase !== "work") {
+      document.body.style.setProperty("--orb-animation-duration", "18s");
+    } else {
+      document.body.style.removeProperty("--orb-animation-duration");
+    }
+    return () => { document.body.style.removeProperty("--orb-animation-duration"); };
+  }, [phase]);
 
   return (
     <AnimatePresence>
       {task && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 bg-[#0B0914]/90 backdrop-blur-xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className={cn(
+            "fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 backdrop-blur-xl transition-colors duration-1000",
+            phase === "work" ? "bg-black/60" : "bg-black/80"
+          )}
         >
           {/* Ambient glow */}
           <div className={cn("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000", getBgColors())} />
 
-          <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full bg-[var(--color-surface)] hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-3)] hover:text-[var(--color-text-1)]">
-            <X className="w-6 h-6" />
+          <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-[var(--surface-hover)] transition-colors text-[var(--text-3)] hover:text-[var(--text-1)]">
+            <X className="w-6 h-6" strokeWidth={1.5} />
           </button>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12 max-w-lg z-10">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              {phase === "work" && <Briefcase className={cn("w-4 h-4", isDone ? "text-[var(--color-accent)]" : "text-[var(--color-accent)]")} />}
-              {phase !== "work" && <Coffee className={cn("w-4 h-4", isDone ? "text-[#4ADE80]" : "text-[#4ADE80]")} />}
-              <p className={cn("text-[12px] uppercase tracking-widest font-bold", isDone ? "text-[#4ADE80]" : phase === "work" ? "text-[var(--color-accent)]" : "text-[#4ADE80]")}>
-                {phase === "work" ? `Work Session ${pomodorosCompleted + 1}` : phase === "short_break" ? "Short Break" : "Long Break"}
+          <div className="flex flex-col items-center z-10 w-full max-w-sm">
+            <div className="text-center mb-10">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--text-3)] mb-1">
+                {phase === "work" ? "Work Session" : phase === "short_break" ? "Short Break" : "Long Break"}
+              </p>
+              <p className="text-[12px] text-[var(--text-3)]">
+                {pomodorosCompleted + 1} of 4
               </p>
             </div>
-            <h1 className="text-3xl font-semibold text-[var(--color-text-1)] mb-4 leading-tight">{task.title}</h1>
-            {task.first_step && phase === "work" && !isDone && (
-              <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition-colors">
-                <ChevronRight className="w-4 h-4 text-[var(--color-accent)]" />
-                <span className="text-[var(--color-accent)] font-medium">{task.first_step}</span>
+
+            <div className="relative flex items-center justify-center mb-12">
+              <svg width="200" height="200" viewBox="0 0 200 200" className="transform -rotate-90">
+                <circle cx="100" cy="100" r={80} className="stroke-[var(--border-default)]" strokeWidth="8" fill="none" />
+                <motion.circle
+                  cx="100" cy="100" r={80}
+                  className={cn("transition-all duration-1000 ease-linear", getColors().split(" ")[1])}
+                  strokeWidth="8" fill="none"
+                  strokeDasharray={502.65}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center">
+                <span className={cn("text-[48px] font-mono", getColors().split(" ")[0])}>
+                  {formatTime(timeLeft)}
+                </span>
               </div>
-            )}
-          </motion.div>
-
-          <div className="relative flex items-center justify-center mb-16 z-10">
-            <svg width="300" height="300" className="transform -rotate-90">
-              <circle cx="150" cy="150" r={radius} className="stroke-[rgba(255,255,255,0.05)]" strokeWidth="6" fill="none" />
-              <motion.circle
-                cx="150" cy="150" r={radius}
-                className={cn("transition-all duration-1000 ease-linear", getColors().split(" ")[1])}
-                strokeWidth="6" fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute flex flex-col items-center">
-              <span className={cn("text-5xl font-mono tracking-tighter font-light", getColors().split(" ")[0])}>
-                {formatTime(timeLeft)}
-              </span>
-              {isDone && <span className="text-sm text-[#4ADE80] font-medium mt-2">Phase Complete!</span>}
             </div>
-          </div>
 
-          <div className="flex items-center gap-4 z-10">
-            {!isDone ? (
-              <>
-                <button onClick={() => setIsPaused(!isPaused)} className="w-14 h-14 flex items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-1)]">
-                  {isPaused ? <Play className="w-6 h-6 ml-1" /> : <Pause className="w-6 h-6" />}
-                </button>
-                <button onClick={skipToNextPhase} className="w-14 h-14 flex items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-1)]" title="Skip phase">
-                  <SkipForward className="w-5 h-5" />
-                </button>
-                <button onClick={onClose} className="px-6 py-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-1)] font-medium">
-                  End early
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={skipToNextPhase}
-                  className="px-8 py-4 rounded-xl bg-[rgba(74,222,128,0.15)] border border-[rgba(74,222,128,0.3)] text-[#4ADE80] font-semibold hover:bg-[rgba(74,222,128,0.25)] transition-colors flex items-center gap-2"
-                >
-                  Start Next Phase <ChevronRight className="w-4 h-4" />
-                </button>
-                {phase === "work" && (
-                  <button
-                    onClick={handleCompleteTask}
-                    disabled={completing}
-                    className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#4ADE80] text-[var(--color-background)] font-bold hover:bg-[#22c55e] transition-colors disabled:opacity-50"
-                  >
-                    {completing ? "Saving..." : "Mark Complete"} <CheckCircle2 className="w-5 h-5" />
-                  </button>
-                )}
-              </>
-            )}
+            <h2 className="text-[14px] font-medium text-[var(--text-2)] mb-12 text-center max-w-xs truncate">
+              {task.title}
+            </h2>
+            <div className="flex items-center gap-6">
+              <button onClick={() => setIsPaused(!isPaused)} className="flex items-center gap-2 px-4 py-2 text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors">
+                {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                <span className="text-[13px] font-medium">{isPaused ? "Resume" : "Pause"}</span>
+              </button>
+              <button onClick={skipToNextPhase} className="flex items-center gap-2 px-4 py-2 text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors">
+                <SkipForward className="w-4 h-4" />
+                <span className="text-[13px] font-medium">Skip</span>
+              </button>
+              <button onClick={handleCompleteTask} disabled={completing} className="flex items-center gap-2 px-4 py-2 text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors disabled:opacity-50">
+                <div className="w-3 h-3 bg-current rounded-[2px]" />
+                <span className="text-[13px] font-medium">{completing ? "Ending..." : "End"}</span>
+              </button>
+            </div>
           </div>
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
+

@@ -44,17 +44,17 @@ export function ConfirmModal({
             onClick={onClose}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ type: "spring", duration: 0.3, bounce: 0.2 }}
-            className="relative w-full max-w-md bg-[var(--color-background)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-6"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 280, damping: 26, duration: 0.22 }}
+            className="modal relative w-full max-w-md p-6"
           >
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-[var(--color-surface)] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors"
+              className="btn-icon absolute top-4 right-4"
             >
-              <X className="w-5 h-5" />
+              <X size={16} strokeWidth={1.5} className="shrink-0" />
             </button>
             <div className="mb-6 pr-8">
               <h2 className="text-[var(--color-text-1)] font-semibold text-lg mb-2">{title}</h2>
@@ -77,7 +77,7 @@ export function ConfirmModal({
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--color-text-2)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -90,10 +90,8 @@ export function ConfirmModal({
                   }
                 }}
                 className={cn(
-                  "px-5 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-                  confirmDestructive
-                    ? "bg-[#F87171]/10 text-[#F87171] border border-[#F87171]/20 hover:bg-[#F87171]/20"
-                    : "bg-[var(--color-accent)] text-[var(--color-background)] hover:bg-[var(--color-accent)]/90"
+                  confirmDestructive ? "btn-danger" : "btn-primary",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
                 {confirmLabel}

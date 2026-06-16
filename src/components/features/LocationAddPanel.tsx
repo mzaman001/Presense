@@ -105,14 +105,16 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
         {isOpen && (
           <motion.div
             key="panel"
-            initial={{ x: "100%", opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] bg-[var(--color-surface)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
           >
             <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)]">
               <h2 className="text-lg font-bold text-[var(--color-text-1)]">{itemToEdit ? "Edit Location" : "Log Location"}</h2>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors">
-                <X className="w-5 h-5 text-[var(--color-text-2)]" />
+              <button onClick={onClose} className="btn-icon">
+                <X size={16} strokeWidth={1.5} className="shrink-0" />
               </button>
             </div>
 
@@ -125,7 +127,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">
+                  <label className="text-label text-[var(--text-3)] block mb-2">
                     Item Name <span className="text-red-400">*</span>
                   </label>
                   <input
@@ -134,12 +136,12 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
                     value={itemName}
                     onChange={(e) => setItemName(e.target.value)}
                     placeholder="e.g. Keys, Passport, Charger"
-                    className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[#4ADE80] focus:outline-none transition-colors placeholder:text-[var(--color-text-3)]/50"
+                    className="input"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">
+                  <label className="text-label text-[var(--text-3)] block mb-2">
                     Location <span className="text-red-400">*</span>
                   </label>
                   <input
@@ -148,7 +150,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
                     onChange={(e) => setLocationText(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSave()}
                     placeholder="e.g. In the top drawer of my desk"
-                    className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[#4ADE80] focus:outline-none transition-colors placeholder:text-[var(--color-text-3)]/50"
+                    className="input"
                   />
                 </div>
               </div>
@@ -158,17 +160,17 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
               {itemToEdit && (
                 <button
                   onClick={() => setDeleteConfirm(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 text-red-400 font-semibold hover:bg-red-500/20 transition-colors"
+                  className="btn-danger px-3 flex items-center justify-center"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
                 </button>
               )}
               <button
                 onClick={handleSave}
                 disabled={saving || !itemName.trim() || !locationText.trim()}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#4ADE80] text-[var(--color-background)] font-semibold hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(74,222,128,0.3)] disabled:shadow-none"
+                className="flex-1 btn-primary py-3 w-full disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (itemToEdit ? "Save Changes" : "Log Location")}
+                {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (itemToEdit ? "Save Changes" : "Log Location")}
               </button>
             </div>
           </motion.div>
@@ -179,10 +181,11 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
         onClose={() => setDeleteConfirm(false)}
         onConfirm={confirmDelete}
         title="Delete Location"
-        message={`Are you sure you want to delete "${itemToEdit?.item_name}"?`}
-        confirmText="Delete Location"
-        isDanger={true}
+        description={`Are you sure you want to delete "${itemToEdit?.item_name}"?`}
+        confirmLabel="Delete Location"
+        confirmDestructive={true}
       />
     </>
   );
 }
+

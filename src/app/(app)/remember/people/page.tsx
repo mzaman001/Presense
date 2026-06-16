@@ -76,7 +76,7 @@ function SortablePersonRow({ person, formatMeeting }: { person: Person, formatMe
           <div className="flex items-center gap-3">
             <Avatar name={person.name} color={relColor} size="sm" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[var(--color-text-1)]">{person.name}</p>
+              <p className="text-card-title text-[var(--text-1)]">{person.name}</p>
               {person.notes?.length > 0 && (
                 <p className="text-[11px] text-[var(--color-text-3)] truncate">{person.notes[person.notes.length - 1]?.text}</p>
               )}
@@ -161,7 +161,7 @@ export default function PeoplePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-end mb-2">
-        <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-sm font-medium hover:bg-[rgba(244,114,182,0.2)] transition-colors">
+        <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-card-title hover:bg-[rgba(244,114,182,0.2)] transition-colors">
           <Plus className="w-4 h-4" /> Add person
         </button>
       </div>
@@ -243,3 +243,4 @@ export default function PeoplePage() {
     </div>
   );
 }
+

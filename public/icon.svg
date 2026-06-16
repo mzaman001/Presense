@@ -1,26 +1,37 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Dark background -->
-  <rect width="512" height="512" rx="128" fill="#0F0A00"/>
+  <!-- Dark rounded square background -->
+  <rect width="512" height="512" rx="120" fill="#0F0A00"/>
   
-  <!-- Gradient definition -->
   <defs>
-    <linearGradient id="flameGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#E5B41E"/>
-      <stop offset="100%" stop-color="#EB4233"/>
-    </linearGradient>
+    <!-- Left circle gradient (Amber) -->
+    <radialGradient id="gradLeft" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FFD147"/>
+      <stop offset="100%" stop-color="#E59A1E"/>
+    </radialGradient>
     
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="15" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    <!-- Right circle gradient (Coral) -->
+    <radialGradient id="gradRight" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FF7555"/>
+      <stop offset="100%" stop-color="#EB3323"/>
+    </radialGradient>
+    
+    <!-- Subtle grain filter -->
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feBlend in="SourceGraphic" mode="multiply" result="blend"/>
     </filter>
   </defs>
 
-  <!-- Abstract flame/brain loops -->
-  <g filter="url(#glow)">
-    <!-- Right/Top Teardrop -->
-    <path d="M 256 128 C 340 128 400 188 400 272 C 400 356 340 400 256 400 C 200 400 256 320 256 256 C 256 192 200 128 256 128 Z" fill="url(#flameGradient)" opacity="0.9"/>
+  <!-- Overlapping circles with screen blend mode for the glow effect -->
+  <g style="mix-blend-mode: screen">
+    <!-- Left/Bottom Circle -->
+    <circle cx="216" cy="296" r="130" fill="url(#gradLeft)" opacity="0.9"/>
     
-    <!-- Left/Bottom Teardrop -->
-    <path d="M 256 384 C 172 384 112 324 112 240 C 112 156 172 112 256 112 C 312 112 256 192 256 256 C 256 320 312 384 256 384 Z" fill="url(#flameGradient)" opacity="0.95" style="mix-blend-mode: screen;"/>
+    <!-- Right/Top Circle -->
+    <circle cx="296" cy="216" r="130" fill="url(#gradRight)" opacity="0.9"/>
   </g>
+
+  <!-- Grain texture at 2% opacity over shapes only -->
+  <rect width="512" height="512" rx="120" fill="white" filter="url(#grain)" opacity="0.02" style="pointer-events: none"/>
 </svg>

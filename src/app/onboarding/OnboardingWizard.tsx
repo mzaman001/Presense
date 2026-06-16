@@ -234,12 +234,11 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
             <div className="space-y-2">
               <input
                 autoFocus
-                type="text"
-                placeholder="Your first name"
+                placeholder="What should I call you?"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleNext1()}
-                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-5 py-4 text-xl outline-none focus:border-[var(--color-accent)] transition-colors text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]"
+                className="input !py-4 !px-5 !text-xl !rounded-2xl"
               />
               {nameError && <p className="text-red-400 text-sm px-2">{nameError}</p>}
             </div>

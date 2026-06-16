@@ -208,19 +208,19 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
             initial={{ x: "100%", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] bg-[var(--color-surface)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
           >
             <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)]">
               <h2 className="text-lg font-bold text-[var(--color-text-1)]">{item ? "Edit Explore Item" : "Save to Explore"}</h2>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors">
-                <X className="w-5 h-5 text-[var(--color-text-2)]" />
+              <button onClick={onClose} className="btn-icon">
+                <X size={16} strokeWidth={1.5} className="shrink-0" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">
+                <label className="text-label text-[var(--text-3)] block mb-2">
                   Title <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -232,7 +232,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Type <span className="text-red-400">*</span></label>
+                <label className="text-label text-[var(--text-3)] block mb-2">Type <span className="text-red-400">*</span></label>
                 <div className="relative">
                   <button 
                     type="button"
@@ -246,7 +246,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                     {isTypeDropdownOpen && (
                       <motion.div 
                         initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                        className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5"
+                        className="dropdown-panel absolute left-0 top-full mt-2 w-full p-1 z-50 flex flex-col gap-0.5"
                       >
                         {PRESET_TYPES.map(preset => (
                           <button 
@@ -276,43 +276,43 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                     placeholder="Enter custom type and press save..."
                     value={customTypeInput}
                     onChange={(e) => setCustomTypeInput(e.target.value)}
-                    className="w-full mt-3 bg-[rgba(255,255,255,0.03)] border border-[#FBBF24] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] transition-colors"
+                    className="input mt-3 !border-[#FBBF24] focus:!border-[#FBBF24]"
                   />
                 )}
               </div>
 
               {type === 'link' && (
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">URL</label>
+                  <label className="text-label text-[var(--text-3)] block mb-2">URL</label>
                   <input
                     type="text"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[#FBBF24] transition-colors"
+                    className="input"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">
+                <label className="text-label text-[var(--text-3)] block mb-2">
                   Why are you saving this? <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={4}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[#FBBF24] transition-colors resize-none"
+                  className="input"
                   placeholder="e.g. Fascinating idea from lecture / Riyaz recommended this book"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Tags</label>
+                <label className="text-label text-[var(--text-3)] block mb-2">Tags</label>
                 <div className="p-2 border border-[var(--color-border)] rounded-xl bg-[rgba(255,255,255,0.03)] focus-within:border-[#FBBF24] transition-colors flex flex-wrap gap-2">
                   {tags.map(t => (
-                    <span key={t} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(251,191,36,0.15)] text-[#FBBF24] text-xs font-medium">
+                    <span key={t} className="tag-pill !bg-[#FBBF24]/15 !text-[#FBBF24] !border-[#FBBF24]/30">
                       {t}
-                      <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-[var(--color-text-1)] transition-colors">
+                      <button type="button" onClick={() => handleRemoveTag(t)} className="remove">
                         <X className="w-3 h-3" />
                       </button>
                     </span>
@@ -328,7 +328,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Link to Think Thread (Optional)</label>
+                <label className="text-label text-[var(--text-3)] block mb-2">Link to Think Thread (Optional)</label>
                 <div className="relative">
                   <button 
                     type="button"
@@ -344,7 +344,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                     {isThreadDropdownOpen && (
                       <motion.div 
                         initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                        className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
+                        className="dropdown-panel absolute left-0 top-full mt-2 w-full p-1 z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
                       >
                         <button 
                           type="button"
@@ -375,27 +375,27 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                 <>
                   <button
                     onClick={() => setDeleteConfirm(true)}
-                    className="flex items-center justify-center px-4 py-3 rounded-xl bg-red-500/10 text-red-400 font-semibold hover:bg-red-500/20 transition-colors"
+                    className="btn-danger px-4 flex items-center justify-center"
                     title={item.status === "deleted" ? "Delete permanently" : "Move to trash"}
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
                   </button>
                   <button
                     onClick={handleArchiveToggle}
                     disabled={saving}
-                    className="flex items-center justify-center px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] text-[var(--color-text-1)] font-semibold hover:bg-[rgba(255,255,255,0.1)] transition-colors disabled:opacity-50"
+                    className="btn-secondary px-4 flex items-center justify-center disabled:opacity-50"
                     title={item.status === "archived" || item.status === "deleted" ? "Restore" : "Archive"}
                   >
-                    {item.status === "archived" || item.status === "deleted" ? <RefreshCcw className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
+                    {item.status === "archived" || item.status === "deleted" ? <RefreshCcw size={14} strokeWidth={1.5} className="shrink-0" /> : <Archive size={14} strokeWidth={1.5} className="shrink-0" />}
                   </button>
                 </>
               )}
               <button
                 onClick={handleSave}
                 disabled={saving || !title.trim() || !note.trim()}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#FBBF24] text-[var(--color-background)] font-semibold hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(251,191,36,0.3)] disabled:shadow-none"
+                className="flex-1 btn-primary py-3 w-full disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (item ? "Save Changes" : "Save")}
+                {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (item ? "Save Changes" : "Save")}
               </button>
             </div>
           </motion.div>
@@ -415,3 +415,4 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
     </>
   );
 }
+

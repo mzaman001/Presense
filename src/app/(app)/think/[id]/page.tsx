@@ -292,7 +292,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddEntry(e);
               }}
-              className="w-full bg-[rgba(255,255,255,0.03)] backdrop-blur-xl border border-[var(--color-border)] rounded-2xl px-5 py-4 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#2DD4BF] focus:bg-[rgba(45,212,191,0.03)] transition-all pr-14 resize-none h-24 shadow-2xl"
+              className="input !pr-14 !rounded-2xl !py-4"
             />
             <div className="absolute right-3 bottom-3 flex items-center gap-2">
               <span className="text-[10px] text-[var(--color-text-3)] font-mono hidden md:inline">Cmd+Enter</span>

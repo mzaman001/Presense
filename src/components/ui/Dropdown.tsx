@@ -80,11 +80,12 @@ export function Dropdown({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1 w-48 glass-panel p-1 z-50"
+            initial={{ opacity: 0, scaleY: 0.9 }}
+            animate={{ opacity: 1, scaleY: 1 }}
+            exit={{ opacity: 0, scaleY: 0.9 }}
+            transition={{ duration: 0.18 }}
+            style={{ transformOrigin: "top" }}
+            className="dropdown-panel absolute top-full left-0 mt-2 z-50"
           >
             {options.map((opt) => {
               const optValue = typeof opt === "string" ? opt : opt.value;
@@ -92,7 +93,7 @@ export function Dropdown({
               const optColor =
                 (typeof opt !== "string" ? opt.color : undefined) ||
                 colors[optValue] ||
-                "white";
+                "currentColor";
 
               return (
                 <button
@@ -102,13 +103,12 @@ export function Dropdown({
                     onChange(optValue);
                     setIsOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-[var(--color-surface)] transition-colors flex items-center gap-2"
-                  style={{ color: optColor }}
+                  className={`dropdown-item w-full text-left ${value === optValue ? "selected" : ""}`}
+                  style={{
+                    ...(value === optValue && optColor !== "currentColor" ? { borderColor: optColor, color: optColor } : {})
+                  }}
                 >
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: optColor === "white" ? "transparent" : optColor }}
-                  />
+                  <div className={`w-2 h-2 rounded-full border border-current shrink-0 ${value === optValue ? "bg-current" : "bg-transparent"}`} style={{ borderColor: optColor, backgroundColor: value === optValue ? optColor : "transparent" }} />
                   {optLabel}
                 </button>
               );

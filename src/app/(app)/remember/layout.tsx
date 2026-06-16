@@ -29,7 +29,7 @@ export default function RememberLayout({ children }: { children: React.ReactNode
         <Link 
           href="/remember/people"
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-card-title transition-all",
             pathname.includes("/people") ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
           )}
         >
@@ -38,7 +38,7 @@ export default function RememberLayout({ children }: { children: React.ReactNode
         <Link 
           href="/remember/locations"
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-card-title transition-all",
             pathname.includes("/locations") ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
           )}
         >
@@ -52,3 +52,4 @@ export default function RememberLayout({ children }: { children: React.ReactNode
     </div>
   );
 }
+

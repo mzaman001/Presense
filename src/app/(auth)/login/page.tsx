@@ -2,232 +2,174 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
-import { Globe2, Mail, Loader2, Sparkles, ArrowRight, Brain, Zap, BellRing } from "lucide-react";
+import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { OnboardingBackground, PresenseLogo } from "@/components/layout/OnboardingBackground";
 
 export default function LoginPage() {
-  const [initError, setInitError] = useState<string | null>(null);
-  
   const [supabase] = useState(() => {
-    try {
-      return createClient();
-    } catch (err: any) {
-      console.error("Supabase init error:", err);
-      return null as any;
-    }
+    try { return createClient(); } catch { return null as any; }
   });
 
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail]         = useState("");
   const [emailSent, setEmailSent] = useState(false);
-  const [loading, setLoading] = useState<"google" | "email" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState(0);
+  const [loading, setLoading]     = useState<"google" | "email" | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("🚀 LOGIN PAGE FULLY HYDRATED AND MOUNTED");
-    if (!supabase) {
-      setInitError("Supabase failed to initialize. If you recently added .env.local, please restart your Next.js dev server.");
-    }
+    if (!supabase) setInitError("Supabase failed to initialize. Restart the dev server after adding .env.local.");
   }, [supabase]);
 
   const handleGoogle = async () => {
-    if (!supabase) {
-      setError("Supabase not initialized");
-      return;
-    }
-    setLoading("google");
-    setError(null);
+    if (!supabase) return setError("Supabase not initialized");
+    setLoading("google"); setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) {
-      setError(error.message);
-      setLoading(null);
-    }
+    if (error) { setError(error.message); setLoading(null); }
   };
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) {
-      setError("Supabase not initialized");
-      return;
-    }
+    if (!supabase) return setError("Supabase not initialized");
     if (!email.trim()) return;
-    setLoading("email");
-    setError(null);
+    setLoading("email"); setError(null);
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) {
-      setError(error.message);
-    } else {
-      setEmailSent(true);
-    }
+    if (error) setError(error.message);
+    else setEmailSent(true);
     setLoading(null);
   };
 
-  const slides = [
-    {
-      title: "Your brain is for thinking.",
-      desc: "Not for storing. Presense offloads your memory so you can focus on the present. Tasks, thoughts, and what people said — captured instantly.",
-      icon: <Brain className="w-10 h-10 text-[var(--color-accent)]" />,
-      color: "var(--color-accent)",
-    },
-    {
-      title: "The app comes to you.",
-      desc: "No more forgetting to check your lists. Presense reaches out to you with smart nudges, meeting briefings, and deadline escalations.",
-      icon: <BellRing className="w-10 h-10 text-[#F472B6]" />,
-      color: "#F472B6",
-    },
-    {
-      title: "One step, not the mountain.",
-      desc: "Stop procrastinating. Presense breaks down tasks into single physical actions and uses 10-minute timers to build momentum instantly.",
-      icon: <Zap className="w-10 h-10 text-[#2DD4BF]" />,
-      color: "#2DD4BF",
-    },
-  ];
-
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#0B0914] relative overflow-hidden font-sans">
-      {/* Ambient Orbs - replaced motion.div with pure CSS animations to prevent hydration crash */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div
-          className="absolute rounded-full animate-pulse"
-          style={{ width: 800, height: 800, top: "-20%", left: "-10%", backgroundColor: "#5B21B6", filter: "blur(120px)", opacity: 0.5, animationDuration: '12s' }}
-        />
-        <div
-          className="absolute rounded-full animate-pulse"
-          style={{ width: 600, height: 600, bottom: "-20%", right: "-10%", backgroundColor: "#0D9488", filter: "blur(120px)", opacity: 0.4, animationDuration: '15s' }}
-        />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Atmospheric background */}
+      <OnboardingBackground phase={1} />
 
-      <div className="relative z-10 w-full max-w-[420px]">
+      {/* Centred glass card */}
+      <div
+        className="relative z-10 w-full max-w-[400px] rounded-[var(--radius-xl)] p-8"
+        style={{
+          background: "var(--surface-modal)",
+          backdropFilter: "blur(32px)",
+          border: "0.5px solid var(--border-strong)",
+          boxShadow: "var(--shadow-modal)",
+        }}
+      >
+        {/* Init error */}
         {initError && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-xl text-red-200 text-sm font-medium">
+          <div className="mb-5 p-3 rounded-[var(--radius-md)] text-sm font-medium"
+            style={{ background: "var(--status-danger-dim)", border: "0.5px solid var(--status-danger-border)", color: "var(--status-danger)" }}>
             ⚠️ {initError}
           </div>
         )}
+
         {/* Logo */}
-        <div className="flex flex-col items-center justify-center gap-3 mb-12">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-deep)] flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <div className="w-5 h-5 bg-[var(--color-text-1)] rounded-full" />
-          </div>
-          <div className="text-center">
-            <span className="text-2xl font-bold text-[var(--color-text-1)] tracking-tight">Presense</span>
-            <p className="text-[11px] text-[var(--color-text-3)] tracking-widest uppercase mt-1 font-semibold">Your External Brain</p>
-          </div>
+        <div className="flex items-center gap-2.5 mb-8">
+          <PresenseLogo size={28} />
+          <span className="text-[17px] font-semibold tracking-tight" style={{ color: "var(--text-1)" }}>Presense</span>
         </div>
 
-        <div className="relative transition-all duration-300">
-          {step < slides.length ? (
-            /* Onboarding Slides */
+        {emailSent ? (
+          /* Email sent state */
+          <div className="text-center py-4">
             <div
-              key={`slide-${step}`}
-              className="bg-[rgba(255,255,255,0.03)] backdrop-blur-3xl border border-[rgba(255,255,255,0.08)] rounded-[24px] p-8 text-center shadow-2xl animate-in fade-in slide-in-from-right-4 duration-500"
-              style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 32px 64px rgba(0,0,0,0.5)" }}
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+              style={{ background: "rgba(45,212,191,0.10)", border: "0.5px solid rgba(45,212,191,0.25)" }}
             >
-              <div className="w-20 h-20 mx-auto rounded-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] flex items-center justify-center mb-6 transition-all duration-300"
-                style={{ boxShadow: `inset 0 0 40px ${slides[step].color}20` }}>
-                {slides[step].icon}
+              <Mail size={22} strokeWidth={1.5} className="text-[#2DD4BF]" />
+            </div>
+            <p className="text-[16px] font-semibold mb-2" style={{ color: "var(--text-1)" }}>Check your inbox</p>
+            <p className="text-[13px]" style={{ color: "var(--text-3)" }}>
+              We sent a magic link to <span style={{ color: "var(--text-2)" }}>{email}</span>
+            </p>
+            <button
+              onClick={() => setEmailSent(false)}
+              className="mt-6 text-[12px] underline underline-offset-2"
+              style={{ color: "var(--accent-text)" }}
+            >
+              Use a different email
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Heading */}
+            <div className="mb-7">
+              <h1 className="text-[22px] font-semibold tracking-tight mb-1" style={{ color: "var(--text-1)" }}>Sign in</h1>
+              <p className="text-[13px]" style={{ color: "var(--text-3)" }}>Welcome back, second brain.</p>
+            </div>
+
+            {/* Email form */}
+            <form onSubmit={handleMagicLink} className="space-y-3 mb-4">
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                className="input w-full"
+              />
+              <div className="flex justify-end">
+                <span className="text-[12px]" style={{ color: "var(--accent-text)" }}>Magic link — no password needed</span>
               </div>
-              <h1 className="text-[22px] font-semibold text-[var(--color-text-1)] tracking-tight mb-3 transition-all duration-300">
-                {slides[step].title}
-              </h1>
-              <p className="text-[15px] text-[var(--color-text-3)] leading-relaxed mb-10 transition-all duration-300">
-                {slides[step].desc}
+              <button
+                type="submit"
+                disabled={!!loading || !email.trim()}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+              >
+                {loading === "email"
+                  ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                  : <Sparkles size={14} strokeWidth={1.5} />
+                }
+                Send sign-in link
+                <ArrowRight size={14} strokeWidth={1.5} className="ml-auto" />
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
+              <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "var(--text-4)" }}>or</span>
+              <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
+            </div>
+
+            {/* Google */}
+            <button
+              onClick={handleGoogle}
+              disabled={!!loading}
+              className="btn-secondary w-full flex items-center justify-center gap-2.5"
+            >
+              {loading === "google"
+                ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                : <Globe2 size={14} strokeWidth={1.5} />
+              }
+              Continue with Google
+            </button>
+
+            {/* Error */}
+            {error && (
+              <p className="mt-4 text-[13px] text-center p-3 rounded-[var(--radius-md)]"
+                style={{ background: "var(--status-danger-dim)", border: "0.5px solid var(--status-danger-border)", color: "var(--status-danger)" }}>
+                {error}
               </p>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  {slides.map((_, i) => (
-                    <div key={i} className={`w-2 h-2 rounded-full transition-colors duration-300 ${i === step ? "bg-[var(--color-text-1)]" : "bg-[rgba(255,255,255,0.15)]"}`} />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      setStep((prev) => prev + 1);
-                    } catch (err: any) {
-                      toast.error("Error: " + err.message);
-                    }
-                  }}
-                  className="relative z-50 pointer-events-auto flex items-center gap-2 px-6 py-2.5 rounded-full bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold hover:bg-gray-200 active:scale-95 transition-all cursor-pointer shadow-xl"
-                >
-                  {step === slides.length - 1 ? "Get Started" : "Next"} <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Login Form */
-            <div
-              key="login"
-              className="bg-[rgba(255,255,255,0.03)] backdrop-blur-3xl border border-[rgba(255,255,255,0.08)] rounded-[24px] p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-500"
-              style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 32px 64px rgba(0,0,0,0.5)" }}
-            >
-              <div className="text-center mb-8">
-                <h1 className="text-[22px] font-semibold text-[var(--color-text-1)] tracking-tight mb-2">Welcome to Presense.</h1>
-                <p className="text-[14px] text-[var(--color-text-3)]">Sign in to access your spaces.</p>
-              </div>
+            )}
 
-              {emailSent ? (
-                <div className="text-center py-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="w-16 h-16 rounded-full bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] flex items-center justify-center mx-auto mb-5">
-                    <Mail className="w-8 h-8 text-[#2DD4BF]" />
-                  </div>
-                  <p className="text-[var(--color-text-1)] font-medium text-lg mb-2">Check your email</p>
-                  <p className="text-[14px] text-[var(--color-text-3)]">We sent a secure magic link to <span className="text-[var(--color-text-1)]">{email}</span></p>
-                </div>
-              ) : (
-                <div className="space-y-4 animate-in fade-in duration-500">
-                  <button
-                    onClick={handleGoogle}
-                    disabled={!!loading}
-                    className="w-full flex items-center justify-center gap-3 bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold py-3.5 px-4 rounded-xl hover:bg-gray-100 transition-all disabled:opacity-60 shadow-[0_4px_14px_0_rgba(255,255,255,0.1)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.15)]"
-                  >
-                    {loading === "google" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe2 className="w-5 h-5" />}
-                    Continue with Google
-                  </button>
-
-                  <div className="flex items-center gap-4 py-2">
-                    <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent to-[rgba(255,255,255,0.1)]" />
-                    <span className="text-[10px] text-[var(--color-text-3)] uppercase tracking-widest font-semibold">or email</span>
-                    <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent to-[rgba(255,255,255,0.1)]" />
-                  </div>
-
-                  <form onSubmit={handleMagicLink} className="space-y-3">
-                    <input
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3.5 text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[var(--color-accent)] focus:bg-[var(--color-accent)]/5 transition-all"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!!loading || !email.trim()}
-                      className="w-full flex items-center justify-center gap-2 bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 text-[var(--color-accent)] font-semibold py-3.5 px-4 rounded-xl hover:bg-[var(--color-accent)]/20 transition-all disabled:opacity-50"
-                    >
-                      {loading === "email" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      Send Magic Link
-                    </button>
-                  </form>
-
-                  {error && <p className="text-sm text-[#F87171] text-center mt-4 bg-[rgba(248,113,113,0.1)] p-3 rounded-lg border border-[rgba(248,113,113,0.2)]">{error}</p>}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <p className="text-center text-[11px] text-[rgba(255,255,255,0.25)] mt-8">
-          100% Free forever. No subscriptions. No ads.
-        </p>
+            {/* Create account */}
+            <p className="text-[12px] text-center mt-6" style={{ color: "var(--text-3)" }}>
+              Don't have an account?{" "}
+              <button onClick={() => toast.info("Just sign in — Presense creates your account automatically.")}
+                className="underline underline-offset-2 font-medium" style={{ color: "var(--accent-text)" }}>
+                Create one
+              </button>
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

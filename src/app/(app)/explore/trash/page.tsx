@@ -71,7 +71,7 @@ export default function ExploreTrashPage() {
         <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors mb-4">
           <ArrowLeft className="w-4 h-4" /> Back to Explore
         </Link>
-        <h1 className="text-page-title text-3xl">Trash</h1>
+        <h1 className="text-page-greeting text-[var(--text-1)]">Trash</h1>
         <p className="text-[var(--color-text-3)] mt-1">Items deleted in the last 30 days. After 30 days, they are permanently removed.</p>
       </header>
 
@@ -82,7 +82,7 @@ export default function ExploreTrashPage() {
       ) : items.length === 0 ? (
         <GlassCard className="p-12 text-center border-dashed border-[var(--color-border)]">
           <Trash2 className="w-8 h-8 text-[var(--color-text-3)] mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-2">Trash is empty</h3>
+          <h3 className="text-section-title text-[var(--text-1)] mb-2">Trash is empty</h3>
           <p className="text-sm text-[var(--color-text-3)]">Nothing to see here.</p>
         </GlassCard>
       ) : (
@@ -94,7 +94,7 @@ export default function ExploreTrashPage() {
                   <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-text-3)]">
                     {item.__type}
                   </span>
-                  <h4 className="text-sm font-medium text-[var(--color-text-1)]">{item.title}</h4>
+                  <h4 className="text-card-title text-[var(--text-1)]">{item.title}</h4>
                 </div>
                 <p className="text-xs text-[var(--color-text-3)] mt-1">
                   Deleted: {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString() : "Unknown"}
@@ -131,3 +131,4 @@ export default function ExploreTrashPage() {
     </div>
   );
 }
+

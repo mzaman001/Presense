@@ -280,23 +280,23 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           />
           
           <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="fixed top-0 right-0 h-[100dvh] w-full md:w-[480px] bg-[var(--color-surface)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
           >
             <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)]">
               <h2 className="text-lg font-bold text-[var(--color-text-1)]">{taskToEdit ? "Edit Task" : "Add Task"}</h2>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors">
-                <X className="w-5 h-5 text-[var(--color-text-2)]" />
+              <button onClick={onClose} className="btn-icon">
+                <X size={16} strokeWidth={1.5} className="shrink-0" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Title */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">
+                <label className="text-label text-[var(--text-3)] block mb-2">
                   Task Name <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -304,23 +304,23 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                   placeholder="What needs to be done?"
                   value={title}
                   onChange={handleTitleChange}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[#FBBF24] focus:outline-none transition-colors placeholder:text-[var(--color-text-3)]/50"
+                  className="input-title"
                 />
               </div>
 
               {/* Dates Grid */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Deadline</label>
+                  <label className="text-label text-[var(--text-3)] block mb-2">Deadline</label>
                   <input
                     type="datetime-local"
                     value={deadline || ""}
                     onChange={handleManualDateChange}
-                    className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-xl px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)] transition-colors [color-scheme:dark]"
+                    className="input [color-scheme:dark]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Start Date</label>
+                  <label className="text-label text-[var(--text-3)] block mb-2">Start Date</label>
                   <input
                     type="datetime-local"
                     value={startDate || ""}
@@ -328,14 +328,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       setStartDate(e.target.value);
                       setParsedStartDate(e.target.value ? new Date(e.target.value) : null);
                     }}
-                    className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-xl px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)] transition-colors [color-scheme:dark]"
+                    className="input [color-scheme:dark]"
                   />
                 </div>
               </div>
 
               {/* Recurrence */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Repeats</label>
+                <label className="text-label text-[var(--text-3)] block mb-2">Repeats</label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {["Does not repeat", "Daily", "Weekly", "Monthly", "Custom"].map(f => (
                     <button
@@ -368,14 +368,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     placeholder="e.g. FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1"
                     value={customRRule}
                     onChange={(e) => setCustomRRule(e.target.value)}
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                    className="input"
                   />
                 )}
               </div>
 
               {/* Priority */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Priority</label>
+                <label className="text-label text-[var(--text-3)] block mb-2">Priority</label>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { val: 1, label: "Urgent", colorClass: "bg-[#F87171]/10 text-[#F87171] border-[#F87171]/30 hover:bg-[#F87171]/20", activeClass: "bg-[#F87171] text-white border-[#F87171]" },
@@ -396,7 +396,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
 
               {/* Category */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Category</label>
+                <label className="text-label text-[var(--text-3)] block mb-2">Category</label>
                 <div className="flex flex-wrap gap-2 items-center">
                   {categoriesList.map((cat: string) => (
                     <button
@@ -422,7 +422,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       }}
                       onBlur={handleAddCategory}
                       placeholder="Type & enter..."
-                      className="px-3 py-1.5 rounded-full text-xs bg-[var(--color-surface)] text-[var(--color-text-1)] outline-none border border-[var(--color-accent)] w-28"
+                      className="input !w-32 !py-1.5 !px-3 !rounded-full !text-xs"
                     />
                   ) : (
                     <button
@@ -437,34 +437,34 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
 
               {/* First Step */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">First Step</label>
+                <label className="text-label text-[var(--text-3)] block mb-2">First Step</label>
                 <textarea
                   placeholder="What is the absolute smallest action to start this?"
                   value={firstStep}
                   onChange={(e) => setFirstStep(e.target.value)}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:border-[#2DD4BF] focus:outline-none resize-none h-20 transition-colors"
+                  className="input"
                 />
               </div>
 
               {/* If-Then Trigger */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Implementation Intention</label>
-                <input
-                  placeholder="e.g. At my desk after dinner"
-                  value={ifThen}
-                  onChange={(e) => setIfThen(e.target.value)}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:border-[#F472B6] focus:outline-none transition-colors"
-                />
+                <label className="text-label text-[var(--text-3)] block mb-2">Implementation Intention</label>
+                  <input
+                    placeholder="e.g. At my desk after dinner"
+                    value={ifThen}
+                    onChange={(e) => setIfThen(e.target.value)}
+                    className="input"
+                  />
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Notes</label>
+                <label className="text-label text-[var(--text-3)] block mb-2">Notes</label>
                 <textarea
                   placeholder="Additional context or details"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:border-[var(--color-accent)] focus:outline-none resize-none h-24 transition-colors"
+                  className="input"
                 />
               </div>
             </div>
@@ -474,17 +474,17 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
               {taskToEdit && (
                 <button
                   onClick={() => setDeleteTaskConfirm(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 text-red-400 font-semibold hover:bg-red-500/20 transition-colors"
+                  className="btn-danger px-3 flex items-center justify-center"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
                 </button>
               )}
               <button
                 onClick={handleSave}
                 disabled={saving || !title.trim()}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#FBBF24] text-[var(--color-background)] font-semibold hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(251,191,36,0.3)] disabled:shadow-none"
+                className="flex-1 btn-primary py-3 w-full disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (taskToEdit ? "Save Changes" : "Save Task")}
+                {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (taskToEdit ? "Save Changes" : "Save Task")}
               </button>
             </div>
           </motion.div>
@@ -503,3 +503,4 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     </>
   );
 }
+

@@ -1,222 +1,290 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 import { X, Play, Pause, SkipForward, Square } from "lucide-react";
-import { toast } from "sonner";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+
+type Phase = "work" | "short_break" | "long_break";
+
+const PHASE_CONFIG: Record<Phase, { label: string; orb: string; ring: string; text: string }> = {
+  work:        { label: "Work Session",   orb: "rgba(251,191,36,0.18)",  ring: "var(--color-accent)",  text: "var(--color-accent)" },
+  short_break: { label: "Short Break",    orb: "rgba(45,212,191,0.15)",  ring: "#2DD4BF",              text: "#2DD4BF" },
+  long_break:  { label: "Long Break",     orb: "rgba(129,140,248,0.15)", ring: "#818CF8",              text: "#818CF8" },
+};
 
 export function PomodoroTimer() {
   const { activeTimer, setActiveTimer, userSettings } = useAppStore();
   const supabase = createClient();
 
-  const [sessionType, setSessionType] = useState<"work" | "short_break" | "long_break">("work");
+  const [phase, setPhase]               = useState<Phase>("work");
   const [sessionCount, setSessionCount] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [totalTime, setTotalTime] = useState(0);
-  const [isActive, setIsActive] = useState(false);
+  const [timeLeft, setTimeLeft]         = useState(0);
+  const [totalTime, setTotalTime]       = useState(0);
+  const [isRunning, setIsRunning]       = useState(false);
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
 
-  // Settings with fallbacks
-  const workDuration = (userSettings?.pomodoro_duration || 25) * 60;
-  const shortBreakDuration = (userSettings?.short_break_duration || 5) * 60;
-  const longBreakDuration = (userSettings?.long_break_duration || 15) * 60;
-  const longBreakInterval = userSettings?.pomodoro_long_break_interval || 4;
-  const autoStartBreaks = userSettings?.auto_start_breaks || false;
+  const workDuration      = (userSettings?.pomodoro_duration       || 25) * 60;
+  const shortBreakDuration = (userSettings?.short_break_duration   ||  5) * 60;
+  const longBreakDuration  = (userSettings?.long_break_duration    || 15) * 60;
+  const longBreakInterval  =  userSettings?.pomodoro_long_break_interval || 4;
+  const autoStartBreaks    =  userSettings?.auto_start_breaks      || false;
 
-  // Initialize timer when opened or session type changes
+  const getDuration = useCallback((p: Phase) => {
+    if (p === "short_break") return shortBreakDuration;
+    if (p === "long_break")  return longBreakDuration;
+    return workDuration;
+  }, [workDuration, shortBreakDuration, longBreakDuration]);
+
+  // Initialize when opened
   useEffect(() => {
     if (activeTimer) {
-      let time = workDuration;
-      if (sessionType === "short_break") time = shortBreakDuration;
-      if (sessionType === "long_break") time = longBreakDuration;
-      
-      setTimeLeft(time);
-      setTotalTime(time);
-      setIsActive(sessionType === "work" || autoStartBreaks);
+      const d = getDuration("work");
+      setPhase("work");
+      setSessionCount(1);
+      setTimeLeft(d);
+      setTotalTime(d);
+      setIsRunning(true);
     }
-  }, [activeTimer, sessionType, workDuration, shortBreakDuration, longBreakDuration, autoStartBreaks]);
+  }, [activeTimer?.taskId]); // eslint-disable-line
 
-  // Timer interval
+  // Phase change → reset timer
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isActive) {
-      handleSessionComplete();
-    }
-    return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
+    const d = getDuration(phase);
+    setTimeLeft(d);
+    setTotalTime(d);
+    const shouldAutoStart = phase !== "work" ? autoStartBreaks : false;
+    setIsRunning(shouldAutoStart);
+  }, [phase]); // eslint-disable-line
 
-  const logSession = async (type: string, durationMinutes: number) => {
-    if (!activeTimer) return;
+  // Countdown
+  useEffect(() => {
+    if (!isRunning) return;
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleComplete();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRunning]); // eslint-disable-line
+
+  const logSession = async (type: Phase, minutes: number) => {
+    if (!activeTimer || minutes < 1) return;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       await supabase.from("session_logs").insert({
         user_id: user.id,
         task_id: activeTimer.taskId || null,
-        duration_minutes: durationMinutes,
-        type: type
+        duration_minutes: minutes,
+        type,
       });
-    } catch (e) {
-      console.error("Failed to log session:", e);
-    }
+    } catch {}
   };
 
-  const handleSessionComplete = () => {
-    setIsActive(false);
-    
-    // Play sound if enabled
+  const handleComplete = () => {
+    setIsRunning(false);
     if (userSettings?.pomodoro_sound !== false) {
-      const audio = new Audio('/notification.mp3');
-      audio.play().catch(() => {});
+      new Audio("/notification.mp3").play().catch(() => {});
     }
-
-    // Log the completed session
-    const currentDurationMin = Math.round(totalTime / 60);
-    logSession(sessionType, currentDurationMin);
-
-    advanceSession();
+    logSession(phase, Math.round(totalTime / 60));
+    advance();
   };
 
-  const advanceSession = () => {
-    if (sessionType === "work") {
-      // Move to break
-      if (sessionCount % longBreakInterval === 0) {
-        setSessionType("long_break");
-      } else {
-        setSessionType("short_break");
-      }
-      if (!autoStartBreaks) setIsActive(false);
+  const advance = () => {
+    if (phase === "work") {
+      const nextPhase = sessionCount % longBreakInterval === 0 ? "long_break" : "short_break";
+      setPhase(nextPhase);
     } else {
-      // Move back to work
-      setSessionType("work");
       setSessionCount(prev => prev + 1);
-      setIsActive(false); // Usually wait for user to start work
+      setPhase("work");
     }
   };
 
   const handleSkip = () => {
-    // Log partial session or treat as complete?
-    // We will log as completed for tracking, or just skip without logging?
-    // Let's log whatever time was spent if it's > 1 minute, otherwise skip.
-    const timeSpent = totalTime - timeLeft;
-    if (timeSpent > 60) {
-      logSession(sessionType, Math.round(timeSpent / 60));
-    }
-    advanceSession();
+    const spent = totalTime - timeLeft;
+    if (spent > 60) logSession(phase, Math.round(spent / 60));
+    advance();
   };
 
-  const handleEndSession = () => {
-    const timeSpent = totalTime - timeLeft;
-    if (timeSpent > 60) {
-      logSession(sessionType, Math.round(timeSpent / 60));
-    }
+  const handleEnd = () => {
+    const spent = totalTime - timeLeft;
+    if (spent > 60) logSession(phase, Math.round(spent / 60));
     setShowConfirmEnd(false);
     setActiveTimer(null);
   };
 
   if (!activeTimer) return null;
 
-  // Format time (MM:SS)
-  const m = Math.floor(timeLeft / 60).toString().padStart(2, "0");
-  const s = (timeLeft % 60).toString().padStart(2, "0");
-
-  // SVG Circle calculations
-  const r = 80;
+  const m   = Math.floor(timeLeft / 60).toString().padStart(2, "0");
+  const s   = (timeLeft % 60).toString().padStart(2, "0");
+  const r   = 90;
   const circ = 2 * Math.PI * r;
-  const offset = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * circ : 0;
+  const progress = totalTime > 0 ? timeLeft / totalTime : 1;
+  const dashoffset = circ * (1 - progress);
 
-  let sessionLabel = "";
-  if (sessionType === "work") sessionLabel = `Work Session · ${sessionCount} of ${longBreakInterval}`;
-  else if (sessionType === "short_break") sessionLabel = "Short Break";
-  else sessionLabel = "Long Break";
-
-  const accentColor = sessionType === "work" ? "var(--color-accent)" : "#2DD4BF";
+  const cfg = PHASE_CONFIG[phase];
+  const phaseLabel = phase === "work"
+    ? `${cfg.label} · ${sessionCount} of ${longBreakInterval}`
+    : cfg.label;
 
   return (
     <AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      <motion.div
+        key="pomodoro-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden"
+        style={{ background: "rgba(8, 6, 16, 0.92)", backdropFilter: "blur(20px)" }}
       >
-        <motion.div 
-          initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-[var(--color-background)] border border-[var(--color-border)] rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl relative flex flex-col items-center text-center"
+        {/* Atmospheric orb */}
+        <motion.div
+          key={phase}
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.6 }}
+          transition={{ duration: 1.2, ease: "easeInOut" }}
+          className="absolute pointer-events-none"
+          style={{
+            width: 560,
+            height: 560,
+            borderRadius: "50%",
+            background: `radial-gradient(circle, ${cfg.orb} 0%, transparent 70%)`,
+            filter: "blur(60px)",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+
+        {/* Close button */}
+        <button
+          onClick={() => setShowConfirmEnd(true)}
+          className="absolute top-6 right-6 p-2 rounded-full text-[var(--text-3)] hover:text-[var(--text-1)] hover:bg-white/10 transition-colors z-10"
         >
-          {/* Header */}
-          <button onClick={() => setShowConfirmEnd(true)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-3)]">
-            <X className="w-5 h-5" />
-          </button>
-          
-          <h2 className="text-[18px] font-medium text-[var(--color-text-1)] mb-1 px-8 line-clamp-1">
-            {activeTimer.taskTitle || "Focus Session"}
-          </h2>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-3)] mb-8">
-            {sessionLabel}
+          <X size={18} strokeWidth={1.5} />
+        </button>
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center gap-0">
+          {/* Phase label */}
+          <p
+            className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-1"
+            style={{ color: "var(--text-3)" }}
+          >
+            {phase === "work" ? "Work Session" : phase === "short_break" ? "Short Break" : "Long Break"}
+          </p>
+          <p className="text-[12px] mb-10" style={{ color: "var(--text-3)" }}>
+            {phase === "work" ? `${sessionCount} of ${longBreakInterval}` : "Take a breather"}
           </p>
 
-          {/* Timer Ring */}
-          <div className="relative flex items-center justify-center w-[200px] h-[200px] mb-8">
-            <svg width="200" height="200" viewBox="0 0 200 200" className="transform -rotate-90">
-              <circle cx="100" cy="100" r={r} fill="transparent" stroke="var(--color-surface)" strokeWidth="8" />
-              <circle 
-                cx="100" cy="100" r={r} fill="transparent" 
-                stroke={accentColor} strokeWidth="8" strokeLinecap="round"
-                strokeDasharray={circ} strokeDashoffset={offset}
-                className="transition-all duration-1000 ease-linear"
+          {/* SVG Ring + Timer */}
+          <div className="relative flex items-center justify-center mb-10" style={{ width: 220, height: 220 }}>
+            <svg width="220" height="220" viewBox="0 0 220 220" className="-rotate-90 absolute inset-0">
+              {/* Track */}
+              <circle
+                cx="110" cy="110" r={r}
+                fill="none"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="6"
+              />
+              {/* Progress arc */}
+              <motion.circle
+                cx="110" cy="110" r={r}
+                fill="none"
+                stroke={cfg.ring}
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={circ}
+                animate={{ strokeDashoffset: dashoffset }}
+                transition={{ duration: 0.9, ease: "linear" }}
               />
             </svg>
+
+            {/* Timer text */}
             <div className="absolute flex flex-col items-center">
-              <span className="text-5xl font-light tracking-tighter" style={{ fontFamily: "JetBrains Mono, monospace", color: accentColor }}>
+              <span
+                style={{
+                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                  fontSize: 48,
+                  fontWeight: 400,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1,
+                  color: cfg.text,
+                }}
+              >
                 {m}:{s}
               </span>
             </div>
           </div>
 
+          {/* Task title */}
+          <h2 className="text-[14px] font-medium mb-12 text-center max-w-[260px] truncate" style={{ color: "var(--text-2)" }}>
+            {activeTimer.taskTitle || "Focus Session"}
+          </h2>
+
           {/* Controls */}
-          <div className="flex items-center gap-4">
-            <button 
+          <div className="flex items-center gap-5">
+            {/* Stop */}
+            <button
               onClick={() => setShowConfirmEnd(true)}
-              className="p-3 rounded-full bg-[var(--color-surface)] text-[var(--color-text-2)] hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              title="End Session"
+              className={cn(
+                "w-11 h-11 rounded-full flex items-center justify-center transition-all",
+                "bg-white/5 border border-white/10 text-[var(--text-3)]",
+                "hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-400"
+              )}
+              title="End session"
             >
-              <Square className="w-5 h-5" />
+              <Square size={16} strokeWidth={1.5} />
             </button>
 
-            <button 
-              onClick={() => setIsActive(!isActive)}
-              className="w-16 h-16 flex items-center justify-center rounded-full text-black transition-transform hover:scale-105 active:scale-95 shadow-lg"
-              style={{ backgroundColor: accentColor }}
+            {/* Play / Pause — primary */}
+            <button
+              onClick={() => setIsRunning(r => !r)}
+              className="w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg"
+              style={{ background: cfg.ring }}
+              title={isRunning ? "Pause" : "Play"}
             >
-              {isActive ? <Pause className="w-8 h-8 fill-black" /> : <Play className="w-8 h-8 fill-black ml-1" />}
+              {isRunning
+                ? <Pause size={20} strokeWidth={0} className="fill-black" />
+                : <Play  size={20} strokeWidth={0} className="fill-black ml-0.5" />
+              }
             </button>
 
-            <button 
+            {/* Skip */}
+            <button
               onClick={handleSkip}
-              className="p-3 rounded-full bg-[var(--color-surface)] text-[var(--color-text-2)] hover:text-[var(--color-text-1)] transition-colors"
+              className={cn(
+                "w-11 h-11 rounded-full flex items-center justify-center transition-all",
+                "bg-white/5 border border-white/10 text-[var(--text-3)]",
+                "hover:bg-white/10 hover:text-[var(--text-1)]"
+              )}
               title="Skip"
             >
-              <SkipForward className="w-5 h-5" />
+              <SkipForward size={16} strokeWidth={1.5} />
             </button>
           </div>
-        </motion.div>
+        </div>
 
-        {showConfirmEnd && (
-          <ConfirmModal
-            isOpen={showConfirmEnd}
-            onClose={() => setShowConfirmEnd(false)}
-            onConfirm={handleEndSession}
-            title="End this session?"
-            description="Your progress so far will be saved."
-            confirmLabel="End Session"
-          />
-        )}
+        {/* Confirm end */}
+        <ConfirmModal
+          isOpen={showConfirmEnd}
+          onClose={() => setShowConfirmEnd(false)}
+          onConfirm={handleEnd}
+          title="End this session?"
+          description="Your progress so far will be saved."
+          confirmLabel="End Session"
+        />
       </motion.div>
     </AnimatePresence>
   );

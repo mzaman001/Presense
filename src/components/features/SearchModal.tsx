@@ -90,13 +90,14 @@ export function SearchModal() {
         />
         
         <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: -20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: -20 }}
-          className="relative w-full max-w-2xl bg-[rgba(11,9,20,0.95)] backdrop-blur-3xl border border-[var(--color-border)] shadow-2xl rounded-2xl overflow-hidden"
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 280, damping: 26, duration: 0.22 }}
+          className="modal relative w-full max-w-2xl overflow-hidden"
         >
           <div className="flex items-center px-4 border-b border-[var(--color-border)]">
-            <Search className="w-5 h-5 text-[var(--color-text-3)]" />
+            <Search size={13} strokeWidth={1.5} className="text-[var(--text-3)] ml-2" />
             <input
               ref={inputRef}
               type="text"
@@ -156,3 +157,4 @@ export function SearchModal() {
     </AnimatePresence>
   );
 }
+

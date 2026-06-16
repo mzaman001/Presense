@@ -109,7 +109,7 @@ export default function ExplorePage() {
             </div>
           </div>
         </div>
-        <button onClick={() => setIsAddDrawerOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.25)] text-[#FBBF24] text-sm font-medium hover:bg-[rgba(251,191,36,0.2)] transition-colors">
+        <button onClick={() => setIsAddDrawerOpen(true)} className="btn-secondary !text-[#FBBF24] !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] hover:!bg-[rgba(251,191,36,0.2)]">
           <Plus className="w-4 h-4" /> Save item
         </button>
       </div>
@@ -221,3 +221,4 @@ export default function ExplorePage() {
     </div>
   );
 }
+

@@ -212,12 +212,11 @@ export function CaptureModal() {
           onClick={() => setCaptureModalOpen(false)}
         />
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 16 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 16 }}
-          transition={{ duration: 0.2 }}
-          className="relative w-full max-w-2xl bg-[var(--color-background)] border border-[var(--color-border)] rounded-2xl shadow-2xl"
-          style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 32px 64px rgba(0,0,0,0.6)" }}
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 280, damping: 26, duration: 0.22 }}
+          className="modal relative w-full max-w-2xl"
         >
           {/* Input row */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl">
@@ -254,7 +253,7 @@ export function CaptureModal() {
                   <input
                     value={item.title}
                     onChange={(e) => updateRoutedItem(idx, { title: e.target.value })}
-                    className="w-full bg-transparent text-lg text-[var(--color-text-1)] font-medium outline-none border-b border-[var(--color-border)] pb-2"
+                    className="input-title"
                   />
                   
                   <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
@@ -343,9 +342,9 @@ export function CaptureModal() {
                 <button
                   onClick={handleRoute}
                   disabled={!input.trim() || isRouting}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/30 text-[var(--color-accent)] text-sm font-medium hover:bg-[var(--color-accent)]/25 transition-colors disabled:opacity-40"
+                  className="btn-primary disabled:opacity-50"
                 >
-                  {isRouting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {isRouting ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Sparkles size={14} strokeWidth={1.5} className="shrink-0" />}
                   {isRouting ? "Routing..." : "Route & Capture"}
                 </button>
               </>
@@ -353,16 +352,16 @@ export function CaptureModal() {
               <>
                 <button
                   onClick={() => setRoutedItems(null)}
-                  className="flex items-center gap-1.5 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors"
+                  className="btn-secondary"
                 >
-                  <X className="w-4 h-4" /> Start over
+                  <X size={14} strokeWidth={1.5} className="shrink-0" /> Start over
                 </button>
                 <button
                   onClick={handleConfirm}
                   disabled={isSaving || routedItems.some((i) => i.destination === "Choose space...")}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--color-text-1)] text-[var(--color-background)] text-sm font-semibold hover:bg-gray-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="btn-primary disabled:opacity-50"
                 >
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {isSaving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Check size={14} strokeWidth={1.5} className="shrink-0" />}
                   {isSaving ? "Saving..." : "Confirm & Save"}
                 </button>
               </>
@@ -373,3 +372,4 @@ export function CaptureModal() {
     </AnimatePresence>
   );
 }
+
