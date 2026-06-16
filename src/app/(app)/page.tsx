@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2 } from "lucide-react";
+import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, Circle, FolderInput, X } from "lucide-react";
 import Link from "next/link";
 import { FocusSession } from "@/components/features/FocusSession";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
@@ -22,7 +22,7 @@ export default function HomeDashboard() {
   const [explores, setExplores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [focusTask, setFocusTask] = useState<any | null>(null);
-  const { userSettings, setUserSettings } = useAppStore();
+  const { userSettings, setUserSettings, setActiveTimer } = useAppStore();
   const [taskToEdit, setTaskToEdit] = useState<any | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
 
@@ -31,23 +31,77 @@ export default function HomeDashboard() {
   const [doneTasks, setDoneTasks] = useState<any[]>([]);
 
   const [pomodorosThisWeek, setPomodorosThisWeek] = useState(0);
+  const [completing, setCompleting] = useState<string | null>(null);
+  const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClick = () => setActiveRouteItem(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
+
+  const completeTask = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setCompleting(id);
+    try {
+      const { error } = await supabase.from('items').update({ status: 'done', completed_at: new Date().toISOString() }).eq('id', id);
+      if (error) throw error;
+      toast.success('Task completed');
+      fetchDashboardData();
+    } catch (err: any) {
+      toast.error('Failed to complete task');
+    } finally {
+      setCompleting(null);
+    }
+  };
+
+  const routeInboxItem = async (id: string, space: string) => {
+    if (!space) return;
+    try {
+      if (space === 'do') {
+        await supabase.from('items').update({ status: 'active' }).eq('id', id);
+      } else if (space === 'explore') {
+        const item = inboxItems.find(i => i.id === id);
+        await supabase.from('items').delete().eq('id', id);
+        await supabase.from('explores').insert({ user_id: item.user_id, title: item.title, type: 'other', status: 'active' });
+      } else if (space === 'think') {
+        const item = inboxItems.find(i => i.id === id);
+        await supabase.from('items').delete().eq('id', id);
+        await supabase.from('threads').insert({ user_id: item.user_id, title: item.title, status: 'active', color_accent: '#2DD4BF' });
+      }
+      toast.success(`Routed to ${space}`);
+      fetchDashboardData();
+    } catch (e) {
+      toast.error('Failed to route item');
+    }
+  };
+
+  const dismissInboxItem = async (id: string) => {
+    try {
+      await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+      fetchDashboardData();
+    } catch (e) {
+      toast.error('Failed to dismiss');
+    }
+  };
 
   const fetchDashboardData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const now = new Date();
+    const currentDay = now.getDay() || 7; // Make Sunday 7 instead of 0
+    const mondayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay + 1, 0, 0, 0, 0);
 
     const [tasksRes, inboxRes, peopleRes, threadsRes, exploresRes, settingsRes, doneRes, sessionsRes] = await Promise.all([
-      supabase.from("items").select("*").in("status", ["active", "overdue", "inbox"]).or(`snoozed_until.is.null,snoozed_until.lte.${new Date().toISOString()}`),
+      supabase.from("items").select("*").in("status", ["active", "overdue"]),
       supabase.from("items").select("*").eq("status", "inbox"),
       supabase.from("people").select("*"),
       supabase.from("threads").select("*"),
       supabase.from("explores").select("*").is("revisited_at", null),
       supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
-      supabase.from("items").select("*").eq("status", "done").gte("completed_at", sevenDaysAgo.toISOString()).order("completed_at", { ascending: false }),
-      supabase.from("session_logs").select("*").gte("completed_at", sevenDaysAgo.toISOString()).eq("session_type", "work")
+      supabase.from("items").select("*").eq("status", "done").gte("completed_at", mondayStart.toISOString()).order("completed_at", { ascending: false }),
+      supabase.from("session_logs").select("*").gte("completed_at", mondayStart.toISOString()).eq("type", "work")
     ]);
     
     if (tasksRes.data) {
@@ -80,7 +134,8 @@ export default function HomeDashboard() {
 
         return aPrio - bPrio;
       });
-      setTasks(sorted);
+      const upNext = sorted.filter(t => !t.snoozed_until || new Date(t.snoozed_until) <= now);
+      setTasks(upNext);
     }
     if (inboxRes.data) setInboxItems(inboxRes.data);
     if (peopleRes.data) setPeople(peopleRes.data);
@@ -111,6 +166,19 @@ export default function HomeDashboard() {
   let greeting = "Good evening";
   if (hour < 12) greeting = "Good morning";
   else if (hour < 18) greeting = "Good afternoon";
+
+  let heroReason = "Earliest deadline";
+  if (primaryTask) {
+    if (primaryTask.deadline && new Date(primaryTask.deadline).getTime() < new Date().getTime()) {
+      heroReason = `Overdue since ${new Date(primaryTask.deadline).toLocaleDateString()}`;
+    } else if (primaryTask.priority === 1) {
+      heroReason = "Highest priority";
+    } else if (primaryTask.deadline) {
+      const hours = (new Date(primaryTask.deadline).getTime() - new Date().getTime()) / 3600000;
+      if (hours < 3 && hours > 0) heroReason = `Due in ${Math.round(hours)} hours`;
+      else heroReason = `Due ${new Date(primaryTask.deadline).toLocaleDateString()}`;
+    }
+  }
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
@@ -168,22 +236,7 @@ export default function HomeDashboard() {
         </div>
       ) : (
         <>
-          {inboxItems.length > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
-                  <Compass className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[var(--color-text-1)]">{inboxItems.length} {inboxItems.length === 1 ? "thing needs" : "things need"} sorting</p>
-                  <p className="text-xs text-amber-700 dark:text-amber-400/80">We weren't sure where to put these.</p>
-                </div>
-              </div>
-              <Link href="/do?filter=inbox" className="px-4 py-2 bg-amber-400 dark:bg-amber-500 text-amber-950 text-xs font-bold rounded-xl hover:bg-amber-500 dark:hover:bg-amber-400 transition-colors">
-                Sort Inbox
-              </Link>
-            </div>
-          )}
+          {/* Inbox banner removed, using Inbox Section below Up Next instead */}
 
       {/* Focus Now Hero Card */}
       {primaryTask ? (
@@ -204,20 +257,35 @@ export default function HomeDashboard() {
             <span className="text-[10px] font-bold tracking-widest text-[var(--color-accent)] uppercase mb-4 px-3 py-1 rounded-full bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20">
               ⚡ FOCUS NOW
             </span>
-            <h2 className="text-3xl font-medium text-[var(--color-text-1)] mb-2">{primaryTask.title}</h2>
+            <h2 className="text-3xl font-medium text-[var(--color-text-1)] mb-1">{primaryTask.title}</h2>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-3)] mb-4">{heroReason}</p>
             <p className="text-[var(--color-text-2)] mb-6 text-lg">{primaryTask.first_step}</p>
             
-            <button onClick={() => setFocusTask(primaryTask)} className="flex items-center gap-2 bg-[var(--color-text-1)] text-[var(--color-background)] px-6 py-3 rounded-full font-medium hover:scale-[1.02] transition-transform">
+            <button onClick={() => setActiveTimer({ taskId: primaryTask.id, taskTitle: primaryTask.title })} className="flex items-center gap-2 bg-[var(--color-text-1)] text-[var(--color-background)] px-6 py-3 rounded-full font-medium hover:scale-[1.02] transition-transform">
               <Play className="w-4 h-4 fill-black" />
-              <span className="text-sm font-semibold tracking-wide">Start {userSettings?.pomodoro_duration || 25}m Timer</span>
+              <span className="text-sm font-semibold tracking-wide">Start session →</span>
             </button>
             <button 
               onClick={async () => {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                // Optimistic UI update
+                setTasks(prev => prev.filter(t => t.id !== primaryTask.id));
+                
                 await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", primaryTask.id);
-                // The realtime listener will hide it since snoozed_until is now in the future
-                toast.success("Snoozed until tomorrow");
+                fetchDashboardData();
+                
+                toast.success("Snoozed until tomorrow", {
+                  action: {
+                    label: "Undo",
+                    onClick: async () => {
+                      await supabase.from("items").update({ snoozed_until: null }).eq("id", primaryTask.id);
+                      fetchDashboardData();
+                      toast.success("Snooze reversed");
+                    }
+                  }
+                });
               }}
               className="mt-4 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors underline decoration-dashed underline-offset-4"
             >
@@ -271,6 +339,17 @@ export default function HomeDashboard() {
         </Link>
       </div>
 
+      <div className="flex flex-col md:flex-row items-center gap-4 mt-6">
+        <GlassCard className="flex-1 p-5 flex items-center justify-between w-full">
+          <span className="text-sm font-medium text-[var(--color-text-3)] uppercase tracking-wider">Pomodoros this week</span>
+          <span className="text-2xl font-semibold text-[var(--color-text-1)]">{pomodorosThisWeek}</span>
+        </GlassCard>
+        <GlassCard className="flex-1 p-5 flex items-center justify-between w-full">
+          <span className="text-sm font-medium text-[var(--color-text-3)] uppercase tracking-wider">Tasks completed this week</span>
+          <span className="text-2xl font-semibold text-[var(--color-text-1)]">{doneTasks.length}</span>
+        </GlassCard>
+      </div>
+
       {userSettings?.daily_briefing !== false && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {/* Today's Tasks */}
@@ -284,14 +363,23 @@ export default function HomeDashboard() {
           {tasks.slice(1, 6).map(task => (
             <GlassCard
               key={task.id}
-              className="p-4 flex justify-between items-center cursor-pointer hover:scale-[1.01] transition-transform"
+              className="p-4 flex justify-between items-start cursor-pointer hover:scale-[1.01] transition-transform gap-3"
               onClick={() => { setTaskToEdit(task); setIsTaskPanelOpen(true); }}
             >
+              <button
+                onClick={(e) => completeTask(e, task.id)}
+                className="mt-0.5 shrink-0 text-[var(--color-text-3)] hover:text-[#4ADE80] transition-colors"
+              >
+                {completing === task.id
+                  ? <Loader2 className="w-5 h-5 animate-spin text-[#4ADE80]" />
+                  : <Circle className="w-5 h-5" />
+                }
+              </button>
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-medium text-[var(--color-text-1)]">{task.title}</h4>
                 <p className="text-xs text-[var(--color-text-3)] mt-0.5 truncate">{task.first_step}</p>
               </div>
-              <ArrowRight className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2" />
+              <ArrowRight className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2 mt-1" />
             </GlassCard>
           ))}
           {tasks.length <= 1 && (
@@ -300,6 +388,54 @@ export default function HomeDashboard() {
             </div>
           )}
         </div>
+
+        {/* Inbox Section */}
+        {inboxItems.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-section-title text-lg">Inbox</h3>
+              <div className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[10px] font-bold tracking-wider">
+                {inboxItems.length} NEW
+              </div>
+            </div>
+            {inboxItems.map(item => (
+              <GlassCard key={item.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-amber-500/5 border-amber-500/20 group">
+                <p className="text-sm font-medium text-[var(--color-text-1)] flex-1">{item.title}</p>
+                <div className="flex items-center gap-2 w-full md:w-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
+                  <div className="relative flex-1 md:flex-none">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setActiveRouteItem(activeRouteItem === item.id ? null : item.id); }}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-1)] hover:bg-[rgba(255,255,255,0.05)] transition-colors"
+                    >
+                      <FolderInput className="w-3.5 h-3.5" />
+                      Route it
+                    </button>
+                    {activeRouteItem === item.id && (
+                      <div className="absolute top-full mt-2 right-0 w-48 bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => { routeInboxItem(item.id, 'do'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Do (Task)
+                        </button>
+                        <button onClick={() => { routeInboxItem(item.id, 'think'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-teal-400" /> Think (Thread)
+                        </button>
+                        <button onClick={() => { routeInboxItem(item.id, 'explore'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                          <Compass className="w-4 h-4 text-amber-400" /> Explore (Saved)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => dismissInboxItem(item.id)}
+                    className="p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0"
+                    title="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+        )}
 
         {/* People Briefing Preview */}
         <div className="space-y-4">

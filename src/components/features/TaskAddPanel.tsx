@@ -284,23 +284,27 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-background)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
+            className="fixed top-0 right-0 h-[100dvh] w-full md:w-[480px] bg-[var(--color-surface)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
           >
-            <div className="flex items-center justify-between p-6 pb-2">
-              <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-3)]">
-                <X className="w-6 h-6" />
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)]">
+              <h2 className="text-lg font-bold text-[var(--color-text-1)]">{taskToEdit ? "Edit Task" : "Add Task"}</h2>
+              <button onClick={onClose} className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+                <X className="w-5 h-5 text-[var(--color-text-2)]" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-8">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Title */}
               <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">
+                  Task Name <span className="text-red-400">*</span>
+                </label>
                 <input
                   autoFocus
-                  placeholder="Task title..."
+                  placeholder="What needs to be done?"
                   value={title}
                   onChange={handleTitleChange}
-                  className="w-full bg-transparent text-3xl font-bold text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none border-b border-transparent focus:border-[var(--color-border)] pb-2 transition-colors"
+                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[#FBBF24] focus:outline-none transition-colors placeholder:text-[var(--color-text-3)]/50"
                 />
               </div>
 
@@ -433,53 +437,55 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
 
               {/* First Step */}
               <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">First Step</label>
                 <textarea
-                  placeholder="What is the absolute smallest action to start this? (optional)"
+                  placeholder="What is the absolute smallest action to start this?"
                   value={firstStep}
                   onChange={(e) => setFirstStep(e.target.value)}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#2DD4BF] resize-none h-20 transition-colors"
+                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:border-[#2DD4BF] focus:outline-none resize-none h-20 transition-colors"
                 />
               </div>
 
               {/* If-Then Trigger */}
               <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Implementation Intention</label>
                 <input
-                  placeholder="e.g. At my desk after dinner / On the bus tomorrow morning (optional)"
+                  placeholder="e.g. At my desk after dinner"
                   value={ifThen}
                   onChange={(e) => setIfThen(e.target.value)}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#F472B6] transition-colors"
+                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:border-[#F472B6] focus:outline-none transition-colors"
                 />
               </div>
 
               {/* Notes */}
               <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Notes</label>
                 <textarea
-                  placeholder="Notes (optional)"
+                  placeholder="Additional context or details"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[var(--color-accent)] resize-none h-24 transition-colors"
+                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:border-[var(--color-accent)] focus:outline-none resize-none h-24 transition-colors"
                 />
               </div>
             </div>
 
             {/* Sticky Bottom Bar */}
-            <div className="sticky bottom-0 p-6 pt-4 border-t border-[var(--color-border)] bg-[var(--color-background)] z-10 flex flex-col items-center gap-3">
+            <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3">
+              {taskToEdit && (
+                <button
+                  onClick={() => setDeleteTaskConfirm(true)}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 text-red-400 font-semibold hover:bg-red-500/20 transition-colors"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
               <button
                 onClick={handleSave}
                 disabled={saving || !title.trim()}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#FBBF24] text-[var(--color-background)] font-semibold hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(251,191,36,0.3)] disabled:shadow-none"
               >
-                {saving ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : "Save Changes"}
+                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (taskToEdit ? "Save Changes" : "Save Task")}
               </button>
-              
-              {taskToEdit && (
-                <button 
-                  onClick={() => setDeleteTaskConfirm(true)}
-                  className="text-sm font-semibold text-[#F87171] hover:text-red-400 transition-colors py-1"
-                >
-                  Delete Task
-                </button>
-              )}
             </div>
           </motion.div>
         </>

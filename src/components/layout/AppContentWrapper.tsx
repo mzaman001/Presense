@@ -11,7 +11,7 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
     <main 
       className={cn(
         "flex-1 flex flex-col pb-24 md:pb-0 relative z-10 pt-4 md:pt-8 transition-all duration-300",
-        isSidebarCollapsed ? "md:pl-[72px]" : "md:pl-[220px]"
+        isSidebarCollapsed ? "md:pl-[64px]" : "md:pl-[220px]"
       )}
     >
       <div className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 pt-0">

@@ -57,7 +57,7 @@ export default function DoPage() {
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [focusTask, setFocusTask] = useState<Task | null>(null);
 
-  const { userSettings } = useAppStore();
+  const { userSettings, setActiveTimer } = useAppStore();
   const isBoardView = userSettings?.default_view === "board";
 
   const [viewMode, setViewMode] = useState<"board" | "today">("board");
@@ -285,10 +285,11 @@ export default function DoPage() {
                 </div>
               )}
               <button
-                onClick={(e) => { e.stopPropagation(); setFocusTask(task); }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition-colors text-[11px] font-semibold"
+                onClick={(e) => { e.stopPropagation(); setActiveTimer({ taskId: task.id, taskTitle: task.title }); }}
+                className="p-1.5 rounded-lg bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition-colors"
+                title="Start session"
               >
-                Start 10 min <Play className="w-3 h-3" />
+                <Play className="w-4 h-4 fill-current" />
               </button>
             </div>
           </div>

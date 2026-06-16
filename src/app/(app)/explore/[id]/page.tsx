@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { motion, AnimatePresence } from "framer-motion";
 
-const PRESET_TYPES = ["link", "book", "quote", "concept", "other"];
+const PRESET_TYPES = ["link", "quote", "concept", "book", "movie", "article", "course", "podcast", "other"];
 
 export default function ExploreDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -79,10 +79,11 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
   }, []);
 
   const handleAddTag = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
-      if (newTag.trim() && !tags.includes(newTag.trim())) {
-        setTags([...tags, newTag.trim()]);
+      const tag = newTag.trim().replace(/^#/, "");
+      if (tag && !tags.includes(tag)) {
+        setTags([...tags, tag]);
       }
       setNewTag("");
     }

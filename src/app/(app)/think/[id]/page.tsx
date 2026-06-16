@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, use } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { ArrowLeft, Loader2, Send, Sparkles, Trash2, Archive, Pin } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Sparkles, Trash2, Archive, Pin, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -83,22 +83,28 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   const handleArchive = async () => {
     if (!thread) return;
     try {
-      const newStatus = thread.status === "archived" ? "active" : "archived";
+      const newStatus = (thread.status === "archived" || thread.status === "deleted") ? "active" : "archived";
       const { error } = await supabase.from("threads").update({ status: newStatus }).eq("id", thread.id);
       if (error) throw error;
-      toast.success(newStatus === "archived" ? "Thread archived" : "Thread restored");
+      toast.success(newStatus === "active" ? "Thread restored" : "Thread archived");
       router.push("/think");
     } catch (error: any) {
-      toast.error("Failed to archive thread", { description: error.message });
+      toast.error("Failed to update thread status", { description: error.message });
     }
   };
 
   const handleDelete = async () => {
     if (!thread) return;
     try {
-      const { error } = await supabase.from("threads").update({ status: "deleted" }).eq("id", id);
-      if (error) throw error;
-      toast.success("Deleted (30-day trash)");
+      if (thread.status === "deleted") {
+        const { error } = await supabase.from("threads").delete().eq("id", id);
+        if (error) throw error;
+        toast.success("Thread permanently deleted");
+      } else {
+        const { error } = await supabase.from("threads").update({ status: "deleted", deleted_at: new Date().toISOString() }).eq("id", id);
+        if (error) throw error;
+        toast.success("Moved to trash");
+      }
       router.push("/think");
     } catch (err: any) {
       toast.error("Failed to delete", { description: err.message });
@@ -168,19 +174,41 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         <div className="flex items-start gap-4">
           <div className="relative group pt-1">
             <div className="w-1.5 h-10 rounded-full shrink-0 cursor-pointer" style={{ backgroundColor: thread.color_accent }} />
-            <div className="absolute left-0 top-full mt-2 hidden group-hover:flex bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded-xl shadow-xl gap-2 z-50">
-              {["#FBBF24", "#F472B6", "#2DD4BF", "#A78BFA", "#60A5FA", "#F87171"].map(c => (
-                <button 
-                  key={c} 
-                  onClick={() => handleColorChange(c)}
-                  className="w-4 h-4 rounded-full border border-[var(--color-border)] hover:scale-110 transition-transform"
-                  style={{ backgroundColor: c }}
-                />
-              ))}
+            <div className="absolute left-0 top-full pt-2 hidden group-hover:block z-50">
+              <div className="flex bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded-xl shadow-xl gap-2">
+                {["#FBBF24", "#F472B6", "#2DD4BF", "#A78BFA", "#60A5FA", "#F87171"].map(c => (
+                  <button 
+                    key={c} 
+                    onClick={() => handleColorChange(c)}
+                    className="w-4 h-4 rounded-full border border-[var(--color-border)] hover:scale-110 transition-transform"
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
           <div>
-            <h1 className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-snug">{thread.title}</h1>
+            <input 
+              value={thread.title}
+              onChange={(e) => setThread({ ...thread, title: e.target.value })}
+              onBlur={async (e) => {
+                const newTitle = e.target.value.trim();
+                if (newTitle !== "") {
+                  try {
+                    await supabase.from("threads").update({ title: newTitle }).eq("id", thread.id);
+                  } catch (err) {
+                    toast.error("Failed to rename thread");
+                  }
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
+              className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-snug bg-transparent border-none outline-none w-full hover:bg-[rgba(255,255,255,0.05)] focus:bg-[rgba(255,255,255,0.05)] rounded-lg px-2 -ml-2 py-1 transition-colors placeholder:text-[var(--color-text-3)]"
+              placeholder="Thread Title"
+            />
             {thread.stale_prompt && (
               <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] rounded-md">
                 <Sparkles className="w-3.5 h-3.5 text-[#2DD4BF]" />
@@ -200,14 +228,14 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
           <button 
             onClick={handleArchive}
             className="p-2 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-3)] transition-colors"
-            title={thread.status === "archived" ? "Restore thread" : "Archive thread"}
+            title={thread.status === "archived" || thread.status === "deleted" ? "Restore thread" : "Archive thread"}
           >
-            <Archive className="w-4 h-4" />
+            {thread.status === "archived" || thread.status === "deleted" ? <RefreshCcw className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
           </button>
           <button 
             onClick={() => setDeleteThreadOpen(true)}
             className="p-2 rounded-lg hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171] transition-colors"
-            title="Delete thread"
+            title={thread.status === "deleted" ? "Delete permanently" : "Move to trash"}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -279,10 +307,10 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         isOpen={deleteThreadOpen}
         onClose={() => setDeleteThreadOpen(false)}
         onConfirm={handleDelete}
-        title="Delete Thread?"
-        description="This thread will be moved to the trash and permanently removed in 30 days."
+        title={thread.status === "deleted" ? "Delete permanently?" : "Move to Trash?"}
+        description={thread.status === "deleted" ? "This action cannot be undone." : "This thread will be moved to the trash and permanently deleted after 30 days."}
+        confirmLabel={thread.status === "deleted" ? "Delete permanently" : "Move to Trash"}
         confirmDestructive
-        confirmLabel="Delete Thread"
       />
 
       <ConfirmModal

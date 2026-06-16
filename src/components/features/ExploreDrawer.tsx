@@ -1,50 +1,142 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Save, Link2, BookOpen, Quote, Lightbulb, Star, Loader2 } from "lucide-react";
+import { X, Loader2, Archive, Trash2, RefreshCcw, Plus, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface ExploreDrawerProps {
-  item: any;
+  item?: any;
   isOpen: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
+const PRESET_TYPES = ["link", "quote", "concept", "book", "movie", "article", "course", "podcast", "other"];
+
 export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerProps) {
   const supabase = createClient();
-  const { userSettings } = useAppStore();
+  const { userSettings, setUserSettings } = useAppStore();
+  
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
   const [type, setType] = useState("link");
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+  const [linkedThreadId, setLinkedThreadId] = useState<string | null>(null);
+  
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  // Dropdown states
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [isCustomType, setIsCustomType] = useState(false);
+  const [customTypeInput, setCustomTypeInput] = useState("");
+
+  const [isThreadDropdownOpen, setIsThreadDropdownOpen] = useState(false);
+  const [threads, setThreads] = useState<any[]>([]);
 
   useEffect(() => {
-    if (item && isOpen) {
-      setTitle(item.title || "");
-      setUrl(item.url || "");
-      setNote(item.note || "");
-      setType(item.type || "link");
-    }
-  }, [item, isOpen]);
+    if (isOpen) {
+      if (item) {
+        setTitle(item.title || "");
+        setUrl(item.url || "");
+        setNote(item.note || "");
+        setTags(item.tags || []);
+        setLinkedThreadId(item.linked_thread_id || null);
+        
+        if (PRESET_TYPES.includes(item.type)) {
+          setType(item.type);
+          setIsCustomType(false);
+        } else {
+          setType("custom");
+          setIsCustomType(true);
+          setCustomTypeInput(item.type);
+        }
+      } else {
+        setTitle("");
+        setUrl("");
+        setNote("");
+        setType("link");
+        setTags([]);
+        setLinkedThreadId(null);
+        setIsCustomType(false);
+        setCustomTypeInput("");
+      }
 
-  const customTypes = userSettings?.explore_custom_types || [];
-  const baseTypes = ["link", "book", "quote", "concept"];
-  const allTypes = [...baseTypes, ...customTypes, "other"];
+      // Fetch threads
+      supabase.from("threads").select("id, title").eq("status", "active").then(({ data }) => {
+        setThreads(data || []);
+      });
+    }
+  }, [item, isOpen, supabase]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const closeAll = () => { setIsTypeDropdownOpen(false); setIsThreadDropdownOpen(false); };
+    document.addEventListener("click", closeAll);
+    return () => document.removeEventListener("click", closeAll);
+  }, []);
+
+  const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const tag = newTag.trim().replace(/^#/, "");
+      if (tag && !tags.includes(tag)) {
+        setTags([...tags, tag]);
+      }
+      setNewTag("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
 
   const handleSave = async () => {
-    if (!item) return;
+    if (!title.trim()) return;
     setSaving(true);
+    
+    let finalType = isCustomType ? customTypeInput.trim().toLowerCase() : type;
+    if (!finalType) finalType = "other";
+
     try {
-      const { error } = await supabase.from("explores").update({
-        title, url, note, type
-      }).eq("id", item.id);
-      if (error) throw error;
-      toast.success("Saved");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const payload = {
+        user_id: user.id,
+        title,
+        url: url || null,
+        note,
+        type: finalType,
+        tags,
+        linked_thread_id: linkedThreadId || null,
+      };
+
+      if (item) {
+        const { error } = await supabase.from("explores").update(payload).eq("id", item.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("explores").insert(payload);
+        if (error) throw error;
+      }
+
+      // Add to custom types if new
+      if (isCustomType && finalType && !PRESET_TYPES.includes(finalType)) {
+        const currentCustoms = userSettings?.explore_custom_types || [];
+        if (!currentCustoms.includes(finalType)) {
+          const newCustoms = [...currentCustoms, finalType];
+          await supabase.from("user_settings").update({ explore_custom_types: newCustoms }).eq("user_id", user.id);
+          setUserSettings({ ...userSettings, explore_custom_types: newCustoms });
+        }
+      }
+
+      toast.success("Saved to Explore");
       onSaved();
       onClose();
     } catch (err: any) {
@@ -54,90 +146,272 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
     }
   };
 
+  const handleArchiveToggle = async () => {
+    if (!item) return;
+    setSaving(true);
+    try {
+      const newStatus = (item.status === "archived" || item.status === "deleted") ? "active" : "archived";
+      const { error } = await supabase.from("explores").update({ status: newStatus }).eq("id", item.id);
+      if (error) throw error;
+      toast.success(`Item ${newStatus === "active" ? "restored" : "archived"}`);
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      toast.error("Failed to update status", { description: err.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!item) return;
+    try {
+      if (item.status === "deleted") {
+        // Hard delete
+        const { error } = await supabase.from("explores").delete().eq("id", item.id);
+        if (error) throw error;
+        toast.success("Item permanently deleted");
+      } else {
+        // Move to trash (deleted status)
+        const { error } = await supabase.from("explores").update({ 
+          status: "deleted",
+          deleted_at: new Date().toISOString()
+        }).eq("id", item.id);
+        if (error) throw error;
+        toast.success("Moved to trash");
+      }
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      toast.error("Failed to delete item", { description: err.message });
+    } finally {
+      setDeleteConfirm(false);
+    }
+  };
+
   return (
-    <AnimatePresence>
-      {isOpen && item && (
-        <>
+    <>
+      <AnimatePresence>
+        {isOpen && (
           <motion.div
+            key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
           />
+        )}
+        {isOpen && (
           <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-[rgba(11,9,20,0.95)] backdrop-blur-3xl border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
+            key="panel"
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] bg-[var(--color-surface)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
           >
-            <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
-              <h2 className="text-lg font-semibold text-[var(--color-text-1)]">Edit Explore Item</h2>
-              <button onClick={onClose} className="p-2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface)] transition-colors">
-                <X className="w-5 h-5" />
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)]">
+              <h2 className="text-lg font-bold text-[var(--color-text-1)]">{item ? "Edit Explore Item" : "Save to Explore"}</h2>
+              <button onClick={onClose} className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+                <X className="w-5 h-5 text-[var(--color-text-2)]" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-3)] mb-2">Title</label>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">
+                  Title <span className="text-red-400">*</span>
+                </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[var(--color-border)] transition-colors"
+                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[#FBBF24] transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-3)] mb-2">URL (Optional)</label>
-                <input
-                  type="text"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[var(--color-border)] transition-colors"
-                />
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">Type <span className="text-red-400">*</span></label>
+                <div className="relative">
+                  <button 
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setIsTypeDropdownOpen(!isTypeDropdownOpen); setIsThreadDropdownOpen(false); }}
+                    className="w-full flex items-center justify-between bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[#FBBF24] transition-colors"
+                  >
+                    <span className="capitalize">{isCustomType ? (customTypeInput || "Custom") : type}</span>
+                    <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
+                  </button>
+                  <AnimatePresence>
+                    {isTypeDropdownOpen && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                        className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5"
+                      >
+                        {PRESET_TYPES.map(preset => (
+                          <button 
+                            key={preset} type="button"
+                            onClick={(e) => { e.stopPropagation(); setType(preset); setIsCustomType(false); setIsTypeDropdownOpen(false); }}
+                            className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] capitalize"
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                        <div className="my-1 border-t border-[var(--color-border)]" />
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setIsCustomType(true); setIsTypeDropdownOpen(false); }}
+                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[#FBBF24] flex items-center gap-2"
+                        >
+                          <Plus className="w-3 h-3" /> Add custom type
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                {isCustomType && (
+                  <motion.input
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                    autoFocus
+                    placeholder="Enter custom type and press save..."
+                    value={customTypeInput}
+                    onChange={(e) => setCustomTypeInput(e.target.value)}
+                    className="w-full mt-3 bg-[rgba(255,255,255,0.03)] border border-[#FBBF24] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] transition-colors"
+                  />
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-3)] mb-2">Type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[var(--color-border)] transition-colors appearance-none"
-                >
-                  {allTypes.map((t) => (
-                    <option key={t} value={t} className="bg-[#111]">{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
+              {type === 'link' && (
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">URL</label>
+                  <input
+                    type="text"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[#FBBF24] transition-colors"
+                  />
+                </div>
+              )}
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-3)] mb-2">Note (Optional)</label>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2 uppercase tracking-wider">
+                  Why are you saving this? <span className="text-red-400">*</span>
+                </label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  rows={6}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[var(--color-border)] transition-colors resize-none"
-                  placeholder="Why is this interesting?"
+                  rows={4}
+                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[#FBBF24] transition-colors resize-none"
+                  placeholder="e.g. Fascinating idea from lecture / Riyaz recommended this book"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Tags</label>
+                <div className="p-2 border border-[var(--color-border)] rounded-xl bg-[rgba(255,255,255,0.03)] focus-within:border-[#FBBF24] transition-colors flex flex-wrap gap-2">
+                  {tags.map(t => (
+                    <span key={t} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(251,191,36,0.15)] text-[#FBBF24] text-xs font-medium">
+                      {t}
+                      <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-[var(--color-text-1)] transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={handleAddTag}
+                    placeholder="Add tag and press Enter..."
+                    className="flex-1 min-w-[140px] bg-transparent px-2 py-1 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Link to Think Thread (Optional)</label>
+                <div className="relative">
+                  <button 
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
+                    className="w-full flex items-center justify-between bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[#FBBF24] transition-colors"
+                  >
+                    <span className="truncate pr-4">
+                      {linkedThreadId ? threads.find(t => t.id === linkedThreadId)?.title || "Unknown Thread" : "-- No Thread Linked --"}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-[var(--color-text-3)] shrink-0" />
+                  </button>
+                  <AnimatePresence>
+                    {isThreadDropdownOpen && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                        className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
+                      >
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setLinkedThreadId(null); setIsThreadDropdownOpen(false); }}
+                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-3)]"
+                        >
+                          -- No Thread Linked --
+                        </button>
+                        {threads.map(t => (
+                          <button 
+                            key={t.id} type="button"
+                            onClick={(e) => { e.stopPropagation(); setLinkedThreadId(t.id); setIsThreadDropdownOpen(false); }}
+                            className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] truncate"
+                          >
+                            {t.title}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
             </div>
 
-            <div className="p-6 border-t border-[var(--color-border)]">
+            <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3">
+              {item && (
+                <>
+                  <button
+                    onClick={() => setDeleteConfirm(true)}
+                    className="flex items-center justify-center px-4 py-3 rounded-xl bg-red-500/10 text-red-400 font-semibold hover:bg-red-500/20 transition-colors"
+                    title={item.status === "deleted" ? "Delete permanently" : "Move to trash"}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={handleArchiveToggle}
+                    disabled={saving}
+                    className="flex items-center justify-center px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] text-[var(--color-text-1)] font-semibold hover:bg-[rgba(255,255,255,0.1)] transition-colors disabled:opacity-50"
+                    title={item.status === "archived" || item.status === "deleted" ? "Restore" : "Archive"}
+                  >
+                    {item.status === "archived" || item.status === "deleted" ? <RefreshCcw className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
+                  </button>
+                </>
+              )}
               <button
                 onClick={handleSave}
-                disabled={saving}
-                className="w-full flex items-center justify-center gap-2 bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold rounded-xl py-3 hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:pointer-events-none"
+                disabled={saving || !title.trim() || !note.trim()}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#FBBF24] text-[var(--color-background)] font-semibold hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(251,191,36,0.3)] disabled:shadow-none"
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                {saving ? "Saving..." : "Save Changes"}
+                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (item ? "Save Changes" : "Save")}
               </button>
             </div>
           </motion.div>
-        </>
+        )}
+      </AnimatePresence>
+      {item && (
+        <ConfirmModal
+          isOpen={deleteConfirm}
+          onClose={() => setDeleteConfirm(false)}
+          onConfirm={confirmDelete}
+          title={item.status === "deleted" ? "Delete permanently?" : "Move to Trash?"}
+          description={item.status === "deleted" ? "This action cannot be undone." : "This item will be moved to the trash and permanently deleted after 30 days."}
+          confirmLabel={item.status === "deleted" ? "Delete permanently" : "Move to Trash"}
+          confirmDestructive
+        />
       )}
-    </AnimatePresence>
+    </>
   );
 }

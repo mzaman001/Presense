@@ -21,6 +21,7 @@ interface Thread {
   status: string;
   is_pinned: boolean;
 }
+import { toast } from "sonner";
 
 export default function ThinkPage() {
   const supabase = createClient();
@@ -28,6 +29,7 @@ export default function ThinkPage() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchive, setShowArchive] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredThreads = threads.filter(t => 
@@ -36,15 +38,24 @@ export default function ThinkPage() {
   );
 
   const fetchThreads = useCallback(async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("threads")
       .select("*")
-      .eq("status", showArchive ? "archived" : "active")
       .order("is_pinned", { ascending: false })
       .order("last_updated", { ascending: false });
+
+    if (showTrash) query = query.eq("status", "deleted");
+    else if (showArchive) query = query.eq("status", "archived");
+    else query = query.eq("status", "active");
+
+    const { data } = await query;
     setThreads(data ?? []);
     setLoading(false);
-  }, [supabase, showArchive]);
+  }, [supabase, showArchive, showTrash]);
+
+  useEffect(() => {
+    fetchThreads();
+  }, [fetchThreads]);
 
   useRealtime("threads", fetchThreads);
 
@@ -62,15 +73,15 @@ export default function ThinkPage() {
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const title = `Daily Note: ${dateStr}`;
     
-    const { data: existing } = await supabase
+    const { data: existingThreads } = await supabase
       .from("threads")
       .select("id")
       .eq("title", title)
       .eq("status", "active")
-      .maybeSingle();
+      .limit(1);
       
-    if (existing) {
-      window.location.href = `/think/${existing.id}`;
+    if (existingThreads && existingThreads.length > 0) {
+      window.location.href = `/think/${existingThreads[0].id}`;
       return;
     }
 
@@ -89,6 +100,57 @@ export default function ThinkPage() {
     }
   };
 
+  const handleNewThread = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase.from("threads").insert({
+      user_id: user.id,
+      title: "Untitled Thread",
+      color_accent: "#2DD4BF",
+      is_pinned: false
+    }).select().single();
+
+    if (!error && data) {
+      window.location.href = `/think/${data.id}`;
+    }
+  };
+
+  const togglePin = async (e: React.MouseEvent, thread: Thread) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!thread.is_pinned) {
+      const pinnedCount = threads.filter(t => t.is_pinned).length;
+      if (pinnedCount >= 3) {
+        toast.error('You can pin up to 3 threads');
+        return;
+      }
+    }
+    
+    // Optimistic update
+    setThreads(current => {
+      const updated = current.map(t => 
+        t.id === thread.id ? { ...t, is_pinned: !t.is_pinned } : t
+      );
+      // Re-sort exactly like fetchThreads does
+      return updated.sort((a, b) => {
+        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+        return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
+      });
+    });
+    
+    const { error } = await supabase
+      .from("threads")
+      .update({ is_pinned: !thread.is_pinned })
+      .eq("id", thread.id);
+      
+    if (error) {
+      toast.error('Failed to update pin status');
+      fetchThreads(); // revert on error
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
@@ -96,12 +158,26 @@ export default function ThinkPage() {
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
             <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Think</h1>
-            <button 
-              onClick={() => setShowArchive(!showArchive)}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-            >
-              {showArchive ? "Hide Archive" : "Show Archive"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => { setShowArchive(false); setShowTrash(false); }}
+                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !showArchive && !showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
+              >
+                Active
+              </button>
+              <button 
+                onClick={() => { setShowArchive(true); setShowTrash(false); }}
+                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
+              >
+                Archive
+              </button>
+              <button 
+                onClick={() => { setShowTrash(true); setShowArchive(false); }}
+                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
+              >
+                Trash
+              </button>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -115,7 +191,7 @@ export default function ThinkPage() {
           <button onClick={handleDailyNote} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.25)] text-[#FBBF24] text-sm font-medium hover:bg-[rgba(251,191,36,0.2)] transition-colors hidden sm:flex">
             <Sparkles className="w-4 h-4" /> Daily Note
           </button>
-          <button onClick={() => setCaptureModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(45,212,191,0.12)] border border-[rgba(45,212,191,0.25)] text-[#2DD4BF] text-sm font-medium hover:bg-[rgba(45,212,191,0.2)] transition-colors">
+          <button onClick={handleNewThread} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(45,212,191,0.12)] border border-[rgba(45,212,191,0.25)] text-[#2DD4BF] text-sm font-medium hover:bg-[rgba(45,212,191,0.2)] transition-colors">
             <Plus className="w-4 h-4" /> New thread
           </button>
         </div>
@@ -180,13 +256,24 @@ export default function ThinkPage() {
           {filteredThreads.map((thread, i) => (
             <motion.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Link href={`/think/${thread.id}`}>
-                <GlassCard className="p-5 hover:scale-[1.01] transition-transform cursor-pointer h-full">
+                <GlassCard className="p-5 hover:scale-[1.01] transition-transform cursor-pointer h-full group relative">
+                  <button 
+                    onClick={(e) => togglePin(e, thread)}
+                    className={cn(
+                      "absolute right-3 top-3 p-1.5 rounded-lg transition-all",
+                      thread.is_pinned 
+                        ? "opacity-100 text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.1)]" 
+                        : "opacity-0 group-hover:opacity-100 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
+                    )}
+                  >
+                    <Pin className={cn("w-4 h-4", thread.is_pinned && "fill-current")} />
+                  </button>
                   <div className="flex items-start gap-3">
                     <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: thread.color_accent }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         {thread.is_pinned && <Pin className="w-3.5 h-3.5 text-[#2DD4BF] fill-current" />}
-                        <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{thread.title}</p>
+                        <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug pr-6">{thread.title}</p>
                       </div>
                       {thread.entries?.length > 0 && (
                         <p className="text-xs text-[var(--color-text-3)] line-clamp-2 leading-relaxed">

@@ -1,6 +1,7 @@
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { Sidebar, BottomNav } from "@/components/layout/Navigation";
 import { CaptureModal } from "@/components/features/CaptureModal";
+import { PomodoroTimer } from "@/components/features/PomodoroTimer";
 import { FAB } from "@/components/features/FAB";
 import { AppContentWrapper } from "@/components/layout/AppContentWrapper";
 import { SettingsModal } from "@/components/features/SettingsModal";
@@ -37,6 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <CaptureModal />
       <SearchModal />
       <SettingsModal />
+      <PomodoroTimer />
       <FAB />
       <AppContentWrapper>
         {children}

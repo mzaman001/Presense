@@ -92,15 +92,19 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
+    <>
+      <AnimatePresence>
+        {isOpen && (
           <motion.div 
+            key="backdrop"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
             onClick={onClose}
           />
+        )}
+        {isOpen && (
           <motion.div
+            key="panel"
             initial={{ x: "100%", opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] bg-[var(--color-surface)] border-l border-[var(--color-border)] z-50 flex flex-col shadow-2xl"
@@ -168,9 +172,8 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
               </button>
             </div>
           </motion.div>
-        </>
-      )}
-      
+        )}
+      </AnimatePresence>
       <ConfirmModal
         isOpen={deleteConfirm}
         onClose={() => setDeleteConfirm(false)}
@@ -180,6 +183,6 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
         confirmText="Delete Location"
         isDanger={true}
       />
-    </AnimatePresence>
+    </>
   );
 }

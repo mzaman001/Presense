@@ -11,7 +11,6 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { ExploreDrawer } from "@/components/features/ExploreDrawer";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface ExploreItem {
   id: string;
@@ -44,8 +43,9 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All Saved");
   const [showArchive, setShowArchive] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
   const [editItem, setEditItem] = useState<ExploreItem | null>(null);
-  const [deleteItem, setDeleteItem] = useState<ExploreItem | null>(null);
+  const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
 
   const customTypes = userSettings?.explore_custom_types || [];
   const allFilters = [...FILTERS, ...customTypes.map((c: string) => c.charAt(0).toUpperCase() + c.slice(1))];
@@ -53,13 +53,18 @@ export default function ExplorePage() {
   customTypes.forEach((c: string) => dynamicFilterMap[c.charAt(0).toUpperCase() + c.slice(1)] = c);
 
   const fetchItems = useCallback(async () => {
-    let query = supabase.from("explores").select("*").eq("status", showArchive ? "archived" : "active").order("saved_at", { ascending: false });
+    let query = supabase.from("explores").select("*").order("saved_at", { ascending: false });
+    
+    if (showTrash) query = query.eq("status", "deleted");
+    else if (showArchive) query = query.eq("status", "archived");
+    else query = query.eq("status", "active");
+
     const typeFilter = dynamicFilterMap[filter];
-    if (typeFilter) query = query.eq("type", typeFilter);
+    if (typeFilter && !showTrash && !showArchive) query = query.eq("type", typeFilter);
     const { data } = await query;
     setItems(data ?? []);
     setLoading(false);
-  }, [supabase, filter, showArchive]);
+  }, [supabase, filter, showArchive, showTrash]);
 
   useEffect(() => {
     fetchItems();
@@ -75,31 +80,6 @@ export default function ExplorePage() {
     return `${Math.floor(days / 30)}mo ago`;
   };
 
-  const handleArchive = async (e: React.MouseEvent, item: ExploreItem) => {
-    e.stopPropagation();
-    try {
-      const newStatus = item.status === "archived" ? "active" : "archived";
-      await supabase.from("explores").update({ status: newStatus }).eq("id", item.id);
-      toast.success(`Item ${newStatus === "archived" ? "archived" : "restored"}`);
-      fetchItems();
-    } catch (err: any) {
-      toast.error("Failed to archive item");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteItem) return;
-    try {
-      await supabase.from("explores").delete().eq("id", deleteItem.id);
-      toast.success("Item deleted");
-      fetchItems();
-    } catch (err: any) {
-      toast.error("Failed to delete item");
-    } finally {
-      setDeleteItem(null);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
@@ -107,15 +87,29 @@ export default function ExplorePage() {
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
             <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Explore</h1>
-            <button 
-              onClick={() => setShowArchive(!showArchive)}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-            >
-              {showArchive ? "Hide Archive" : "Show Archive"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => { setShowArchive(false); setShowTrash(false); }}
+                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !showArchive && !showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
+              >
+                Active
+              </button>
+              <button 
+                onClick={() => { setShowArchive(true); setShowTrash(false); }}
+                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
+              >
+                Archive
+              </button>
+              <button 
+                onClick={() => { setShowTrash(true); setShowArchive(false); }}
+                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
+              >
+                Trash
+              </button>
+            </div>
           </div>
         </div>
-        <button onClick={() => setCaptureModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.25)] text-[#FBBF24] text-sm font-medium hover:bg-[rgba(251,191,36,0.2)] transition-colors">
+        <button onClick={() => setIsAddDrawerOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.25)] text-[#FBBF24] text-sm font-medium hover:bg-[rgba(251,191,36,0.2)] transition-colors">
           <Plus className="w-4 h-4" /> Save item
         </button>
       </div>
@@ -161,13 +155,9 @@ export default function ExplorePage() {
             return (
               <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <GlassCard
-                  className={cn("p-5 hover:scale-[1.01] transition-transform relative group", isUnread && "border-[rgba(251,191,36,0.2)]")}
+                  onClick={() => setEditItem(item)}
+                  className={cn("p-5 hover:scale-[1.01] transition-transform relative group cursor-pointer hover:border-[var(--color-accent)]/30", isUnread && "border-[rgba(251,191,36,0.2)]")}
                 >
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[var(--color-background)] p-1 rounded-lg border border-[var(--color-border)] backdrop-blur-md">
-                    <button onClick={(e) => { e.stopPropagation(); setEditItem(item); }} className="text-xs px-2 py-1 hover:text-[var(--color-text-1)] text-[var(--color-text-3)]">Edit</button>
-                    <button onClick={(e) => handleArchive(e, item)} className="text-xs px-2 py-1 hover:text-[var(--color-text-1)] text-[var(--color-text-3)]">{showArchive ? "Restore" : "Archive"}</button>
-                    <button onClick={(e) => { e.stopPropagation(); setDeleteItem(item); }} className="text-xs px-2 py-1 hover:text-[#F87171] text-[var(--color-text-3)]">Delete</button>
-                  </div>
                   <div className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}22` }}>
                       <Icon className="w-4 h-4" style={{ color }} />
@@ -224,19 +214,9 @@ export default function ExplorePage() {
 
       <ExploreDrawer 
         item={editItem} 
-        isOpen={!!editItem} 
-        onClose={() => setEditItem(null)} 
+        isOpen={!!editItem || isAddDrawerOpen} 
+        onClose={() => { setEditItem(null); setIsAddDrawerOpen(false); }} 
         onSaved={fetchItems} 
-      />
-      
-      <ConfirmModal
-        isOpen={!!deleteItem}
-        onClose={() => setDeleteItem(null)}
-        onConfirm={handleDelete}
-        title="Delete Item?"
-        description="Are you sure you want to delete this? It will be removed permanently."
-        confirmLabel="Delete"
-        confirmDestructive
       />
     </div>
   );

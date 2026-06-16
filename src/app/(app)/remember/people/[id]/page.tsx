@@ -45,6 +45,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
   const [personToDelete, setPersonToDelete] = useState(false);
 
+  const { userSettings } = useAppStore();
+
   const fetchPerson = useCallback(async () => {
     const { data: personData } = await supabase.from("people").select("*").eq("id", id).single();
     if (personData) {
@@ -130,7 +132,6 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   const timeline = [...(person.notes || [])].reverse();
   const briefing = timeline.slice(0, 3); // top 3 for briefing
 
-  const { userSettings } = useAppStore();
   const relKey = (person.relationship || '').toLowerCase();
   const relColor = person.color || userSettings?.relationship_colors?.[relKey] || RELATIONSHIP_COLORS[relKey] || RELATIONSHIP_COLORS.other;
 
