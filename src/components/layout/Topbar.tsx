@@ -6,7 +6,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { usePathname } from "next/navigation";
 
 export function Topbar() {
-  const { setSearchModalOpen } = useAppStore();
+  const setSearchModalOpen = useAppStore(s => s.setSearchModalOpen);
   const pathname = usePathname();
 
   let title = "";

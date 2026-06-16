@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -24,7 +24,7 @@ interface Thread {
 import { toast } from "sonner";
 
 export default function ThinkPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const setCaptureModalOpen = useAppStore((state) => state.setCaptureModalOpen);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -263,22 +263,24 @@ export default function ThinkPage() {
             <motion.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Link href={`/think/${thread.id}`}>
                 <GlassCard className="p-5 hover:scale-[1.01] transition-transform cursor-pointer h-full group relative">
-                  <button 
-                    onClick={(e) => togglePin(e, thread)}
-                    className={cn(
-                      "absolute right-3 top-3 p-1.5 rounded-lg transition-all",
-                      thread.is_pinned 
-                        ? "opacity-100 text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.1)]" 
-                        : "opacity-0 group-hover:opacity-100 text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--color-surface)]"
-                    )}
-                  >
-                    <Pin size={14} strokeWidth={1.5} className={cn(thread.is_pinned && "fill-current")} />
-                  </button>
+                  {!showArchive && !showTrash && (
+                    <button 
+                      onClick={(e) => togglePin(e, thread)}
+                      className={cn(
+                        "absolute right-3 top-3 p-1.5 rounded-lg transition-all",
+                        thread.is_pinned 
+                          ? "opacity-100 text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.1)]" 
+                          : "opacity-0 group-hover:opacity-100 text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--color-surface)]"
+                      )}
+                    >
+                      <Pin size={14} strokeWidth={1.5} className={cn(thread.is_pinned && "fill-current")} />
+                    </button>
+                  )}
                   <div className="flex items-start gap-3">
                     <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: thread.color_accent }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        {thread.is_pinned && <Pin className="w-3.5 h-3.5 text-[#2DD4BF] fill-current" />}
+                        {!showArchive && !showTrash && thread.is_pinned && <Pin className="w-3.5 h-3.5 text-[#2DD4BF] fill-current" />}
                         <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug pr-6">{thread.title}</p>
                       </div>
                       {thread.entries?.length > 0 && (

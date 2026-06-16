@@ -160,14 +160,6 @@ export default function LoginPage() {
               </p>
             )}
 
-            {/* Create account */}
-            <p className="text-[12px] text-center mt-6" style={{ color: "var(--text-3)" }}>
-              Don't have an account?{" "}
-              <button onClick={() => toast.info("Just sign in — Presense creates your account automatically.")}
-                className="underline underline-offset-2 font-medium" style={{ color: "var(--accent-text)" }}>
-                Create one
-              </button>
-            </p>
           </>
         )}
       </div>

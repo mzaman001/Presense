@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 
 export function AppContentWrapper({ children }: { children: React.ReactNode }) {
-  const { isSidebarCollapsed } = useAppStore();
+  const isSidebarCollapsed = useAppStore(s => s.isSidebarCollapsed);
 
   return (
     <main 

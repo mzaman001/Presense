@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "script:clean": "node scripts/clean-threads.js",
+    "script:snooze": "node scripts/check_snooze.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

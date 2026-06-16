@@ -49,7 +49,9 @@ function NavTooltip({ label, shortcut, show }: { label: string, shortcut?: strin
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { isSidebarCollapsed, toggleSidebar, userSettings } = useAppStore();
+  const isSidebarCollapsed = useAppStore(s => s.isSidebarCollapsed);
+  const toggleSidebar = useAppStore(s => s.toggleSidebar);
+  const userSettings = useAppStore(s => s.userSettings);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   return (

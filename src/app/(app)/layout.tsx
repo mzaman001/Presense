@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Check if onboarding is complete by looking for user_settings
   const { data: settings } = await supabase
     .from("user_settings")
-    .select("display_name, onboarding_complete")
+    .select("*")
     .eq("user_id", user.id)
     .single();
 
@@ -32,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
   return (
     <>
-      <AppInitializer />
+      <AppInitializer initialSettings={settings} />
       <AmbientBackground />
       <Sidebar />
       <CaptureModal />

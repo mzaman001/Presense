@@ -8,23 +8,28 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
   try {
-    // Thirty days ago
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const threshold = thirtyDaysAgo.toISOString();
+    const cutoffDate = thirtyDaysAgo.toISOString();
 
-    const { data, error } = await supabase
-      .from('explores')
-      .delete()
-      .eq('status', 'deleted')
-      .lt('deleted_at', threshold);
+    const results = await Promise.all([
+      // Items (Tasks)
+      supabase.from('items').delete().eq('status', 'deleted').lte('updated_at', cutoffDate),
+      
+      // Threads
+      supabase.from('threads').delete().eq('status', 'deleted').lte('updated_at', cutoffDate),
+      
+      // Explores
+      supabase.from('explores').delete().eq('status', 'deleted').lte('revisited_at', cutoffDate)
+    ]);
 
-    if (error) {
-      throw error;
+    // Check for errors in the results array
+    for (const res of results) {
+      if (res.error) throw res.error;
     }
 
     return new Response(
-      JSON.stringify({ message: "Trash cleanup successful", deleted_count: data?.length || 0 }),
+      JSON.stringify({ message: "Hard delete cleanup executed successfully." }),
       { headers: { "Content-Type": "application/json" } },
     )
   } catch (err: any) {

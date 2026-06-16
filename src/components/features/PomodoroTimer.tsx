@@ -103,6 +103,9 @@ export function PomodoroTimer() {
     if (phase === "work") {
       const nextPhase = sessionCount % longBreakInterval === 0 ? "long_break" : "short_break";
       setPhase(nextPhase);
+    } else if (phase === "long_break") {
+      setSessionCount(1);
+      setPhase("work");
     } else {
       setSessionCount(prev => prev + 1);
       setPhase("work");
@@ -282,7 +285,7 @@ export function PomodoroTimer() {
           onClose={() => setShowConfirmEnd(false)}
           onConfirm={handleEnd}
           title="End this session?"
-          description="Your progress so far will be saved."
+          description={(totalTime - timeLeft) > 60 ? "Your progress so far will be saved." : "This session was too short to be saved."}
           confirmLabel="End Session"
         />
       </motion.div>

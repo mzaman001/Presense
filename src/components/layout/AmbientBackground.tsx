@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 
 export function AmbientBackground() {
-  const { userSettings } = useAppStore();
+  const userSettings = useAppStore(s => s.userSettings);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

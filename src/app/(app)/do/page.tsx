@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
+import { TaskCard } from "@/components/features/TaskCard";
 import { FocusSession } from "@/components/features/FocusSession";
 import { Plus, Loader2, Clock, Play, Check, Zap, Calendar } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -27,25 +28,64 @@ interface Task {
   recurrence?: string | null;
 }
 
-function formatDeadline(d: string | null) {
-  if (!d) return null;
-  const date = new Date(d);
-  const now = new Date();
-  const diffMs = date.getTime() - now.getTime();
-  const diffH = diffMs / 3600000;
-  if (diffH < 0) return "Overdue";
-  if (diffH < 1) return "< 1 hr";
-  if (diffH < 24) return `${Math.round(diffH)}h`;
-  const diffD = Math.floor(diffH / 24);
-  if (diffD === 0) return "Today";
-  if (diffD === 1) return "Tomorrow";
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-}
+
 
 import { useSearchParams } from "next/navigation";
 
+const Column = ({ 
+  title, 
+  tasks: colTasks, 
+  accent, 
+  icon: Icon,
+  completing,
+  completeTask,
+  openEditPanel,
+  fetchTasks
+}: { 
+  title: string; 
+  tasks: Task[]; 
+  accent: string; 
+  icon: React.ElementType;
+  completing: string | null;
+  completeTask: (e: React.MouseEvent, id: string) => void;
+  openEditPanel: (task: Task) => void;
+  fetchTasks: () => void;
+}) => (
+  <div className="flex-1 min-w-0">
+    <div className="flex items-center gap-2 mb-4">
+      <Icon className="w-4 h-4" style={{ color: accent }} />
+      <h2 className="text-sm font-semibold text-[var(--color-text-1)]">{title}</h2>
+      {colTasks.length > 0 && (
+        <Badge style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}44` }}>
+          {colTasks.length}
+        </Badge>
+      )}
+    </div>
+    <div className="space-y-3">
+      <AnimatePresence mode="popLayout">
+        {colTasks.length === 0 ? (
+          <div className="text-sm text-[var(--color-text-3)] text-center py-8 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl">
+            Nothing here
+          </div>
+        ) : (
+          colTasks.map((t) => (
+            <TaskCard 
+              key={t.id} 
+              task={t} 
+              completing={completing}
+              completeTask={completeTask}
+              openEditPanel={openEditPanel}
+              fetchTasks={fetchTasks}
+            />
+          ))
+        )}
+      </AnimatePresence>
+    </div>
+  </div>
+);
+
 export default function DoPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
   const initialFilter = searchParams.get("filter") === "inbox" ? "inbox" : "all";
   
@@ -57,7 +97,8 @@ export default function DoPage() {
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [focusTask, setFocusTask] = useState<Task | null>(null);
 
-  const { userSettings, setActiveTimer } = useAppStore();
+  const userSettings = useAppStore(s => s.userSettings);
+  const setActiveTimer = useAppStore(s => s.setActiveTimer);
   const isBoardView = userSettings?.default_view === "board";
 
   const [viewMode, setViewMode] = useState<"board" | "today">("board");
@@ -110,6 +151,7 @@ export default function DoPage() {
     const taskIndex = tasks.findIndex(t => t.id === id);
     if (taskIndex === -1) return;
     const task = tasks[taskIndex];
+    useAppStore.getState().markMutation();
     setTasks(prev => prev.filter(t => t.id !== id));
     
     try {
@@ -120,6 +162,7 @@ export default function DoPage() {
         action: {
           label: "Undo",
           onClick: async () => {
+            useAppStore.getState().markMutation();
             await supabase.from("items").update({ status: "active", completed_at: null }).eq("id", id);
             fetchTasks();
             toast.success("Task restored");
@@ -141,6 +184,7 @@ export default function DoPage() {
 
   const restoreTask = async (id: string) => {
     try {
+      useAppStore.getState().markMutation();
       await supabase.from("items").update({ status: "active", completed_at: null }).eq("id", id);
       fetchTasks();
       fetchArchived();
@@ -195,178 +239,8 @@ export default function DoPage() {
   const doCats = userSettings?.do_categories || ["work", "study", "personal", "errand", "health"];
   const CATEGORIES = ["all", ...doCats, "inbox"];
 
-  const TaskCard = ({ task }: { task: Task }) => {
-    const label = formatDeadline(task.deadline);
-    const isOverdue = label === "Overdue";
-    const subtasks: {completed: boolean}[] = (task as any).subtasks || [];
-    const completedSubtasks = subtasks.filter(st => st.completed).length;
-    const priority = (task as any).priority || 4;
-
-    // Priority dot colours (Part 25)
-    const priorityDotColor =
-      priority === 1 ? "var(--space-do)" :
-      priority === 2 ? "var(--accent)" :
-      priority === 3 ? "var(--space-think)" :
-      "var(--text-4)";
-
-    const priorityGlow = priority === 1
-      ? "0 0 6px var(--space-do)"
-      : "none";
-
-    return (
-      <motion.div
-        layout
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96 }}
-        transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
-        <GlassCard
-          onClick={() => openEditPanel(task)}
-          className={cn("p-4 group cursor-pointer hover:scale-[1.01] transition-transform relative", isOverdue && "border-[rgba(248,113,113,0.3)]")}
-        >
-          {/* Priority dot — top-right (Part 25) */}
-          {priority < 4 && (
-            <div
-              className="absolute top-2 right-2 w-2 h-2 rounded-full"
-              style={{ background: priorityDotColor, boxShadow: priorityGlow }}
-            />
-          )}
-
-          <div className="flex items-start gap-3">
-            <button
-              onClick={(e) => completeTask(e, task.id)}
-              className={cn("checkbox mt-0.5 shrink-0", completing === task.id && "checked")}
-            >
-              {completing === task.id && <Check className="w-3.5 h-3.5 text-white" />}
-            </button>
-
-            <div className="flex-1 min-w-0 pr-4">
-              {/* Status + category row */}
-              <div className="flex items-center gap-2 mb-1">
-                {isOverdue && (
-                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--space-do)" }}>Overdue</span>
-                )}
-                {!isOverdue && label === "Today" && (
-                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--status-today)" }}>Due Today</span>
-                )}
-                <span
-                  className="text-[10px] font-semibold capitalize"
-                  style={{ color: (userSettings?.do_category_colors?.[task.category] || DEFAULT_DO_COLORS[task.category]) ?? "var(--text-4)" }}
-                >
-                  {task.category}
-                </span>
-              </div>
-
-              {/* Title */}
-              <p className="text-[14px] font-semibold leading-snug" style={{ color: "var(--text-1)" }}>
-                {task.title}
-              </p>
-
-              {/* First step (Part 28 — → character) */}
-              {task.first_step && (
-                <p className="text-[12px] mt-1" style={{ color: isOverdue ? "var(--space-do)" : "var(--space-think)" }}>
-                  → {task.first_step}
-                </p>
-              )}
-
-              {/* Recurrence (Part 28 — ↻ character inline) */}
-              {task.recurrence && (
-                <p className="text-[12px] mt-1" style={{ color: "var(--text-3)" }}>
-                  ↻ {formatRRule(task.recurrence)}
-                </p>
-              )}
-
-              {/* Subtask progress */}
-              {subtasks.length > 0 && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--surface-1)" }}>
-                    <div
-                      className="h-full transition-all"
-                      style={{ width: `${(completedSubtasks / subtasks.length) * 100}%`, background: "var(--text-3)" }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-medium shrink-0" style={{ color: "var(--text-3)" }}>
-                    {completedSubtasks}/{subtasks.length}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Bottom row — deadline + actions */}
-          <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: "0.5px solid var(--border-subtle)" }}>
-            <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
-              {label && label !== "Overdue" && label !== "Today" ? label : task.deadline ? "" : "No deadline"}
-            </span>
-            <div className="flex items-center gap-2">
-              {/* Snooze indicator */}
-              {(task.snoozed_until && new Date(task.snoozed_until) > new Date()) && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-md" style={{ background: "var(--surface-1)", border: "0.5px solid var(--border-default)" }}>
-                  <Clock size={12} strokeWidth={1.5} style={{ color: "var(--text-3)" }} />
-                  <span className="text-[10px]" style={{ color: "var(--text-3)" }}>
-                    {new Date(task.snoozed_until).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                  </span>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      await supabase.from('items').update({ snoozed_until: null }).eq('id', task.id);
-                      fetchTasks();
-                    }}
-                    className="ml-1"
-                    style={{ color: "var(--text-3)" }}
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-
-              {/* Pomodoro play button */}
-              <button
-                onClick={(e) => { e.stopPropagation(); setActiveTimer({ taskId: task.id, taskTitle: task.title }); }}
-                className="btn-icon"
-                style={{
-                  background: "rgba(229,180,30,0.08)",
-                  color: "var(--accent)",
-                  border: "none",
-                }}
-                title="Start focus session"
-              >
-                <Play size={14} strokeWidth={0} className="fill-current" />
-              </button>
-            </div>
-          </div>
-        </GlassCard>
-      </motion.div>
-    );
-  };
 
 
-  const Column = ({ title, tasks: colTasks, accent, icon: Icon }:
-    { title: string; tasks: Task[]; accent: string; icon: React.ElementType }) => (
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2 mb-4">
-        <Icon className="w-4 h-4" style={{ color: accent }} />
-        <h2 className="text-sm font-semibold text-[var(--color-text-1)]">{title}</h2>
-        {colTasks.length > 0 && (
-          <Badge style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}44` }}>
-            {colTasks.length}
-          </Badge>
-        )}
-      </div>
-      <div className="space-y-3">
-        <AnimatePresence mode="popLayout">
-          {colTasks.length === 0 ? (
-            <div className="text-sm text-[var(--color-text-3)] text-center py-8 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl">
-              Nothing here
-            </div>
-          ) : (
-            colTasks.map((t) => <TaskCard key={t.id} task={t} />)
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -468,8 +342,8 @@ export default function DoPage() {
           "gap-6",
           isBoardView ? "grid grid-cols-1 md:grid-cols-2 items-start max-w-3xl mx-auto" : "flex flex-col space-y-8 max-w-2xl mx-auto"
         )}>
-          {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} />}
-          <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} />
+          {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} />}
+          <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} />
           {overdue.length === 0 && today.length === 0 && (
             <div className="text-sm text-[var(--color-text-3)] text-center py-12 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl md:col-span-2">
               No tasks due today. Take a breath.
@@ -481,9 +355,9 @@ export default function DoPage() {
           "gap-6",
           isBoardView ? "grid grid-cols-1 md:grid-cols-3 items-start" : "flex flex-col space-y-8 max-w-2xl mx-auto"
         )}>
-          {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} /> : null}
-          {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} /> : null}
-          {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} /> : null}
+          {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} /> : null}
+          {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} /> : null}
+          {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} /> : null}
         </div>
       )}
 

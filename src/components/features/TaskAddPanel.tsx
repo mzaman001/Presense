@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, Flag, Loader2, RotateCw, Trash2, ArrowRight } from "lucide-react";
+import { X, Calendar, Flag, Loader2, RotateCw, Trash2, ArrowRight, Check } from "lucide-react";
+import { SelectDropdown } from "@/components/ui/SelectDropdown";
+import { Popover } from "@/components/ui/Popover";
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
@@ -8,6 +10,7 @@ import * as chrono from "chrono-node";
 import nlp from "compromise";
 
 import { useAppStore } from "@/store/useAppStore";
+import { cn } from "@/lib/utils";
 
 interface TaskAddPanelProps {
   isOpen: boolean;
@@ -22,16 +25,18 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const [parsedDeadline, setParsedDeadline] = useState<Date | null>(null);
   const [startDate, setStartDate] = useState("");
   const [parsedStartDate, setParsedStartDate] = useState<Date | null>(null);
-  const [firstStep, setFirstStep] = useState("");
-  const [ifThen, setIfThen] = useState("");
+  const [isManualDate, setIsManualDate] = useState(false);
   const [category, setCategory] = useState("work");
   const [priority, setPriority] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
+  const [subtasks, setSubtasks] = useState<{id: string, text: string, completed: boolean}[]>([]);
 
   const [recurrence, setRecurrence] = useState("");
   const [freq, setFreq] = useState("Does not repeat");
   const [days, setDays] = useState<string[]>([]);
   const [customRRule, setCustomRRule] = useState("");
+  const [customInterval, setCustomInterval] = useState(1);
+  const [customFreq, setCustomFreq] = useState("WEEKLY");
 
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -78,6 +83,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const confirmDelete = async () => {
     if (!taskToEdit) return;
     try {
+      useAppStore.getState().markMutation();
       const supabase = createClient();
       const { error } = await supabase.from("items").delete().eq("id", taskToEdit.id);
       if (error) throw error;
@@ -95,11 +101,11 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     if (isOpen) {
       if (taskToEdit) {
         setTitle(taskToEdit.title || "");
-        setFirstStep(taskToEdit.first_step || "");
-        setIfThen(taskToEdit.ifthen_trigger || "");
+        setIsManualDate(!!taskToEdit.deadline);
         setCategory(taskToEdit.category || "work");
         setPriority(taskToEdit.priority || null);
         setNotes(taskToEdit.notes || "");
+        setSubtasks(taskToEdit.subtasks || []);
         setRecurrence(taskToEdit.recurrence || "");
         
         if (taskToEdit.recurrence) {
@@ -109,6 +115,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
             setFreq("Weekly");
             const match = taskToEdit.recurrence.match(/BYDAY=([A-Z,]+)/);
             if (match) setDays(match[1].split(','));
+          } else if (taskToEdit.recurrence.includes("INTERVAL=")) {
+            setFreq("Custom");
+            setCustomRRule(taskToEdit.recurrence);
+            // Try to parse interval and freq
+            const matchInterval = taskToEdit.recurrence.match(/INTERVAL=(\d+)/);
+            if (matchInterval) setCustomInterval(parseInt(matchInterval[1]));
+            const matchFreq = taskToEdit.recurrence.match(/FREQ=([A-Z]+)/);
+            if (matchFreq) setCustomFreq(matchFreq[1]);
           } else {
             setFreq("Custom");
             setCustomRRule(taskToEdit.recurrence);
@@ -144,11 +158,11 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setFreq("Does not repeat");
         setDays([]);
         setCustomRRule("");
-        setFirstStep("");
-        setIfThen("");
+        setIsManualDate(false);
         setCategory("work");
         setPriority(null);
         setNotes("");
+        setSubtasks([]);
       }
       setErrorMsg(null);
     }
@@ -157,7 +171,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setTitle(val);
-    if (!deadline && userSettings?.nlp_date_parsing !== false) {
+    if (!isManualDate && userSettings?.nlp_date_parsing !== false) {
       const parsedResults = chrono.parse(val);
       if (parsedResults && parsedResults.length > 0 && parsedResults[0].start) {
         const d = parsedResults[0].start.date();
@@ -165,12 +179,12 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setDeadline(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
       } else {
         setParsedDeadline(null);
-        setDeadline("");
       }
     }
   };
 
   const handleManualDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsManualDate(true);
     if (e.target.value) {
       setParsedDeadline(new Date(e.target.value));
       setDeadline(e.target.value);
@@ -178,6 +192,31 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       setParsedDeadline(null);
       setDeadline("");
     }
+  };
+
+  const setQuickDate = (type: string) => {
+    setIsManualDate(true);
+    const d = new Date();
+    if (type === "today") {
+      d.setHours(23, 59, 0, 0);
+    } else if (type === "tomorrow") {
+      d.setDate(d.getDate() + 1);
+      d.setHours(23, 59, 0, 0);
+    } else if (type === "weekend") {
+      const daysUntilSaturday = 6 - d.getDay();
+      d.setDate(d.getDate() + (daysUntilSaturday >= 0 ? daysUntilSaturday : 6));
+      d.setHours(23, 59, 0, 0);
+    } else if (type === "next_week") {
+      const daysUntilMonday = (8 - d.getDay()) % 7 || 7;
+      d.setDate(d.getDate() + daysUntilMonday);
+      d.setHours(9, 0, 0, 0);
+    } else if (type === "none") {
+      setParsedDeadline(null);
+      setDeadline("");
+      return;
+    }
+    setParsedDeadline(d);
+    setDeadline(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
   };
 
   const handleSave = async () => {
@@ -190,10 +229,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        let triggerText = ifThen.trim();
-        if (triggerText && !triggerText.startsWith("When ")) {
-          triggerText = `When ${triggerText}, I will ${firstStep.trim()}`;
-        }
+
 
         let finalRecurrence = null;
         if (freq === "Daily") finalRecurrence = "FREQ=DAILY";
@@ -202,7 +238,11 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           finalRecurrence = "FREQ=WEEKLY";
           if (days.length > 0) finalRecurrence += `;BYDAY=${days.join(',')}`;
         } else if (freq === "Custom") {
-          finalRecurrence = customRRule.trim() || null;
+          if (customInterval > 1) {
+            finalRecurrence = `FREQ=${customFreq};INTERVAL=${customInterval}`;
+          } else {
+            finalRecurrence = customRRule.trim() || null;
+          }
         }
 
         let finalTitle = title.trim();
@@ -219,15 +259,16 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         const payload: any = {
           user_id: user.id,
           title: finalTitle || title.trim(),
-          first_step: firstStep.trim() || null,
-          ifthen_trigger: triggerText || null,
+          first_step: null,
+          ifthen_trigger: null,
           deadline: parsedDeadline ? parsedDeadline.toISOString() : null,
           start_date: parsedStartDate ? parsedStartDate.toISOString() : null,
           recurrence: finalRecurrence,
           category,
           status: "active",
           priority: priority ?? 4,
-          notes: notes.trim() || null
+          notes: notes.trim() || null,
+          subtasks: subtasks.filter(st => st.text.trim() !== "")
         };
 
         if (taskToEdit && taskToEdit.deadline !== payload.deadline) {
@@ -239,6 +280,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         }
 
         let error;
+        useAppStore.getState().markMutation();
         if (taskToEdit) {
           const res = await supabase.from("items").update(payload).eq("id", taskToEdit.id);
           error = res.error;
@@ -308,69 +350,160 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 />
               </div>
 
-              {/* Dates Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-label text-[var(--text-3)] block mb-2">Deadline</label>
-                  <input
-                    type="datetime-local"
-                    value={deadline || ""}
-                    onChange={handleManualDateChange}
-                    className="input [color-scheme:dark]"
-                  />
-                </div>
-                <div>
-                  <label className="text-label text-[var(--text-3)] block mb-2">Start Date</label>
-                  <input
-                    type="datetime-local"
-                    value={startDate || ""}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      setParsedStartDate(e.target.value ? new Date(e.target.value) : null);
-                    }}
-                    className="input [color-scheme:dark]"
-                  />
+              {/* Subtasks */}
+              <div>
+                <label className="text-label text-[var(--text-3)] block mb-2">Subtasks</label>
+                <div className="space-y-1.5">
+                  {subtasks.map((st, i) => (
+                    <div key={st.id} className="flex items-center gap-2 group">
+                      <button
+                        onClick={() => {
+                          const newSt = [...subtasks];
+                          newSt[i].completed = !newSt[i].completed;
+                          setSubtasks(newSt);
+                        }}
+                        className={cn("w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0", st.completed ? "bg-[var(--color-text-3)] border-[var(--color-text-3)]" : "border-[var(--color-border)] hover:border-[var(--color-text-3)]")}
+                      >
+                        {st.completed && <Check className="w-3 h-3 text-[var(--color-background)]" />}
+                      </button>
+                      <input
+                        value={st.text}
+                        onChange={(e) => {
+                          const newSt = [...subtasks];
+                          newSt[i].text = e.target.value;
+                          setSubtasks(newSt);
+                        }}
+                        placeholder="Subtask..."
+                        className={cn("flex-1 bg-transparent border-none text-sm focus:outline-none placeholder:text-[var(--text-4)]", st.completed && "line-through text-[var(--text-4)]")}
+                      />
+                      <button onClick={() => setSubtasks(subtasks.filter((_, idx) => idx !== i))} className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-4)] hover:text-[#F87171] transition-all">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <button onClick={() => setSubtasks([...subtasks, { id: Date.now().toString(), text: "", completed: false }])} className="text-xs text-[var(--text-3)] hover:text-[var(--text-1)] flex items-center gap-1.5 transition-colors mt-2">
+                    <span className="text-lg leading-none font-light">+</span> Add subtask
+                  </button>
                 </div>
               </div>
 
-              {/* Recurrence */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Repeats</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {["Does not repeat", "Daily", "Weekly", "Monthly", "Custom"].map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFreq(f)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border ${freq === f ? 'bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:text-[var(--color-text-1)]'}`}
-                    >
-                      {f}
+              {/* Action Toolbar (Date & Repeat) */}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--color-border)]">
+                <Popover
+                  trigger={
+                    <button className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", deadline ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
+                      <Calendar size={13} />
+                      {deadline ? new Date(deadline).toLocaleDateString() : "Due Date"}
                     </button>
-                  ))}
-                </div>
-                {freq === "Weekly" && (
-                  <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                    {[
-                      { l: 'Mo', v: 'MO' }, { l: 'Tu', v: 'TU' }, { l: 'We', v: 'WE' }, 
-                      { l: 'Th', v: 'TH' }, { l: 'Fr', v: 'FR' }, { l: 'Sa', v: 'SA' }, { l: 'Su', v: 'SU' }
-                    ].map((d, i) => (
-                      <button
-                        key={`${d.v}-${i}`}
-                        onClick={() => setDays(prev => prev.includes(d.v) ? prev.filter(x => x !== d.v) : [...prev, d.v])}
-                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${days.includes(d.v) ? 'bg-[#FBBF24] text-amber-950' : 'bg-[var(--color-surface)] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] border border-[var(--color-border)]'}`}
-                      >
-                        {d.l}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {freq === "Custom" && (
-                  <input
-                    placeholder="e.g. FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1"
-                    value={customRRule}
-                    onChange={(e) => setCustomRRule(e.target.value)}
-                    className="input"
-                  />
-                )}
+                  }
+                  content={
+                    <div className="p-3 w-[280px] space-y-4">
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { id: "today", label: "Today" },
+                          { id: "tomorrow", label: "Tomorrow" },
+                          { id: "weekend", label: "This Weekend" },
+                          { id: "next_week", label: "Next Week" },
+                          { id: "none", label: "No Date" }
+                        ].map((btn) => (
+                          <button
+                            key={btn.id}
+                            onClick={() => setQuickDate(btn.id)}
+                            className="px-2 py-1 rounded-md text-[11px] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--text-2)] hover:bg-[var(--color-border)] transition-colors"
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-4)] block mb-1.5">Due Date/Time</label>
+                          <input
+                            type="datetime-local"
+                            value={deadline || ""}
+                            onChange={handleManualDateChange}
+                            className="input [color-scheme:dark] !py-1.5 !px-2 !text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-4)] block mb-1.5">Start Date</label>
+                          <input
+                            type="datetime-local"
+                            value={startDate || ""}
+                            onChange={(e) => {
+                              setStartDate(e.target.value);
+                              setParsedStartDate(e.target.value ? new Date(e.target.value) : null);
+                            }}
+                            className="input [color-scheme:dark] !py-1.5 !px-2 !text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  }
+                />
+
+                <Popover
+                  trigger={
+                    <button className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", freq !== "Does not repeat" ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
+                      <RotateCw size={13} />
+                      {freq !== "Does not repeat" ? freq : "Repeat"}
+                    </button>
+                  }
+                  content={
+                    <div className="p-3 w-[280px]">
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {["Does not repeat", "Daily", "Weekly", "Monthly", "Custom"].map(f => (
+                          <button
+                            key={f}
+                            onClick={() => setFreq(f)}
+                            className={cn("px-2 py-1 rounded-md text-[11px] font-medium transition-colors border", freq === f ? 'bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]' : 'bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]')}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                      {freq === "Weekly" && (
+                        <div className="flex flex-wrap gap-1 p-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+                          {[
+                            { l: 'Mo', v: 'MO' }, { l: 'Tu', v: 'TU' }, { l: 'We', v: 'WE' }, 
+                            { l: 'Th', v: 'TH' }, { l: 'Fr', v: 'FR' }, { l: 'Sa', v: 'SA' }, { l: 'Su', v: 'SU' }
+                          ].map((d) => (
+                            <button
+                              key={d.v}
+                              onClick={() => setDays(prev => prev.includes(d.v) ? prev.filter(x => x !== d.v) : [...prev, d.v])}
+                              className={cn("px-2 py-1 rounded-md text-[11px] font-bold transition-colors border", days.includes(d.v) ? 'bg-[#FBBF24] text-amber-950 border-[#FBBF24]' : 'bg-transparent text-[var(--text-3)] border-transparent hover:bg-[var(--color-border)]')}
+                            >
+                              {d.l}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {freq === "Custom" && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[11px] text-[var(--text-3)] font-medium">Every</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={customInterval}
+                            onChange={(e) => setCustomInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="input !w-14 !py-1 !px-2 !text-center !text-xs"
+                          />
+                          <SelectDropdown
+                            value={customFreq}
+                            onChange={(value) => setCustomFreq(value)}
+                            options={[
+                              { value: "DAILY", label: "Days" },
+                              { value: "WEEKLY", label: "Weeks" },
+                              { value: "MONTHLY", label: "Months" },
+                              { value: "YEARLY", label: "Years" }
+                            ]}
+                            className="!w-24 !text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  }
+                />
               </div>
 
               {/* Priority */}
@@ -435,29 +568,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 </div>
               </div>
 
-              {/* First Step */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">First Step</label>
-                <textarea
-                  placeholder="What is the absolute smallest action to start this?"
-                  value={firstStep}
-                  onChange={(e) => setFirstStep(e.target.value)}
-                  className="input"
-                />
-              </div>
 
-              {/* If-Then Trigger */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Implementation Intention</label>
-                  <input
-                    placeholder="e.g. At my desk after dinner"
-                    value={ifThen}
-                    onChange={(e) => setIfThen(e.target.value)}
-                    className="input"
-                  />
-              </div>
-
-              {/* Notes */}
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Notes</label>
                 <textarea

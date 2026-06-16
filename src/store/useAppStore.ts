@@ -14,6 +14,8 @@ interface AppState {
   updateUserSetting: (key: string, value: any) => void;
   activeTimer: { taskId?: string; taskTitle?: string } | null;
   setActiveTimer: (timer: { taskId?: string; taskTitle?: string } | null) => void;
+  lastMutationAt: number;
+  markMutation: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -30,4 +32,6 @@ export const useAppStore = create<AppState>((set) => ({
   updateUserSetting: (key, value) => set((state) => ({ userSettings: { ...state.userSettings, [key]: value } })),
   activeTimer: null,
   setActiveTimer: (timer) => set({ activeTimer: timer }),
+  lastMutationAt: 0,
+  markMutation: () => set({ lastMutationAt: Date.now() }),
 }));

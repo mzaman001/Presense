@@ -3,13 +3,21 @@
 import { useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
 
-export function AppInitializer() {
-  const { userSettings } = useAppStore();
+export function AppInitializer({ initialSettings }: { initialSettings?: any }) {
+  const { userSettings, setUserSettings } = useAppStore();
 
   useEffect(() => {
+    if (initialSettings && Object.keys(userSettings).length === 0) {
+      setUserSettings(initialSettings);
+    }
+  }, [initialSettings, userSettings, setUserSettings]);
+
+  useEffect(() => {
+    const isOnboarding = window.location.pathname.startsWith('/onboarding');
+
     // If userSettings is not yet loaded, fallback to localStorage
-    const theme = userSettings?.theme || localStorage.getItem('presense_theme') || 'orange';
-    const mode = userSettings?.color_mode || localStorage.getItem('presense_color_mode') || 'dark';
+    const theme = isOnboarding ? 'orange' : (userSettings?.theme || localStorage.getItem('presense_theme') || 'orange');
+    const mode = isOnboarding ? 'dark' : (userSettings?.color_mode || localStorage.getItem('presense_color_mode') || 'dark');
     const reduceMotion = userSettings?.reduce_motion || false;
 
     // Apply Theme
