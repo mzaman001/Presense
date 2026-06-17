@@ -7,6 +7,8 @@ import { AppContentWrapper } from "@/components/layout/AppContentWrapper";
 import { SettingsModal } from "@/components/features/SettingsModal";
 import { SearchModal } from "@/components/features/SearchModal";
 import { AppInitializer } from "@/components/layout/AppInitializer";
+import { Toaster } from "sonner";
+import QueryProvider from "@/components/layout/QueryProvider";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -33,18 +35,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       <AppInitializer initialSettings={settings} />
-      <AmbientBackground />
-      <Sidebar />
-      <CaptureModal />
-      <SearchModal />
-      <SettingsModal />
-      <PomodoroTimer />
-      <FAB />
-      <AppContentWrapper>
-        {children}
-      </AppContentWrapper>
-      <BottomNav />
+      <QueryProvider>
+        <AmbientBackground />
+        <Sidebar />
+        <CaptureModal />
+        <SearchModal />
+        <SettingsModal />
+        <PomodoroTimer />
+        <FAB />
+        <AppContentWrapper>
+          {children}
+        </AppContentWrapper>
+        <BottomNav />
+        <Toaster />
+      </QueryProvider>
     </>
   );
 }
-

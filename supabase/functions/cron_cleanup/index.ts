@@ -14,13 +14,13 @@ serve(async (req) => {
 
     const results = await Promise.all([
       // Items (Tasks)
-      supabase.from('items').delete().eq('status', 'deleted').lte('updated_at', cutoffDate),
+      supabase.from('items').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
       
       // Threads
-      supabase.from('threads').delete().eq('status', 'deleted').lte('updated_at', cutoffDate),
+      supabase.from('threads').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
       
       // Explores
-      supabase.from('explores').delete().eq('status', 'deleted').lte('revisited_at', cutoffDate)
+      supabase.from('explores').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate)
     ]);
 
     // Check for errors in the results array

@@ -159,7 +159,6 @@ Daily nudge: toggle + time picker. Default 10:00 AM.
 Quiet hours: two time pickers (From and To). Default From 10:00 PM, To 8:00 AM.
 Deadline reminders: toggle. Covers all escalation levels (72h, 24h, 6h, overdue).
 People briefings: toggle. Fires 30 min before next_meeting.
-Sunday Explore digest: toggle.
 Stale location alerts: toggle.
 
 FOCUS / POMODORO SECTION:

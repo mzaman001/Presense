@@ -13,7 +13,8 @@ import {
   Search,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Inbox
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -22,6 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/do", label: "Do", icon: Check },
   { href: "/remember/people", label: "Remember", icon: Brain },
   { href: "/think", label: "Think", icon: MessageSquare },

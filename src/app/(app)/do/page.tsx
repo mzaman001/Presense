@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { TaskCard } from "@/components/features/TaskCard";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FocusSession } from "@/components/features/FocusSession";
 import { Plus, Loader2, Clock, Play, Check, Zap, Calendar } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -87,10 +88,9 @@ const Column = ({
 export default function DoPage() {
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
-  const initialFilter = searchParams.get("filter") === "inbox" ? "inbox" : "all";
+  const initialFilter = "all";
   
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [categoryFilter, setCategoryFilter] = useState<string>(initialFilter);
   const [completing, setCompleting] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -100,6 +100,20 @@ export default function DoPage() {
   const userSettings = useAppStore(s => s.userSettings);
   const setActiveTimer = useAppStore(s => s.setActiveTimer);
   const isBoardView = userSettings?.default_view === "board";
+
+  const { data: tasks = [], isLoading: loading, refetch: fetchTasks } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("items")
+        .select("*")
+        .in("status", ["active", "overdue"])
+        .order("priority", { ascending: true, nullsFirst: false })
+        .order("deadline", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return data as Task[];
+    }
+  });
 
   const [viewMode, setViewMode] = useState<"board" | "today">("board");
   useEffect(() => {
@@ -117,17 +131,6 @@ export default function DoPage() {
   const [showArchive, setShowArchive] = useState(false);
   const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
 
-  const fetchTasks = useCallback(async () => {
-    const { data } = await supabase
-      .from("items")
-      .select("*")
-      .in("status", ["active", "overdue", "inbox"])
-      .order("priority", { ascending: true, nullsFirst: false })
-      .order("deadline", { ascending: true, nullsFirst: false });
-    setTasks(data ?? []);
-    setLoading(false);
-  }, [supabase]);
-
   const fetchArchived = useCallback(async () => {
     const { data } = await supabase
       .from("items")
@@ -138,21 +141,19 @@ export default function DoPage() {
   }, [supabase]);
 
   useEffect(() => {
-    fetchTasks();
     if (showArchive) fetchArchived();
-  }, [fetchTasks, fetchArchived, showArchive]);
+  }, [fetchArchived, showArchive]);
 
   useRealtime("items", fetchTasks);
 
   const completeTask = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     
-    // Optimistic UI
-    const taskIndex = tasks.findIndex(t => t.id === id);
-    if (taskIndex === -1) return;
-    const task = tasks[taskIndex];
-    useAppStore.getState().markMutation();
-    setTasks(prev => prev.filter(t => t.id !== id));
+    // Optimistic UI with React Query
+    await queryClient.cancelQueries({ queryKey: ["tasks"] });
+    const previousTasks = queryClient.getQueryData<Task[]>(["tasks"]);
+    
+    queryClient.setQueryData<Task[]>(["tasks"], old => old?.filter(t => t.id !== id));
     
     try {
       const { error } = await supabase.from("items").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", id);
@@ -162,7 +163,6 @@ export default function DoPage() {
         action: {
           label: "Undo",
           onClick: async () => {
-            useAppStore.getState().markMutation();
             await supabase.from("items").update({ status: "active", completed_at: null }).eq("id", id);
             fetchTasks();
             toast.success("Task restored");
@@ -174,11 +174,7 @@ export default function DoPage() {
     } catch (err: any) {
       toast.error("Failed to complete task", { description: err.message });
       // Revert optimistic update
-      setTasks(prev => {
-        const newTasks = [...prev];
-        newTasks.splice(taskIndex, 0, task);
-        return newTasks;
-      });
+      queryClient.setQueryData(["tasks"], previousTasks);
     }
   };
 
@@ -237,7 +233,7 @@ export default function DoPage() {
   });
 
   const doCats = userSettings?.do_categories || ["work", "study", "personal", "errand", "health"];
-  const CATEGORIES = ["all", ...doCats, "inbox"];
+  const CATEGORIES = ["all", ...doCats];
 
 
 

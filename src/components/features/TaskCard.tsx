@@ -5,14 +5,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Check, Clock, Play } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
-
-const DEFAULT_DO_COLORS: Record<string, string> = {
-  work: "#7692FF",
-  study: "#E5B41E",
-  personal: "#2DD4BF",
-  errand: "#A78BFA",
-  health: "#F87171"
-};
+import { DEFAULT_DO_COLORS } from "@/lib/constants";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;

@@ -119,7 +119,7 @@ export default function ExplorePage() {
           <ContextualTip 
             id="explore_space" 
             title="Things worth keeping" 
-            description="This is the Explore space. Drop interesting links, quotes, or books here. We will compile them into a digest for you every Sunday." 
+            description="This is the Explore space. Drop interesting links, quotes, or books here to revisit them later." 
           />
 
           {/* Filter pills */}
@@ -190,25 +190,7 @@ export default function ExplorePage() {
         </div>
         
         <div className="space-y-6">
-          <GlassCard className="p-6 border border-[#FBBF24]/20 bg-[#FBBF24]/5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Star className="w-24 h-24 text-[#FBBF24]" />
-            </div>
-            <div className="relative z-10">
-              <h3 className="text-[#FBBF24] font-semibold flex items-center gap-2 mb-2">
-                <Star className="w-4 h-4" /> Sunday Digest
-              </h3>
-              <p className="text-sm text-[var(--color-text-3)] mb-4">
-                We're compiling your saved items. You'll receive a beautiful summary of your explorations this Sunday.
-              </p>
-              <div className="text-2xl font-light text-[var(--color-text-1)] mb-1">
-                {items.filter(i => !i.revisited_at).length}
-              </div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-[var(--color-text-3)]">
-                Unread Items
-              </p>
-            </div>
-          </GlassCard>
+          {/* Sunday Digest card removed as per H-2 */}
         </div>
       </div>
 

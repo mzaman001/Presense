@@ -100,9 +100,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   notif_1h               boolean DEFAULT true,
   notif_overdue          boolean DEFAULT true,
   notif_briefing         boolean DEFAULT true,
-  notif_digest           boolean DEFAULT true,
   notif_stale_threads    boolean DEFAULT true,
-  digest_enabled         boolean DEFAULT true,
   ollama_enabled         boolean DEFAULT false,
   ollama_url             text DEFAULT 'http://localhost:11434',
   reduce_motion          boolean DEFAULT false,
@@ -326,9 +324,7 @@ ADD COLUMN IF NOT EXISTS location_detection boolean DEFAULT false;
 ALTER TABLE public.items ADD COLUMN IF NOT EXISTS notes text;
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS pomodoro_long_break_interval int DEFAULT 4;
 
- - -   p g _ c r o n   c o n f i g u r a t i o n   f o r   e d g e   f u n c t i o n s 
- s e l e c t   c r o n . s c h e d u l e ( ' c l e a n u p - t r a s h ' ,   ' 0   2   *   *   * ' ,   \ " s e l e c t   n e t . h t t p _ p o s t ( u r l : = ' h t t p s : / / [ P R O J E C T _ R E F ] . s u p a b a s e . c o / f u n c t i o n s / v 1 / c r o n _ c l e a n u p ' ,   h e a d e r s : = ' { \ " A u t h o r i z a t i o n \ " :   \ " B e a r e r   [ S E R V I C E _ R O L E _ K E Y ] \ " } ' : : j s o n b ) \ " ) ; 
- s e l e c t   c r o n . s c h e d u l e ( ' r e c u r r e n c e - p r o c e s s o r ' ,   ' 0   1   *   *   * ' ,   \ " s e l e c t   n e t . h t t p _ p o s t ( u r l : = ' h t t p s : / / [ P R O J E C T _ R E F ] . s u p a b a s e . c o / f u n c t i o n s / v 1 / c r o n _ r e c u r r e n c e ' ,   h e a d e r s : = ' { \ " A u t h o r i z a t i o n \ " :   \ " B e a r e r   [ S E R V I C E _ R O L E _ K E Y ] \ " } ' : : j s o n b ) \ " ) ; 
- s e l e c t   c r o n . s c h e d u l e ( ' s u n d a y - d i g e s t ' ,   ' 0   9   *   *   0 ' ,   \ " s e l e c t   n e t . h t t p _ p o s t ( u r l : = ' h t t p s : / / [ P R O J E C T _ R E F ] . s u p a b a s e . c o / f u n c t i o n s / v 1 / c r o n _ d i g e s t ' ,   h e a d e r s : = ' { \ " A u t h o r i z a t i o n \ " :   \ " B e a r e r   [ S E R V I C E _ R O L E _ K E Y ] \ " } ' : : j s o n b ) \ " ) ; 
-  
- 
+
+-- pg_cron configuration for edge functions
+select cron.schedule('cleanup-trash', '0 2 * * *', "select net.http_post(url:='https://[PROJECT_REF].supabase.co/functions/v1/cron_cleanup', headers:='{\"Authorization\": \"Bearer [SERVICE_ROLE_KEY]\"}'::jsonb)");
+select cron.schedule('recurrence-processor', '0 1 * * *', "select net.http_post(url:='https://[PROJECT_REF].supabase.co/functions/v1/cron_recurrence', headers:='{\"Authorization\": \"Bearer [SERVICE_ROLE_KEY]\"}'::jsonb)");
