@@ -421,7 +421,13 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                   trigger={
                     <button className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", deadline ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
                       <Calendar size={13} />
-                      {deadline ? new Date(deadline).toLocaleDateString() : "Due Date"}
+                      {deadline ? (() => {
+                        const d = new Date(deadline);
+                        const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
+                        const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                        const timeStr = hasTime ? ` ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "";
+                        return `${dateStr}${timeStr}`;
+                      })() : "Due Date"}
                     </button>
                   }
                   content={
