@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase-server';
 import { routeCapture } from '@/lib/capture-router';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -9,6 +10,10 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!checkRateLimit(user.id, 100, 60_000)) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     const { text, settings } = await request.json();
