@@ -183,9 +183,22 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     const val = e.target.value;
     setTitle(val);
     if (!isManualDate && userSettings?.nlp_date_parsing !== false) {
-      const parsedResults = chrono.parse(val);
-      if (parsedResults && parsedResults.length > 0 && parsedResults[0].start) {
-        const d = parsedResults[0].start.date();
+      // chrono v2.9.1 doesn't parse "day after tomorrow" correctly — pre-process it
+      const normalized = val.replace(/day after tomorrow/gi, "in 2 days");
+      const parsedResults = chrono.parse(normalized);
+      if (parsedResults && parsedResults.length > 0) {
+        let d: Date;
+        if (parsedResults.length === 1) {
+          d = parsedResults[0].start.date();
+        } else {
+          // Multiple results: combine their text and re-parse to merge date+time
+          // e.g. "tomorrow" + "at 9pm" → "tomorrow at 9pm" → single correct result
+          const combined = parsedResults.map(r => r.text).join(' ');
+          const merged = chrono.parse(combined);
+          d = merged.length > 0 && merged[0].start
+            ? merged[0].start.date()
+            : parsedResults.reduce((a, b) => a.start.date() > b.start.date() ? a : b).start.date();
+        }
         setParsedDeadline(d);
         setDeadline(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
       } else {
