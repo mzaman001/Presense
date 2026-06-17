@@ -215,6 +215,7 @@ export function SettingsModal() {
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const [clearTasksConfirm, setClearTasksConfirm] = useState(false);
   const [clearLocationsConfirm, setClearLocationsConfirm] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   const [debouncedSettings] = useDebounce(settings, 1000);
 
@@ -225,6 +226,7 @@ export function SettingsModal() {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserEmail(user.email || "");
       
       const { data } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single();
       if (data) {
@@ -469,6 +471,14 @@ export function SettingsModal() {
 
                     {activeTab === "account" && (
                       <div className="space-y-6">
+                        <div>
+                          <label className="text-label text-[var(--text-3)] block mb-2">Email</label>
+                          <input
+                            value={userEmail}
+                            readOnly
+                            className="input opacity-60 cursor-not-allowed"
+                          />
+                        </div>
                         <div>
                           <label className="text-label text-[var(--text-3)] block mb-2">Display Name</label>
                           <input
