@@ -115,7 +115,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       if (taskToEdit) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setTitle(taskToEdit.title || "");
-        setIsManualDate(!!taskToEdit.deadline);
+        setIsManualDate(false);
         setCategory(taskToEdit.category || "work");
         setPriority(taskToEdit.priority || null);
         setNotes(taskToEdit.notes || "");
@@ -190,6 +190,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setDeadline(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
       } else {
         setParsedDeadline(null);
+        setDeadline("");
       }
     }
   };
