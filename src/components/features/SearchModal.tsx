@@ -15,6 +15,7 @@ export function SearchModal() {
   const [debouncedQuery] = useDebounce(query, 300);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const router = useRouter();
@@ -27,6 +28,7 @@ export function SearchModal() {
       document.body.style.overflow = "unset";
       setQuery("");
       setResults([]);
+      setSelectedIndex(0);
     }
   }, [isSearchModalOpen]);
 
@@ -72,6 +74,7 @@ export function SearchModal() {
 
       setResults(combined);
       setLoading(false);
+      setSelectedIndex(0);
     }
     performSearch();
   }, [debouncedQuery, supabase]);
@@ -103,6 +106,22 @@ export function SearchModal() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setSelectedIndex((i) => Math.max(i - 1, 0));
+                } else if (e.key === "Enter" && results.length > 0) {
+                  e.preventDefault();
+                  const selected = results[selectedIndex];
+                  if (selected) {
+                    setSearchModalOpen(false);
+                    router.push(selected.path);
+                  }
+                }
+              }}
               placeholder="Search everything..."
               className="flex-1 bg-transparent border-none text-[var(--color-text-1)] text-lg py-4 pl-4 focus:outline-none focus:ring-0 placeholder-[rgba(255,255,255,0.3)]"
             />
@@ -132,7 +151,12 @@ export function SearchModal() {
                   setSearchModalOpen(false);
                   router.push(result.path);
                 }}
-                className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-[var(--color-surface)] text-left transition-colors group"
+                className={cn(
+                  "w-full flex items-center gap-4 p-3 rounded-xl text-left transition-colors group",
+                  i === selectedIndex
+                    ? "bg-[var(--color-surface)] text-[var(--color-text-1)]"
+                    : "hover:bg-[var(--color-surface)] text-[var(--color-text-1)]"
+                )}
               >
                 <div className="w-10 h-10 rounded-lg bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-3)] group-hover:text-[var(--color-text-1)] group-hover:bg-[var(--color-surface)] transition-colors">
                   <result.icon className="w-5 h-5" />

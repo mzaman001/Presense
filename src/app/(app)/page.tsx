@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check } from "lucide-react";
+import { motion } from "framer-motion";
 import Link from "next/link";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
@@ -131,7 +133,7 @@ export default function HomeDashboard() {
       supabase.from("explores").select("*").is("revisited_at", null),
       supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
       supabase.from("items").select("*").eq("status", "done").gte("completed_at", mondayStart.toISOString()).order("completed_at", { ascending: false }),
-      supabase.from("session_logs").select("*").gte("created_at", mondayStart.toISOString()).eq("type", "work")
+      supabase.from("session_logs").select("*").gte("completed_at", mondayStart.toISOString()).eq("type", "work")
     ]);
     
     if (tasksRes.data) {
@@ -340,7 +342,7 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <CheckCircle2 size={20} strokeWidth={1.5} className="text-[var(--color-do)] mb-4 shrink-0" />
             <div>
-              <div className="text-2xl font-light text-[var(--color-text-1)]">{tasks.length}</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={tasks.length} /></div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Active Tasks</div>
             </div>
           </GlassCard>
@@ -349,7 +351,7 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <Users size={20} strokeWidth={1.5} className="text-[var(--color-people)] mb-4 shrink-0" />
             <div>
-              <div className="text-2xl font-light text-[var(--color-text-1)]">{people.filter(p => p.next_meeting).length}</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={people.filter(p => p.next_meeting).length} /></div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Meetings Today</div>
             </div>
           </GlassCard>
@@ -358,7 +360,7 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <MessageSquare size={20} strokeWidth={1.5} className="text-[var(--color-think)] mb-4 shrink-0" />
             <div>
-              <div className="text-2xl font-light text-[var(--color-text-1)]">{threads.length}</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={threads.length} /></div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Open Threads</div>
             </div>
           </GlassCard>
@@ -367,7 +369,7 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <Compass size={20} strokeWidth={1.5} className="text-[var(--color-explore)] mb-4 shrink-0" />
             <div>
-              <div className="text-2xl font-light text-[var(--color-text-1)]">{explores.length}</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={explores.length} /></div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Saved Items</div>
             </div>
           </GlassCard>
@@ -377,11 +379,11 @@ export default function HomeDashboard() {
       <div className="flex flex-col md:flex-row items-center gap-4 mt-6">
         <GlassCard className="flex-1 p-5 flex items-center justify-between w-full">
           <span className="text-card-title text-[var(--color-text-3)] uppercase tracking-wider">Pomodoros this week</span>
-          <span className="text-2xl font-semibold text-[var(--color-text-1)]">{pomodorosThisWeek}</span>
+          <span className="text-2xl font-semibold text-[var(--color-text-1)]"><AnimatedNumber value={pomodorosThisWeek} /></span>
         </GlassCard>
         <GlassCard className="flex-1 p-5 flex items-center justify-between w-full">
           <span className="text-card-title text-[var(--color-text-3)] uppercase tracking-wider">Tasks completed this week</span>
-          <span className="text-2xl font-semibold text-[var(--color-text-1)]">{doneTasks.length}</span>
+          <span className="text-2xl font-semibold text-[var(--color-text-1)]"><AnimatedNumber value={doneTasks.length} /></span>
         </GlassCard>
       </div>
 
@@ -395,24 +397,30 @@ export default function HomeDashboard() {
               {tasks.length > 1 ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — ` : ""}View all <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          {tasks.slice(1, 6).map(task => (
-            <GlassCard
+          {tasks.slice(1, 6).map((task, i) => (
+            <motion.div
               key={task.id}
-              className="p-4 flex justify-between items-start cursor-pointer hover:scale-[1.01] transition-transform gap-3"
-              onClick={() => { setTaskToEdit(task); setIsTaskPanelOpen(true); }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              <button
-                onClick={(e) => completeTask(e, task.id)}
-                className={cn("checkbox mt-0.5", completing === task.id && "checked")}
+              <GlassCard
+                className="p-4 flex justify-between items-start cursor-pointer hover:scale-[1.01] transition-transform gap-3"
+                onClick={() => { setTaskToEdit(task); setIsTaskPanelOpen(true); }}
               >
-                {completing === task.id && <Check className="w-3.5 h-3.5 text-white" />}
-              </button>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-card-title text-[var(--text-1)]">{task.title}</h4>
-                <p className="text-xs text-[var(--color-text-3)] mt-0.5 truncate">{task.first_step}</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2 mt-1" />
-            </GlassCard>
+                <button
+                  onClick={(e) => completeTask(e, task.id)}
+                  className={cn("checkbox mt-0.5", completing === task.id && "checked")}
+                >
+                  {completing === task.id && <Check className="w-3.5 h-3.5 text-white" />}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-card-title text-[var(--text-1)]">{task.title}</h4>
+                  <p className="text-xs text-[var(--color-text-3)] mt-0.5 truncate">{task.first_step}</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2 mt-1" />
+              </GlassCard>
+            </motion.div>
           ))}
           {tasks.length <= 1 && (
             <div className="p-4 border border-dashed border-[var(--color-border)] rounded-2xl text-center text-sm text-[var(--color-text-3)]">

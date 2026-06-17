@@ -500,14 +500,19 @@ export function SettingsModal() {
                           <Dropdown variant="select"
                             value={settings.timezone || "UTC"}
                             onChange={val => updateSetting("timezone", val)}
-                            options={[
-                              { value: "America/New_York", label: "Eastern Time (ET)" },
-                              { value: "America/Chicago", label: "Central Time (CT)" },
-                              { value: "America/Denver", label: "Mountain Time (MT)" },
-                              { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
-                              { value: "Asia/Kolkata", label: "India Standard Time (IST)" },
-                              { value: "UTC", label: "Coordinated Universal Time (UTC)" }
-                            ]}
+                            options={
+                              typeof Intl !== "undefined" && "supportedValuesOf" in Intl
+                                ? (Intl as any).supportedValuesOf("timeZone").map((tz: string) => ({ value: tz, label: tz.replace(/_/g, " ") }))
+                                : [
+                                    { value: "UTC", label: "UTC" },
+                                    { value: "America/New_York", label: "Eastern Time (ET)" },
+                                    { value: "America/Chicago", label: "Central Time (CT)" },
+                                    { value: "America/Denver", label: "Mountain Time (MT)" },
+                                    { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+                                    { value: "Asia/Kolkata", label: "India Standard Time (IST)" },
+                                    { value: "Europe/London", label: "Greenwich Mean Time (GMT)" },
+                                  ]
+                            }
                           />
                         </div>
                         <div className="pt-8 mt-8 border-t border-[rgba(248,113,113,0.2)]">
@@ -614,6 +619,33 @@ export function SettingsModal() {
                             <div className="toggle-thumb" />
                           </button>
                         </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">Deadline Reminders</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Get notified as deadlines approach</div>
+                          </div>
+                          <button onClick={() => updateSetting("notif_overdue", !settings.notif_overdue)} className={`toggle-track ${settings.notif_overdue ? 'on' : ''}`}>
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">People Briefings</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Reminder 30 min before a meeting</div>
+                          </div>
+                          <button onClick={() => updateSetting("notif_briefing", !settings.notif_briefing)} className={`toggle-track ${settings.notif_briefing ? 'on' : ''}`}>
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">Stale Location Alerts</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Remind to update locations older than 90 days</div>
+                          </div>
+                          <button onClick={() => updateSetting("notif_stale_threads", !settings.notif_stale_threads)} className={`toggle-track ${settings.notif_stale_threads ? 'on' : ''}`}>
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -649,7 +681,7 @@ export function SettingsModal() {
                             ))}
                           </div>
                         </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
                             <div className="font-medium text-[var(--color-text-1)]">Auto-start Breaks</div>
                             <div className="text-sm text-[var(--color-text-3)]">Automatically begin break timer when work finishes</div>
@@ -657,6 +689,16 @@ export function SettingsModal() {
                           <button onClick={() => updateSetting("auto_start_breaks", !settings.auto_start_breaks)} className={`toggle-track ${settings.auto_start_breaks ? 'on' : ''}`}>
                             <div className="toggle-thumb" />
                           </button>
+                        </div>
+                        <div>
+                          <label className="text-label text-[var(--text-3)] block mb-3">Long Break After (sessions)</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[2, 3, 4, 5].map(n => (
+                              <button key={n} onClick={() => updateSetting("pomodoro_long_break_interval", n)} className={cn("btn-preset", (settings.pomodoro_long_break_interval || 4) === n && "active")}>
+                                {n}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}

@@ -2,12 +2,12 @@
 
 import React, { useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { Inbox, Loader2, FolderInput, CheckCircle2, MessageSquare, Compass, X } from "lucide-react";
+import { Inbox, Loader2, FolderInput, CheckCircle2, MessageSquare, Compass, Brain, X } from "lucide-react";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { GlassCard } from "@/components/ui/GlassCard";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
+import { motion } from "framer-motion";
 
 interface InboxItem {
   id: string;
@@ -20,6 +20,7 @@ export default function InboxPage() {
   const queryClient = useQueryClient();
   
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
+  const [slidingOut, setSlidingOut] = useState<string | null>(null);
 
   const { data: inboxItems = [], isLoading: loading, refetch } = useQuery({
     queryKey: ["inbox-tasks"],
@@ -38,34 +39,117 @@ export default function InboxPage() {
 
   const routeInboxItem = async (id: string, space: string) => {
     if (!space) return;
-    try {
-      if (space === 'do') {
-        await supabase.from('items').update({ status: 'active' }).eq('id', id);
-      } else if (space === 'explore') {
-        const item = inboxItems.find(i => i.id === id);
-        if (item) {
+
+    const item = inboxItems.find(i => i.id === id);
+    if (!item) return;
+
+    setSlidingOut(id);
+    setActiveRouteItem(null);
+
+    // Optimistically remove from cache immediately — no flash on refetch
+    queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => old?.filter(i => i.id !== id) ?? []);
+
+    setTimeout(async () => {
+      try {
+        if (space === 'do') {
+          await supabase.from('items').update({ status: 'active' }).eq('id', id);
+        } else if (space === 'remember') {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('items').delete().eq('id', id);
+            await supabase.from('people').insert({
+              user_id: user.id,
+              name: item.title,
+              notes: [{ text: item.title, created_at: new Date().toISOString(), tag: "note" }]
+            });
+          }
+        } else if (space === 'explore') {
           await supabase.from('items').delete().eq('id', id);
           await supabase.from('explores').insert({ user_id: item.user_id, title: item.title, type: 'other', status: 'active' });
-        }
-      } else if (space === 'think') {
-        const item = inboxItems.find(i => i.id === id);
-        if (item) {
+        } else if (space === 'think') {
           await supabase.from('items').delete().eq('id', id);
           await supabase.from('threads').insert({ user_id: item.user_id, title: item.title, status: 'active', color_accent: '#2DD4BF' });
         }
+
+        toast.success(`Routed to ${space}`, {
+          duration: 5000,
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              try {
+                // Reverse the operation
+                if (space === 'do') {
+                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
+                } else if (space === 'remember') {
+                  // Find the person we just created and delete, restore inbox item
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) {
+                    const { data: people } = await supabase.from('people').select('id').eq('user_id', user.id).eq('name', item.title).order('created_at', { ascending: false }).limit(1);
+                    if (people && people.length > 0) {
+                      await supabase.from('people').delete().eq('id', people[0].id);
+                    }
+                    await supabase.from('items').insert({ id, user_id: item.user_id, title: item.title, status: 'inbox' });
+                  }
+                } else if (space === 'explore') {
+                  const { data: explores } = await supabase.from('explores').select('id').eq('user_id', item.user_id).eq('title', item.title).order('created_at', { ascending: false }).limit(1);
+                  if (explores && explores.length > 0) {
+                    await supabase.from('explores').delete().eq('id', explores[0].id);
+                  }
+                  await supabase.from('items').insert({ id, user_id: item.user_id, title: item.title, status: 'inbox' });
+                } else if (space === 'think') {
+                  const { data: threads } = await supabase.from('threads').select('id').eq('user_id', item.user_id).eq('title', item.title).order('created_at', { ascending: false }).limit(1);
+                  if (threads && threads.length > 0) {
+                    await supabase.from('threads').delete().eq('id', threads[0].id);
+                  }
+                  await supabase.from('items').insert({ id, user_id: item.user_id, title: item.title, status: 'inbox' });
+                }
+                // Restore to cache
+                queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
+                toast.success("Restored to inbox");
+              } catch {
+                toast.error("Failed to undo");
+                refetch();
+              }
+            }
+          }
+        });
+      } catch (e) {
+        // Restore to cache on error
+        queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
+        toast.error('Failed to route item');
+      } finally {
+        setSlidingOut(null);
       }
-      toast.success(`Routed to ${space}`);
-      queryClient.invalidateQueries({ queryKey: ["inbox-tasks"] });
-    } catch (e) {
-      toast.error('Failed to route item');
-    }
+    }, 280);
   };
 
   const dismissInboxItem = async (id: string) => {
+    const item = inboxItems.find(i => i.id === id);
+    if (!item) return;
+
+    // Optimistically remove from cache
+    queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => old?.filter(i => i.id !== id) ?? []);
+
     try {
       await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
-      queryClient.invalidateQueries({ queryKey: ["inbox-tasks"] });
+      toast.success("Dismissed", {
+        duration: 5000,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
+              queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
+              toast.success("Restored to inbox");
+            } catch {
+              toast.error("Failed to undo");
+              refetch();
+            }
+          }
+        }
+      });
     } catch (e) {
+      queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
       toast.error('Failed to dismiss');
     }
   };
@@ -102,7 +186,13 @@ export default function InboxPage() {
             </div>
           ) : (
             inboxItems.map((item) => (
-              <GlassCard key={item.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-amber-500/5 border-amber-500/20 group hover:bg-amber-500/10 transition-colors">
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={slidingOut === item.id ? { opacity: 0, x: 60, scale: 0.96 } : { opacity: 1, y: 0, x: 0, scale: 1 }}
+                transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="glass-card !overflow-visible flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 bg-amber-500/5 border-amber-500/20 group hover:bg-amber-500/10 transition-colors"
+              >
                 <p className="text-card-title text-[var(--text-1)] flex-1 text-lg">{item.title}</p>
                 <div className="flex items-center gap-2 w-full md:w-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                   <div className="relative flex-1 md:flex-none">
@@ -115,14 +205,17 @@ export default function InboxPage() {
                     </button>
                     {activeRouteItem === item.id && (
                       <div className="dropdown-panel absolute top-full mt-2 right-0 w-48 p-1 z-50 animate-in fade-in zoom-in-95 duration-100" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => { routeInboxItem(item.id, 'do'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                        <button onClick={() => routeInboxItem(item.id, 'do')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4 text-[var(--color-do)]" /> Do (Task)
                         </button>
-                        <button onClick={() => { routeInboxItem(item.id, 'think'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                        <button onClick={() => routeInboxItem(item.id, 'think')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                           <MessageSquare className="w-4 h-4 text-[var(--color-think)]" /> Think (Thread)
                         </button>
-                        <button onClick={() => { routeInboxItem(item.id, 'explore'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                        <button onClick={() => routeInboxItem(item.id, 'explore')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                           <Compass className="w-4 h-4 text-[var(--color-explore)]" /> Explore (Saved)
+                        </button>
+                        <button onClick={() => routeInboxItem(item.id, 'remember')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                          <Brain className="w-4 h-4 text-[var(--color-people)]" /> Remember (Person)
                         </button>
                       </div>
                     )}
@@ -135,7 +228,7 @@ export default function InboxPage() {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-              </GlassCard>
+              </motion.div>
             ))
           )}
         </div>

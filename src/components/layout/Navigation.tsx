@@ -132,8 +132,16 @@ export function Sidebar() {
                 )}
               >
                 {/* Active left indicator */}
-                {isActive && !isSidebarCollapsed && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-[20px] bg-[var(--accent)] rounded-r-full" />
+                {!isSidebarCollapsed && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-[20px]">
+                    {isActive && (
+                      <motion.div
+                        layoutId="sidebar-active"
+                        className="absolute inset-0 bg-[var(--accent)] rounded-r-full"
+                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                      />
+                    )}
+                  </div>
                 )}
                 
                 <div className="flex items-center justify-center shrink-0">

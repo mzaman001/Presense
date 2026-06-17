@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/Badge";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { TaskCard } from "@/components/features/TaskCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FocusSession } from "@/components/features/FocusSession";
 import { Plus, Loader2, Clock, Play, Check, Zap, Calendar } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn, formatRRule } from "@/lib/utils";
@@ -41,7 +40,8 @@ const Column = ({
   completing,
   completeTask,
   openEditPanel,
-  fetchTasks
+  fetchTasks,
+  newTaskIds
 }: { 
   title: string; 
   tasks: Task[]; 
@@ -51,6 +51,7 @@ const Column = ({
   completeTask: (e: React.MouseEvent, id: string) => void;
   openEditPanel: (task: Task) => void;
   fetchTasks: () => void;
+  newTaskIds: Set<string>;
 }) => (
   <div className="flex-1 min-w-0">
     <div className="flex items-center gap-2 mb-4">
@@ -70,14 +71,21 @@ const Column = ({
           </div>
         ) : (
           colTasks.map((t) => (
-            <TaskCard 
-              key={t.id} 
-              task={t} 
-              completing={completing}
-              completeTask={completeTask}
-              openEditPanel={openEditPanel}
-              fetchTasks={fetchTasks}
-            />
+            <motion.div
+              key={t.id}
+              layout
+              initial={newTaskIds.has(t.id) ? { opacity: 0, y: -12, scale: 0.97 } : false}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <TaskCard 
+                task={t} 
+                completing={completing}
+                completeTask={completeTask}
+                openEditPanel={openEditPanel}
+                fetchTasks={fetchTasks}
+              />
+            </motion.div>
           ))
         )}
       </AnimatePresence>
@@ -93,9 +101,10 @@ export default function DoPage() {
   const queryClient = useQueryClient();
   const [categoryFilter, setCategoryFilter] = useState<string>(initialFilter);
   const [completing, setCompleting] = useState<string | null>(null);
+  const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
+  const prevTaskIdsRef = useRef<Set<string>>(new Set());
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const [focusTask, setFocusTask] = useState<Task | null>(null);
 
   const userSettings = useAppStore(s => s.userSettings);
   const setActiveTimer = useAppStore(s => s.setActiveTimer);
@@ -114,6 +123,22 @@ export default function DoPage() {
       return data as Task[];
     }
   });
+
+  useEffect(() => {
+    const currentIds = new Set(tasks.map(t => t.id));
+    const added = tasks.filter(t => !prevTaskIdsRef.current.has(t.id)).map(t => t.id);
+    if (added.length > 0) {
+      setNewTaskIds(prev => new Set([...prev, ...added]));
+      setTimeout(() => {
+        setNewTaskIds(prev => {
+          const next = new Set(prev);
+          added.forEach(id => next.delete(id));
+          return next;
+        });
+      }, 400);
+    }
+    prevTaskIdsRef.current = currentIds;
+  }, [tasks]);
 
   const [viewMode, setViewMode] = useState<"board" | "today">("board");
   useEffect(() => {
@@ -149,11 +174,14 @@ export default function DoPage() {
   const completeTask = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     
-    // Optimistic UI with React Query
-    await queryClient.cancelQueries({ queryKey: ["tasks"] });
-    const previousTasks = queryClient.getQueryData<Task[]>(["tasks"]);
+    // Set completing state — TaskCard shows the checkmark animation
+    setCompleting(id);
     
-    queryClient.setQueryData<Task[]>(["tasks"], old => old?.filter(t => t.id !== id));
+    // Delay removal so AnimatePresence can play the exit animation
+    setTimeout(() => {
+      queryClient.setQueryData<Task[]>(["tasks"], old => old?.filter(t => t.id !== id));
+      setCompleting(null);
+    }, 400);
     
     try {
       const { error } = await supabase.from("items").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", id);
@@ -172,9 +200,9 @@ export default function DoPage() {
       });
       if (showArchive) fetchArchived();
     } catch (err: any) {
+      setCompleting(null);
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.error("Failed to complete task", { description: err.message });
-      // Revert optimistic update
-      queryClient.setQueryData(["tasks"], previousTasks);
     }
   };
 
@@ -338,8 +366,8 @@ export default function DoPage() {
           "gap-6",
           isBoardView ? "grid grid-cols-1 md:grid-cols-2 items-start max-w-3xl mx-auto" : "flex flex-col space-y-8 max-w-2xl mx-auto"
         )}>
-          {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} />}
-          <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} />
+           {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} />}
+           <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} />
           {overdue.length === 0 && today.length === 0 && (
             <div className="text-sm text-[var(--color-text-3)] text-center py-12 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl md:col-span-2">
               No tasks due today. Take a breath.
@@ -351,14 +379,13 @@ export default function DoPage() {
           "gap-6",
           isBoardView ? "grid grid-cols-1 md:grid-cols-3 items-start" : "flex flex-col space-y-8 max-w-2xl mx-auto"
         )}>
-          {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} /> : null}
-          {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} /> : null}
-          {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} /> : null}
+           {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} /> : null}
+           {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} /> : null}
+           {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} /> : null}
         </div>
       )}
 
       <TaskAddPanel isOpen={isPanelOpen} onClose={handleClosePanel} onTaskAdded={fetchTasks} taskToEdit={taskToEdit} />
-      <FocusSession task={focusTask} onClose={() => setFocusTask(null)} onComplete={fetchTasks} />
     </div>
   );
 }

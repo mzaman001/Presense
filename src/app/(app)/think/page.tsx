@@ -170,19 +170,19 @@ export default function ThinkPage() {
             <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Think</h1>
             <div className="flex items-center gap-2">
               <button 
-                onClick={() => { setShowArchive(false); setShowTrash(false); }}
+                onClick={() => { setShowArchive(false); setShowTrash(false); setThreads([]); }}
                 className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !showArchive && !showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
               >
                 Active
               </button>
               <button 
-                onClick={() => { setShowArchive(true); setShowTrash(false); }}
+                onClick={() => { setShowArchive(true); setShowTrash(false); setThreads([]); }}
                 className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
               >
                 Archive
               </button>
               <button 
-                onClick={() => { setShowTrash(true); setShowArchive(false); }}
+                onClick={() => { setShowTrash(true); setShowArchive(false); setThreads([]); }}
                 className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
               >
                 Trash

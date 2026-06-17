@@ -53,20 +53,37 @@ export const TaskCard = React.memo(({
 
   const priorityGlow = priority === 1 ? "0 0 6px var(--space-do)" : "none";
 
+  const isCompleting = completing === task.id;
+
   return (
     <motion.div
       layout
       layoutId={task.id}
       initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.96 }}
+      animate={{
+        opacity: isCompleting ? 0.6 : 1,
+        y: 0,
+        scale: isCompleting ? 0.98 : 1,
+        filter: isCompleting ? "blur(1px)" : "blur(0px)",
+      }}
+      exit={{
+        opacity: 0,
+        scale: 0.95,
+        x: -20,
+        filter: "blur(4px)",
+        transition: { duration: 0.3, ease: [0.4, 0, 1, 1] },
+      }}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
       className="group relative"
     >
       <GlassCard
         onClick={() => openEditPanel(task)}
-        className={cn("p-4 group cursor-pointer hover:scale-[1.01] transition-transform relative", isOverdue && "border-[rgba(248,113,113,0.3)]")}
+        className={cn(
+          "p-4 group cursor-pointer transition-all relative",
+          isOverdue && "border-[rgba(248,113,113,0.3)]",
+          isCompleting && "border-[rgba(74,222,128,0.4)] bg-[rgba(74,222,128,0.06)]"
+        )}
       >
         {priority < 4 && (
           <div
@@ -76,12 +93,20 @@ export const TaskCard = React.memo(({
         )}
 
         <div className="flex items-start gap-3">
-          <button
+          <motion.button
             onClick={(e) => completeTask(e, task.id)}
-            className={cn("checkbox mt-0.5 shrink-0", completing === task.id && "checked")}
+            animate={isCompleting ? {
+              scale: [1, 1.2, 1],
+              backgroundColor: "rgba(74,222,128,1)",
+            } : {}}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className={cn(
+              "checkbox mt-0.5 shrink-0",
+              isCompleting && "checked"
+            )}
           >
-            {completing === task.id && <Check className="w-3.5 h-3.5 text-white" />}
-          </button>
+            {isCompleting && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+          </motion.button>
 
           <div className="flex-1 min-w-0 pr-4">
             <div className="flex items-center gap-2 mb-1">
@@ -99,9 +124,18 @@ export const TaskCard = React.memo(({
               </span>
             </div>
 
-            <p className="text-[14px] font-semibold leading-snug" style={{ color: "var(--text-1)" }}>
+            <motion.p
+              className="text-[14px] font-semibold leading-snug"
+              style={{ color: "var(--text-1)" }}
+              animate={isCompleting ? {
+                textDecoration: "line-through",
+                textDecorationColor: "rgba(74,222,128,0.7)",
+                color: "var(--text-3)",
+              } : {}}
+              transition={{ duration: 0.25 }}
+            >
               {task.title}
-            </p>
+            </motion.p>
 
             {task.first_step && (
               <p className="text-[12px] mt-1" style={{ color: isOverdue ? "var(--space-do)" : "var(--space-think)" }}>

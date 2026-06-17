@@ -22,6 +22,7 @@ interface TaskEditData {
   category?: string | null;
   priority?: number | null;
   notes?: string;
+  first_step?: string | null;
   subtasks?: { id: string; text: string; completed: boolean }[];
   recurrence?: string | null;
 }
@@ -43,6 +44,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const [category, setCategory] = useState("work");
   const [priority, setPriority] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
+  const [firstStep, setFirstStep] = useState("");
   const [subtasks, setSubtasks] = useState<{id: string, text: string, completed: boolean}[]>([]);
 
   const [freq, setFreq] = useState("Does not repeat");
@@ -120,6 +122,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setCategory(taskToEdit.category || "work");
         setPriority(taskToEdit.priority || null);
         setNotes(taskToEdit.notes || "");
+        setFirstStep(taskToEdit.first_step || "");
         setSubtasks(taskToEdit.subtasks || []);
         
         if (taskToEdit.recurrence) {
@@ -175,6 +178,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setCategory("work");
         setPriority(null);
         setNotes("");
+        setFirstStep("");
         setSubtasks([]);
       }
     }
@@ -291,7 +295,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         const payload: Record<string, unknown> = {
           user_id: user.id,
           title: finalTitle || title.trim(),
-          first_step: null,
+          first_step: firstStep.trim() || null,
           ifthen_trigger: null,
           deadline: parsedDeadline ? parsedDeadline.toISOString() : null,
           start_date: parsedStartDate ? parsedStartDate.toISOString() : null,
@@ -413,6 +417,17 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     <span className="text-lg leading-none font-light">+</span> Add subtask
                   </button>
                 </div>
+              </div>
+
+              {/* First Step */}
+              <div>
+                <label className="text-label text-[var(--text-3)] block mb-2">First Step <span className="text-[var(--text-4)]">(optional)</span></label>
+                <input
+                  placeholder="What's the smallest action to start this?"
+                  value={firstStep}
+                  onChange={(e) => setFirstStep(e.target.value)}
+                  className="input"
+                />
               </div>
 
               {/* Action Toolbar (Date & Repeat) */}
@@ -550,13 +565,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     { val: 3, label: "Medium", colorClass: "bg-[#2DD4BF]/10 text-[#2DD4BF] border-[#2DD4BF]/30 hover:bg-[#2DD4BF]/20", activeClass: "bg-[#2DD4BF] text-teal-950 border-[#2DD4BF]" },
                     { val: 4, label: "Low", colorClass: "bg-[#9CA3AF]/10 text-[#9CA3AF] border-[#9CA3AF]/30 hover:bg-[#9CA3AF]/20", activeClass: "bg-[#9CA3AF] text-gray-950 border-[#9CA3AF]" }
                   ].map((p) => (
-                    <button
+                    <motion.button
                       key={p.val}
+                      whileTap={{ scale: 0.92 }}
                       onClick={() => setPriority(priority === p.val ? null : p.val)}
                       className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${priority === p.val ? p.activeClass : p.colorClass}`}
                     >
                       P{p.val} {p.label}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
@@ -566,8 +582,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 <label className="text-label text-[var(--text-3)] block mb-2">Category</label>
                 <div className="flex flex-wrap gap-2 items-center">
                   {categoriesList.map((cat: string) => (
-                    <button
+                    <motion.button
                       key={cat}
+                      whileTap={{ scale: 0.92 }}
                       onClick={() => setCategory(cat)}
                       style={category === cat ? { backgroundColor: DEFAULT_DO_COLORS[cat] || "var(--color-text-1)", borderColor: DEFAULT_DO_COLORS[cat] || "var(--color-text-1)", color: 'white' } : { borderColor: DEFAULT_DO_COLORS[cat] || "var(--color-border)", color: DEFAULT_DO_COLORS[cat] || "var(--color-text-3)" }}
                       className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
@@ -577,7 +594,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       }`}
                     >
                       {cat}
-                    </button>
+                    </motion.button>
                   ))}
                   {isAddingCategory ? (
                     <input

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, use } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ArrowLeft, Loader2, Send, Sparkles, Trash2, Archive, Pin, RefreshCcw } from "lucide-react";
@@ -260,8 +260,16 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       )}
 
       <div className="space-y-6">
-        {(thread.entries || []).map((entry, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+        <AnimatePresence mode="popLayout">
+          {(thread.entries || []).map((entry, i) => (
+            <motion.div
+              key={`${entry.created_at}-${i}`}
+              layout
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8, scale: 0.97 }}
+              transition={{ delay: i * 0.04, duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
             <GlassCard className="p-5 border-l-2 border-l-transparent hover:border-l-[#2DD4BF] transition-all group relative">
               <p className="text-[15px] text-[var(--color-text-1)] leading-relaxed whitespace-pre-wrap pr-8">{entry.text}</p>
               <div className="flex items-center justify-between mt-3">
@@ -279,6 +287,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             </GlassCard>
           </motion.div>
         ))}
+        </AnimatePresence>
       </div>
 
       {/* Fixed bottom input for thoughts */}
