@@ -298,7 +298,98 @@ export function SettingsModal() {
   };
   
   const handleExportData = async () => {
-    toast.success("Data export started. You will receive an email shortly.");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      toast.info("Preparing export...");
+
+      const [items, people, threads, explores, locations, settings] = await Promise.all([
+        supabase.from("items").select("*").eq("user_id", user.id),
+        supabase.from("people").select("*").eq("user_id", user.id),
+        supabase.from("threads").select("*").eq("user_id", user.id),
+        supabase.from("explores").select("*").eq("user_id", user.id),
+        supabase.from("locations").select("*").eq("user_id", user.id),
+        supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
+      ]);
+
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        user_id: user.id,
+        items: items.data ?? [],
+        people: people.data ?? [],
+        threads: threads.data ?? [],
+        explores: explores.data ?? [],
+        locations: locations.data ?? [],
+        settings: settings.data ?? {},
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `presense-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Export downloaded");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Export failed";
+      toast.error("Export failed", { description: message });
+    }
+  };
+
+  const handleClearCompleted = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from("items").delete().eq("user_id", user.id).eq("status", "done");
+      if (error) throw error;
+      toast.success("Completed tasks cleared");
+      setClearTasksConfirm(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to clear tasks";
+      toast.error("Failed", { description: message });
+    }
+  };
+
+  const handleClearStaleLocations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+      const { error } = await supabase.from("locations").delete().eq("user_id", user.id).lt("updated_at", thirtyDaysAgo);
+      if (error) throw error;
+      toast.success("Stale locations cleared");
+      setClearLocationsConfirm(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to clear locations";
+      toast.error("Failed", { description: message });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Delete all user data across tables
+      await Promise.all([
+        supabase.from("items").delete().eq("user_id", user.id),
+        supabase.from("people").delete().eq("user_id", user.id),
+        supabase.from("threads").delete().eq("user_id", user.id),
+        supabase.from("explores").delete().eq("user_id", user.id),
+        supabase.from("locations").delete().eq("user_id", user.id),
+        supabase.from("session_logs").delete().eq("user_id", user.id),
+        supabase.from("push_subscriptions").delete().eq("user_id", user.id),
+        supabase.from("user_settings").delete().eq("user_id", user.id),
+      ]);
+      // Sign out — user data deleted, account auth record requires server-side cleanup
+      await supabase.auth.signOut();
+      toast.success("Account data deleted");
+      setSettingsModalOpen(false);
+      router.push("/login");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete account";
+      toast.error("Failed", { description: message });
+    }
   };
 
   return (
@@ -744,9 +835,9 @@ export function SettingsModal() {
                       </div>
                     )}
 
-                    <ConfirmModal isOpen={deleteAccountConfirm} onClose={() => setDeleteAccountConfirm(false)} onConfirm={async () => { toast.error("Contact support to delete account"); setDeleteAccountConfirm(false); }} title="Delete Account" description="Are you absolutely sure? This cannot be undone." confirmLabel="Delete Account" inputRequired="DELETE" confirmDestructive />
-                    <ConfirmModal isOpen={clearTasksConfirm} onClose={() => setClearTasksConfirm(false)} onConfirm={async () => { toast.success("Completed tasks cleared"); setClearTasksConfirm(false); }} title="Clear Completed Tasks" description="Remove all completed tasks permanently?" confirmLabel="Clear Tasks" />
-                    <ConfirmModal isOpen={clearLocationsConfirm} onClose={() => setClearLocationsConfirm(false)} onConfirm={async () => { toast.success("Stale locations cleared"); setClearLocationsConfirm(false); }} title="Clear Stale Locations" description="Remove all cached location data?" confirmLabel="Clear Locations" />
+                    <ConfirmModal isOpen={deleteAccountConfirm} onClose={() => setDeleteAccountConfirm(false)} onConfirm={handleDeleteAccount} title="Delete Account" description="This will permanently delete all your data. This cannot be undone." confirmLabel="Delete Account" inputRequired="DELETE" confirmDestructive />
+                    <ConfirmModal isOpen={clearTasksConfirm} onClose={() => setClearTasksConfirm(false)} onConfirm={handleClearCompleted} title="Clear Completed Tasks" description="Remove all completed tasks permanently?" confirmLabel="Clear Tasks" confirmDestructive />
+                    <ConfirmModal isOpen={clearLocationsConfirm} onClose={() => setClearLocationsConfirm(false)} onConfirm={handleClearStaleLocations} title="Clear Stale Locations" description="Remove locations not updated in 30+ days?" confirmLabel="Clear Locations" confirmDestructive />
 
                   </div>
                 )}

@@ -1,5 +1,42 @@
 import { create } from 'zustand';
 
+export interface UserSettings {
+  display_name?: string;
+  avatar_color?: string;
+  timezone?: string;
+  theme?: string;
+  color_mode?: string;
+  ambient_bg?: boolean;
+  reduce_motion?: boolean;
+  notifications_enabled?: boolean;
+  quiet_start?: string;
+  quiet_end?: string;
+  daily_briefing?: boolean;
+  pomodoro_sound?: boolean;
+  pomodoro_duration?: number;
+  short_break_duration?: number;
+  long_break_duration?: number;
+  auto_start_breaks?: boolean;
+  default_view?: string;
+  auto_archive_days?: number;
+  do_categories?: string[];
+  do_category_colors?: Record<string, string>;
+  people_categories?: string[];
+  relationship_colors?: Record<string, string>;
+  auto_snooze?: boolean;
+  smart_routing_enabled?: boolean;
+  nlp_date_parsing?: boolean;
+  routing_confidence?: string;
+  ollama_enabled?: boolean;
+  ollama_url?: string;
+  location_detection?: boolean;
+  daily_briefing_time?: string;
+  nudge_time?: string;
+  pomodoro_long_break_interval?: number;
+  explore_custom_types?: string[];
+  [key: string]: unknown;
+}
+
 interface AppState {
   isCaptureModalOpen: boolean;
   setCaptureModalOpen: (open: boolean) => void;
@@ -9,9 +46,9 @@ interface AppState {
   toggleSidebar: () => void;
   isSettingsModalOpen: boolean;
   setSettingsModalOpen: (open: boolean) => void;
-  userSettings: any;
-  setUserSettings: (settings: any) => void;
-  updateUserSetting: (key: string, value: any) => void;
+  userSettings: UserSettings;
+  setUserSettings: (settings: UserSettings) => void;
+  updateUserSetting: (key: string, value: unknown) => void;
   activeTimer: { taskId?: string; taskTitle?: string } | null;
   setActiveTimer: (timer: { taskId?: string; taskTitle?: string } | null) => void;
   lastMutationAt: number;

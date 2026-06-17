@@ -1,5 +1,6 @@
 import * as chrono from 'chrono-node';
 import nlp from 'compromise';
+import type { UserSettings } from '@/store/useAppStore';
 
 // ─── Keyword arrays (from spec Section 12.3) ────────────────────────────────
 
@@ -34,6 +35,10 @@ const EXPLORE_KW = [
 
 const URL_RE = /https?:\/\/[^\s]+/;
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type RoutedItemType = 'task' | 'person_note' | 'location' | 'thought' | 'explore' | 'unknown';
@@ -51,9 +56,10 @@ export interface RoutedItem {
 
 // ─── Main router ────────────────────────────────────────────────────────────
 
-export function routeCapture(text: string, knownPeople: string[] = [], userSettings: any = {}): RoutedItem[] {
+export function routeCapture(text: string, knownPeople: string[] = [], userSettings: Partial<UserSettings> = {}): RoutedItem[] {
   const lower = text.toLowerCase().trim();
-  let doc: any = null;
+  // compromise doesn't export great TS types
+  let doc: ReturnType<typeof nlp> | null = null;
   if (userSettings?.nlp_date_parsing !== false) {
     doc = nlp(text);
   }
@@ -216,7 +222,7 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
     if (parsedDate) {
       deadline = parsedDate.toISOString();
       if (parsedText && cleanTitle.toLowerCase().includes(parsedText.toLowerCase())) {
-        cleanTitle = cleanTitle.replace(new RegExp(parsedText, 'i'), '').replace(/\s+/g, ' ').trim();
+        cleanTitle = cleanTitle.replace(new RegExp(escapeRegex(parsedText), 'i'), '').replace(/\s+/g, ' ').trim();
       }
     }
     
