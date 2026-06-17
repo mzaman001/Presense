@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
+import "@/lib/chrono-custom"; // registers custom parsers on chrono.casual
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
@@ -183,9 +184,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     const val = e.target.value;
     setTitle(val);
     if (!isManualDate && userSettings?.nlp_date_parsing !== false) {
-      // chrono v2.9.1 doesn't parse "day after tomorrow" correctly — pre-process it
-      const normalized = val.replace(/day after tomorrow/gi, "in 2 days");
-      const parsedResults = chrono.parse(normalized);
+      const parsedResults = chrono.parse(val);
       if (parsedResults && parsedResults.length > 0) {
         let d: Date;
         if (parsedResults.length === 1) {
@@ -193,14 +192,21 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         } else {
           // Multiple results: combine their text and re-parse to merge date+time
           // e.g. "tomorrow" + "at 9pm" → "tomorrow at 9pm" → single correct result
-          const combined = parsedResults.map(r => r.text).join(' ');
+          const combined = parsedResults.map((r) => r.text).join(" ");
           const merged = chrono.parse(combined);
-          d = merged.length > 0 && merged[0].start
-            ? merged[0].start.date()
-            : parsedResults.reduce((a, b) => a.start.date() > b.start.date() ? a : b).start.date();
+          d =
+            merged.length > 0 && merged[0].start
+              ? merged[0].start.date()
+              : parsedResults.reduce((a, b) =>
+                  a.start.date() > b.start.date() ? a : b
+                ).start.date();
         }
         setParsedDeadline(d);
-        setDeadline(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+        setDeadline(
+          new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+            .toISOString()
+            .slice(0, 16)
+        );
       } else {
         setParsedDeadline(null);
         setDeadline("");

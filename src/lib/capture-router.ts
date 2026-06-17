@@ -1,4 +1,5 @@
 import * as chrono from 'chrono-node';
+import '@/lib/chrono-custom'; // registers custom parsers on chrono.casual
 import nlp from 'compromise';
 import type { UserSettings } from '@/store/useAppStore';
 
