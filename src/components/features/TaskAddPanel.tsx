@@ -1,22 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, Flag, Loader2, RotateCw, Trash2, ArrowRight, Check } from "lucide-react";
-import { SelectDropdown } from "@/components/ui/SelectDropdown";
+import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import * as chrono from "chrono-node";
 import nlp from "compromise";
+import { DEFAULT_DO_COLORS } from "@/lib/constants";
 
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
+
+interface TaskEditData {
+  id: string;
+  title: string;
+  deadline?: string | null;
+  start_date?: string | null;
+  category?: string | null;
+  priority?: number | null;
+  notes?: string;
+  subtasks?: { id: string; text: string; completed: boolean }[];
+  recurrence?: string | null;
+}
 
 interface TaskAddPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onTaskAdded?: () => void;
-  taskToEdit?: any; // To support edit mode
+  taskToEdit?: TaskEditData | null;
 }
 
 export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskAddPanelProps) {
@@ -31,7 +44,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const [notes, setNotes] = useState("");
   const [subtasks, setSubtasks] = useState<{id: string, text: string, completed: boolean}[]>([]);
 
-  const [recurrence, setRecurrence] = useState("");
   const [freq, setFreq] = useState("Does not repeat");
   const [days, setDays] = useState<string[]>([]);
   const [customRRule, setCustomRRule] = useState("");
@@ -44,12 +56,12 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
 
   const [saving, setSaving] = useState(false);
   const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { userSettings } = useAppStore();
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCategoriesList(userSettings?.do_categories || ["work", "study", "personal", "errand", "health"]);
     }
   }, [isOpen, userSettings?.do_categories]);
@@ -90,8 +102,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       toast.success("Task deleted");
       if (onTaskAdded) onTaskAdded();
       onClose();
-    } catch (err: any) {
-      toast.error("Failed to delete task", { description: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to delete task";
+      toast.error("Failed to delete task", { description: message });
     } finally {
       setDeleteTaskConfirm(false);
     }
@@ -100,13 +113,13 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   useEffect(() => {
     if (isOpen) {
       if (taskToEdit) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTitle(taskToEdit.title || "");
         setIsManualDate(!!taskToEdit.deadline);
         setCategory(taskToEdit.category || "work");
         setPriority(taskToEdit.priority || null);
         setNotes(taskToEdit.notes || "");
         setSubtasks(taskToEdit.subtasks || []);
-        setRecurrence(taskToEdit.recurrence || "");
         
         if (taskToEdit.recurrence) {
           if (taskToEdit.recurrence === "FREQ=DAILY") setFreq("Daily");
@@ -154,7 +167,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setParsedDeadline(null);
         setStartDate("");
         setParsedStartDate(null);
-        setRecurrence("");
         setFreq("Does not repeat");
         setDays([]);
         setCustomRRule("");
@@ -164,7 +176,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setNotes("");
         setSubtasks([]);
       }
-      setErrorMsg(null);
     }
   }, [isOpen, taskToEdit]);
 
@@ -222,7 +233,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const handleSave = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    setErrorMsg(null);
     
     try {
       const supabase = createClient();
@@ -247,6 +257,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
 
         let finalTitle = title.trim();
         if (parsedDeadline) {
+          // compromise doesn't have great TS types
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const doc = nlp(finalTitle) as any;
           const dates = doc.dates().json();
           if (dates && dates.length > 0 && dates[0].text) {
@@ -256,7 +268,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           }
         }
 
-        const payload: any = {
+        const payload: Record<string, unknown> = {
           user_id: user.id,
           title: finalTitle || title.trim(),
           first_step: null,
@@ -291,7 +303,6 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         
         if (error) {
           console.error("Save error:", error);
-          setErrorMsg(error.message);
           toast.error(`Failed to ${taskToEdit ? "update" : "save"} task`, { description: error.message });
           setSaving(false);
           return;
@@ -301,8 +312,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         if (onTaskAdded) onTaskAdded();
         onClose();
       }
-    } catch (err: any) {
-      toast.error("Unexpected error", { description: err.message || "Could not save task" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not save task";
+      toast.error("Unexpected error", { description: message });
     } finally {
       setSaving(false);
     }
@@ -358,9 +370,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     <div key={st.id} className="flex items-center gap-2 group">
                       <button
                         onClick={() => {
-                          const newSt = [...subtasks];
-                          newSt[i].completed = !newSt[i].completed;
-                          setSubtasks(newSt);
+                          setSubtasks(subtasks.map((st, idx) => idx === i ? { ...st, completed: !st.completed } : st));
                         }}
                         className={cn("w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0", st.completed ? "bg-[var(--color-text-3)] border-[var(--color-text-3)]" : "border-[var(--color-border)] hover:border-[var(--color-text-3)]")}
                       >
@@ -369,9 +379,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       <input
                         value={st.text}
                         onChange={(e) => {
-                          const newSt = [...subtasks];
-                          newSt[i].text = e.target.value;
-                          setSubtasks(newSt);
+                          setSubtasks(subtasks.map((st, idx) => idx === i ? { ...st, text: e.target.value } : st));
                         }}
                         placeholder="Subtask..."
                         className={cn("flex-1 bg-transparent border-none text-sm focus:outline-none placeholder:text-[var(--text-4)]", st.completed && "line-through text-[var(--text-4)]")}
@@ -488,7 +496,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                             onChange={(e) => setCustomInterval(Math.max(1, parseInt(e.target.value) || 1))}
                             className="input !w-14 !py-1 !px-2 !text-center !text-xs"
                           />
-                          <SelectDropdown
+                          <Dropdown variant="select"
                             value={customFreq}
                             onChange={(value) => setCustomFreq(value)}
                             options={[
@@ -535,10 +543,11 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     <button
                       key={cat}
                       onClick={() => setCategory(cat)}
+                      style={category === cat ? { backgroundColor: DEFAULT_DO_COLORS[cat] || "var(--color-text-1)", borderColor: DEFAULT_DO_COLORS[cat] || "var(--color-text-1)", color: 'white' } : { borderColor: DEFAULT_DO_COLORS[cat] || "var(--color-border)", color: DEFAULT_DO_COLORS[cat] || "var(--color-text-3)" }}
                       className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
                         category === cat
-                          ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-medium"
-                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-text-3)]"
+                          ? "font-medium shadow-md"
+                          : "bg-transparent hover:opacity-80"
                       }`}
                     >
                       {cat}

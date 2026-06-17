@@ -1,8 +1,15 @@
+require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(
-  'https://mhfzmgrrtruxuiscvbhm.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oZnptZ3JydHJ1eHVpc2N2YmhtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQwODMyOSwiZXhwIjoyMDk2OTg0MzI5fQ.MKKc41ntIcNRDSfwUaQRlJc7Qm2K8nrwX1yUi-RTBy8'
-);
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.");
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function check() {
   const { data, error } = await supabase.from('items').select('id, title, snoozed_until').eq('title', 'Testing the list view');

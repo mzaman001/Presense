@@ -4,10 +4,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
-import { cn, formatRRule } from "@/lib/utils";
-import { CornerDownLeft, Sparkles, Loader2, Check, X, Search, ChevronRight } from "lucide-react";
+import { formatRRule } from "@/lib/utils";
+import { Sparkles, Loader2, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
-import { useDebounce } from "use-debounce";
 import type { RoutedItem } from "@/lib/capture-router";
 import { Dropdown } from "@/components/ui/Dropdown";
 
@@ -58,7 +57,6 @@ export function CaptureModal() {
   const [taskExtras, setTaskExtras] = useState<{ [idx: number]: { first_step: string; ifthen_trigger: string } }>({});
   const [saved, setSaved] = useState(false);
   const supabase = createClient();
-  const [debouncedInput] = useDebounce(input, 800);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -76,12 +74,13 @@ export function CaptureModal() {
 
   useEffect(() => {
     if (!isCaptureModalOpen) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setInput("");
         setRoutedItems(null);
         setTaskExtras({});
         setSaved(false);
       }, 200);
+      return () => clearTimeout(timer);
     }
   }, [isCaptureModalOpen]);
 
@@ -102,7 +101,7 @@ export function CaptureModal() {
     } finally {
       setIsRouting(false);
     }
-  }, [input]);
+  }, [input, userSettings]);
 
   // Auto-routing removed. Routing now only happens on Enter key press.
 
@@ -137,7 +136,7 @@ export function CaptureModal() {
                 ? `When ${extras.ifthen_trigger}, I will ${extras.first_step || "do this"}`
                 : null,
               deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
-              recurrence: (item as any).recurrence ?? null,
+              recurrence: (item as RoutedItem & { recurrence?: string }).recurrence ?? null,
               status: item.destination === "Inbox" ? "inbox" : "active",
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
@@ -189,20 +188,18 @@ export function CaptureModal() {
       setSaved(true);
       toast.success("Successfully captured!");
       setTimeout(() => setCaptureModalOpen(false), 800);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "An error occurred";
       console.error(e);
-      toast.error("Failed to save capture", { description: e.message || "An error occurred" });
+      toast.error("Failed to save capture", { description: message });
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (!isCaptureModalOpen) return null;
-
-  const hasTaskItems = routedItems?.some((item) => item.destination === "Do");
-
   return (
     <AnimatePresence>
+      {isCaptureModalOpen && (
       <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] p-4">
         <motion.div
           initial={{ opacity: 0 }}
@@ -293,7 +290,7 @@ export function CaptureModal() {
                       </>
                     )}
                     
-                    {item.destination === "People" && (
+                    {item.destination === "Remember → People" && (
                       <>
                         <span className="text-[var(--color-text-3)]">·</span>
                         <span className="font-semibold">Person:</span>
@@ -306,7 +303,7 @@ export function CaptureModal() {
                       </>
                     )}
                     
-                    {item.destination === "Locations" && (
+                    {item.destination === "Remember → Locations" && (
                       <>
                         <span className="text-[var(--color-text-3)]">·</span>
                         <span className="font-semibold">Item:</span>
@@ -369,6 +366,7 @@ export function CaptureModal() {
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 }

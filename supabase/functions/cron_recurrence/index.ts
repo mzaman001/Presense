@@ -8,14 +8,31 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   try {
+    // Only scan tasks completed in the last 90 days to avoid unbounded full-table scan
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
     const { data: recurringTasks, error } = await supabase
       .from("items")
       .select("*")
       .eq("status", "done")
       .not("recurrence", "is", null)
-      .not("completed_at", "is", null);
+      .not("completed_at", "is", null)
+      .gte("completed_at", ninetyDaysAgo.toISOString());
 
     if (error) throw error;
+
+    // Fetch nudge_time defaults for all users we'll need
+    const userIds = [...new Set(recurringTasks.map((t: any) => t.user_id))];
+    const { data: settingsRows } = await supabase
+      .from("user_settings")
+      .select("user_id, nudge_time")
+      .in("user_id", userIds);
+
+    const nudgeTimeByUser: Record<string, string> = {};
+    for (const row of settingsRows || []) {
+      nudgeTimeByUser[row.user_id] = row.nudge_time || "09:00";
+    }
 
     let createdCount = 0;
 
@@ -23,45 +40,68 @@ serve(async (req) => {
       try {
         const completedAt = new Date(task.completed_at);
         const rruleStr: string = task.recurrence;
-        
+
+        // Parse user's preferred nudge time (default 09:00)
+        const nudgeTime = nudgeTimeByUser[task.user_id] || "09:00";
+        const [nudgeHour, nudgeMin] = nudgeTime.split(":").map(Number);
+
         let nextDate: Date | null = null;
+        const intervalMatch = rruleStr.match(/INTERVAL=(\d+)/);
+        const interval = intervalMatch ? parseInt(intervalMatch[1], 10) : 1;
 
         if (rruleStr.includes("FREQ=DAILY")) {
           nextDate = new Date(completedAt);
-          nextDate.setDate(nextDate.getDate() + 1);
-          nextDate.setHours(9, 0, 0, 0);
+          nextDate.setDate(nextDate.getDate() + interval);
+          nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
         } else if (rruleStr.includes("FREQ=WEEKLY")) {
           const bydayMatch = rruleStr.match(/BYDAY=([A-Z,]+)/);
           if (bydayMatch) {
             const dayMap: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
             const targetDays = bydayMatch[1].split(",").map((d: string) => dayMap[d]).filter((d: number) => d !== undefined);
+            // For intervals > 1, we look further ahead (interval weeks * 7 days + buffer)
+            const lookAheadDays = interval > 1 ? interval * 7 + 7 : 14;
             const cursor = new Date(completedAt);
             cursor.setDate(cursor.getDate() + 1);
-            for (let i = 0; i < 14; i++) {
+            let found = false;
+            for (let i = 0; i < lookAheadDays; i++) {
               if (targetDays.includes(cursor.getDay())) {
-                nextDate = new Date(cursor);
-                nextDate.setHours(9, 0, 0, 0);
-                break;
+                // For interval > 1, verify we've moved forward by the right number of weeks
+                const daysSinceCompletion = Math.floor((cursor.getTime() - completedAt.getTime()) / 86400000);
+                if (interval <= 1 || daysSinceCompletion >= interval * 7) {
+                  nextDate = new Date(cursor);
+                  nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
+                  found = true;
+                  break;
+                }
               }
               cursor.setDate(cursor.getDate() + 1);
             }
+            if (!found && interval > 1) {
+              // Fallback: schedule for the next matching day after interval weeks
+              nextDate = new Date(completedAt);
+              nextDate.setDate(nextDate.getDate() + interval * 7);
+              nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
+            }
           } else {
             nextDate = new Date(completedAt);
-            nextDate.setDate(nextDate.getDate() + 7);
-            nextDate.setHours(9, 0, 0, 0);
+            nextDate.setDate(nextDate.getDate() + 7 * interval);
+            nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
           }
         } else if (rruleStr.includes("FREQ=MONTHLY")) {
           nextDate = new Date(completedAt);
-          nextDate.setMonth(nextDate.getMonth() + 1);
-          nextDate.setHours(9, 0, 0, 0);
+          nextDate.setMonth(nextDate.getMonth() + interval);
+          nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
         }
 
         if (nextDate) {
+          // Better dedup: match on title AND recurrence pattern, not just title alone.
+          // This prevents two genuinely different tasks with the same title from colliding.
           const { data: existing } = await supabase
             .from("items")
             .select("id")
             .eq("user_id", task.user_id)
             .eq("title", task.title)
+            .eq("recurrence", task.recurrence)
             .eq("status", "active")
             .maybeSingle();
 

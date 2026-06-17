@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 import { X, Play, Pause, SkipForward, Square } from "lucide-react";
@@ -16,16 +16,48 @@ const PHASE_CONFIG: Record<Phase, { label: string; orb: string; ring: string; te
   long_break:  { label: "Long Break",     orb: "rgba(129,140,248,0.15)", ring: "#818CF8",              text: "#818CF8" },
 };
 
+const STORAGE_KEY = "pomodoro_state";
+
+interface PersistedState {
+  taskId: string | null;
+  taskTitle: string | null;
+  phase: Phase;
+  sessionCount: number;
+  startedAt: number;
+  duration: number;
+}
+
+function saveTimerState(state: PersistedState | null) {
+  if (state) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+function loadTimerState(): PersistedState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export function PomodoroTimer() {
   const { activeTimer, setActiveTimer, userSettings } = useAppStore();
   const supabase = createClient();
 
   const [phase, setPhase]               = useState<Phase>("work");
   const [sessionCount, setSessionCount] = useState(1);
-  const [timeLeft, setTimeLeft]         = useState(0);
-  const [totalTime, setTotalTime]       = useState(0);
   const [isRunning, setIsRunning]       = useState(false);
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
+  const [displayTime, setDisplayTime]   = useState(0);
+  const [duration, setDuration]         = useState(0);
+
+  const startedAtRef = useRef<number>(0);
+  const didInitRef = useRef(false);
 
   const workDuration      = (userSettings?.pomodoro_duration       || 25) * 60;
   const shortBreakDuration = (userSettings?.short_break_duration   ||  5) * 60;
@@ -39,44 +71,7 @@ export function PomodoroTimer() {
     return workDuration;
   }, [workDuration, shortBreakDuration, longBreakDuration]);
 
-  // Initialize when opened
-  useEffect(() => {
-    if (activeTimer) {
-      const d = getDuration("work");
-      setPhase("work");
-      setSessionCount(1);
-      setTimeLeft(d);
-      setTotalTime(d);
-      setIsRunning(true);
-    }
-  }, [activeTimer?.taskId]); // eslint-disable-line
-
-  // Phase change → reset timer
-  useEffect(() => {
-    const d = getDuration(phase);
-    setTimeLeft(d);
-    setTotalTime(d);
-    const shouldAutoStart = phase !== "work" ? autoStartBreaks : false;
-    setIsRunning(shouldAutoStart);
-  }, [phase]); // eslint-disable-line
-
-  // Countdown
-  useEffect(() => {
-    if (!isRunning) return;
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleComplete();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isRunning]); // eslint-disable-line
-
-  const logSession = async (type: Phase, minutes: number) => {
+  const logSession = useCallback(async (type: Phase, minutes: number) => {
     if (!activeTimer || minutes < 1) return;
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -88,56 +83,195 @@ export function PomodoroTimer() {
         type,
       });
     } catch {}
-  };
+  }, [activeTimer, supabase]);
 
-  const handleComplete = () => {
+  const advance = useCallback(() => {
+    if (phase === "work") {
+      const nextPhase = sessionCount % longBreakInterval === 0 ? "long_break" : "short_break";
+      const d = getDuration(nextPhase);
+      setPhase(nextPhase);
+      setSessionCount(sessionCount);
+      setDuration(d);
+      setDisplayTime(d);
+      startedAtRef.current = Date.now();
+      // nextPhase is always a break phase here, so auto-start breaks if enabled
+      const shouldAutoStart = autoStartBreaks;
+      setIsRunning(shouldAutoStart);
+      saveTimerState({
+        taskId: activeTimer?.taskId || null,
+        taskTitle: activeTimer?.taskTitle || null,
+        phase: nextPhase,
+        sessionCount: sessionCount,
+        startedAt: startedAtRef.current,
+        duration: d,
+      });
+    } else if (phase === "long_break") {
+      const d = getDuration("work");
+      setPhase("work");
+      setSessionCount(1);
+      setDuration(d);
+      setDisplayTime(d);
+      startedAtRef.current = Date.now();
+      setIsRunning(false);
+      saveTimerState({
+        taskId: activeTimer?.taskId || null,
+        taskTitle: activeTimer?.taskTitle || null,
+        phase: "work",
+        sessionCount: 1,
+        startedAt: startedAtRef.current,
+        duration: d,
+      });
+    } else {
+      const d = getDuration("work");
+      setPhase("work");
+      setSessionCount(sessionCount + 1);
+      setDuration(d);
+      setDisplayTime(d);
+      startedAtRef.current = Date.now();
+      setIsRunning(false);
+      saveTimerState({
+        taskId: activeTimer?.taskId || null,
+        taskTitle: activeTimer?.taskTitle || null,
+        phase: "work",
+        sessionCount: sessionCount + 1,
+        startedAt: startedAtRef.current,
+        duration: d,
+      });
+    }
+  }, [phase, sessionCount, longBreakInterval, getDuration, autoStartBreaks, activeTimer]);
+
+  const handleComplete = useCallback(() => {
     setIsRunning(false);
+    saveTimerState(null);
     if (userSettings?.pomodoro_sound !== false) {
       new Audio("/notification.mp3").play().catch(() => {});
     }
-    logSession(phase, Math.round(totalTime / 60));
+    logSession(phase, Math.round(duration / 60));
     advance();
-  };
+  }, [phase, duration, logSession, advance, userSettings]);
 
-  const advance = () => {
-    if (phase === "work") {
-      const nextPhase = sessionCount % longBreakInterval === 0 ? "long_break" : "short_break";
-      setPhase(nextPhase);
-    } else if (phase === "long_break") {
-      setSessionCount(1);
-      setPhase("work");
-    } else {
-      setSessionCount(prev => prev + 1);
-      setPhase("work");
+  const startPhase = useCallback((p: Phase, count: number, autoStart: boolean) => {
+    const d = getDuration(p);
+    setPhase(p);
+    setSessionCount(count);
+    setDuration(d);
+    setDisplayTime(d);
+    startedAtRef.current = Date.now();
+    setIsRunning(autoStart);
+    saveTimerState({
+      taskId: activeTimer?.taskId || null,
+      taskTitle: activeTimer?.taskTitle || null,
+      phase: p,
+      sessionCount: count,
+      startedAt: startedAtRef.current,
+      duration: d,
+    });
+  }, [getDuration, activeTimer]);
+
+  // Restore from localStorage on mount — intentional sync initialization
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (activeTimer) {
+      const saved = loadTimerState();
+      if (saved && saved.taskId === activeTimer.taskId) {
+        const elapsed = Math.floor((Date.now() - saved.startedAt) / 1000);
+        const remaining = Math.max(0, saved.duration - elapsed);
+        setPhase(saved.phase);
+        setSessionCount(saved.sessionCount);
+        setDuration(saved.duration);
+        setDisplayTime(remaining);
+        startedAtRef.current = saved.startedAt;
+        setIsRunning(remaining > 0);
+        didInitRef.current = true;
+      } else {
+        startPhase("work", 1, true);
+        didInitRef.current = true;
+      }
     }
-  };
+  }, [activeTimer?.taskId]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Phase change → reset timer — intentional sync initialization
+  // Skipped on first run if restore effect already handled initialization
+  useEffect(() => {
+    if (!activeTimer) return;
+    if (didInitRef.current) {
+      didInitRef.current = false;
+      return;
+    }
+    const d = getDuration(phase);
+    setDuration(d);
+    setDisplayTime(d);
+    startedAtRef.current = Date.now();
+    const shouldAutoStart = phase !== "work" ? autoStartBreaks : false;
+    setIsRunning(shouldAutoStart);
+    saveTimerState({
+      taskId: activeTimer?.taskId || null,
+      taskTitle: activeTimer?.taskTitle || null,
+      phase,
+      sessionCount,
+      startedAt: startedAtRef.current,
+      duration: d,
+    });
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Wall-clock countdown — immune to tab throttling
+  useEffect(() => {
+    if (!isRunning) return;
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startedAtRef.current) / 1000);
+      const remaining = Math.max(0, duration - elapsed);
+      setDisplayTime(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        handleComplete();
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, [isRunning, duration, handleComplete]);
+
+  // Persist state on visibility change
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden" && activeTimer) {
+        saveTimerState({
+          taskId: activeTimer.taskId || null,
+          taskTitle: activeTimer.taskTitle || null,
+          phase,
+          sessionCount,
+          startedAt: startedAtRef.current,
+          duration,
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [activeTimer, phase, sessionCount, duration]);
 
   const handleSkip = () => {
-    const spent = totalTime - timeLeft;
+    const spent = duration - displayTime;
     if (spent > 60) logSession(phase, Math.round(spent / 60));
     advance();
   };
 
   const handleEnd = () => {
-    const spent = totalTime - timeLeft;
+    const spent = duration - displayTime;
     if (spent > 60) logSession(phase, Math.round(spent / 60));
     setShowConfirmEnd(false);
+    saveTimerState(null);
     setActiveTimer(null);
   };
 
   if (!activeTimer) return null;
 
-  const m   = Math.floor(timeLeft / 60).toString().padStart(2, "0");
-  const s   = (timeLeft % 60).toString().padStart(2, "0");
+  const m   = Math.floor(displayTime / 60).toString().padStart(2, "0");
+  const s   = (displayTime % 60).toString().padStart(2, "0");
   const r   = 90;
   const circ = 2 * Math.PI * r;
-  const progress = totalTime > 0 ? timeLeft / totalTime : 1;
+  const progress = duration > 0 ? displayTime / duration : 1;
   const dashoffset = circ * (1 - progress);
 
   const cfg = PHASE_CONFIG[phase];
-  const phaseLabel = phase === "work"
-    ? `${cfg.label} · ${sessionCount} of ${longBreakInterval}`
-    : cfg.label;
 
   return (
     <AnimatePresence>
@@ -194,14 +328,12 @@ export function PomodoroTimer() {
           {/* SVG Ring + Timer */}
           <div className="relative flex items-center justify-center mb-10" style={{ width: 220, height: 220 }}>
             <svg width="220" height="220" viewBox="0 0 220 220" className="-rotate-90 absolute inset-0">
-              {/* Track */}
               <circle
                 cx="110" cy="110" r={r}
                 fill="none"
                 stroke="rgba(255,255,255,0.06)"
                 strokeWidth="6"
               />
-              {/* Progress arc */}
               <motion.circle
                 cx="110" cy="110" r={r}
                 fill="none"
@@ -214,7 +346,6 @@ export function PomodoroTimer() {
               />
             </svg>
 
-            {/* Timer text */}
             <div className="absolute flex flex-col items-center">
               <span
                 style={{
@@ -238,7 +369,6 @@ export function PomodoroTimer() {
 
           {/* Controls */}
           <div className="flex items-center gap-5">
-            {/* Stop */}
             <button
               onClick={() => setShowConfirmEnd(true)}
               className={cn(
@@ -251,9 +381,24 @@ export function PomodoroTimer() {
               <Square size={16} strokeWidth={1.5} />
             </button>
 
-            {/* Play / Pause — primary */}
             <button
-              onClick={() => setIsRunning(r => !r)}
+              onClick={() => {
+                if (isRunning) {
+                  setIsRunning(false);
+                  saveTimerState({
+                    taskId: activeTimer?.taskId || null,
+                    taskTitle: activeTimer?.taskTitle || null,
+                    phase,
+                    sessionCount,
+                    startedAt: startedAtRef.current,
+                    duration,
+                  });
+                } else {
+                  const elapsed = duration - displayTime;
+                  startedAtRef.current = Date.now() - elapsed * 1000;
+                  setIsRunning(true);
+                }
+              }}
               className="w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg"
               style={{ background: cfg.ring }}
               title={isRunning ? "Pause" : "Play"}
@@ -264,7 +409,6 @@ export function PomodoroTimer() {
               }
             </button>
 
-            {/* Skip */}
             <button
               onClick={handleSkip}
               className={cn(
@@ -279,13 +423,12 @@ export function PomodoroTimer() {
           </div>
         </div>
 
-        {/* Confirm end */}
         <ConfirmModal
           isOpen={showConfirmEnd}
           onClose={() => setShowConfirmEnd(false)}
           onConfirm={handleEnd}
           title="End this session?"
-          description={(totalTime - timeLeft) > 60 ? "Your progress so far will be saved." : "This session was too short to be saved."}
+          description={(duration - displayTime) > 60 ? "Your progress so far will be saved." : "This session was too short to be saved."}
           confirmLabel="End Session"
         />
       </motion.div>

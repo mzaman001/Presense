@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, Circle, FolderInput, X, Check } from "lucide-react";
+import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check } from "lucide-react";
 import Link from "next/link";
-import { FocusSession } from "@/components/features/FocusSession";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
@@ -13,22 +12,51 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface TaskItem {
+  id: string;
+  title: string;
+  priority: number | null;
+  deadline: string | null;
+  first_step: string | null;
+  status: string;
+  snoozed_until: string | null;
+  completed_at: string | null;
+  category: string | null;
+  user_id: string;
+}
+
+interface PersonItem {
+  id: string;
+  name: string;
+  next_meeting: string | null;
+}
+
+interface ThreadItem {
+  id: string;
+  title: string;
+  color_accent: string;
+}
+
+interface ExploreItem {
+  id: string;
+  title: string;
+  type: string;
+}
+
 export default function HomeDashboard() {
-  const supabase = createClient();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [people, setPeople] = useState<any[]>([]);
-  const [threads, setThreads] = useState<any[]>([]);
-  const [explores, setExplores] = useState<any[]>([]);
+  const supabase = useMemo(() => createClient(), []);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [people, setPeople] = useState<PersonItem[]>([]);
+  const [threads, setThreads] = useState<ThreadItem[]>([]);
+  const [explores, setExplores] = useState<ExploreItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [focusTask, setFocusTask] = useState<any | null>(null);
   const { userSettings, setUserSettings, setActiveTimer } = useAppStore();
-  const [taskToEdit, setTaskToEdit] = useState<any | null>(null);
+  const [taskToEdit, setTaskToEdit] = useState<TaskItem | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
 
-  const [inboxItems, setInboxItems] = useState<any[]>([]);
+  const [inboxItems, setInboxItems] = useState<TaskItem[]>([]);
   const [showReview, setShowReview] = useState(false);
-  const [doneTasks, setDoneTasks] = useState<any[]>([]);
+  const [doneTasks, setDoneTasks] = useState<TaskItem[]>([]);
 
   const [pomodorosThisWeek, setPomodorosThisWeek] = useState(0);
   const [completing, setCompleting] = useState<string | null>(null);
@@ -48,7 +76,7 @@ export default function HomeDashboard() {
       if (error) throw error;
       toast.success('Task completed');
       fetchDashboardData();
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to complete task');
     } finally {
       setCompleting(null);
@@ -62,16 +90,18 @@ export default function HomeDashboard() {
         await supabase.from('items').update({ status: 'active' }).eq('id', id);
       } else if (space === 'explore') {
         const item = inboxItems.find(i => i.id === id);
+        if (!item) return;
         await supabase.from('items').delete().eq('id', id);
         await supabase.from('explores').insert({ user_id: item.user_id, title: item.title, type: 'other', status: 'active' });
       } else if (space === 'think') {
         const item = inboxItems.find(i => i.id === id);
+        if (!item) return;
         await supabase.from('items').delete().eq('id', id);
         await supabase.from('threads').insert({ user_id: item.user_id, title: item.title, status: 'active', color_accent: '#2DD4BF' });
       }
       toast.success(`Routed to ${space}`);
       fetchDashboardData();
-    } catch (e) {
+    } catch {
       toast.error('Failed to route item');
     }
   };
@@ -80,7 +110,7 @@ export default function HomeDashboard() {
     try {
       await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
       fetchDashboardData();
-    } catch (e) {
+    } catch {
       toast.error('Failed to dismiss');
     }
   };
@@ -101,7 +131,7 @@ export default function HomeDashboard() {
       supabase.from("explores").select("*").is("revisited_at", null),
       supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
       supabase.from("items").select("*").eq("status", "done").gte("completed_at", mondayStart.toISOString()).order("completed_at", { ascending: false }),
-      supabase.from("session_logs").select("*").gte("completed_at", mondayStart.toISOString()).eq("type", "work")
+      supabase.from("session_logs").select("*").gte("created_at", mondayStart.toISOString()).eq("type", "work")
     ]);
     
     if (tasksRes.data) {
@@ -231,7 +261,7 @@ export default function HomeDashboard() {
                 <div>
                   <h4 className="text-card-title text-[var(--text-1)] line-through">{task.title}</h4>
                   <p className="text-xs text-[var(--color-text-3)] mt-0.5">
-                    Completed {new Date(task.completed_at).toLocaleDateString()}
+                    Completed {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : ''}
                   </p>
                 </div>
                 <CheckCircle2 className="w-5 h-5 text-[var(--color-do)]" />
@@ -315,7 +345,7 @@ export default function HomeDashboard() {
             </div>
           </GlassCard>
         </Link>
-        <Link href="/people" className="block">
+        <Link href="/remember/people" className="block">
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <Users size={20} strokeWidth={1.5} className="text-[var(--color-people)] mb-4 shrink-0" />
             <div>
@@ -394,11 +424,16 @@ export default function HomeDashboard() {
         {/* Inbox Section */}
         {inboxItems.length > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-section-title text-[var(--text-1)]">Inbox</h3>
-              <div className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[10px] font-bold tracking-wider">
-                {inboxItems.length} NEW
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-section-title text-[var(--text-1)]">Inbox</h3>
+                <div className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[10px] font-bold tracking-wider">
+                  {inboxItems.length} NEW
+                </div>
               </div>
+              <Link href="/inbox" className="text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] flex items-center gap-1">
+                View all <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
             {inboxItems.map(item => (
               <GlassCard key={item.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-amber-500/5 border-amber-500/20 group">
@@ -439,41 +474,11 @@ export default function HomeDashboard() {
           </div>
         )}
 
-        {/* People Briefing Preview */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-section-title text-[var(--text-1)]">Upcoming Meeting</h3>
-            <Link href="/people" className="text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] flex items-center gap-1">
-              View briefing <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-          {people.filter(p => p.next_meeting).map(person => (
-            <GlassCard key={person.id} className="p-5 border-[var(--color-people)]/30">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-medium text-[var(--color-text-1)] text-sm" style={{ backgroundColor: 'var(--color-people)' }}>
-                  {person.initials}
-                </div>
-                <div>
-                  <h4 className="text-base font-medium text-[var(--color-text-1)]">{person.name}</h4>
-                  <p className="text-xs text-[var(--color-people)]">{person.next_meeting}</p>
-                </div>
-              </div>
-              <ul className="space-y-2 text-sm text-[var(--color-text-2)]">
-                {(person.notes || []).slice(0, 2).map((note: any, i: number) => (
-                  <li key={i} className="flex gap-2">
-                    <span className="text-[var(--color-people)]">•</span>
-                    {note.text || note}
-                  </li>
-                ))}
-              </ul>
-            </GlassCard>
-          ))}
-        </div>
+        {/* Removed People Briefing Preview */}
       </div>
       )}
       </>
       )}
-      <FocusSession task={focusTask} onClose={() => setFocusTask(null)} onComplete={fetchDashboardData} />
       <TaskAddPanel isOpen={isTaskPanelOpen} onClose={() => { setIsTaskPanelOpen(false); setTimeout(() => setTaskToEdit(null), 300); }} onTaskAdded={fetchDashboardData} taskToEdit={taskToEdit} />
     </div>
   );

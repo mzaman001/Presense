@@ -6,10 +6,11 @@ import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Plus, Loader2, Sparkles, Pin, Search } from "lucide-react";
 import Link from "next/link";
-import { useAppStore } from "@/store/useAppStore";
+import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Thread {
   id: string;
@@ -21,11 +22,10 @@ interface Thread {
   status: string;
   is_pinned: boolean;
 }
-import { toast } from "sonner";
 
 export default function ThinkPage() {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const setCaptureModalOpen = useAppStore((state) => state.setCaptureModalOpen);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchive, setShowArchive] = useState(false);
@@ -54,12 +54,14 @@ export default function ThinkPage() {
   }, [supabase, showArchive, showTrash]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchThreads();
   }, [fetchThreads]);
 
   useRealtime("threads", fetchThreads);
 
   const timeAgo = (dt: string) => {
+    // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(dt).getTime();
     const days = Math.floor(diff / 86400000);
     if (days === 0) return "Today";
@@ -72,31 +74,39 @@ export default function ThinkPage() {
   const handleDailyNote = async () => {
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const title = `Daily Note: ${dateStr}`;
-    
-    const { data: existingThreads } = await supabase
-      .from("threads")
-      .select("id")
-      .eq("title", title)
-      .eq("status", "active")
-      .limit(1);
-      
-    if (existingThreads && existingThreads.length > 0) {
-      window.location.href = `/think/${existingThreads[0].id}`;
-      return;
-    }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase.from("threads").insert({
-      user_id: user.id,
-      title,
-      color_accent: "#FBBF24",
-      is_pinned: true
-    }).select().single();
+    // Try insert first — the unique index on (user_id, title) prevents duplicates.
+    // If a race condition causes a conflict, fall back to fetching the existing thread.
+    const { data: inserted } = await supabase
+      .from("threads")
+      .insert({
+        user_id: user.id,
+        title,
+        color_accent: "#FBBF24",
+        is_pinned: true
+      })
+      .select("id")
+      .single();
 
-    if (!error && data) {
-      window.location.href = `/think/${data.id}`;
+    if (inserted) {
+      router.push(`/think/${inserted.id}`);
+      return;
+    }
+
+    // Conflict or other error — fetch the existing daily note
+    const { data: existingThreads } = await supabase
+      .from("threads")
+      .select("id")
+      .eq("title", title)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .limit(1);
+
+    if (existingThreads && existingThreads.length > 0) {
+      router.push(`/think/${existingThreads[0].id}`);
     }
   };
 
@@ -112,7 +122,7 @@ export default function ThinkPage() {
     }).select().single();
 
     if (!error && data) {
-      window.location.href = `/think/${data.id}`;
+      router.push(`/think/${data.id}`);
     }
   };
 

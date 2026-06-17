@@ -4,12 +4,11 @@ import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database, Users, Plus, Trash2 } from "lucide-react";
-import { GlassCard } from "@/components/ui/GlassCard";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { SelectDropdown } from "@/components/ui/SelectDropdown";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
 const TABS = [
@@ -23,6 +22,184 @@ const TABS = [
   { id: "data", label: "Data", icon: Database },
 ];
 
+interface SettingsState {
+  [key: string]: unknown;
+  display_name?: string;
+  avatar_color?: string;
+  timezone?: string;
+  theme?: string;
+  color_mode?: string;
+  ambient_bg?: boolean;
+  reduce_motion?: boolean;
+  notifications_enabled?: boolean;
+  quiet_start?: string;
+  quiet_end?: string;
+  daily_briefing?: boolean;
+  pomodoro_sound?: boolean;
+  pomodoro_duration?: number;
+  short_break_duration?: number;
+  long_break_duration?: number;
+  auto_start_breaks?: boolean;
+  default_view?: string;
+  auto_archive_days?: number;
+  do_categories?: string[];
+  do_category_colors?: Record<string, string>;
+  people_categories?: string[];
+  relationship_colors?: Record<string, string>;
+  auto_snooze?: boolean;
+  smart_routing_enabled?: boolean;
+  nlp_date_parsing?: boolean;
+  routing_confidence?: string;
+  ollama_enabled?: boolean;
+  ollama_url?: string;
+  location_detection?: boolean;
+  daily_briefing_time?: string;
+  nudge_time?: string;
+  pomodoro_long_break_interval?: number;
+}
+
+function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKey, updateSetting, supabase }: {
+  cat: string;
+  initialColor: string;
+  cats: string[];
+  colors: Record<string, string>;
+  categoriesKey: string;
+  colorsKey: string;
+  updateSetting: (key: string, value: unknown) => void;
+  supabase: ReturnType<typeof createClient>;
+}) {
+  const [editName, setEditName] = useState(cat);
+  
+  const handleRename = async () => {
+    const trimmed = editName.trim().toLowerCase();
+    if (trimmed && trimmed !== cat && !cats.includes(trimmed)) {
+      const newCats = cats.map(c => c === cat ? trimmed : c);
+      updateSetting(categoriesKey, newCats);
+      if (colors[cat]) {
+        const newColors = { ...colors };
+        newColors[trimmed] = newColors[cat];
+        delete newColors[cat];
+        updateSetting(colorsKey, newColors);
+      }
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        if (categoriesKey === "do_categories") {
+          await supabase.from("items").update({ category: trimmed }).eq("user_id", user.id).ilike("category", cat);
+        } else if (categoriesKey === "people_categories") {
+          await supabase.from("people").update({ relationship: trimmed }).eq("user_id", user.id).ilike("relationship", cat);
+        }
+        toast.success(`Renamed category to ${trimmed}`);
+      }
+    } else {
+      setEditName(cat);
+    }
+  };
+
+  const handleDelete = (delCat: string) => {
+    updateSetting(categoriesKey, cats.filter(c => c !== delCat));
+  };
+
+  const handleColorChange = (colorCat: string, color: string) => {
+    updateSetting(colorsKey, { ...colors, [colorCat]: color });
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] group hover:border-[rgba(255,255,255,0.2)] transition-colors">
+      <input 
+        value={editName}
+        onChange={e => setEditName(e.target.value)}
+        onBlur={handleRename}
+        onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
+        className="flex-1 min-w-[80px] bg-transparent text-sm font-bold text-[var(--color-text-1)] capitalize tracking-wide focus:outline-none focus:bg-white/5 px-2 py-1 rounded"
+      />
+      <div className="flex items-center justify-end gap-1.5 shrink-0">
+        {['#F87171', '#FBBF24', '#4ADE80', '#2DD4BF', '#7692FF', '#8B7CF8', '#F472B6', '#9CA3AF'].map(preset => {
+          const isActive = initialColor === preset || (!initialColor && preset === '#9CA3AF');
+          return (
+            <button 
+              key={preset}
+              onClick={() => handleColorChange(cat, preset)}
+              className="w-5 h-5 rounded-full transition-all hover:scale-125"
+              style={{ 
+                backgroundColor: preset, 
+                border: isActive ? `2px solid white` : `1px solid rgba(255,255,255,0.1)`,
+                transform: isActive ? 'scale(1.2)' : 'scale(1)',
+                opacity: isActive ? 1 : 0.5
+              }}
+            />
+          );
+        })}
+        <div className="w-[1px] h-4 bg-[var(--color-border)] mx-1" />
+        <label className="relative flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-125 shadow-sm" style={{ background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' }}>
+          <input 
+            type="color" 
+            value={initialColor || "#9CA3AF"} 
+            onChange={(e) => handleColorChange(cat, e.target.value)}
+            className="absolute opacity-0 w-full h-full cursor-pointer"
+          />
+        </label>
+        <button onClick={() => handleDelete(cat)} className="ml-1 p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-400/10 transition-all">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CategoryManager({ 
+  title, 
+  categoriesKey, 
+  colorsKey, 
+  defaultCategories,
+  settings,
+  updateSetting,
+  supabase,
+}: { 
+  title: string, 
+  categoriesKey: string, 
+  colorsKey: string, 
+  defaultCategories: string[],
+  settings: SettingsState,
+  updateSetting: (key: string, value: unknown) => void,
+  supabase: ReturnType<typeof createClient>,
+}) {
+  const cats: string[] = (settings[categoriesKey] as string[]) || defaultCategories;
+  const colors: Record<string, string> = (settings[colorsKey] as Record<string, string>) || {};
+  const [newCat, setNewCat] = useState("");
+
+  const handleAdd = () => {
+    const trimmed = newCat.trim().toLowerCase();
+    if (!trimmed || cats.includes(trimmed)) return;
+    updateSetting(categoriesKey, [...cats, trimmed]);
+    setNewCat("");
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-label text-[var(--text-3)]">{title}</label>
+      <div className="space-y-2">
+        {cats.map(cat => (
+          <CategoryItem key={cat} cat={cat} initialColor={colors[cat]} cats={cats} colors={colors} categoriesKey={categoriesKey} colorsKey={colorsKey} updateSetting={updateSetting} supabase={supabase} />
+        ))}
+        <div className="flex items-center gap-2 mt-2">
+          <input 
+            type="text" 
+            value={newCat} 
+            onChange={e => setNewCat(e.target.value)} 
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            placeholder="Add new category..." 
+            className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+          />
+          <button onClick={handleAdd} className="p-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-1)] hover:border-[var(--color-accent)] transition-colors">
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsModal() {
   const { isSettingsModalOpen, setSettingsModalOpen, setUserSettings } = useAppStore();
   const supabase = createClient();
@@ -34,7 +211,7 @@ export function SettingsModal() {
   const [initialLoaded, setInitialLoaded] = useState(false);
   
   // Settings State
-  const [settings, setSettings] = useState<any>({});
+  const [settings, setSettings] = useState<SettingsState>({});
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const [clearTasksConfirm, setClearTasksConfirm] = useState(false);
   const [clearLocationsConfirm, setClearLocationsConfirm] = useState(false);
@@ -58,7 +235,7 @@ export function SettingsModal() {
       setTimeout(() => setInitialLoaded(true), 100);
     }
     loadSettings();
-  }, [isSettingsModalOpen, supabase]);
+  }, [isSettingsModalOpen, supabase, setUserSettings]);
 
   useEffect(() => {
     if (!initialLoaded) return;
@@ -68,7 +245,8 @@ export function SettingsModal() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const { user_id, created_at, ...updateData } = debouncedSettings;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { user_id: _, created_at: __, ...updateData } = debouncedSettings;
       
       const { error } = await supabase.from("user_settings").update(updateData).eq("user_id", user.id);
       
@@ -82,14 +260,14 @@ export function SettingsModal() {
       }
     };
     save();
-  }, [debouncedSettings, supabase, initialLoaded]);
+  }, [debouncedSettings, supabase, initialLoaded, setUserSettings]);
 
-  const updateSetting = (key: string, value: any) => {
-    setSettings((prev: any) => ({ ...prev, [key]: value }));
+  const updateSetting = (key: string, value: unknown) => {
+    setSettings((prev: SettingsState) => ({ ...prev, [key]: value }));
     
     // Immediately apply theme/mode changes
     if (key === 'theme') {
-      localStorage.setItem('presense_theme', value);
+      localStorage.setItem('presense_theme', String(value));
       document.documentElement.classList.remove('theme-navy', 'theme-forest');
       
       if (value === 'blue') document.documentElement.classList.add('theme-navy');
@@ -97,7 +275,7 @@ export function SettingsModal() {
     }
     
     if (key === 'color_mode') {
-      localStorage.setItem('presense_color_mode', value);
+      localStorage.setItem('presense_color_mode', String(value));
       document.documentElement.classList.remove('light');
       
       if (value === 'light') document.documentElement.classList.add('light');
@@ -121,134 +299,6 @@ export function SettingsModal() {
   
   const handleExportData = async () => {
     toast.success("Data export started. You will receive an email shortly.");
-  };
-
-  const CategoryManager = ({ 
-    title, 
-    categoriesKey, 
-    colorsKey, 
-    defaultCategories 
-  }: { 
-    title: string, 
-    categoriesKey: string, 
-    colorsKey: string, 
-    defaultCategories: string[] 
-  }) => {
-    const cats: string[] = settings[categoriesKey] || defaultCategories;
-    const colors: Record<string, string> = settings[colorsKey] || {};
-    const [newCat, setNewCat] = useState("");
-
-    const handleAdd = () => {
-      const trimmed = newCat.trim().toLowerCase();
-      if (!trimmed || cats.includes(trimmed)) return;
-      updateSetting(categoriesKey, [...cats, trimmed]);
-      setNewCat("");
-    };
-
-    const handleDelete = (cat: string) => {
-      updateSetting(categoriesKey, cats.filter(c => c !== cat));
-    };
-
-    const handleColorChange = (cat: string, color: string) => {
-      updateSetting(colorsKey, { ...colors, [cat]: color });
-    };
-
-    const CategoryItem = ({ cat, initialColor }: { cat: string, initialColor: string }) => {
-      const [editName, setEditName] = useState(cat);
-      
-      const handleRename = async () => {
-        const trimmed = editName.trim().toLowerCase();
-        if (trimmed && trimmed !== cat && !cats.includes(trimmed)) {
-          const newCats = cats.map(c => c === cat ? trimmed : c);
-          updateSetting(categoriesKey, newCats);
-          if (colors[cat]) {
-            const newColors = { ...colors };
-            newColors[trimmed] = newColors[cat];
-            delete newColors[cat];
-            updateSetting(colorsKey, newColors);
-          }
-          
-          // Cascading update to tasks and people
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            if (categoriesKey === "do_categories") {
-              await supabase.from("items").update({ category: trimmed }).eq("user_id", user.id).ilike("category", cat);
-            } else if (categoriesKey === "people_categories") {
-              await supabase.from("people").update({ relationship: trimmed }).eq("user_id", user.id).ilike("relationship", cat);
-            }
-            toast.success(`Renamed category to ${trimmed}`);
-          }
-        } else {
-          setEditName(cat);
-        }
-      };
-
-      return (
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] group hover:border-[rgba(255,255,255,0.2)] transition-colors">
-          <input 
-            value={editName}
-            onChange={e => setEditName(e.target.value)}
-            onBlur={handleRename}
-            onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
-            className="flex-1 min-w-[80px] bg-transparent text-sm font-bold text-[var(--color-text-1)] capitalize tracking-wide focus:outline-none focus:bg-white/5 px-2 py-1 rounded"
-          />
-          <div className="flex items-center justify-end gap-1.5 shrink-0">
-            {['#F87171', '#FBBF24', '#4ADE80', '#2DD4BF', '#7692FF', '#8B7CF8', '#F472B6', '#9CA3AF'].map(preset => {
-              const isActive = initialColor === preset || (!initialColor && preset === '#9CA3AF');
-              return (
-                <button 
-                  key={preset}
-                  onClick={() => handleColorChange(cat, preset)}
-                  className="w-5 h-5 rounded-full transition-all hover:scale-125"
-                  style={{ 
-                    backgroundColor: preset, 
-                    border: isActive ? `2px solid white` : `1px solid rgba(255,255,255,0.1)`,
-                    transform: isActive ? 'scale(1.2)' : 'scale(1)',
-                    opacity: isActive ? 1 : 0.5
-                  }}
-                />
-              );
-            })}
-            <div className="w-[1px] h-4 bg-[var(--color-border)] mx-1" />
-            <label className="relative flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-125 shadow-sm" style={{ background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' }}>
-              <input 
-                type="color" 
-                value={initialColor || "#9CA3AF"} 
-                onChange={(e) => handleColorChange(cat, e.target.value)}
-                className="absolute opacity-0 w-full h-full cursor-pointer"
-              />
-            </label>
-            <button onClick={() => handleDelete(cat)} className="ml-1 p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-400/10 transition-all">
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      );
-    };
-
-    return (
-      <div className="space-y-3">
-        <label className="block text-label text-[var(--text-3)]">{title}</label>
-        <div className="space-y-2">
-          {cats.map(cat => (
-            <CategoryItem key={cat} cat={cat} initialColor={colors[cat]} />
-          ))}
-          <div className="flex items-center gap-2 mt-2">
-            <input 
-              type="text" 
-              value={newCat} 
-              onChange={e => setNewCat(e.target.value)} 
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Add new category..." 
-              className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
-            />
-            <button onClick={handleAdd} className="p-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-1)] hover:border-[var(--color-accent)] transition-colors">
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -346,7 +396,7 @@ export function SettingsModal() {
                         </div>
                         <div>
                           <label className="text-label text-[var(--text-3)] block mb-2">Timezone</label>
-                          <SelectDropdown
+                          <Dropdown variant="select"
                             value={settings.timezone || "UTC"}
                             onChange={val => updateSetting("timezone", val)}
                             options={[
@@ -389,7 +439,7 @@ export function SettingsModal() {
                             <div className="text-sm text-[var(--color-text-3)]">Dark, Light, or System match</div>
                           </div>
                           <div className="w-40">
-                            <SelectDropdown
+                            <Dropdown variant="select"
                               value={settings.color_mode || "dark"}
                               onChange={val => updateSetting("color_mode", val)}
                               className="w-full"
@@ -448,7 +498,7 @@ export function SettingsModal() {
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                           <div>
                             <div className="font-medium text-[var(--color-text-1)]">Daily Briefing</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Receive a summary of today's tasks</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Receive a summary of today&apos;s tasks</div>
                           </div>
                           <button onClick={() => updateSetting("daily_briefing", !settings.daily_briefing)} className={`toggle-track ${settings.daily_briefing ? 'on' : ''}`}>
                             <div className="toggle-thumb" />
@@ -544,6 +594,9 @@ export function SettingsModal() {
                           categoriesKey="do_categories" 
                           colorsKey="do_category_colors" 
                           defaultCategories={["work", "study", "personal", "errand", "health"]} 
+                          settings={settings}
+                          updateSetting={updateSetting}
+                          supabase={supabase}
                         />
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
                           <div>
@@ -564,6 +617,9 @@ export function SettingsModal() {
                           categoriesKey="people_categories" 
                           colorsKey="relationship_colors" 
                           defaultCategories={["friend", "family", "professor", "colleague", "teammate", "other"]} 
+                          settings={settings}
+                          updateSetting={updateSetting}
+                          supabase={supabase}
                         />
                       </div>
                     )}
@@ -585,7 +641,7 @@ export function SettingsModal() {
                             <div className="font-medium text-[var(--color-text-1)]">NLP Date Parsing</div>
                             <div className="text-sm text-[var(--color-text-3)]">Extract dates naturally from capture text</div>
                           </div>
-                          <button onClick={() => updateSetting("nlp_date_parsing", settings.nlp_date_parsing !== false)} className={`toggle-track ${settings.nlp_date_parsing !== false ? 'on' : ''}`}>
+                          <button onClick={() => updateSetting("nlp_date_parsing", settings.nlp_date_parsing === false ? true : false)} className={`toggle-track ${settings.nlp_date_parsing !== false ? 'on' : ''}`}>
                             <div className="toggle-thumb" />
                           </button>
                         </div>
@@ -636,7 +692,7 @@ export function SettingsModal() {
                                     } else {
                                       toast.error("Not reachable");
                                     }
-                                  } catch (e) {
+                                  } catch {
                                     toast.error("Not reachable");
                                   }
                                 }} 
