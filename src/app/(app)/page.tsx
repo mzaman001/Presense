@@ -307,18 +307,23 @@ export default function HomeDashboard() {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 
-                // Optimistic UI update
-                setTasks(prev => prev.filter(t => t.id !== primaryTask.id));
+                const snoozedTask = primaryTask;
                 
-                await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", primaryTask.id);
+                // Optimistic UI update
+                setTasks(prev => prev.filter(t => t.id !== snoozedTask.id));
+                
+                useAppStore.getState().markMutation();
+                await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", snoozedTask.id);
                 fetchDashboardData();
                 
                 toast.success("Snoozed until tomorrow", {
+                  duration: 8000,
                   action: {
                     label: "Undo",
                     onClick: async () => {
-                      await supabase.from("items").update({ snoozed_until: null }).eq("id", primaryTask.id);
-                      fetchDashboardData();
+                      useAppStore.getState().markMutation();
+                      await supabase.from("items").update({ snoozed_until: null }).eq("id", snoozedTask.id);
+                      await fetchDashboardData();
                       toast.success("Snooze reversed");
                     }
                   }
