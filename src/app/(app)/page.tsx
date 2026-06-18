@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check } from "lucide-react";
@@ -63,6 +63,7 @@ export default function HomeDashboard() {
   const [pomodorosThisWeek, setPomodorosThisWeek] = useState(0);
   const [completing, setCompleting] = useState<string | null>(null);
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
+  const skipNextFetchRef = useRef(false);
 
   useEffect(() => {
     const handleClick = () => setActiveRouteItem(null);
@@ -118,6 +119,10 @@ export default function HomeDashboard() {
   };
 
   const fetchDashboardData = useCallback(async () => {
+    if (skipNextFetchRef.current) {
+      skipNextFetchRef.current = false;
+      return;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -320,7 +325,8 @@ export default function HomeDashboard() {
                     label: "Undo",
                     onClick: async () => {
                       await supabase.from("items").update({ snoozed_until: null }).eq("id", snoozedTask.id);
-                      // Restore task directly into state
+                      // Restore task directly into state, skip the next realtime refetch
+                      skipNextFetchRef.current = true;
                       const restored = { ...snoozedTask, snoozed_until: null };
                       setTasks(prev => [restored, ...prev].sort((a, b) => {
                         const aPrio = a.priority ?? 4;
