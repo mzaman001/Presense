@@ -307,18 +307,26 @@ export default function HomeDashboard() {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 
-                // Optimistic UI update
-                setTasks(prev => prev.filter(t => t.id !== primaryTask.id));
+                const snoozedTask = primaryTask;
                 
-                await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", primaryTask.id);
-                fetchDashboardData();
+                // Optimistic UI update
+                setTasks(prev => prev.filter(t => t.id !== snoozedTask.id));
+                
+                await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", snoozedTask.id);
                 
                 toast.success("Snoozed until tomorrow", {
+                  duration: 5000,
                   action: {
                     label: "Undo",
                     onClick: async () => {
-                      await supabase.from("items").update({ snoozed_until: null }).eq("id", primaryTask.id);
-                      fetchDashboardData();
+                      await supabase.from("items").update({ snoozed_until: null }).eq("id", snoozedTask.id);
+                      // Restore task directly into state
+                      const restored = { ...snoozedTask, snoozed_until: null };
+                      setTasks(prev => [restored, ...prev].sort((a, b) => {
+                        const aPrio = a.priority ?? 4;
+                        const bPrio = b.priority ?? 4;
+                        return aPrio - bPrio;
+                      }));
                       toast.success("Snooze reversed");
                     }
                   }
