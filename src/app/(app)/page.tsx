@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check } from "lucide-react";
@@ -63,7 +63,6 @@ export default function HomeDashboard() {
   const [pomodorosThisWeek, setPomodorosThisWeek] = useState(0);
   const [completing, setCompleting] = useState<string | null>(null);
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
-  const skipNextFetchRef = useRef(false);
 
   useEffect(() => {
     const handleClick = () => setActiveRouteItem(null);
@@ -119,10 +118,6 @@ export default function HomeDashboard() {
   };
 
   const fetchDashboardData = useCallback(async () => {
-    if (skipNextFetchRef.current) {
-      skipNextFetchRef.current = false;
-      return;
-    }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -312,27 +307,18 @@ export default function HomeDashboard() {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 
-                const snoozedTask = primaryTask;
-                
                 // Optimistic UI update
-                setTasks(prev => prev.filter(t => t.id !== snoozedTask.id));
+                setTasks(prev => prev.filter(t => t.id !== primaryTask.id));
                 
-                await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", snoozedTask.id);
+                await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", primaryTask.id);
+                fetchDashboardData();
                 
                 toast.success("Snoozed until tomorrow", {
-                  duration: 5000,
                   action: {
                     label: "Undo",
                     onClick: async () => {
-                      await supabase.from("items").update({ snoozed_until: null }).eq("id", snoozedTask.id);
-                      // Restore task directly into state, skip the next realtime refetch
-                      skipNextFetchRef.current = true;
-                      const restored = { ...snoozedTask, snoozed_until: null };
-                      setTasks(prev => [restored, ...prev].sort((a, b) => {
-                        const aPrio = a.priority ?? 4;
-                        const bPrio = b.priority ?? 4;
-                        return aPrio - bPrio;
-                      }));
+                      await supabase.from("items").update({ snoozed_until: null }).eq("id", primaryTask.id);
+                      fetchDashboardData();
                       toast.success("Snooze reversed");
                     }
                   }
