@@ -127,8 +127,8 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                       onClick={() => setRelationship(rel)}
                       className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all capitalize ${
                         relationship.toLowerCase() === rel.toLowerCase()
-                          ? "bg-[#F472B6] text-[var(--color-background)] border-[#F472B6]"
-                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]"
+                          ? "bg-[var(--accent)] text-[var(--color-background)] border-[var(--accent)]"
+                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)] hover:text-[var(--color-text-1)]"
                       }`}
                     >
                       {rel}

@@ -188,6 +188,7 @@ export default function ExplorePage() {
         </div>
       )}
       </div>
+      </div>
 
       <ExploreDrawer 
         item={editItem} 

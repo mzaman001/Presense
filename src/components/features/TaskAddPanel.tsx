@@ -586,11 +586,11 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                       key={cat}
                       whileTap={{ scale: 0.92 }}
                       onClick={() => setCategory(cat)}
-                      style={category === cat ? { backgroundColor: DEFAULT_DO_COLORS[cat] || "var(--color-text-1)", borderColor: DEFAULT_DO_COLORS[cat] || "var(--color-text-1)", color: 'white' } : { borderColor: DEFAULT_DO_COLORS[cat] || "var(--color-border)", color: DEFAULT_DO_COLORS[cat] || "var(--color-text-3)" }}
+                      style={{}}
                       className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
                         category === cat
-                          ? "font-medium shadow-md"
-                          : "bg-transparent hover:opacity-80"
+                          ? "bg-[var(--accent)] text-[var(--color-background)] border-[var(--accent)] font-semibold"
+                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)] hover:text-[var(--color-text-1)]"
                       }`}
                     >
                       {cat}

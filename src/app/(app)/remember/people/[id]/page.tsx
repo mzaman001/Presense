@@ -12,6 +12,7 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { RELATIONSHIP_COLORS } from "@/lib/constants";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -60,6 +61,18 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
     }
     setLoading(false);
   }, [supabase, id]);
+
+  const updateRelationship = async (newRel: string) => {
+    if (!person) return;
+    setPerson({ ...person, relationship: newRel });
+    try {
+      const { error } = await supabase.from("people").update({ relationship: newRel }).eq("id", person.id);
+      if (error) throw error;
+      toast.success("Relationship updated");
+    } catch (err: any) {
+      toast.error("Failed to update", { description: err.message });
+    }
+  };
 
   useEffect(() => { fetchPerson(); }, [fetchPerson]);
   useRealtime("people", fetchPerson);
@@ -145,7 +158,16 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         <Avatar name={person.name} color={relColor} size="lg" className="w-16 h-16 text-xl" />
         <div>
           <h1 className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-none mb-1">{person.name}</h1>
-          <p className="text-sm font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border bg-opacity-10 w-fit mt-2" style={{ color: relColor, borderColor: `${relColor}40`, backgroundColor: `${relColor}15` }}>{person.relationship}</p>
+          <div className="mt-2">
+            <Dropdown
+              value={person.relationship.toLowerCase()}
+              onChange={updateRelationship}
+              options={(userSettings?.people_categories || ["friend", "family", "professor", "colleague", "teammate", "other"]).map((c: string) => ({ value: c, label: c }))}
+              colors={RELATIONSHIP_COLORS}
+              variant="chip"
+              className="w-fit inline-block uppercase tracking-widest [&>button]:!px-2 [&>button]:!py-0.5 [&>button]:!text-sm"
+            />
+          </div>
         </div>
       </div>
 
