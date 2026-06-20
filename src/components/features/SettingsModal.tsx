@@ -444,7 +444,7 @@ export function SettingsModal() {
                       )}
                     </AnimatePresence>
                   </div>
-                  <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#F87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors">
+                  <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[var(--status-danger)] hover:bg-[var(--status-danger-dim)] transition-colors">
                     <LogOut className="w-4 h-4" /> Sign Out
                   </button>
                 </div>
@@ -515,8 +515,8 @@ export function SettingsModal() {
                             }
                           />
                         </div>
-                        <div className="pt-8 mt-8 border-t border-[rgba(248,113,113,0.2)]">
-                          <h4 className="text-sm font-semibold text-[#F87171] mb-2 flex items-center gap-2">Danger Zone</h4>
+                        <div className="pt-8 mt-8 border-t border-[var(--status-danger-border)]">
+                          <h4 className="text-sm font-semibold text-[var(--status-danger)] mb-2 flex items-center gap-2">Danger Zone</h4>
                           <p className="text-xs text-[var(--color-text-3)] mb-4">Permanently delete your account and all data.</p>
                           <button onClick={() => setDeleteAccountConfirm(true)} className="w-full btn-danger mt-4">
                             Delete Account
@@ -796,7 +796,7 @@ export function SettingsModal() {
                               <button
                                 key={conf}
                                 onClick={() => updateSetting("routing_confidence", conf)}
-                                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.routing_confidence === conf || (!settings.routing_confidence && conf === 'Medium') ? 'bg-[#2DD4BF] text-[var(--color-background)] border-[#2DD4BF]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}
+                                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.routing_confidence === conf || (!settings.routing_confidence && conf === 'Medium') ? 'bg-[var(--accent)] text-[var(--text-on-accent)] border-[var(--accent)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}
                               >
                                 {conf} {conf === 'High' && '(Auto-route)'} {conf === 'Medium' && '(Review)'} {conf === 'Low' && '(Ask)'}
                               </button>
@@ -820,7 +820,7 @@ export function SettingsModal() {
                               <input
                                 value={settings.ollama_url || "http://localhost:11434"}
                                 onChange={e => updateSetting("ollama_url", e.target.value)}
-                                className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[#2DD4BF] focus:outline-none transition-colors"
+                                className="flex-1 bg-[var(--surface-input)] border border-[var(--border-input)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--border-input-focus)] focus:outline-none transition-colors"
                               />
                               <button 
                                 onClick={async () => { 
@@ -839,7 +839,7 @@ export function SettingsModal() {
                                     toast.error("Not reachable");
                                   }
                                 }} 
-                                className="px-4 py-3 rounded-xl bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] text-[#2DD4BF] text-sm font-semibold hover:bg-[rgba(45,212,191,0.2)] transition-colors whitespace-nowrap"
+                                className="px-4 py-3 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-sm font-semibold hover:bg-[var(--accent-dim-hover)] transition-colors whitespace-nowrap"
                               >
                                 Test connection
                               </button>

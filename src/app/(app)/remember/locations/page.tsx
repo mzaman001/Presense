@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
-import { TintedButton } from "@/components/ui/TintedButton";
 
 interface LocationItem {
   id: string;
@@ -84,31 +83,31 @@ export default function LocationsPage() {
           placeholder="Search for anything you've placed somewhere..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[rgba(255,255,255,0.06)] border border-[var(--color-border)] rounded-xl pl-11 pr-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[rgba(74,222,128,0.5)] transition-colors"
+          className="w-full bg-[var(--surface-input)] border border-[var(--border-input)] rounded-xl pl-11 pr-4 py-3 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[var(--border-input-focus)] transition-colors"
         />
       </div>
 
       {/* Not found state */}
       {noResults && (
-        <GlassCard className="p-5 border-[rgba(74,222,128,0.2)]">
+        <GlassCard className="p-5 border-[var(--accent-border)]">
           <p className="text-sm text-[var(--color-text-3)] mb-3">
             &ldquo;<span className="text-[var(--color-text-1)]">{search}</span>&rdquo; not found — log it now?
           </p>
-          <button onClick={() => setShowAdd(true)} className="px-4 py-2 rounded-lg bg-[#4ADE80] text-[var(--color-background)] text-sm font-semibold">
+          <button onClick={() => setShowAdd(true)} className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--text-on-accent)] text-sm font-semibold hover:bg-[var(--accent-hot)] transition-colors">
             Log "{search}"
           </button>
         </GlassCard>
       )}
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-[var(--color-text-1)]">All Locations</h2>
-          <span className="text-xs text-[var(--color-text-3)] font-normal">({items.length} items logged)</span>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--color-text-1)] inline">All Locations</h2>
+          <span className="text-xs text-[var(--color-text-3)] font-normal ml-2">{items.length} item{items.length !== 1 ? "s" : ""} logged</span>
         </div>
         {!showAdd && (
-          <TintedButton onClick={() => setShowAdd(true)} variant="remember" icon={<Plus className="w-4 h-4" />}>
-            Log item
-          </TintedButton>
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-card-title hover:bg-[var(--accent-dim-hover)] transition-colors">
+            <Plus className="w-4 h-4" /> Log item
+          </button>
         )}
       </div>
 
@@ -126,7 +125,7 @@ export default function LocationsPage() {
               <motion.div key={item.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
                 <GlassCard 
                   onClick={() => setEditingItem(item)}
-                  className={cn("px-4 py-3 relative group cursor-pointer hover:border-[rgba(74,222,128,0.25)] transition-colors",
+                  className={cn("px-4 py-3 relative group cursor-pointer hover:border-[var(--accent-border)] transition-all duration-200 ease-out hover:scale-[1.01] hover:-translate-y-px",
                   isStale && "border-[rgba(251,191,36,0.25)]",
                   isVeryStale && "opacity-50"
                 )}>

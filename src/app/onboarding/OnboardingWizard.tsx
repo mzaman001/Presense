@@ -20,11 +20,11 @@ const STRUGGLES = [
 ];
 
 const TOUR_CARDS = [
-  { id: "do", icon: CheckCircle2, title: "Do", desc: "Your tasks, shown one step at a time. No overwhelm.", color: "#F87171" },
-  { id: "think", icon: Brain, title: "Think", desc: "Ongoing thoughts, plans, and a daily note. Your mind on paper.", color: "#2DD4BF" },
-  { id: "remember", icon: Users, title: "Remember", desc: "What people told you. Where you left things. Never forget again.", color: "#F472B6" },
-  { id: "explore", icon: Compass, title: "Explore", desc: "Links, books, quotes, ideas. Saved and resurfaced every Sunday.", color: "#FBBF24" },
-  { id: "ready", icon: Check, title: "You're ready", desc: "", color: "#4ADE80" }
+  { id: "do", icon: CheckCircle2, title: "Do", desc: "Your tasks, shown one step at a time. No overwhelm.", color: "var(--accent)" },
+  { id: "think", icon: Brain, title: "Think", desc: "Ongoing thoughts, plans, and a daily note. Your mind on paper.", color: "var(--accent)" },
+  { id: "remember", icon: Users, title: "Remember", desc: "What people told you. Where you left things. Never forget again.", color: "var(--accent)" },
+  { id: "explore", icon: Compass, title: "Explore", desc: "Links, books, quotes, ideas. Saved and resurfaced every Sunday.", color: "var(--accent)" },
+  { id: "ready", icon: Check, title: "You're ready", desc: "", color: "var(--status-done)" }
 ];
 
 export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
@@ -387,7 +387,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 <button
                   onClick={handleFinish}
                   disabled={saving}
-                  className="w-full flex justify-center items-center gap-2 py-4 rounded-2xl bg-[#4ADE80] text-green-950 font-bold text-lg hover:bg-[#22c55e] transition-colors disabled:opacity-50"
+                  className="w-full flex justify-center items-center gap-2 py-4 rounded-2xl bg-[var(--accent)] text-[var(--text-on-accent)] font-bold text-lg hover:bg-[var(--accent-hot)] transition-colors disabled:opacity-50"
                 >
                   {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : "Start using Presense"}
                 </button>

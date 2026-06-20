@@ -79,18 +79,18 @@
   --accent-text: #E5B41E;
 
   /* === SPACE ACCENT COLOURS === */
-  --space-do: #F87171;
-  --space-do-dim: rgba(248, 113, 113, 0.12);
-  --space-do-border: rgba(248, 113, 113, 0.25);
-  --space-think: #2DD4BF;
-  --space-think-dim: rgba(45, 212, 191, 0.12);
-  --space-think-border: rgba(45, 212, 191, 0.25);
-  --space-remember: #F472B6;
-  --space-remember-dim: rgba(244, 114, 182, 0.12);
-  --space-remember-border: rgba(244, 114, 182, 0.25);
-  --space-explore: #FBBF24;
-  --space-explore-dim: rgba(251, 191, 36, 0.12);
-  --space-explore-border: rgba(251, 191, 36, 0.25);
+  --space-do: var(--accent);
+  --space-do-dim: var(--accent-dim);
+  --space-do-border: var(--accent-border);
+  --space-think: var(--accent);
+  --space-think-dim: var(--accent-dim);
+  --space-think-border: var(--accent-border);
+  --space-remember: var(--accent);
+  --space-remember-dim: var(--accent-dim);
+  --space-remember-border: var(--accent-border);
+  --space-explore: var(--accent);
+  --space-explore-dim: var(--accent-dim);
+  --space-explore-border: var(--accent-border);
   --space-inbox: rgba(255, 255, 255, 0.18);
 
   /* === STATUS COLOURS === */

@@ -10,10 +10,10 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     
     const variants = {
       default: "bg-[var(--color-surface)] text-[var(--color-text-2)] border-[var(--color-border)]",
-      do: "bg-[rgba(248,113,113,0.15)] text-[var(--color-do)] border-[rgba(248,113,113,0.3)]",
-      people: "bg-[rgba(244,114,182,0.15)] text-[var(--color-people)] border-[rgba(244,114,182,0.3)]",
-      think: "bg-[rgba(45,212,191,0.15)] text-[var(--color-think)] border-[rgba(45,212,191,0.3)]",
-      explore: "bg-[rgba(251,191,36,0.15)] text-[var(--color-explore)] border-[rgba(251,191,36,0.3)]",
+      do: "bg-[var(--space-do-dim)] text-[var(--color-do)] border-[var(--space-do-border)]",
+      people: "bg-[var(--space-remember-dim)] text-[var(--color-people)] border-[var(--space-remember-border)]",
+      think: "bg-[var(--space-think-dim)] text-[var(--color-think)] border-[var(--space-think-border)]",
+      explore: "bg-[var(--space-explore-dim)] text-[var(--color-explore)] border-[var(--space-explore-border)]",
     };
 
     return (

@@ -227,7 +227,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[#FBBF24] transition-colors"
+                  className="w-full bg-[var(--surface-input)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[var(--accent)] transition-colors"
                 />
               </div>
 
@@ -237,7 +237,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                   <button 
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setIsTypeDropdownOpen(!isTypeDropdownOpen); setIsThreadDropdownOpen(false); }}
-                    className="w-full flex items-center justify-between bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[#FBBF24] transition-colors"
+                    className="w-full flex items-center justify-between bg-[var(--surface-card)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
                   >
                     <span className="capitalize">{isCustomType ? (customTypeInput || "Custom") : type}</span>
                     <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
@@ -261,7 +261,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                         <button 
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setIsCustomType(true); setIsTypeDropdownOpen(false); }}
-                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[#FBBF24] flex items-center gap-2"
+                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[var(--surface-hover)] text-[var(--accent)] flex items-center gap-2"
                         >
                           <Plus className="w-3 h-3" /> Add custom type
                         </button>
@@ -276,7 +276,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                     placeholder="Enter custom type and press save..."
                     value={customTypeInput}
                     onChange={(e) => setCustomTypeInput(e.target.value)}
-                    className="input mt-3 !border-[#FBBF24] focus:!border-[#FBBF24]"
+                    className="input mt-3 !border-[var(--accent)] focus:!border-[var(--accent)]"
                   />
                 )}
               </div>
@@ -308,9 +308,9 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
 
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Tags</label>
-                <div className="p-2 border border-[var(--color-border)] rounded-xl bg-[rgba(255,255,255,0.03)] focus-within:border-[#FBBF24] transition-colors flex flex-wrap gap-2">
-                  {tags.map(t => (
-                    <span key={t} className="tag-pill !bg-[#FBBF24]/15 !text-[#FBBF24] !border-[#FBBF24]/30">
+                <div className="p-2 border border-[var(--color-border)] rounded-xl bg-[var(--surface-input)] focus-within:border-[var(--accent)] transition-colors flex flex-wrap gap-2">
+                  {tags.map((t) => (
+                    <span key={t} className="tag-pill !bg-[var(--accent-dim)] !text-[var(--accent)] !border-[var(--accent-border)]">
                       {t}
                       <button type="button" onClick={() => handleRemoveTag(t)} className="remove">
                         <X className="w-3 h-3" />
@@ -333,7 +333,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                   <button 
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
-                    className="w-full flex items-center justify-between bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[#FBBF24] transition-colors"
+                    className="w-full flex items-center justify-between bg-[var(--surface-card)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
                   >
                     <span className="truncate pr-4">
                       {linkedThreadId ? threads.find(t => t.id === linkedThreadId)?.title || "Unknown Thread" : "-- No Thread Linked --"}

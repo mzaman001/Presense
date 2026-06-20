@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { RELATIONSHIP_COLORS } from "@/lib/constants";
 import { useAppStore } from "@/store/useAppStore";
-import { TintedButton } from "@/components/ui/TintedButton";
 
 import {
   DndContext,
@@ -161,6 +160,11 @@ export default function PeoplePage() {
 
   return (
     <div>
+      <div className="flex items-center justify-end mb-4">
+        <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-card-title hover:bg-[var(--accent-dim-hover)] transition-colors">
+          <Plus className="w-4 h-4" /> Add person
+        </button>
+      </div>
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
@@ -170,14 +174,14 @@ export default function PeoplePage() {
           {/* Today's meetings */}
           {today.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Today&apos;s Briefings</h2>
-                  <span className="w-2 h-2 rounded-full bg-[#F472B6] animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse shadow-[var(--shadow-accent-glow)]" />
                 </div>
-                <TintedButton onClick={() => setIsPanelOpen(true)} variant="remember" icon={<Plus className="w-4 h-4" />}>
-                  Add person
-                </TintedButton>
+                <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-card-title hover:bg-[var(--accent-dim-hover)] transition-colors">
+                  <Plus className="w-4 h-4" /> Add person
+                </button>
               </div>
               <div className="space-y-3">
                 {today.map((person, i) => {
@@ -186,22 +190,22 @@ export default function PeoplePage() {
                   return (
                     <motion.div key={person.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                       <Link href={`/remember/people/${person.id}`}>
-                        <GlassCard className="p-5 border-[rgba(244,114,182,0.3)] hover:scale-[1.01] transition-transform cursor-pointer">
+                        <GlassCard className="p-5 hover:scale-[1.01] hover:-translate-y-px transition-all duration-200 ease-out cursor-pointer hover:border-[var(--accent-border)]">
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
                               <Avatar name={person.name} color={relColor} />
                               <div>
                                 <p className="text-sm font-semibold text-[var(--color-text-1)]">{person.name}</p>
-                                <p className="text-xs text-[#F472B6] flex items-center gap-1">
+                                <p className="text-xs text-[var(--accent)] flex items-center gap-1">
                                   <Clock className="w-3 h-3" /> Meeting at {new Date(person.next_meeting!).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                                 </p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#F472B6] bg-[rgba(244,114,182,0.1)] border border-[rgba(244,114,182,0.2)] px-2 py-1 rounded-full">Briefing Ready</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent-dim)] border border-[var(--accent-border)] px-2 py-1 rounded-full">Briefing Ready</span>
                           </div>
                           {person.notes?.slice(-3).reverse().map((note, ni) => (
                             <p key={ni} className="text-xs text-[var(--color-text-3)] flex items-start gap-1.5 mt-1">
-                              <ChevronRight className="w-3 h-3 shrink-0 mt-0.5 text-[#F472B6]" /> {note.text}
+                              <ChevronRight className="w-3 h-3 shrink-0 mt-0.5 text-[var(--accent)]" /> {note.text}
                             </p>
                           ))}
                         </GlassCard>
@@ -215,12 +219,15 @@ export default function PeoplePage() {
 
           {/* All contacts with DND */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-[var(--color-text-1)]">All Contacts</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--color-text-1)] inline">All Contacts</h2>
+                <span className="text-xs text-[var(--color-text-3)] font-normal ml-2">{others.length} people</span>
+              </div>
               {today.length === 0 && (
-                <TintedButton onClick={() => setIsPanelOpen(true)} variant="remember" icon={<Plus className="w-4 h-4" />}>
-                  Add person
-                </TintedButton>
+                <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-card-title hover:bg-[var(--accent-dim-hover)] transition-colors">
+                  <Plus className="w-4 h-4" /> Add person
+                </button>
               )}
             </div>
             {others.length === 0 && today.length === 0 ? (
