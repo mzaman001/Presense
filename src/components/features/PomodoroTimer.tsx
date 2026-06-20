@@ -276,7 +276,7 @@ export function PomodoroTimer() {
 
   const handleEnd = () => {
     const spent = duration - displayTime;
-    if (spent > 60) logSession(phase, Math.round(spent / 60));
+    if (spent > 60 && phase === "work") logSession(phase, Math.round(spent / 60));
     setShowConfirmEnd(false);
     saveTimerState(null);
     setActiveTimer(null);
@@ -443,14 +443,20 @@ export function PomodoroTimer() {
           </div>
         </div>
 
-        <ConfirmModal
-          isOpen={showConfirmEnd}
-          onClose={() => setShowConfirmEnd(false)}
-          onConfirm={handleEnd}
-          title="End this session?"
-          description={(duration - displayTime) > 60 ? "Your progress so far will be saved." : "This session was too short to be saved."}
-          confirmLabel="End Session"
-        />
+          <ConfirmModal
+            isOpen={showConfirmEnd}
+            onClose={() => setShowConfirmEnd(false)}
+            onConfirm={handleEnd}
+            title={phase === "work" ? "End focus session?" : "End break early?"}
+            description={
+              phase === "work"
+                ? (duration - displayTime) > 60
+                  ? `If you end now, ${Math.round((duration - displayTime) / 60)} minutes will be saved.`
+                  : "This session is too short to be saved."
+                : "This will close the timer."
+            }
+            confirmLabel={phase === "work" ? "End Session" : "Close Timer"}
+          />
       </motion.div>
     </AnimatePresence>
   );
