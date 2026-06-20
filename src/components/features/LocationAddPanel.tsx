@@ -111,7 +111,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
             transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="fixed top-0 right-0 h-[100dvh] w-full md:top-3 md:right-3 md:h-[calc(100dvh-24px)] md:w-[420px] md:rounded-2xl bg-[var(--color-surface)] backdrop-blur-2xl border-l md:border border-[var(--color-border)] z-50 flex flex-col shadow-2xl overflow-hidden"
           >
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)]">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] md:rounded-t-2xl">
               <h2 className="text-lg font-bold text-[var(--color-text-1)]">{itemToEdit ? "Edit Location" : "Log Location"}</h2>
               <button onClick={onClose} className="btn-icon">
                 <X size={16} strokeWidth={1.5} className="shrink-0" />
@@ -156,7 +156,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
               </div>
             </div>
 
-            <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3">
+            <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3 md:rounded-b-2xl">
               {itemToEdit && (
                 <button
                   onClick={() => setDeleteConfirm(true)}
