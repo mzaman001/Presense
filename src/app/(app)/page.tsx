@@ -354,8 +354,8 @@ export default function HomeDashboard() {
           <GlassCard hoverable className="h-full flex flex-col justify-between">
             <Users size={20} strokeWidth={1.5} className="text-[var(--color-people)] mb-4 shrink-0" />
             <div>
-              <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={people.filter(p => p.next_meeting).length} /></div>
-              <div className="text-xs text-[var(--color-text-3)] mt-1">Meetings Today</div>
+              <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={people.length} /></div>
+              <div className="text-xs text-[var(--color-text-3)] mt-1">People Tracked</div>
             </div>
           </GlassCard>
         </Link>
