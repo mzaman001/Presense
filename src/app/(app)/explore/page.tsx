@@ -28,7 +28,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   link: Link2, book: BookOpen, quote: Quote, concept: Lightbulb, other: Star,
 };
 const TYPE_COLORS: Record<string, string> = {
-  link: "var(--color-accent)", book: "#FBBF24", quote: "#F472B6", concept: "#2DD4BF", other: "#FBBF24",
+  link: "var(--color-accent)", book: "var(--accent)", quote: "#F472B6", concept: "#2DD4BF", other: "var(--accent)",
 };
 
 const FILTERS = ["All Saved", "Links", "Books", "Quotes", "Concepts"];
@@ -109,7 +109,7 @@ export default function ExplorePage() {
             </div>
           </div>
         </div>
-        <button onClick={() => setIsAddDrawerOpen(true)} className="btn-secondary !text-[#FBBF24] !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] hover:!bg-[rgba(251,191,36,0.2)]">
+        <button onClick={() => setIsAddDrawerOpen(true)} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
           <Plus className="w-4 h-4" /> Save item
         </button>
       </div>
@@ -131,7 +131,7 @@ export default function ExplorePage() {
             className={cn(
               "text-xs px-3 py-1.5 rounded-full border transition-all",
               filter === f
-                ? "bg-[#FBBF24] text-[var(--color-background)] border-[#FBBF24] font-semibold"
+                ? "bg-[var(--accent)] text-[var(--color-background)] border-[var(--accent)] font-semibold"
                 : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
             )}
           >{f}</button>
@@ -150,13 +150,13 @@ export default function ExplorePage() {
         <div className="grid grid-cols-1 gap-4">
           {items.map((item, i) => {
             const Icon = TYPE_ICONS[item.type] ?? Star;
-            const color = TYPE_COLORS[item.type] ?? "#FBBF24";
+            const color = TYPE_COLORS[item.type] ?? "var(--accent)";
             const isUnread = !item.revisited_at;
             return (
               <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <GlassCard
                   onClick={() => setEditItem(item)}
-                  className={cn("p-5 hover:scale-[1.01] transition-transform relative group cursor-pointer hover:border-[var(--color-accent)]/30", isUnread && "border-[rgba(251,191,36,0.2)]")}
+                  className={cn("p-5 hover:scale-[1.01] transition-transform relative group cursor-pointer hover:border-[var(--color-accent)]/30", isUnread && "border-[var(--accent-dim-hover)]")}
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}22` }}>
@@ -166,7 +166,7 @@ export default function ExplorePage() {
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{item.title}</p>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24]" />}
+                        {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />}
                         <span className="text-[10px] font-bold uppercase text-[var(--color-text-3)]">{item.type}</span>
                       </div>
                     </div>

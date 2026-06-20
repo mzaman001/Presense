@@ -291,7 +291,7 @@ export default function DoPage() {
             </button>
           </div>
         </div>
-        <button onClick={() => { setTaskToEdit(null); setIsPanelOpen(true); }} className="btn-secondary !text-[#F87171] !border-[rgba(248,113,113,0.25)] !bg-[rgba(248,113,113,0.12)] hover:!bg-[rgba(248,113,113,0.2)]">
+        <button onClick={() => { setTaskToEdit(null); setIsPanelOpen(true); }} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
           <Plus className="w-4 h-4" /> Add task
         </button>
       </div>

@@ -160,11 +160,6 @@ export default function PeoplePage() {
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-4">
-        <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-card-title hover:bg-[var(--accent-dim-hover)] transition-colors">
-          <Plus className="w-4 h-4" /> Add person
-        </button>
-      </div>
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />

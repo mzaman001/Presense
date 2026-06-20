@@ -171,7 +171,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] transition-colors"
+              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] transition-colors"
             />
           </div>
 
@@ -180,7 +180,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] transition-colors"
+              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] transition-colors"
             />
           </div>
 
@@ -192,7 +192,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                 <button 
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setIsTypeDropdownOpen(!isTypeDropdownOpen); setIsThreadDropdownOpen(false); }}
-                  className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[#FBBF24] transition-colors"
+                  className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
                 >
                   <span className="capitalize">{isCustomType ? (customTypeInput || "Custom") : type}</span>
                   <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
@@ -216,7 +216,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                       <button 
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setIsCustomType(true); setIsTypeDropdownOpen(false); }}
-                        className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[#FBBF24] flex items-center gap-2"
+                        className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--accent)] flex items-center gap-2"
                       >
                         <Plus className="w-3 h-3" /> Custom Type
                       </button>
@@ -232,16 +232,16 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                   placeholder="Enter custom type..."
                   value={customTypeInput}
                   onChange={(e) => setCustomTypeInput(e.target.value)}
-                  className="w-full mt-3 bg-[var(--color-surface)] border border-[#FBBF24] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] transition-colors"
+                  className="w-full mt-3 bg-[var(--color-surface)] border border-[var(--accent)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] transition-colors"
                 />
               )}
             </div>
             
             <div>
               <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Tags</label>
-              <div className="p-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] focus-within:border-[#FBBF24] transition-colors flex flex-wrap gap-2">
+              <div className="p-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] focus-within:border-[var(--accent)] transition-colors flex flex-wrap gap-2">
                 {tags.map(t => (
-                  <span key={t} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[rgba(251,191,36,0.15)] text-[#FBBF24] text-xs font-medium">
+                  <span key={t} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--accent-dim)] text-[var(--accent)] text-xs font-medium">
                     {t}
                     <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-[var(--color-text-1)] transition-colors">
                       <X className="w-3 h-3" />
@@ -265,7 +265,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
               <button 
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
-                className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[#FBBF24] transition-colors"
+                className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
               >
                 <span className="truncate pr-4">
                   {linkedThreadId ? threads.find(t => t.id === linkedThreadId)?.title || "Unknown Thread" : "-- No Thread Linked --"}
@@ -306,14 +306,14 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={5}
-              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[#FBBF24] resize-none"
+              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] resize-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg bg-[#FBBF24] text-[var(--color-background)] font-semibold hover:bg-[#F59E0B] transition-colors disabled:opacity-50"
+            className="flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--color-background)] font-semibold hover:bg-[#F59E0B] transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Changes

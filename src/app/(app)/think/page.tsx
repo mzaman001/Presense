@@ -117,7 +117,7 @@ export default function ThinkPage() {
     const { data, error } = await supabase.from("threads").insert({
       user_id: user.id,
       title: "Untitled Thread",
-      color_accent: "#2DD4BF",
+      color_accent: "var(--accent)",
       is_pinned: false
     }).select().single();
 
@@ -204,7 +204,7 @@ export default function ThinkPage() {
           <button onClick={handleDailyNote} className="btn-secondary !text-[#FBBF24] !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] hover:!bg-[rgba(251,191,36,0.2)] hidden sm:flex">
             <Sparkles className="w-4 h-4" /> Daily Note
           </button>
-          <button onClick={handleNewThread} className="btn-secondary !text-[#2DD4BF] !border-[rgba(45,212,191,0.25)] !bg-[rgba(45,212,191,0.12)] hover:!bg-[rgba(45,212,191,0.2)]">
+          <button onClick={handleNewThread} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
             <Plus className="w-4 h-4" /> New thread
           </button>
         </div>
@@ -238,19 +238,19 @@ export default function ThinkPage() {
           {filteredThreads.filter(t => t.stale_prompt).length > 0 && (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-[#2DD4BF]" />
+                <Sparkles className="w-4 h-4 text-[var(--accent)]" />
                 <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Stale Threads</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredThreads.filter(t => t.stale_prompt).map((thread, i) => (
                   <motion.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                     <Link href={`/think/${thread.id}`}>
-                      <GlassCard className="p-4 bg-[rgba(45,212,191,0.05)] border-[rgba(45,212,191,0.2)] hover:bg-[rgba(45,212,191,0.1)] transition-colors cursor-pointer h-full">
+                      <GlassCard className="p-4 bg-[var(--surface-input)] border-[var(--accent-dim-hover)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer h-full">
                         <div className="flex items-start gap-3">
-                          <div className="w-1 self-stretch rounded-full shrink-0 bg-[#2DD4BF]" />
+                          <div className="w-1 self-stretch rounded-full shrink-0 bg-[var(--accent)]" />
                           <div>
                             <p className="text-sm font-semibold text-[var(--color-text-1)] mb-1">{thread.title}</p>
-                            <p className="text-xs text-[#2DD4BF] font-medium leading-relaxed">{thread.stale_prompt}</p>
+                            <p className="text-xs text-[var(--accent)] font-medium leading-relaxed">{thread.stale_prompt}</p>
                           </div>
                         </div>
                       </GlassCard>
@@ -279,7 +279,7 @@ export default function ThinkPage() {
                       className={cn(
                         "absolute right-3 top-3 p-1.5 rounded-lg transition-all",
                         thread.is_pinned 
-                          ? "opacity-100 text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.1)]" 
+                          ? "opacity-100 text-[var(--accent)] hover:bg-[var(--surface-hover)]" 
                           : "opacity-0 group-hover:opacity-100 text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--color-surface)]"
                       )}
                     >
@@ -290,7 +290,7 @@ export default function ThinkPage() {
                     <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: thread.color_accent }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        {!showArchive && !showTrash && thread.is_pinned && <Pin className="w-3.5 h-3.5 text-[#2DD4BF] fill-current" />}
+                        {!showArchive && !showTrash && thread.is_pinned && <Pin className="w-3.5 h-3.5 text-[var(--accent)] fill-current" />}
                         <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug pr-6">{thread.title}</p>
                       </div>
                       {thread.entries?.length > 0 && (
@@ -303,7 +303,7 @@ export default function ThinkPage() {
                           {thread.entries?.length ?? 0} entries · Updated {timeAgo(thread.last_updated)}
                         </span>
                         {thread.stale_prompt && (
-                          <span className="flex items-center gap-1 text-[10px] text-[#2DD4BF]">
+                          <span className="flex items-center gap-1 text-[10px] text-[var(--accent)]">
                             <Sparkles className="w-3 h-3" /> Revisit
                           </span>
                         )}
