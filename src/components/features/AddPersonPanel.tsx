@@ -11,6 +11,8 @@ interface AddPersonPanelProps {
   onPersonAdded?: () => void;
 }
 
+import { RELATIONSHIP_COLORS } from "@/lib/constants";
+
 const COLORS = ['#E5B41E', '#7692FF', '#2DD4BF', '#F472B6', '#4ADE80', '#8B7CF8'];
 export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPanelProps) {
   const [name, setName] = useState("");
@@ -121,19 +123,26 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                   Relationship
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {relationships.map((rel: string) => (
-                    <button
-                      key={rel}
-                      onClick={() => setRelationship(rel)}
-                      className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all capitalize ${
-                        relationship.toLowerCase() === rel.toLowerCase()
-                          ? "bg-[var(--accent)] text-[var(--color-background)] border-[var(--accent)]"
-                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)] hover:text-[var(--color-text-1)]"
-                      }`}
-                    >
-                      {rel}
-                    </button>
-                  ))}
+                  {relationships.map((rel: string) => {
+                    const cColor = RELATIONSHIP_COLORS[rel] || "var(--color-text-3)";
+                    const isActive = relationship.toLowerCase() === rel.toLowerCase();
+                    return (
+                      <button
+                        key={rel}
+                        onClick={() => setRelationship(isActive ? "" : rel)}
+                        style={{
+                          borderColor: isActive ? cColor : `${cColor}40`,
+                          backgroundColor: isActive ? `${cColor}20` : "transparent",
+                          color: isActive ? cColor : "var(--color-text-3)"
+                        }}
+                        className={`px-4 py-2 rounded-xl text-sm capitalize transition-all border ${
+                          isActive ? "font-semibold shadow-sm" : "hover:bg-[var(--color-surface)]"
+                        }`}
+                      >
+                        {rel}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

@@ -280,13 +280,13 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         }
 
         let finalTitle = title.trim();
-        if (parsedDeadline) {
-          // compromise doesn't have great TS types
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const doc = nlp(finalTitle) as any;
-          const dates = doc.dates().json();
-          if (dates && dates.length > 0 && dates[0].text) {
-            finalTitle = finalTitle.replace(new RegExp(dates[0].text, 'i'), '').replace(/\s+/g, ' ').trim();
+        if (parsedDeadline && !isManualDate) {
+          const parsedResults = chrono.parse(finalTitle);
+          if (parsedResults && parsedResults.length > 0) {
+            parsedResults.forEach(r => {
+              finalTitle = finalTitle.replace(r.text, '');
+            });
+            finalTitle = finalTitle.replace(/\s+/g, ' ').trim();
             finalTitle = finalTitle.replace(/^(remind me to|remember to|need to|have to|must|gotta)\s+/i, '');
             if (finalTitle.length > 0) finalTitle = finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
           }
@@ -581,21 +581,27 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Category</label>
                 <div className="flex flex-wrap gap-2 items-center">
-                  {categoriesList.map((cat: string) => (
-                    <motion.button
-                      key={cat}
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => setCategory(cat)}
-                      style={{}}
-                      className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
-                        category === cat
-                          ? "bg-[var(--accent)] text-[var(--color-background)] border-[var(--accent)] font-semibold"
-                          : "bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)] hover:text-[var(--color-text-1)]"
-                      }`}
-                    >
-                      {cat}
-                    </motion.button>
-                  ))}
+                  {categoriesList.map((cat: string) => {
+                    const cColor = DEFAULT_DO_COLORS[cat] || "var(--color-text-3)";
+                    const isActive = category === cat;
+                    return (
+                      <motion.button
+                        key={cat}
+                        whileTap={{ scale: 0.92 }}
+                        onClick={() => setCategory(isActive ? "" : cat)}
+                        style={{
+                          borderColor: isActive ? cColor : `${cColor}40`,
+                          backgroundColor: isActive ? `${cColor}20` : "transparent",
+                          color: isActive ? cColor : "var(--color-text-3)"
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
+                          isActive ? "font-medium shadow-sm" : "hover:bg-[var(--color-surface)]"
+                        }`}
+                      >
+                        {cat}
+                      </motion.button>
+                    );
+                  })}
                   {isAddingCategory ? (
                     <input
                       autoFocus
