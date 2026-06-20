@@ -202,6 +202,8 @@
   /* === ORB ANIMATION === */
   --orb-animation-duration: 12s;
   
+  --bg-backdrop: rgba(0, 0, 0, 0.60);
+
   color-scheme: dark;
 }
 
@@ -210,6 +212,7 @@ html.light {
   --bg-base: #FBF6EE;
   --bg-elevated: #F5EDD8;
   --bg-overlay: rgba(251, 246, 238, 0.65);
+  --bg-backdrop: rgba(255, 255, 255, 0.40);
 
   /* === AMBIENT ORB COLOURS === */
   --orb-1: rgba(229, 180, 30, 0.85);
@@ -381,6 +384,7 @@ html.theme-navy.light {
   --bg-base: #EEF3FF;
   --bg-elevated: #E4ECFF;
   --bg-overlay: rgba(238, 243, 255, 0.65);
+  --bg-backdrop: rgba(255, 255, 255, 0.40);
   --orb-1: rgba(118, 146, 255, 0.80);
   --orb-2: rgba(171, 210, 250, 0.90);
   --orb-3: rgba(27, 44, 193, 0.65);
@@ -437,6 +441,7 @@ html.theme-forest.light {
   --bg-base: #F5F9F0;
   --bg-elevated: #ECFAE3;
   --bg-overlay: rgba(245, 249, 240, 0.65);
+  --bg-backdrop: rgba(255, 255, 255, 0.40);
   --orb-1: rgba(101, 116, 58, 0.75);
   --orb-2: rgba(239, 221, 141, 0.85);
   --orb-3: rgba(57, 79, 73, 0.60);

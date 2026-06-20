@@ -560,10 +560,10 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 <label className="text-label text-[var(--text-3)] block mb-2">Priority</label>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { val: 1, label: "Urgent", colorClass: "bg-[#F87171]/10 text-[#F87171] border-[#F87171]/30 hover:bg-[#F87171]/20", activeClass: "bg-[#F87171] text-white border-[#F87171]" },
-                    { val: 2, label: "High", colorClass: "bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/30 hover:bg-[#FBBF24]/20", activeClass: "bg-[#FBBF24] text-amber-950 border-[#FBBF24]" },
-                    { val: 3, label: "Medium", colorClass: "bg-[#2DD4BF]/10 text-[#2DD4BF] border-[#2DD4BF]/30 hover:bg-[#2DD4BF]/20", activeClass: "bg-[#2DD4BF] text-teal-950 border-[#2DD4BF]" },
-                    { val: 4, label: "Low", colorClass: "bg-[#9CA3AF]/10 text-[#9CA3AF] border-[#9CA3AF]/30 hover:bg-[#9CA3AF]/20", activeClass: "bg-[#9CA3AF] text-gray-950 border-[#9CA3AF]" }
+                    { val: 1, label: "Urgent", colorClass: "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20", activeClass: "bg-red-500 text-white border-red-500" },
+                    { val: 2, label: "High", colorClass: "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20", activeClass: "bg-amber-500 text-white border-amber-500" },
+                    { val: 3, label: "Medium", colorClass: "bg-teal-500/10 text-teal-500 border-teal-500/30 hover:bg-teal-500/20", activeClass: "bg-teal-500 text-white border-teal-500" },
+                    { val: 4, label: "Low", colorClass: "bg-slate-500/10 text-slate-500 border-slate-500/30 hover:bg-slate-500/20", activeClass: "bg-slate-500 text-white border-slate-500" }
                   ].map((p) => (
                     <motion.button
                       key={p.val}

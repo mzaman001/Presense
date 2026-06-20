@@ -13,7 +13,15 @@ interface AddPersonPanelProps {
 
 import { RELATIONSHIP_COLORS } from "@/lib/constants";
 
-const COLORS = ['#E5B41E', '#7692FF', '#2DD4BF', '#F472B6', '#4ADE80', '#8B7CF8'];
+const COLORS = [
+  '#3B82F6', // Blue
+  '#10B981', // Emerald
+  '#F59E0B', // Amber
+  '#EF4444', // Red
+  '#8B5CF6', // Purple
+  '#EC4899', // Pink
+  '#64748B'  // Slate
+];
 export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPanelProps) {
   const [name, setName] = useState("");
   const [relationship, setRelationship] = useState("Friend");
