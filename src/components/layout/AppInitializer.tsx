@@ -7,7 +7,7 @@ export function AppInitializer({ initialSettings }: { initialSettings?: any }) {
   const { userSettings, setUserSettings } = useAppStore();
 
   useEffect(() => {
-    if (initialSettings && Object.keys(userSettings).length === 0) {
+    if (initialSettings && (!userSettings || Object.keys(userSettings).length === 0)) {
       setUserSettings(initialSettings);
     }
   }, [initialSettings, userSettings, setUserSettings]);
@@ -21,8 +21,8 @@ export function AppInitializer({ initialSettings }: { initialSettings?: any }) {
     const reduceMotion = userSettings?.reduce_motion || false;
 
     // Apply Theme
-    document.documentElement.classList.remove('theme-blue', 'theme-forest');
-    if (theme === 'blue') document.documentElement.classList.add('theme-blue');
+    document.documentElement.classList.remove('theme-navy', 'theme-forest');
+    if (theme === 'blue') document.documentElement.classList.add('theme-navy');
     if (theme === 'forest') document.documentElement.classList.add('theme-forest');
 
     // Apply Color Mode

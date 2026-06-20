@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database, Users, Plus, Trash2 } from "lucide-react";
@@ -202,7 +202,7 @@ function CategoryManager({
 
 export function SettingsModal() {
   const { isSettingsModalOpen, setSettingsModalOpen, setUserSettings } = useAppStore();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   
   const [activeTab, setActiveTab] = useState("account");

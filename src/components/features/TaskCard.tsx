@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -37,7 +37,7 @@ export const TaskCard = React.memo(({
   const userSettings = useAppStore(s => s.userSettings);
   const setActiveTimer = useAppStore(s => s.setActiveTimer);
   const markMutation = useAppStore(s => s.markMutation);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const label = formatDeadline(task.deadline);
   const isOverdue = label === "Overdue";

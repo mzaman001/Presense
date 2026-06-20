@@ -1,10 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 
 export function useRealtime(table: string, onUpdate: () => void) {
+  const onUpdateRef = useRef(onUpdate);
+
   useEffect(() => {
-    const supabase = createClient();
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
+
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
     
     // Create a generic subscription for INSERT, UPDATE, DELETE on the specified table
     const channel = supabase
@@ -23,7 +30,7 @@ export function useRealtime(table: string, onUpdate: () => void) {
           }
 
           console.log(`[Realtime] Update on ${table}:`, payload);
-          onUpdate();
+          onUpdateRef.current();
         }
       )
       .subscribe();
@@ -31,5 +38,5 @@ export function useRealtime(table: string, onUpdate: () => void) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, onUpdate]);
+  }, [table, supabase]);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { Inbox, Loader2, FolderInput, CheckCircle2, MessageSquare, Compass, Brain, X } from "lucide-react";
 import { ContextualTip } from "@/components/ui/ContextualTip";
@@ -16,7 +16,7 @@ interface InboxItem {
 }
 
 export default function InboxPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
@@ -46,10 +46,10 @@ export default function InboxPage() {
     setSlidingOut(id);
     setActiveRouteItem(null);
 
-    // Optimistically remove from cache immediately — no flash on refetch
-    queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => old?.filter(i => i.id !== id) ?? []);
-
     setTimeout(async () => {
+      // Optimistically remove from cache after animation starts
+      queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => old?.filter(i => i.id !== id) ?? []);
+
       try {
         if (space === 'do') {
           await supabase.from('items').update({ status: 'active' }).eq('id', id);

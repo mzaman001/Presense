@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
@@ -56,7 +56,7 @@ export function CaptureModal() {
   const [routedItems, setRoutedItems] = useState<RoutedItem[] | null>(null);
   const [taskExtras, setTaskExtras] = useState<{ [idx: number]: { first_step: string; ifthen_trigger: string } }>({});
   const [saved, setSaved] = useState(false);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

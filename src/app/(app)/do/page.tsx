@@ -10,7 +10,7 @@ import { TaskCard } from "@/components/features/TaskCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Clock, Play, Check, Zap, Calendar } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
-import { cn, formatRRule } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
@@ -28,9 +28,6 @@ interface Task {
   recurrence?: string | null;
 }
 
-
-
-import { useSearchParams } from "next/navigation";
 
 const Column = ({ 
   title, 
@@ -95,7 +92,6 @@ const Column = ({
 
 export default function DoPage() {
   const supabase = useMemo(() => createClient(), []);
-  const searchParams = useSearchParams();
   const initialFilter = "all";
   
   const queryClient = useQueryClient();

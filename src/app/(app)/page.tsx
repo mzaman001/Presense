@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check } from "lucide-react";
@@ -47,20 +48,12 @@ interface ExploreItem {
 
 export default function HomeDashboard() {
   const supabase = useMemo(() => createClient(), []);
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [people, setPeople] = useState<PersonItem[]>([]);
-  const [threads, setThreads] = useState<ThreadItem[]>([]);
-  const [explores, setExplores] = useState<ExploreItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const { userSettings, setUserSettings, setActiveTimer } = useAppStore();
+  
   const [taskToEdit, setTaskToEdit] = useState<TaskItem | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
-
-  const [inboxItems, setInboxItems] = useState<TaskItem[]>([]);
   const [showReview, setShowReview] = useState(false);
-  const [doneTasks, setDoneTasks] = useState<TaskItem[]>([]);
-
-  const [pomodorosThisWeek, setPomodorosThisWeek] = useState(0);
   const [completing, setCompleting] = useState<string | null>(null);
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
 
@@ -70,6 +63,76 @@ export default function HomeDashboard() {
     return () => window.removeEventListener('click', handleClick);
   }, []);
 
+  const { data: dashboardData, isLoading: loading } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No user");
+
+      const now = new Date();
+      const currentDay = now.getDay() || 7;
+      const mondayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay + 1, 0, 0, 0, 0);
+
+      const [tasksRes, inboxRes, peopleRes, threadsRes, exploresRes, settingsRes, doneRes, sessionsRes] = await Promise.all([
+        supabase.from("items").select("*").in("status", ["active", "overdue"]),
+        supabase.from("items").select("*").eq("status", "inbox"),
+        supabase.from("people").select("*"),
+        supabase.from("threads").select("*"),
+        supabase.from("explores").select("*").is("revisited_at", null),
+        supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
+        supabase.from("items").select("*").eq("status", "done").gte("completed_at", mondayStart.toISOString()).order("completed_at", { ascending: false }),
+        supabase.from("session_logs").select("*").gte("completed_at", mondayStart.toISOString()).eq("type", "work")
+      ]);
+
+      let upNext: TaskItem[] = [];
+      if (tasksRes.data) {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        
+        const sorted = tasksRes.data.sort((a, b) => {
+          const aPrio = a.priority ?? 4;
+          const bPrio = b.priority ?? 4;
+
+          const aOverdue = a.deadline && new Date(a.deadline) < now;
+          const bOverdue = b.deadline && new Date(b.deadline) < now;
+          if (aOverdue && !bOverdue) return -1;
+          if (!aOverdue && bOverdue) return 1;
+
+          const aToday = a.deadline && new Date(a.deadline).getTime() >= todayStart && new Date(a.deadline).getTime() < todayStart + 86400000;
+          const bToday = b.deadline && new Date(b.deadline).getTime() >= todayStart && new Date(b.deadline).getTime() < todayStart + 86400000;
+
+          if (aPrio === 1 && bPrio !== 1) return -1;
+          if (bPrio === 1 && aPrio !== 1) return 1;
+
+          if (aToday && aPrio === 2 && (!bToday || bPrio !== 2)) return -1;
+          if (bToday && bPrio === 2 && (!aToday || aPrio !== 2)) return 1;
+
+          if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+          if (a.deadline) return -1;
+          if (b.deadline) return 1;
+
+          return aPrio - bPrio;
+        });
+        upNext = sorted.filter(t => !t.snoozed_until || new Date(t.snoozed_until) <= now);
+      }
+
+      if (settingsRes.data) {
+        setUserSettings(settingsRes.data);
+      }
+
+      return {
+        tasks: upNext,
+        inboxItems: inboxRes.data || [],
+        people: peopleRes.data || [],
+        threads: threadsRes.data || [],
+        explores: exploresRes.data || [],
+        doneTasks: doneRes.data || [],
+        pomodorosThisWeek: sessionsRes.data ? sessionsRes.data.length : 0
+      };
+    }
+  });
+
+  const { tasks = [], inboxItems = [], people = [], threads = [], explores = [], doneTasks = [], pomodorosThisWeek = 0 } = dashboardData || {};
+
   const completeTask = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setCompleting(id);
@@ -77,7 +140,7 @@ export default function HomeDashboard() {
       const { error } = await supabase.from('items').update({ status: 'done', completed_at: new Date().toISOString() }).eq('id', id);
       if (error) throw error;
       toast.success('Task completed');
-      fetchDashboardData();
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     } catch {
       toast.error('Failed to complete task');
     } finally {
@@ -102,7 +165,7 @@ export default function HomeDashboard() {
         await supabase.from('threads').insert({ user_id: item.user_id, title: item.title, status: 'active', color_accent: '#2DD4BF' });
       }
       toast.success(`Routed to ${space}`);
-      fetchDashboardData();
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     } catch {
       toast.error('Failed to route item');
     }
@@ -111,82 +174,18 @@ export default function HomeDashboard() {
   const dismissInboxItem = async (id: string) => {
     try {
       await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
-      fetchDashboardData();
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     } catch {
       toast.error('Failed to dismiss');
     }
   };
 
-  const fetchDashboardData = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const refreshData = () => queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
-    const now = new Date();
-    const currentDay = now.getDay() || 7; // Make Sunday 7 instead of 0
-    const mondayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay + 1, 0, 0, 0, 0);
-
-    const [tasksRes, inboxRes, peopleRes, threadsRes, exploresRes, settingsRes, doneRes, sessionsRes] = await Promise.all([
-      supabase.from("items").select("*").in("status", ["active", "overdue"]),
-      supabase.from("items").select("*").eq("status", "inbox"),
-      supabase.from("people").select("*"),
-      supabase.from("threads").select("*"),
-      supabase.from("explores").select("*").is("revisited_at", null),
-      supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
-      supabase.from("items").select("*").eq("status", "done").gte("completed_at", mondayStart.toISOString()).order("completed_at", { ascending: false }),
-      supabase.from("session_logs").select("*").gte("completed_at", mondayStart.toISOString()).eq("type", "work")
-    ]);
-    
-    if (tasksRes.data) {
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      
-      const sorted = tasksRes.data.sort((a, b) => {
-        const aPrio = a.priority ?? 4;
-        const bPrio = b.priority ?? 4;
-
-        const aOverdue = a.deadline && new Date(a.deadline) < now;
-        const bOverdue = b.deadline && new Date(b.deadline) < now;
-        if (aOverdue && !bOverdue) return -1;
-        if (!aOverdue && bOverdue) return 1;
-
-        const aToday = a.deadline && new Date(a.deadline).getTime() >= todayStart && new Date(a.deadline).getTime() < todayStart + 86400000;
-        const bToday = b.deadline && new Date(b.deadline).getTime() >= todayStart && new Date(b.deadline).getTime() < todayStart + 86400000;
-
-        // Any P1 task goes to the very top (Focus Hero), ignoring if it's today or not (but overdue still wins above)
-        if (aPrio === 1 && bPrio !== 1) return -1;
-        if (bPrio === 1 && aPrio !== 1) return 1;
-
-        // P2 tasks that are today go next
-        if (aToday && aPrio === 2 && (!bToday || bPrio !== 2)) return -1;
-        if (bToday && bPrio === 2 && (!aToday || aPrio !== 2)) return 1;
-
-        if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-        if (a.deadline) return -1;
-        if (b.deadline) return 1;
-
-        return aPrio - bPrio;
-      });
-      const upNext = sorted.filter(t => !t.snoozed_until || new Date(t.snoozed_until) <= now);
-      setTasks(upNext);
-    }
-    if (inboxRes.data) setInboxItems(inboxRes.data);
-    if (peopleRes.data) setPeople(peopleRes.data);
-    if (threadsRes.data) setThreads(threadsRes.data);
-    if (exploresRes.data) setExplores(exploresRes.data);
-    if (settingsRes.data) setUserSettings(settingsRes.data);
-    if (doneRes.data) setDoneTasks(doneRes.data);
-    if (sessionsRes.data) setPomodorosThisWeek(sessionsRes.data.length);
-    setLoading(false);
-  }, [supabase, setUserSettings]);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
-
-  useRealtime("items", fetchDashboardData);
-  useRealtime("people", fetchDashboardData);
-  useRealtime("threads", fetchDashboardData);
-  useRealtime("explores", fetchDashboardData);
+  useRealtime("items", refreshData);
+  useRealtime("people", refreshData);
+  useRealtime("threads", refreshData);
+  useRealtime("explores", refreshData);
 
   const primaryTask = tasks.length > 0 ? tasks[0] : null;
 
@@ -308,13 +307,12 @@ export default function HomeDashboard() {
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 
                 const snoozedTask = primaryTask;
-                
                 // Optimistic UI update
-                setTasks(prev => prev.filter(t => t.id !== snoozedTask.id));
+                queryClient.setQueryData(['dashboard'], (old: any) => old ? { ...old, tasks: old.tasks.filter((t: any) => t.id !== snoozedTask.id) } : old);
                 
                 useAppStore.getState().markMutation();
                 await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", snoozedTask.id);
-                fetchDashboardData();
+                queryClient.invalidateQueries({ queryKey: ['dashboard'] });
                 
                 toast.success("Snoozed until tomorrow", {
                   duration: 8000,
@@ -323,7 +321,7 @@ export default function HomeDashboard() {
                     onClick: async () => {
                       useAppStore.getState().markMutation();
                       await supabase.from("items").update({ snoozed_until: null }).eq("id", snoozedTask.id);
-                      await fetchDashboardData();
+                      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
                       toast.success("Snooze reversed");
                     }
                   }
@@ -492,7 +490,7 @@ export default function HomeDashboard() {
       )}
       </>
       )}
-      <TaskAddPanel isOpen={isTaskPanelOpen} onClose={() => { setIsTaskPanelOpen(false); setTimeout(() => setTaskToEdit(null), 300); }} onTaskAdded={fetchDashboardData} taskToEdit={taskToEdit} />
+      <TaskAddPanel isOpen={isTaskPanelOpen} onClose={() => { setIsTaskPanelOpen(false); setTimeout(() => setTaskToEdit(null), 300); }} onTaskAdded={refreshData} taskToEdit={taskToEdit} />
     </div>
   );
 }
