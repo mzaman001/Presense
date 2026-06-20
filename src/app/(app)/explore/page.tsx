@@ -114,8 +114,8 @@ export default function ExplorePage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="flex flex-col gap-6">
+        <div className="space-y-6">
           <ContextualTip 
             id="explore_space" 
             title="Things worth keeping" 
@@ -187,11 +187,6 @@ export default function ExplorePage() {
           })}
         </div>
       )}
-        </div>
-        
-        <div className="space-y-6">
-          {/* Sunday Digest card removed as per H-2 */}
-        </div>
       </div>
 
       <ExploreDrawer 
