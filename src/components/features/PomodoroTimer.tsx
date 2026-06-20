@@ -3,10 +3,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
-import { X, Play, Pause, SkipForward, Square } from "lucide-react";
+import { X, Play, Pause, SkipForward, Square, Timer } from "lucide-react";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Phase = "work" | "short_break" | "long_break";
 
@@ -46,8 +48,9 @@ function loadTimerState(): PersistedState | null {
 }
 
 export function PomodoroTimer() {
-  const { activeTimer, setActiveTimer, userSettings } = useAppStore();
+  const { activeTimer, setActiveTimer, userSettings, markMutation } = useAppStore();
   const supabase = createClient();
+  const queryClient = useQueryClient();
 
   const [phase, setPhase]               = useState<Phase>("work");
   const [sessionCount, setSessionCount] = useState(1);
@@ -146,9 +149,26 @@ export function PomodoroTimer() {
     if (userSettings?.pomodoro_sound !== false) {
       new Audio("/notification.mp3").play().catch(() => {});
     }
+    
+    if (phase === "work" && activeTimer) {
+      toast.success(`Session complete! Did you finish '${activeTimer.taskTitle}'?`, {
+        duration: 8000,
+        icon: <Timer className="w-4 h-4 text-[var(--accent)]" />,
+        action: {
+          label: "Mark Done",
+          onClick: async () => {
+            markMutation();
+            await supabase.from("items").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", activeTimer.taskId);
+            queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+            setActiveTimer(null);
+          }
+        }
+      });
+    }
+
     logSession(phase, Math.round(duration / 60));
     advance();
-  }, [phase, duration, logSession, advance, userSettings]);
+  }, [phase, duration, logSession, advance, userSettings, activeTimer, markMutation, supabase, queryClient, setActiveTimer]);
 
   const startPhase = useCallback((p: Phase, count: number, autoStart: boolean) => {
     const d = getDuration(p);

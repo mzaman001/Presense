@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Check, Clock, Play } from "lucide-react";
+import { Check, Clock, Play, Timer } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
@@ -170,6 +170,12 @@ export const TaskCard = React.memo(({
             {label && label !== "Overdue" && label !== "Today" ? label : task.deadline ? "" : "No deadline"}
           </span>
           <div className="flex items-center gap-2">
+            {task.pomodoros_count > 0 && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ background: "rgba(229,180,30,0.08)" }} title={`${task.pomodoros_count} focus sessions completed`}>
+                <Timer size={12} strokeWidth={1.5} style={{ color: "var(--accent)" }} />
+                <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>{task.pomodoros_count}</span>
+              </div>
+            )}
             {(task.snoozed_until && new Date(task.snoozed_until) > new Date()) && (
               <div className="flex items-center gap-1 px-2 py-1 rounded-md" style={{ background: "var(--surface-1)", border: "0.5px solid var(--border-default)" }}>
                 <Clock size={12} strokeWidth={1.5} style={{ color: "var(--text-3)" }} />
