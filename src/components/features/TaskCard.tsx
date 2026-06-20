@@ -21,6 +21,14 @@ function formatDeadline(d: string | null) {
 
 
 
+function formatTimeSpent(minutes: number | undefined | null) {
+  if (!minutes || minutes <= 0) return null;
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
 export const TaskCard = React.memo(({
   task,
   completing,
@@ -170,10 +178,10 @@ export const TaskCard = React.memo(({
             {label && label !== "Overdue" && label !== "Today" ? label : task.deadline ? "" : "No deadline"}
           </span>
           <div className="flex items-center gap-2">
-            {task.pomodoros_count > 0 && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ background: "rgba(229,180,30,0.08)" }} title={`${task.pomodoros_count} focus sessions completed`}>
+            {task.time_spent_minutes > 0 && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ background: "rgba(229,180,30,0.08)" }} title="Time spent on this task">
                 <Timer size={12} strokeWidth={1.5} style={{ color: "var(--accent)" }} />
-                <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>{task.pomodoros_count}</span>
+                <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>{formatTimeSpent(task.time_spent_minutes)}</span>
               </div>
             )}
             {(task.snoozed_until && new Date(task.snoozed_until) > new Date()) && (
