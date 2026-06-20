@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
+import { TintedButton } from "@/components/ui/TintedButton";
 
 interface LocationItem {
   id: string;
@@ -100,11 +101,14 @@ export default function LocationsPage() {
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-[rgba(255,255,255,0.35)]">{items.length} item{items.length !== 1 ? "s" : ""} logged</span>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-[var(--color-text-1)]">All Locations</h2>
+          <span className="text-xs text-[var(--color-text-3)] font-normal">({items.length} items logged)</span>
+        </div>
         {!showAdd && (
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(74,222,128,0.12)] border border-[rgba(74,222,128,0.25)] text-[#4ADE80] text-card-title hover:bg-[rgba(74,222,128,0.2)] transition-colors">
-            <Plus className="w-4 h-4" /> Log item
-          </button>
+          <TintedButton onClick={() => setShowAdd(true)} variant="remember" icon={<Plus className="w-4 h-4" />}>
+            Log item
+          </TintedButton>
         )}
       </div>
 

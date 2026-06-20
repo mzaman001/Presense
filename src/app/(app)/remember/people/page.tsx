@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { RELATIONSHIP_COLORS } from "@/lib/constants";
 import { useAppStore } from "@/store/useAppStore";
+import { TintedButton } from "@/components/ui/TintedButton";
 
 import {
   DndContext,
@@ -174,9 +175,9 @@ export default function PeoplePage() {
                   <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Today&apos;s Briefings</h2>
                   <span className="w-2 h-2 rounded-full bg-[#F472B6] animate-pulse" />
                 </div>
-                <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-card-title hover:bg-[rgba(244,114,182,0.2)] transition-colors">
-                  <Plus className="w-4 h-4" /> Add person
-                </button>
+                <TintedButton onClick={() => setIsPanelOpen(true)} variant="remember" icon={<Plus className="w-4 h-4" />}>
+                  Add person
+                </TintedButton>
               </div>
               <div className="space-y-3">
                 {today.map((person, i) => {
@@ -217,9 +218,9 @@ export default function PeoplePage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-[var(--color-text-1)]">All Contacts</h2>
               {today.length === 0 && (
-                <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-card-title hover:bg-[rgba(244,114,182,0.2)] transition-colors">
-                  <Plus className="w-4 h-4" /> Add person
-                </button>
+                <TintedButton onClick={() => setIsPanelOpen(true)} variant="remember" icon={<Plus className="w-4 h-4" />}>
+                  Add person
+                </TintedButton>
               )}
             </div>
             {others.length === 0 && today.length === 0 ? (
