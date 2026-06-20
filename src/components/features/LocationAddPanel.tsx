@@ -98,7 +98,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
           <motion.div 
             key="backdrop"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed -inset-[100px] bg-black/60 backdrop-blur-sm z-40 transform-gpu"
             onClick={onClose}
           />
         )}
