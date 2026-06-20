@@ -212,10 +212,10 @@ html.light {
   --bg-overlay: rgba(251, 246, 238, 0.88);
 
   /* === AMBIENT ORB COLOURS === */
-  --orb-1: rgba(229, 180, 30, 0.45);
-  --orb-2: rgba(235, 66, 51, 0.30);
-  --orb-3: rgba(255, 210, 120, 0.50);
-  --orb-4: rgba(167, 96, 17, 0.25);
+  --orb-1: rgba(229, 180, 30, 0.85);
+  --orb-2: rgba(235, 66, 51, 0.70);
+  --orb-3: rgba(255, 210, 120, 0.90);
+  --orb-4: rgba(167, 96, 17, 0.65);
 
   /* === SURFACE SYSTEM === */
   --surface-1: rgba(255, 248, 235, 0.72);
@@ -381,10 +381,10 @@ html.theme-navy.light {
   --bg-base: #EEF3FF;
   --bg-elevated: #E4ECFF;
   --bg-overlay: rgba(238, 243, 255, 0.88);
-  --orb-1: rgba(118, 146, 255, 0.40);
-  --orb-2: rgba(171, 210, 250, 0.50);
-  --orb-3: rgba(27, 44, 193, 0.25);
-  --orb-4: rgba(61, 81, 140, 0.20);
+  --orb-1: rgba(118, 146, 255, 0.80);
+  --orb-2: rgba(171, 210, 250, 0.90);
+  --orb-3: rgba(27, 44, 193, 0.65);
+  --orb-4: rgba(61, 81, 140, 0.60);
   --accent: #1B2CC1;
   --accent-hot: #3D518C;
   --accent-deep: #091540;
@@ -437,10 +437,10 @@ html.theme-forest.light {
   --bg-base: #F5F9F0;
   --bg-elevated: #ECFAE3;
   --bg-overlay: rgba(245, 249, 240, 0.88);
-  --orb-1: rgba(101, 116, 58, 0.35);
-  --orb-2: rgba(239, 221, 141, 0.45);
-  --orb-3: rgba(57, 79, 73, 0.20);
-  --orb-4: rgba(33, 1, 36, 0.15);
+  --orb-1: rgba(101, 116, 58, 0.75);
+  --orb-2: rgba(239, 221, 141, 0.85);
+  --orb-3: rgba(57, 79, 73, 0.60);
+  --orb-4: rgba(33, 1, 36, 0.55);
   --accent: #4A5C1E;
   --accent-hot: #65743A;
   --accent-deep: #394F49;
