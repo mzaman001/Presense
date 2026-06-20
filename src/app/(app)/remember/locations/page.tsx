@@ -72,12 +72,7 @@ export default function LocationsPage() {
 
   return (
     <>
-    <div className="space-y-6">
-      <div className="flex items-center justify-end">
-        <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(74,222,128,0.12)] border border-[rgba(74,222,128,0.25)] text-[#4ADE80] text-card-title hover:bg-[rgba(74,222,128,0.2)] transition-colors">
-          <Plus className="w-4 h-4" /> Log Location
-        </button>
-      </div>
+    <div className="flex flex-col gap-6">
 
       {/* Search bar — primary interaction */}
       <div className="relative">
@@ -107,7 +102,7 @@ export default function LocationsPage() {
       <div className="flex items-center justify-between">
         <span className="text-xs text-[rgba(255,255,255,0.35)]">{items.length} item{items.length !== 1 ? "s" : ""} logged</span>
         {!showAdd && (
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 text-sm text-[#4ADE80] hover:text-[var(--color-text-1)] transition-colors">
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(74,222,128,0.12)] border border-[rgba(74,222,128,0.25)] text-[#4ADE80] text-card-title hover:bg-[rgba(74,222,128,0.2)] transition-colors">
             <Plus className="w-4 h-4" /> Log item
           </button>
         )}

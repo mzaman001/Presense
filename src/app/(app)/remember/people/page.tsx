@@ -159,25 +159,24 @@ export default function PeoplePage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-end mb-2">
-        <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-card-title hover:bg-[rgba(244,114,182,0.2)] transition-colors">
-          <Plus className="w-4 h-4" /> Add person
-        </button>
-      </div>
-
+    <div>
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
         </div>
       ) : (
-        <>
+        <div className="flex flex-col gap-8">
           {/* Today's meetings */}
           {today.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Today&apos;s Briefings</h2>
-                <span className="w-2 h-2 rounded-full bg-[#F472B6] animate-pulse" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Today&apos;s Briefings</h2>
+                  <span className="w-2 h-2 rounded-full bg-[#F472B6] animate-pulse" />
+                </div>
+                <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-card-title hover:bg-[rgba(244,114,182,0.2)] transition-colors">
+                  <Plus className="w-4 h-4" /> Add person
+                </button>
               </div>
               <div className="space-y-3">
                 {today.map((person, i) => {
@@ -215,7 +214,14 @@ export default function PeoplePage() {
 
           {/* All contacts with DND */}
           <div>
-            <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-3 mt-8">All Contacts</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-[var(--color-text-1)]">All Contacts</h2>
+              {today.length === 0 && (
+                <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(244,114,182,0.12)] border border-[rgba(244,114,182,0.25)] text-[#F472B6] text-card-title hover:bg-[rgba(244,114,182,0.2)] transition-colors">
+                  <Plus className="w-4 h-4" /> Add person
+                </button>
+              )}
+            </div>
             {others.length === 0 && today.length === 0 ? (
               <GlassCard className="p-8 text-center">
                 {fetchError ? (
@@ -236,7 +242,7 @@ export default function PeoplePage() {
               </DndContext>
             )}
           </div>
-        </>
+        </div>
       )}
 
       <AddPersonPanel isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} onPersonAdded={fetchPeople} />
