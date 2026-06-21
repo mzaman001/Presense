@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
+import { Avatar } from "@/components/ui/Avatar";
 import "@/lib/chrono-custom"; // registers custom parsers on chrono.casual
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -25,6 +26,7 @@ interface TaskEditData {
   first_step?: string | null;
   subtasks?: { id: string; text: string; completed: boolean }[];
   recurrence?: string | null;
+  linked_people_ids?: string[] | null;
 }
 
 interface TaskAddPanelProps {
@@ -46,6 +48,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const [notes, setNotes] = useState("");
   const [firstStep, setFirstStep] = useState("");
   const [subtasks, setSubtasks] = useState<{id: string, text: string, completed: boolean}[]>([]);
+  const [linkedPeopleIds, setLinkedPeopleIds] = useState<string[]>([]);
+  const [peopleList, setPeopleList] = useState<{id: string, name: string, initials: string, color: string}[]>([]);
 
   const [freq, setFreq] = useState("Does not repeat");
   const [days, setDays] = useState<string[]>([]);
@@ -114,6 +118,19 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   };
 
   useEffect(() => {
+    async function fetchPeople() {
+      const supabase = createClient();
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+      const { data } = await supabase.from('people').select('id, name, initials, color').eq('user_id', userData.user.id).order('name');
+      if (data) setPeopleList(data);
+    }
+    if (isOpen) {
+      fetchPeople();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen) {
       if (taskToEdit) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -124,6 +141,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setNotes(taskToEdit.notes || "");
         setFirstStep(taskToEdit.first_step || "");
         setSubtasks(taskToEdit.subtasks || []);
+        setLinkedPeopleIds(taskToEdit.linked_people_ids || []);
         
         if (taskToEdit.recurrence) {
           if (taskToEdit.recurrence === "FREQ=DAILY") setFreq("Daily");
@@ -180,6 +198,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setNotes("");
         setFirstStep("");
         setSubtasks([]);
+        setLinkedPeopleIds([]);
       }
     }
   }, [isOpen, taskToEdit]);
@@ -304,7 +323,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           status: "active",
           priority: priority ?? 4,
           notes: notes.trim() || null,
-          subtasks: subtasks.filter(st => st.text.trim() !== "")
+          subtasks: subtasks.filter(st => st.text.trim() !== ""),
+          linked_people_ids: linkedPeopleIds
         };
 
         if (taskToEdit && taskToEdit.deadline !== payload.deadline) {
@@ -576,6 +596,39 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                   ))}
                 </div>
               </div>
+
+              {/* Linked People */}
+              {peopleList.length > 0 && (
+                <div>
+                  <label className="text-label text-[var(--text-3)] block mb-2">Linked People</label>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {peopleList.map(person => {
+                      const isLinked = linkedPeopleIds.includes(person.id);
+                      return (
+                        <button
+                          key={person.id}
+                          onClick={() => {
+                            if (isLinked) {
+                              setLinkedPeopleIds(prev => prev.filter(id => id !== person.id));
+                            } else {
+                              setLinkedPeopleIds(prev => [...prev, person.id]);
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center gap-2 px-2 py-1.5 rounded-full transition-all border",
+                            isLinked ? "border-[var(--accent)] bg-[var(--accent-dim)]" : "border-transparent hover:bg-[var(--color-surface-hover)]"
+                          )}
+                        >
+                          <Avatar name={person.name} initials={person.initials} color={person.color} size="sm" />
+                          <span className={cn("text-sm", isLinked ? "text-[var(--accent)] font-medium" : "text-[var(--text-2)]")}>
+                            {person.name.split(' ')[0]}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Category */}
               <div>

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { Avatar } from "@/components/ui/Avatar";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { ArrowLeft, Loader2, Sparkles, Plus, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, Plus, X, Trash2, Edit2, Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -45,6 +45,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   const [linkedTasks, setLinkedTasks] = useState<any[]>([]);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
   const [personToDelete, setPersonToDelete] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState("");
 
   const { userSettings } = useAppStore();
 
@@ -55,7 +57,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       const { data: tasksData } = await supabase
         .from("items")
         .select("*")
-        .ilike("title", `%${personData.name}%`)
+        .contains("linked_people_ids", [id])
         .in("status", ["active", "overdue", "inbox"]);
       setLinkedTasks(tasksData ?? []);
     }
@@ -71,6 +73,28 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       toast.success("Relationship updated");
     } catch (err: any) {
       toast.error("Failed to update", { description: err.message });
+    }
+  };
+
+  const handleUpdateName = async () => {
+    if (!person || !editName.trim() || editName.trim() === person.name) {
+      setIsEditingName(false);
+      return;
+    }
+    const newName = editName.trim();
+    // Recompute initials just to be safe
+    const newInitials = newName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+    
+    setPerson({ ...person, name: newName, initials: newInitials });
+    setIsEditingName(false);
+    try {
+      const { error } = await supabase.from("people").update({ name: newName, initials: newInitials }).eq("id", person.id);
+      if (error) throw error;
+      toast.success("Name updated");
+    } catch (err: any) {
+      toast.error("Failed to update name", { description: err.message });
+      // Revert on error
+      fetchPerson();
     }
   };
 
@@ -156,8 +180,41 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
 
       <div className="flex items-center gap-4">
         <Avatar name={person.name} color={relColor} size="lg" className="w-16 h-16 text-xl" />
-        <div>
-          <h1 className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-none mb-1">{person.name}</h1>
+        <div className="flex-1">
+          {isEditingName ? (
+            <div className="flex items-center gap-2 mb-1">
+              <input
+                autoFocus
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleUpdateName();
+                  if (e.key === "Escape") setIsEditingName(false);
+                }}
+                className="bg-[rgba(255,255,255,0.05)] border border-[var(--color-border)] rounded-md px-2 py-1 text-[20px] font-semibold text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] w-full max-w-[300px]"
+              />
+              <button onClick={handleUpdateName} className="p-1.5 rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
+                <Check className="w-4 h-4" />
+              </button>
+              <button onClick={() => setIsEditingName(false)} className="p-1.5 rounded-md text-[var(--color-text-3)] hover:bg-[var(--color-surface)] transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group mb-1">
+              <h1 className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-none">{person.name}</h1>
+              <button 
+                onClick={() => {
+                  setEditName(person.name);
+                  setIsEditingName(true);
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-all"
+                title="Edit name"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           <div className="mt-2">
             <Dropdown
               value={person.relationship.toLowerCase()}

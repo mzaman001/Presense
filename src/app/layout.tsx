@@ -22,7 +22,6 @@ export const metadata: Metadata = {
   keywords: ["productivity", "second brain", "tasks", "notes", "capture"],
   icons: {
     icon: "/icon.svg",
-    apple: "/icon-180.png",
   },
   manifest: "/manifest.json",
 };

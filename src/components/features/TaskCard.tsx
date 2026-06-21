@@ -34,13 +34,15 @@ export const TaskCard = React.memo(({
   completing,
   completeTask,
   openEditPanel,
-  fetchTasks
+  fetchTasks,
+  peopleMap
 }: {
   task: any;
   completing: string | null;
   completeTask: (e: React.MouseEvent, id: string) => void;
   openEditPanel: (task: any) => void;
   fetchTasks: () => void;
+  peopleMap?: Record<string, { initials: string, color: string, name: string }>;
 }) => {
   const userSettings = useAppStore(s => s.userSettings);
   const setActiveTimer = useAppStore(s => s.setActiveTimer);
@@ -174,9 +176,31 @@ export const TaskCard = React.memo(({
         </div>
 
         <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: "0.5px solid var(--border-subtle)" }}>
-          <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
-            {label && label !== "Overdue" && label !== "Today" ? label : task.deadline ? "" : "No deadline"}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
+              {label && label !== "Overdue" && label !== "Today" ? label : task.deadline ? "" : "No deadline"}
+            </span>
+
+            {/* Linked People Avatars */}
+            {peopleMap && task.linked_people_ids && task.linked_people_ids.length > 0 && (
+              <div className="flex -space-x-1.5" title={task.linked_people_ids.map((id: string) => peopleMap[id]?.name).filter(Boolean).join(', ')}>
+                {task.linked_people_ids.map((id: string, index: number) => {
+                  const person = peopleMap[id];
+                  if (!person) return null;
+                  return (
+                    <div
+                      key={id}
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-[var(--color-bg-elevated)]"
+                      style={{ backgroundColor: person.color, zIndex: 10 - index }}
+                    >
+                      {person.initials || person.name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-2">
             {task.time_spent_minutes > 0 && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ background: "rgba(229,180,30,0.08)" }} title="Time spent on this task">
@@ -223,8 +247,9 @@ export const TaskCard = React.memo(({
     </motion.div>
   );
 }, (prevProps, nextProps) => {
-  return prevProps.completing === nextProps.completing && 
-         JSON.stringify(prevProps.task) === JSON.stringify(nextProps.task);
+  if (prevProps.completing !== nextProps.completing) return false;
+  if (prevProps.peopleMap !== nextProps.peopleMap) return false;
+  return JSON.stringify(prevProps.task) === JSON.stringify(nextProps.task);
 });
 
 TaskCard.displayName = "TaskCard";

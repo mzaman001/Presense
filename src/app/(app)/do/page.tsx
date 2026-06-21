@@ -26,6 +26,7 @@ interface Task {
   category: string;
   snoozed_until?: string | null;
   recurrence?: string | null;
+  linked_people_ids?: string[] | null;
 }
 
 
@@ -38,7 +39,8 @@ const Column = ({
   completeTask,
   openEditPanel,
   fetchTasks,
-  newTaskIds
+  newTaskIds,
+  peopleMap
 }: { 
   title: string; 
   tasks: Task[]; 
@@ -49,6 +51,7 @@ const Column = ({
   openEditPanel: (task: Task) => void;
   fetchTasks: () => void;
   newTaskIds: Set<string>;
+  peopleMap?: Record<string, { initials: string, color: string, name: string }>;
 }) => (
   <div className="flex-1 min-w-0">
     <div className="flex items-center gap-2 mb-4">
@@ -81,6 +84,7 @@ const Column = ({
                 completeTask={completeTask}
                 openEditPanel={openEditPanel}
                 fetchTasks={fetchTasks}
+                peopleMap={peopleMap}
               />
             </motion.div>
           ))
@@ -120,6 +124,23 @@ export default function DoPage() {
     }
   });
 
+  const { data: peopleList = [], refetch: fetchPeopleList } = useQuery({
+    queryKey: ["people_minimal"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("people").select("id, name, initials, color");
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const peopleMap = useMemo(() => {
+    const map: Record<string, { initials: string, color: string, name: string }> = {};
+    for (const p of peopleList) {
+      map[p.id] = p;
+    }
+    return map;
+  }, [peopleList]);
+
   useEffect(() => {
     const currentIds = new Set(tasks.map(t => t.id));
     const added = tasks.filter(t => !prevTaskIdsRef.current.has(t.id)).map(t => t.id);
@@ -136,13 +157,13 @@ export default function DoPage() {
     prevTaskIdsRef.current = currentIds;
   }, [tasks]);
 
-  const [viewMode, setViewMode] = useState<"board" | "today">("board");
-  useEffect(() => {
-    const saved = localStorage.getItem("presense_do_view");
-    if (saved === "today" || saved === "board") {
-      setViewMode(saved);
+  const [viewMode, setViewMode] = useState<"board" | "today">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("presense_do_view");
+      if (saved === "today" || saved === "board") return saved as "board" | "today";
     }
-  }, []);
+    return "board";
+  });
 
   const toggleViewMode = (mode: "board" | "today") => {
     setViewMode(mode);
@@ -166,6 +187,7 @@ export default function DoPage() {
   }, [fetchArchived, showArchive]);
 
   useRealtime("items", fetchTasks);
+  useRealtime("people", fetchPeopleList);
 
   const completeTask = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -362,8 +384,8 @@ export default function DoPage() {
           "gap-6",
           isBoardView ? "grid grid-cols-1 md:grid-cols-2 items-start max-w-3xl mx-auto" : "flex flex-col space-y-8 max-w-2xl mx-auto"
         )}>
-           {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} />}
-           <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} />
+           {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} />}
+           <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} />
           {overdue.length === 0 && today.length === 0 && (
             <div className="text-sm text-[var(--color-text-3)] text-center py-12 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl md:col-span-2">
               No tasks due today. Take a breath.
@@ -375,14 +397,14 @@ export default function DoPage() {
           "gap-6",
           isBoardView ? "grid grid-cols-1 md:grid-cols-3 items-start" : "flex flex-col space-y-8 max-w-2xl mx-auto"
         )}>
-           {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} /> : null}
-           {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} /> : null}
-           {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} /> : null}
+           {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
+           {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
+           {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
         </div>
       )}
 
       <TaskAddPanel isOpen={isPanelOpen} onClose={handleClosePanel} onTaskAdded={fetchTasks} taskToEdit={taskToEdit} />
     </div>
   );
-}
 
+}

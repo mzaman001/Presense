@@ -1,0 +1,3 @@
+
+> presense@0.1.0 tsc
+> tsc --noEmit
