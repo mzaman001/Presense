@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -134,7 +134,7 @@ export function Dropdown({
           backgroundColor: isPlaceholder ? "transparent" : `${currentColor}20`,
         }}
       >
-        {isPlaceholder ? placeholder : selectedOption.label} ▾
+        {isPlaceholder ? placeholder : selectedOption.label} â–¾
       </button>
 
       <AnimatePresence>

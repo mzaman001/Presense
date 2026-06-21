@@ -1,19 +1,16 @@
-import { AmbientBackground } from "@/components/layout/AmbientBackground";
+﻿import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { Sidebar, BottomNav } from "@/components/layout/Navigation";
-import { CaptureModal } from "@/components/features/CaptureModal";
-import { PomodoroTimer } from "@/components/features/PomodoroTimer";
 import { FAB } from "@/components/features/FAB";
 import { AppContentWrapper } from "@/components/layout/AppContentWrapper";
-import { SettingsModal } from "@/components/features/SettingsModal";
-import { SearchModal } from "@/components/features/SearchModal";
 import { AppInitializer } from "@/components/layout/AppInitializer";
+import { DynamicModals } from "@/components/layout/DynamicModals";
 import { Toaster } from "sonner";
 import QueryProvider from "@/components/layout/QueryProvider";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 
-// App layout — shown for all protected (app) pages
+// App layout â€” shown for all protected (app) pages
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,16 +29,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!settings || settings.onboarding_complete === false) {
     redirect("/onboarding");
   }
+
   return (
     <>
       <AppInitializer initialSettings={settings} />
       <QueryProvider>
         <AmbientBackground />
         <Sidebar />
-        <CaptureModal />
-        <SearchModal />
-        <SettingsModal />
-        <PomodoroTimer />
+        {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
+        <DynamicModals />
         <FAB />
         <AppContentWrapper>
           {children}

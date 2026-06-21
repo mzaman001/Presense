@@ -1,3 +1,4 @@
+﻿import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Trash2 } from "lucide-react";
@@ -67,7 +68,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
         onClose();
       }
     } catch (err: any) {
-      console.error("Save error:", err);
+      logger.error("Save error:", err);
       setErrorMsg(err.message);
       toast.error(itemToEdit ? "Failed to update location" : "Failed to log location", { description: err.message });
     } finally {

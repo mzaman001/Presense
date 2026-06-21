@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,7 @@ export function OnboardingBackground({ phase = 1, className }: OnboardingBackgro
 
   return (
     <div className={cn("fixed inset-0 overflow-hidden", className)} style={{ zIndex: 0 }}>
-      {/* Layer 1 — Base gradient */}
+      {/* Layer 1 â€” Base gradient */}
       <div
         className="absolute inset-0"
         style={{
@@ -53,7 +53,7 @@ export function OnboardingBackground({ phase = 1, className }: OnboardingBackgro
         }}
       />
 
-      {/* Layer 1 Light — warm sunrise base */}
+      {/* Layer 1 Light â€” warm sunrise base */}
       <div
         className="absolute inset-0 opacity-0 html-light:opacity-100"
         style={{
@@ -61,7 +61,7 @@ export function OnboardingBackground({ phase = 1, className }: OnboardingBackgro
         }}
       />
 
-      {/* Layer 2 — The warm glow rising */}
+      {/* Layer 2 â€” The warm glow rising */}
       <div
         ref={glowRef}
         className="absolute"
@@ -79,7 +79,7 @@ export function OnboardingBackground({ phase = 1, className }: OnboardingBackgro
         }}
       />
 
-      {/* Layer 3 — Light columns */}
+      {/* Layer 3 â€” Light columns */}
       <div
         className="absolute bottom-0"
         style={{
@@ -105,7 +105,7 @@ export function OnboardingBackground({ phase = 1, className }: OnboardingBackgro
         }}
       />
 
-      {/* Layer 4 — Noise */}
+      {/* Layer 4 â€” Noise */}
       <div
         className="absolute inset-0"
         style={{
@@ -116,7 +116,7 @@ export function OnboardingBackground({ phase = 1, className }: OnboardingBackgro
         }}
       />
 
-      {/* Layer 5 — Glass fog vignette at top */}
+      {/* Layer 5 â€” Glass fog vignette at top */}
       <div
         className="absolute top-0 left-0 right-0"
         style={{
@@ -145,7 +145,7 @@ export function OnboardingSplit({
     <div className="min-h-screen flex relative">
       <OnboardingBackground phase={phase} />
 
-      {/* Left panel — 45% on desktop, hidden on mobile */}
+      {/* Left panel â€” 45% on desktop, hidden on mobile */}
       <div className="hidden md:flex md:w-[45%] flex-col justify-between p-10 relative z-10">
         {/* Logo */}
         <div className="flex items-center gap-3">
@@ -162,7 +162,7 @@ export function OnboardingSplit({
         </p>
       </div>
 
-      {/* Right panel — 55% on desktop, 100% on mobile */}
+      {/* Right panel â€” 55% on desktop, 100% on mobile */}
       <div className="w-full md:w-[55%] flex items-center justify-center p-6 md:p-10 relative z-10 min-h-screen">
         <div
           className="w-full max-w-[420px] rounded-[var(--radius-xl)] p-8"

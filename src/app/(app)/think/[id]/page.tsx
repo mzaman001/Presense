@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 import React, { useEffect, useState, useCallback, use } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -134,7 +135,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       setNewEntry("");
       toast.success("Added to thread");
     } catch (error: any) {
-      console.error("Think error:", error);
+      logger.error("Think error:", error);
       toast.error("Failed to save thought", { description: error.message });
     } finally {
       setSaving(false);

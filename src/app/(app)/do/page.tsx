@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 interface Task {
   id: string;
@@ -192,7 +193,7 @@ export default function DoPage() {
   const completeTask = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     
-    // Set completing state — TaskCard shows the checkmark animation
+    // Set completing state â€” TaskCard shows the checkmark animation
     setCompleting(id);
     
     // Delay removal so AnimatePresence can play the exit animation
@@ -345,9 +346,7 @@ export default function DoPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
-        </div>
+        <PageSkeleton count={5} type="task" />
       ) : showArchive ? (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-4">Archived Tasks</h2>
@@ -364,7 +363,7 @@ export default function DoPage() {
                       {task.category}
                     </span>
                     <span className="text-[10px] text-[rgba(255,255,255,0.35)]">
-                      • Completed {new Date((task as any).completed_at).toLocaleDateString()}
+                      â€¢ Completed {new Date((task as any).completed_at).toLocaleDateString()}
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-[var(--color-text-1)] line-through">{task.title}</p>

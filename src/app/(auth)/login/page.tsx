@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
@@ -66,7 +66,7 @@ export default function LoginPage() {
         {initError && (
           <div className="mb-5 p-3 rounded-[var(--radius-md)] text-sm font-medium"
             style={{ background: "var(--status-danger-dim)", border: "0.5px solid var(--status-danger-border)", color: "var(--status-danger)" }}>
-            ⚠️ {initError}
+            âš ï¸ {initError}
           </div>
         )}
 
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 className="input w-full"
               />
               <div className="flex justify-end">
-                <span className="text-[12px]" style={{ color: "var(--accent-text)" }}>Magic link — no password needed</span>
+                <span className="text-[12px]" style={{ color: "var(--accent-text)" }}>Magic link â€” no password needed</span>
               </div>
               <button
                 type="submit"

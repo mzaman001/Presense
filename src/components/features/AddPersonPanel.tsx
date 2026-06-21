@@ -1,3 +1,4 @@
+﻿import { logger } from "@/lib/logger";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, UserPlus, Loader2, Calendar } from "lucide-react";
@@ -61,7 +62,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
         });
         
         if (error) {
-          console.error("Insert error:", error);
+          logger.error("Insert error:", error);
           setErrorMsg(error.message);
           toast.error("Failed to add person", { description: error.message });
           setSaving(false);

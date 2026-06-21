@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -123,6 +123,7 @@ export function Sidebar() {
             >
               <Link
                 href={item.href}
+                prefetch={true}
                 className={cn(
                   "flex items-center h-[36px] transition-all relative group",
                   isSidebarCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "w-full rounded-[var(--radius-sm)] px-3 gap-3",
@@ -252,8 +253,8 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full border-t border-[var(--border-subtle)] bg-[var(--color-background)] backdrop-blur-3xl z-40 pb-safe pt-2 px-4">
-      <div className="flex items-center justify-between relative">
+    <nav className="md:hidden fixed bottom-0 left-0 w-full border-t border-[var(--border-subtle)] bg-[var(--color-background)]/95 backdrop-blur-2xl z-40 pb-safe">
+      <div className="flex items-center justify-around px-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === "/remember/people" ? pathname.startsWith("/remember") : pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
@@ -261,17 +262,30 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               className={cn(
-                "flex flex-col items-center gap-1 p-2 rounded-xl transition-all",
+                // Minimum 44px touch target per WCAG 2.5.5
+                "flex flex-col items-center justify-center gap-1 min-h-[56px] min-w-[44px] flex-1 py-2 rounded-xl transition-all active:scale-95",
                 isActive ? "text-[var(--color-text-1)]" : "text-[var(--color-text-3)]"
               )}
             >
-              <Icon 
-                size={18} 
-                strokeWidth={1.5}
-                className={cn("shrink-0 transition-colors", isActive ? "text-[var(--accent)]" : "text-[var(--text-3)]")} 
-              />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <div className="relative">
+                <Icon
+                  size={20}
+                  strokeWidth={1.5}
+                  className={cn("shrink-0 transition-colors", isActive ? "text-[var(--accent)]" : "text-[var(--text-3)]")}
+                />
+                {isActive && (
+                  <motion.div
+                    layoutId="bottom-nav-active"
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--accent)]"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+              </div>
+              <span className={cn("text-[10px] font-medium transition-colors", isActive ? "text-[var(--accent)]" : "text-[var(--text-3)]")}>
+                {item.label}
+              </span>
             </Link>
           );
         })}

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useEffect, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
@@ -25,11 +26,11 @@ export function useRealtime(table: string, onUpdate: () => void) {
           // which prevents the UI from flickering back to an old state before the fetch completes.
           const lastMutationAt = useAppStore.getState().lastMutationAt;
           if (Date.now() - lastMutationAt < 2500) {
-            console.log(`[Realtime] Ignoring echo on ${table} due to recent local mutation`);
+            logger.info(`[Realtime] Ignoring echo on ${table} due to recent local mutation`);
             return;
           }
 
-          console.log(`[Realtime] Update on ${table}:`, payload);
+          logger.info(`[Realtime] Update on ${table}:`, payload);
           onUpdateRef.current();
         }
       )

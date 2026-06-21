@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +10,7 @@ import { Sparkles, Loader2, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { RoutedItem } from "@/lib/capture-router";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 
 function formatCaptureDeadline(iso: string) {
   const d = new Date(iso);
@@ -31,10 +33,10 @@ function formatCaptureDeadline(iso: string) {
 
 const SPACE_COLORS: Record<string, string> = {
   Do: "var(--color-do)",
-  "Remember → People": "var(--color-people)",
+  "Remember â†’ People": "var(--color-people)",
   Think: "var(--color-think)",
   Explore: "var(--color-explore)",
-  "Remember → Locations": "#4ADE80",
+  "Remember â†’ Locations": "#4ADE80",
   Inbox: "#FBBF24",
   "Choose space...": "var(--color-text-3)",
 };
@@ -42,8 +44,8 @@ const SPACE_COLORS: Record<string, string> = {
 const SPACE_OPTIONS = [
   { value: "Do", label: "Do" },
   { value: "Think", label: "Think" },
-  { value: "Remember → People", label: "People" },
-  { value: "Remember → Locations", label: "Locations" },
+  { value: "Remember â†’ People", label: "People" },
+  { value: "Remember â†’ Locations", label: "Locations" },
   { value: "Explore", label: "Explore" },
   { value: "Inbox", label: "Inbox" }
 ];
@@ -140,7 +142,7 @@ export function CaptureModal() {
               status: item.destination === "Inbox" ? "inbox" : "active",
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
-          } else if (item.destination === "Remember → People") {
+          } else if (item.destination === "Remember â†’ People") {
             const { data: person } = await supabase
               .from("people")
               .select("id, notes")
@@ -175,7 +177,7 @@ export function CaptureModal() {
               note: item.title,
             });
             if (error) throw new Error(`Explore: ${error.message}`);
-          } else if (item.destination === "Remember → Locations") {
+          } else if (item.destination === "Remember â†’ Locations") {
             const { error } = await supabase.from("locations").insert({
               user_id: user.id,
               item_name: item.item_name || item.title.split(" ")[0] || "Item",
@@ -190,7 +192,7 @@ export function CaptureModal() {
       setTimeout(() => setCaptureModalOpen(false), 800);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "An error occurred";
-      console.error(e);
+      logger.error(e instanceof Error ? e.message : String(e));
       toast.error("Failed to save capture", { description: message });
     } finally {
       setIsSaving(false);
@@ -198,176 +200,177 @@ export function CaptureModal() {
   };
 
   return (
-    <AnimatePresence>
-      {isCaptureModalOpen && (
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={() => setCaptureModalOpen(false)}
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.97 }}
-          transition={{ type: "spring", stiffness: 280, damping: 26, duration: 0.22 }}
-          className="modal relative w-full max-w-2xl"
-        >
-          {/* Input row */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl">
-            {routedItems ? (
-              <Sparkles className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" />
-            ) : (
-              <Search className="w-5 h-5 text-[var(--color-text-3)] shrink-0" />
-            )}
-            <input
-              autoFocus
-              type="text"
-              placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
-              className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={!!routedItems || isRouting}
-              onKeyDown={(e) => { if (e.key === "Enter" && !routedItems) handleRoute(); }}
-            />
-            {!routedItems && (
-              <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[var(--color-surface)]">
-                Enter
-              </kbd>
-            )}
-          </div>
+    <ModalErrorBoundary modalName="Capture Modal" onClose={() => setCaptureModalOpen(false)}>
+      <AnimatePresence>
+        {isCaptureModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setCaptureModalOpen(false)}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 280, damping: 26, duration: 0.22 }}
+            className="modal relative w-full max-w-2xl"
+          >
+            {/* Input row */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl">
+              {routedItems ? (
+                <Sparkles className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" />
+              ) : (
+                <Search className="w-5 h-5 text-[var(--color-text-3)] shrink-0" />
+              )}
+              <input
+                autoFocus
+                type="text"
+                placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
+                className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={!!routedItems || isRouting}
+                onKeyDown={(e) => { if (e.key === "Enter" && !routedItems) handleRoute(); }}
+              />
+              {!routedItems && (
+                <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[var(--color-surface)]">
+                  Enter
+                </kbd>
+              )}
+            </div>
 
-          {/* Routing chips view */}
-          {routedItems && !saved && (
-            <div className="p-5 space-y-4">
-              <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-3)] font-semibold">
-                AI Extracted Context
-              </p>
-              {routedItems.map((item, idx) => (
-                <div key={idx} className="space-y-3">
-                  <input
-                    value={item.title}
-                    onChange={(e) => updateRoutedItem(idx, { title: e.target.value })}
-                    className="input-title"
-                  />
-                  
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
-                    <span className="font-semibold">Space:</span>
-                    <Dropdown
-                      value={item.destination}
-                      onChange={(val) => changeDestination(idx, val)}
-                      options={SPACE_OPTIONS}
-                      colors={SPACE_COLORS}
-                      placeholder="Choose space..."
+            {/* Routing chips view */}
+            {routedItems && !saved && (
+              <div className="p-5 space-y-4">
+                <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-3)] font-semibold">
+                  AI Extracted Context
+                </p>
+                {routedItems.map((item, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <input
+                      value={item.title}
+                      onChange={(e) => updateRoutedItem(idx, { title: e.target.value })}
+                      className="input-title"
                     />
                     
-                    {item.destination === "Do" && (
-                      <>
-                        {item.recurrence && (
-                          <>
-                            <span className="text-[var(--color-text-3)]">·</span>
-                            <span className="font-semibold">Recurrence:</span>
-                            <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)]">
-                              {formatRRule(item.recurrence)}
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
+                      <span className="font-semibold">Space:</span>
+                      <Dropdown
+                        value={item.destination}
+                        onChange={(val) => changeDestination(idx, val)}
+                        options={SPACE_OPTIONS}
+                        colors={SPACE_COLORS}
+                        placeholder="Choose space..."
+                      />
+                      
+                      {item.destination === "Do" && (
+                        <>
+                          {item.recurrence && (
+                            <>
+                              <span className="text-[var(--color-text-3)]">Â·</span>
+                              <span className="font-semibold">Recurrence:</span>
+                              <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)]">
+                                {formatRRule(item.recurrence)}
+                              </span>
+                            </>
+                          )}
+                          <span className="text-[var(--color-text-3)]">Â·</span>
+                          <span className="font-semibold">Deadline:</span>
+                          <div className="relative inline-flex items-center">
+                            <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)] pointer-events-none whitespace-nowrap">
+                              {item.deadline ? formatCaptureDeadline(item.deadline) : "No deadline"} â–¾
                             </span>
-                          </>
-                        )}
-                        <span className="text-[var(--color-text-3)]">·</span>
-                        <span className="font-semibold">Deadline:</span>
-                        <div className="relative inline-flex items-center">
-                          <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)] pointer-events-none whitespace-nowrap">
-                            {item.deadline ? formatCaptureDeadline(item.deadline) : "No deadline"} ▾
-                          </span>
+                            <input
+                              type="datetime-local"
+                              value={item.deadline ? new Date(new Date(item.deadline).getTime() - new Date(item.deadline).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
+                              onChange={(e) => updateRoutedItem(idx, { deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
+                            />
+                          </div>
+                        </>
+                      )}
+                      
+                      {item.destination === "Remember â†’ People" && (
+                        <>
+                          <span className="text-[var(--color-text-3)]">Â·</span>
+                          <span className="font-semibold">Person:</span>
                           <input
-                            type="datetime-local"
-                            value={item.deadline ? new Date(new Date(item.deadline).getTime() - new Date(item.deadline).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
-                            onChange={(e) => updateRoutedItem(idx, { deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
+                            value={item.person || ""}
+                            onChange={(e) => updateRoutedItem(idx, { person: e.target.value })}
+                            className="px-2 py-1 rounded-full border border-[var(--color-border)] bg-transparent outline-none focus:border-[var(--color-accent)] text-xs text-[var(--color-text-1)]"
+                            placeholder="Name..."
                           />
-                        </div>
-                      </>
-                    )}
-                    
-                    {item.destination === "Remember → People" && (
-                      <>
-                        <span className="text-[var(--color-text-3)]">·</span>
-                        <span className="font-semibold">Person:</span>
-                        <input
-                          value={item.person || ""}
-                          onChange={(e) => updateRoutedItem(idx, { person: e.target.value })}
-                          className="px-2 py-1 rounded-full border border-[var(--color-border)] bg-transparent outline-none focus:border-[var(--color-accent)] text-xs text-[var(--color-text-1)]"
-                          placeholder="Name..."
-                        />
-                      </>
-                    )}
-                    
-                    {item.destination === "Remember → Locations" && (
-                      <>
-                        <span className="text-[var(--color-text-3)]">·</span>
-                        <span className="font-semibold">Item:</span>
-                        <input
-                          value={item.item_name || ""}
-                          onChange={(e) => updateRoutedItem(idx, { item_name: e.target.value })}
-                          className="px-2 py-1 rounded-full border border-[var(--color-border)] bg-transparent outline-none focus:border-[var(--color-accent)] text-xs text-[var(--color-text-1)]"
-                          placeholder="Item name..."
-                        />
-                      </>
-                    )}
+                        </>
+                      )}
+                      
+                      {item.destination === "Remember â†’ Locations" && (
+                        <>
+                          <span className="text-[var(--color-text-3)]">Â·</span>
+                          <span className="font-semibold">Item:</span>
+                          <input
+                            value={item.item_name || ""}
+                            onChange={(e) => updateRoutedItem(idx, { item_name: e.target.value })}
+                            className="px-2 py-1 rounded-full border border-[var(--color-border)] bg-transparent outline-none focus:border-[var(--color-accent)] text-xs text-[var(--color-text-1)]"
+                            placeholder="Item name..."
+                          />
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {/* Saved animation */}
-          {saved && (
-            <div className="flex items-center justify-center gap-2 p-6 text-[#4ADE80]">
-              <Check className="w-5 h-5" />
-              <span className="text-sm font-medium">Saved!</span>
-            </div>
-          )}
+            {/* Saved animation */}
+            {saved && (
+              <div className="flex items-center justify-center gap-2 p-6 text-[#4ADE80]">
+                <Check className="w-5 h-5" />
+                <span className="text-sm font-medium">Saved!</span>
+              </div>
+            )}
 
-          {/* Action bar */}
-          <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] rounded-b-2xl">
-            {!routedItems ? (
-              <>
-                <span className="text-xs text-[var(--color-text-3)]">
-                  Smart routing via keyword detection — 100% free, no AI API
-                </span>
-                <button
-                  onClick={handleRoute}
-                  disabled={!input.trim() || isRouting}
-                  className="btn-primary disabled:opacity-50"
-                >
-                  {isRouting ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Sparkles size={14} strokeWidth={1.5} className="shrink-0" />}
-                  {isRouting ? "Routing..." : "Route & Capture"}
-                </button>
-              </>
-            ) : !saved ? (
-              <>
-                <button
-                  onClick={() => setRoutedItems(null)}
-                  className="btn-secondary"
-                >
-                  <X size={14} strokeWidth={1.5} className="shrink-0" /> Start over
-                </button>
-                <button
-                  onClick={handleConfirm}
-                  disabled={isSaving || routedItems.some((i) => i.destination === "Choose space...")}
-                  className="btn-primary disabled:opacity-50"
-                >
-                  {isSaving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Check size={14} strokeWidth={1.5} className="shrink-0" />}
-                  {isSaving ? "Saving..." : "Confirm & Save"}
-                </button>
-              </>
-            ) : null}
-          </div>
-        </motion.div>
-      </div>
-      )}
-    </AnimatePresence>
+            {/* Action bar */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] rounded-b-2xl">
+              {!routedItems ? (
+                <>
+                  <span className="text-xs text-[var(--color-text-3)]">
+                    Smart routing via keyword detection â€” 100% free, no AI API
+                  </span>
+                  <button
+                    onClick={handleRoute}
+                    disabled={!input.trim() || isRouting}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    {isRouting ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Sparkles size={14} strokeWidth={1.5} className="shrink-0" />}
+                    {isRouting ? "Routing..." : "Route & Capture"}
+                  </button>
+                </>
+              ) : !saved ? (
+                <>
+                  <button
+                    onClick={() => setRoutedItems(null)}
+                    className="btn-secondary"
+                  >
+                    <X size={14} strokeWidth={1.5} className="shrink-0" /> Start over
+                  </button>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={isSaving || routedItems.some((i) => i.destination === "Choose space...")}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    {isSaving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Check size={14} strokeWidth={1.5} className="shrink-0" />}
+                    {isSaving ? "Saving..." : "Confirm & Save"}
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </motion.div>
+        </div>
+        )}
+      </AnimatePresence>
+    </ModalErrorBoundary>
   );
 }
-

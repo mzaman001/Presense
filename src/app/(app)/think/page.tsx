@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -78,7 +78,7 @@ export default function ThinkPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Try insert first — the unique index on (user_id, title) prevents duplicates.
+    // Try insert first â€” the unique index on (user_id, title) prevents duplicates.
     // If a race condition causes a conflict, fall back to fetching the existing thread.
     const { data: inserted } = await supabase
       .from("threads")
@@ -96,7 +96,7 @@ export default function ThinkPage() {
       return;
     }
 
-    // Conflict or other error — fetch the existing daily note
+    // Conflict or other error â€” fetch the existing daily note
     const { data: existingThreads } = await supabase
       .from("threads")
       .select("id")
@@ -263,7 +263,7 @@ export default function ThinkPage() {
 
           {filteredThreads.length === 0 ? (
             <GlassCard className="p-8 text-center mt-6">
-              <p className="text-sm text-[var(--color-text-3)]">No threads yet. Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo;</p>
+              <p className="text-sm text-[var(--color-text-3)]">No threads yet. Capture a thought â€” &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo;</p>
             </GlassCard>
           ) : (
             <div>
@@ -300,7 +300,7 @@ export default function ThinkPage() {
                       )}
                       <div className="flex items-center justify-between mt-3">
                         <span className="text-[11px] text-[var(--color-text-3)]">
-                          {thread.entries?.length ?? 0} entries · Updated {timeAgo(thread.last_updated)}
+                          {thread.entries?.length ?? 0} entries Â· Updated {timeAgo(thread.last_updated)}
                         </span>
                         {thread.stale_prompt && (
                           <span className="flex items-center gap-1 text-[10px] text-[var(--accent)]">

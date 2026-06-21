@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ export function ConfirmModal({
   const [inputValue, setInputValue] = React.useState("");
   const [isConfirming, setIsConfirming] = React.useState(false);
 
-  // Reset state when modal opens — intentional sync initialization
+  // Reset state when modal opens â€” intentional sync initialization
   /* eslint-disable react-hooks/set-state-in-effect */
   React.useEffect(() => {
     if (isOpen) {

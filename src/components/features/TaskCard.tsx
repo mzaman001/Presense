@@ -1,11 +1,12 @@
-import React, { useMemo } from "react";
-import { motion } from "framer-motion";
+﻿import React, { useMemo, useRef, useState } from "react";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Check, Clock, Play, Timer } from "lucide-react";
+import { Check, Clock, Play, Timer, Trash2 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
+import { toast } from "sonner";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -19,8 +20,6 @@ function formatDeadline(d: string | null) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-
-
 function formatTimeSpent(minutes: number | undefined | null) {
   if (!minutes || minutes <= 0) return null;
   if (minutes < 60) return `${minutes}m`;
@@ -28,6 +27,8 @@ function formatTimeSpent(minutes: number | undefined | null) {
   const mins = minutes % 60;
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
+
+const SWIPE_DELETE_THRESHOLD = -80;
 
 export const TaskCard = React.memo(({
   task,
@@ -48,6 +49,12 @@ export const TaskCard = React.memo(({
   const setActiveTimer = useAppStore(s => s.setActiveTimer);
   const markMutation = useAppStore(s => s.markMutation);
   const supabase = useMemo(() => createClient(), []);
+  const [deleted, setDeleted] = useState(false);
+
+  const dragX = useMotionValue(0);
+  const deleteOpacity = useTransform(dragX, [0, SWIPE_DELETE_THRESHOLD], [0, 1]);
+  const deleteScale = useTransform(dragX, [0, SWIPE_DELETE_THRESHOLD], [0.7, 1]);
+  const cardX = dragX;
 
   const label = formatDeadline(task.deadline);
   const isOverdue = label === "Overdue";
@@ -62,8 +69,41 @@ export const TaskCard = React.memo(({
     "var(--text-4)";
 
   const priorityGlow = priority === 1 ? "0 0 6px var(--space-do)" : "none";
-
   const isCompleting = completing === task.id;
+
+  const handleDragEnd = async (_: any, info: any) => {
+    if (info.offset.x < SWIPE_DELETE_THRESHOLD) {
+      // Haptic feedback on mobile
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate([10]);
+      }
+      // Animate out then delete
+      animate(dragX, -300, { duration: 0.25 });
+      setDeleted(true);
+      const { error } = await supabase.from("items").update({ status: "archived" }).eq("id", task.id);
+      if (error) {
+        animate(dragX, 0, { duration: 0.3 });
+        setDeleted(false);
+        toast.error("Failed to delete task");
+      } else {
+        markMutation();
+        fetchTasks();
+        toast.success("Task archived", {
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              await supabase.from("items").update({ status: "active" }).eq("id", task.id);
+              fetchTasks();
+            }
+          }
+        });
+      }
+    } else {
+      animate(dragX, 0, { type: "spring", stiffness: 400, damping: 30 });
+    }
+  };
+
+  if (deleted) return null;
 
   return (
     <motion.div
@@ -83,10 +123,33 @@ export const TaskCard = React.memo(({
         filter: "blur(4px)",
         transition: { duration: 0.3, ease: [0.4, 0, 1, 1] },
       }}
-      whileHover={{ y: -2 }}
       transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="group relative"
+      className="group relative overflow-hidden rounded-2xl"
     >
+      {/* Swipe-to-delete reveal layer */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl"
+        style={{
+          background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
+          opacity: deleteOpacity,
+        }}
+      >
+        <motion.div style={{ scale: deleteScale }}>
+          <Trash2 className="w-5 h-5 text-red-400" />
+        </motion.div>
+      </motion.div>
+
+      {/* Draggable card */}
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: -120, right: 0 }}
+        dragElastic={{ left: 0.15, right: 0 }}
+        onDragEnd={handleDragEnd}
+        style={{ x: cardX }}
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.25 }}
+        className="relative"
+      >
       <GlassCard
         onClick={() => openEditPanel(task)}
         className={cn(
@@ -95,6 +158,7 @@ export const TaskCard = React.memo(({
           isCompleting && "border-[rgba(74,222,128,0.4)] bg-[rgba(74,222,128,0.06)]"
         )}
       >
+
         {priority < 4 && (
           <div
             className="absolute top-2 right-2 w-2 h-2 rounded-full"
@@ -149,13 +213,13 @@ export const TaskCard = React.memo(({
 
             {task.first_step && (
               <p className="text-[12px] mt-1" style={{ color: isOverdue ? "var(--space-do)" : "var(--space-think)" }}>
-                → {task.first_step}
+                â†’ {task.first_step}
               </p>
             )}
 
             {task.recurrence && (
               <p className="text-[12px] mt-1" style={{ color: "var(--text-3)" }}>
-                ↻ {formatRRule(task.recurrence)}
+                â†» {formatRRule(task.recurrence)}
               </p>
             )}
 
@@ -224,7 +288,7 @@ export const TaskCard = React.memo(({
                   className="ml-1"
                   style={{ color: "var(--text-3)" }}
                 >
-                  ×
+                  Ã—
                 </button>
               </div>
             )}
@@ -244,6 +308,7 @@ export const TaskCard = React.memo(({
           </div>
         </div>
       </GlassCard>
+      </motion.div>
     </motion.div>
   );
 }, (prevProps, nextProps) => {

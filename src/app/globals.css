@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 @theme inline {
   --font-sans: var(--font-sans);
@@ -63,8 +63,8 @@
   /* === TEXT SYSTEM === */
   --text-1: #FFFFFF;
   --text-2: rgba(255, 255, 255, 0.72);
-  --text-3: rgba(255, 255, 255, 0.45);
-  --text-4: rgba(255, 255, 255, 0.25);
+  --text-3: rgba(255, 255, 255, 0.60);
+  --text-4: rgba(255, 255, 255, 0.35);
   --text-on-accent: #0F0A00;
   --text-on-accent-muted: rgba(15, 10, 0, 0.70);
 
@@ -302,7 +302,7 @@ html.light {
 }
 
 html.light {
-  /* === ACCENT — same family, slightly richer in light === */
+  /* === ACCENT â€” same family, slightly richer in light === */
   --accent: #C8900A;
   --accent-hot: #D43520;
   --accent-deep: #8A4E08;
@@ -1226,4 +1226,21 @@ html.reduce-motion .orb {
 @keyframes drain {
   from { width: 100%; }
   to { width: 0%; }
+}
+
+
+/* Shimmer animation for skeleton loaders */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
 }

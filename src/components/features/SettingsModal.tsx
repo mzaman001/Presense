@@ -11,6 +11,8 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 const TABS = [
   { id: "account", label: "Account", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -218,6 +220,7 @@ export function SettingsModal() {
   const [userEmail, setUserEmail] = useState("");
 
   const [debouncedSettings] = useDebounce(settings, 1000);
+  const dialogRef = useDialogFocus(isSettingsModalOpen);
 
   useEffect(() => {
     if (!isSettingsModalOpen) return;
@@ -367,7 +370,6 @@ export function SettingsModal() {
       toast.error("Failed", { description: message });
     }
   };
-
   const handleDeleteAccount = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -383,7 +385,7 @@ export function SettingsModal() {
         supabase.from("push_subscriptions").delete().eq("user_id", user.id),
         supabase.from("user_settings").delete().eq("user_id", user.id),
       ]);
-      // Sign out — user data deleted, account auth record requires server-side cleanup
+      // Sign out â€” user data deleted, account auth record requires server-side cleanup
       await supabase.auth.signOut();
       toast.success("Account data deleted");
       setSettingsModalOpen(false);
@@ -395,510 +397,515 @@ export function SettingsModal() {
   };
 
   return (
-    <AnimatePresence>
-      {isSettingsModalOpen && (
-        <motion.div 
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setSettingsModalOpen(false)}
-        >
+    <ModalErrorBoundary modalName="Settings Modal" onClose={() => setSettingsModalOpen(false)}>
+      <AnimatePresence>
+        {isSettingsModalOpen && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 280, damping: 26, duration: 0.22 }}
-            className="modal relative w-full max-w-4xl h-[80vh] flex overflow-hidden"
-            onClick={e => e.stopPropagation()}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSettingsModalOpen(false)}
           >
-            <div className="w-full h-full flex">
-              {/* Sidebar Tabs */}
-              <div className="w-64 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col p-4">
-                <h2 className="text-xl font-bold text-[var(--color-text-1)] mb-8 px-2">Settings</h2>
-                <nav className="flex-1 space-y-1">
-                  {TABS.map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        activeTab === tab.id 
-                          ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" 
-                          : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
-                      }`}
-                    >
-                      <tab.icon className="w-4 h-4" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </nav>
-                
-                <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
-                  <div className="flex items-center gap-2 text-xs font-medium h-6 px-2 mb-2">
-                    <AnimatePresence mode="wait">
-                      {saveStatus === "saving" && (
-                        <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-text-3)]">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
-                        </motion.div>
-                      )}
-                      {saveStatus === "saved" && (
-                        <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-think)]">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Saved
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                  <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[var(--status-danger)] hover:bg-[var(--status-danger-dim)] transition-colors">
-                    <LogOut className="w-4 h-4" /> Sign Out
-                  </button>
-                </div>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="flex-1 relative overflow-y-auto no-scrollbar">
-                <button 
-                  onClick={() => setSettingsModalOpen(false)}
-                  className="btn-icon absolute top-4 right-4 z-10"
-                >
-                  <X size={16} strokeWidth={1.5} className="shrink-0" />
-                </button>
-
-                {loading ? (
-                  <div className="h-full flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
-                  </div>
-                ) : (
-                  <div className="p-10 max-w-2xl">
-                    <h3 className="text-2xl font-bold text-[var(--color-text-1)] mb-8 border-b border-[var(--color-border)] pb-4">
-                      {TABS.find(t => t.id === activeTab)?.label}
-                    </h3>
-
-                    {activeTab === "account" && (
-                      <div className="space-y-6">
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-2">Email</label>
-                          <input
-                            value={userEmail}
-                            readOnly
-                            className="input opacity-60 cursor-not-allowed"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-2">Display Name</label>
-                          <input
-                            value={settings.display_name || ""}
-                            onChange={e => updateSetting("display_name", e.target.value)}
-                            className="input"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-3">Avatar Color</label>
-                          <div className="flex flex-wrap gap-2">
-                            {['#F472B6', '#4ADE80', '#3B82F6', '#FBBF24', '#A855F7', '#EF4444'].map(color => (
-                              <button key={color} onClick={() => updateSetting("avatar_color", color)} className={`w-8 h-8 rounded-full transition-transform ${settings.avatar_color === color ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]' : 'opacity-70 hover:opacity-100'}`} style={{ backgroundColor: color }} />
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-2">Timezone</label>
-                          <Dropdown variant="select"
-                            value={settings.timezone || "UTC"}
-                            onChange={val => updateSetting("timezone", val)}
-                            options={
-                              typeof Intl !== "undefined" && "supportedValuesOf" in Intl
-                                ? (Intl as any).supportedValuesOf("timeZone").map((tz: string) => ({ value: tz, label: tz.replace(/_/g, " ") }))
-                                : [
-                                    { value: "UTC", label: "UTC" },
-                                    { value: "America/New_York", label: "Eastern Time (ET)" },
-                                    { value: "America/Chicago", label: "Central Time (CT)" },
-                                    { value: "America/Denver", label: "Mountain Time (MT)" },
-                                    { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
-                                    { value: "Asia/Kolkata", label: "India Standard Time (IST)" },
-                                    { value: "Europe/London", label: "Greenwich Mean Time (GMT)" },
-                                  ]
-                            }
-                          />
-                        </div>
-                        <div className="pt-8 mt-8 border-t border-[var(--status-danger-border)]">
-                          <h4 className="text-sm font-semibold text-[var(--status-danger)] mb-2 flex items-center gap-2">Danger Zone</h4>
-                          <p className="text-xs text-[var(--color-text-3)] mb-4">Permanently delete your account and all data.</p>
-                          <button onClick={() => setDeleteAccountConfirm(true)} className="w-full btn-danger mt-4">
-                            Delete Account
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "appearance" && (
-                      <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Theme Accent</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Select your primary colour palette</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => updateSetting("theme", "orange")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${settings.theme === 'orange' || !settings.theme ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Wahala (Orange)" />
-                            <button onClick={() => updateSetting("theme", "blue")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${settings.theme === 'blue' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Deep Navy" />
-                            <button onClick={() => updateSetting("theme", "forest")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${settings.theme === 'forest' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Forest" />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Color Mode</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Dark, Light, or System match</div>
-                          </div>
-                          <div className="w-40">
-                            <Dropdown variant="select"
-                              value={settings.color_mode || "dark"}
-                              onChange={val => updateSetting("color_mode", val)}
-                              className="w-full"
-                              options={[
-                                { value: "dark", label: "Dark" },
-                                { value: "light", label: "Light" },
-                                { value: "system", label: "System Default" }
-                              ]}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Ambient Background</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Show moving gradients in the background</div>
-                          </div>
-                          <button onClick={() => updateSetting("ambient_bg", !settings.ambient_bg)} className={`toggle-track ${settings.ambient_bg ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Reduce Motion</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Minimize UI animations</div>
-                          </div>
-                          <button onClick={() => updateSetting("reduce_motion", !settings.reduce_motion)} className={`toggle-track ${settings.reduce_motion ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "notifications" && (
-                      <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mb-6">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Master Toggle</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Enable all notifications</div>
-                          </div>
-                          <button onClick={() => updateSetting("notifications_enabled", !settings.notifications_enabled)} className={`toggle-track ${settings.notifications_enabled ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-label text-[var(--text-3)] block mb-2">Quiet Start</label>
-                            <input type="time" value={settings.quiet_start || "22:00"} onChange={e => updateSetting("quiet_start", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
-                          </div>
-                          <div>
-                            <label className="text-label text-[var(--text-3)] block mb-2">Quiet End</label>
-                            <input type="time" value={settings.quiet_end || "08:00"} onChange={e => updateSetting("quiet_end", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Daily Briefing</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Receive a summary of today&apos;s tasks</div>
-                          </div>
-                          <button onClick={() => updateSetting("daily_briefing", !settings.daily_briefing)} className={`toggle-track ${settings.daily_briefing ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Pomodoro Finish Sound</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Play a sound when timer completes</div>
-                          </div>
-                          <button onClick={() => updateSetting("pomodoro_sound", !settings.pomodoro_sound)} className={`toggle-track ${settings.pomodoro_sound ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Deadline Reminders</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Get notified as deadlines approach</div>
-                          </div>
-                          <button onClick={() => updateSetting("notif_overdue", !settings.notif_overdue)} className={`toggle-track ${settings.notif_overdue ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">People Briefings</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Reminder 30 min before a meeting</div>
-                          </div>
-                          <button onClick={() => updateSetting("notif_briefing", !settings.notif_briefing)} className={`toggle-track ${settings.notif_briefing ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Stale Location Alerts</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Remind to update locations older than 90 days</div>
-                          </div>
-                          <button onClick={() => updateSetting("notif_stale_threads", !settings.notif_stale_threads)} className={`toggle-track ${settings.notif_stale_threads ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "focus" && (
-                      <div className="space-y-6">
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-3">Work Duration (mins)</label>
-                          <div className="flex flex-wrap gap-2">
-                            {[15, 20, 25, 30, 45, 60].map(mins => (
-                              <button key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={cn("btn-preset", settings.pomodoro_duration === mins && "active")}>
-                                {mins}m
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-3">Short Break (mins)</label>
-                          <div className="flex flex-wrap gap-2">
-                            {[3, 5, 10, 15].map(mins => (
-                              <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={cn("btn-preset", settings.short_break_duration === mins && "active")}>
-                                {mins}m
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-3">Long Break (mins)</label>
-                          <div className="flex flex-wrap gap-2">
-                            {[15, 20, 30].map(mins => (
-                              <button key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={cn("btn-preset", settings.long_break_duration === mins && "active")}>
-                                {mins}m
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Auto-start Breaks</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Automatically begin break timer when work finishes</div>
-                          </div>
-                          <button onClick={() => updateSetting("auto_start_breaks", !settings.auto_start_breaks)} className={`toggle-track ${settings.auto_start_breaks ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-3">Long Break After (sessions)</label>
-                          <div className="flex flex-wrap gap-2">
-                            {[2, 3, 4, 5].map(n => (
-                              <button key={n} onClick={() => updateSetting("pomodoro_long_break_interval", n)} className={cn("btn-preset", (settings.pomodoro_long_break_interval || 4) === n && "active")}>
-                                {n}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "tasks" && (
-                      <div className="space-y-6">
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-3">Default View</label>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => updateSetting("default_view", "list")}
-                              className={cn("btn-preset", (settings.default_view === "list" || !settings.default_view) && "active")}
-                            >
-                              List View
-                            </button>
-                            <button
-                              onClick={() => updateSetting("default_view", "board")}
-                              className={cn("btn-preset", settings.default_view === "board" && "active")}
-                            >
-                              Board View
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-2">Auto-archive completed tasks after (days)</label>
-                          <input
-                            type="number"
-                            min={1} max={30}
-                            value={settings.auto_archive_days || 7}
-                            onChange={e => updateSetting("auto_archive_days", parseInt(e.target.value))}
-                            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
-                          />
-                        </div>
-                        <CategoryManager 
-                          title="Task Categories" 
-                          categoriesKey="do_categories" 
-                          colorsKey="do_category_colors" 
-                          defaultCategories={["work", "study", "personal", "errand", "health"]} 
-                          settings={settings}
-                          updateSetting={updateSetting}
-                          supabase={supabase}
-                        />
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Auto-snooze Overdue</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Automatically push overdue tasks to today</div>
-                          </div>
-                          <button onClick={() => updateSetting("auto_snooze", !settings.auto_snooze)} className={`toggle-track ${settings.auto_snooze ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "people" && (
-                      <div className="space-y-6">
-                        <CategoryManager 
-                          title="Relationship Categories" 
-                          categoriesKey="people_categories" 
-                          colorsKey="relationship_colors" 
-                          defaultCategories={["friend", "family", "professor", "colleague", "teammate", "other"]} 
-                          settings={settings}
-                          updateSetting={updateSetting}
-                          supabase={supabase}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "routing" && (
-                      <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Smart NLP Routing</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Automatically route captures based on natural language</div>
-                          </div>
-                          <button onClick={() => updateSetting("smart_routing_enabled", !settings.smart_routing_enabled)} className={`toggle-track ${settings.smart_routing_enabled ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">NLP Date Parsing</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Extract dates naturally from capture text</div>
-                          </div>
-                          <button onClick={() => updateSetting("nlp_date_parsing", settings.nlp_date_parsing === false ? true : false)} className={`toggle-track ${settings.nlp_date_parsing !== false ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-
-                        <div>
-                          <label className="text-label text-[var(--text-3)] block mb-3">Routing Confidence</label>
-                          <div className="flex flex-wrap gap-2">
-                            {['High', 'Medium', 'Low'].map(conf => (
-                              <button
-                                key={conf}
-                                onClick={() => updateSetting("routing_confidence", conf)}
-                                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.routing_confidence === conf || (!settings.routing_confidence && conf === 'Medium') ? 'bg-[var(--accent)] text-[var(--text-on-accent)] border-[var(--accent)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}
-                              >
-                                {conf} {conf === 'High' && '(Auto-route)'} {conf === 'Medium' && '(Review)'} {conf === 'Low' && '(Ask)'}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Enhanced routing via Ollama</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Use local LLM for advanced routing decisions</div>
-                          </div>
-                          <button onClick={() => updateSetting("ollama_enabled", !settings.ollama_enabled)} className={`toggle-track ${settings.ollama_enabled ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        {settings.ollama_enabled && (
-                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                            <label className="text-label text-[var(--text-3)] block mb-2 mt-4">Ollama URL</label>
-                            <div className="flex gap-2">
-                              <input
-                                value={settings.ollama_url || "http://localhost:11434"}
-                                onChange={e => updateSetting("ollama_url", e.target.value)}
-                                className="flex-1 bg-[var(--surface-input)] border border-[var(--border-input)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--border-input-focus)] focus:outline-none transition-colors"
-                              />
-                              <button 
-                                onClick={async () => { 
-                                  const url = settings.ollama_url || "http://localhost:11434";
-                                  try {
-                                    const res = await fetch(`${url}/api/tags`);
-                                    if (res.ok) {
-                                      const data = await res.json();
-                                      const models = data.models || [];
-                                      const modelName = models.length > 0 ? models[0].name : "No models found";
-                                      toast.success(`Connected — model: ${modelName}`);
-                                    } else {
-                                      toast.error("Not reachable");
-                                    }
-                                  } catch {
-                                    toast.error("Not reachable");
-                                  }
-                                }} 
-                                className="px-4 py-3 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-sm font-semibold hover:bg-[var(--accent-dim-hover)] transition-colors whitespace-nowrap"
-                              >
-                                Test connection
-                              </button>
-                            </div>
+            <motion.div 
+              ref={dialogRef}
+              initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className="modal relative w-full max-w-4xl h-[100dvh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden md:rounded-2xl"
+              onClick={e => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Settings"
+            >
+              <div className="w-full h-full flex flex-col md:flex-row">
+                {/* Sidebar Tabs */}
+                <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-[var(--color-border)] bg-[var(--color-surface)] flex md:flex-col p-4 overflow-x-auto md:overflow-x-visible shrink-0 pb-0 md:pb-4">
+                  <h2 className="hidden md:block text-xl font-bold text-[var(--color-text-1)] mb-8 px-2">Settings</h2>
+                  <nav className="flex md:flex-col gap-1 w-full pb-2 md:pb-0">
+                    {TABS.map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          activeTab === tab.id 
+                            ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" 
+                            : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
+                        }`}
+                      >
+                        <tab.icon className="w-4 h-4" />
+                        {tab.label}
+                      </button>
+                    ))}
+                  </nav>
+                  
+                  <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
+                    <div className="flex items-center gap-2 text-xs font-medium h-6 px-2 mb-2">
+                      <AnimatePresence mode="wait">
+                        {saveStatus === "saving" && (
+                          <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-text-3)]">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
                           </motion.div>
                         )}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">Location Context</div>
-                            <div className="text-sm text-[var(--color-text-3)]">Use location to prompt relevant tasks</div>
-                          </div>
-                          <button onClick={() => updateSetting("location_detection", !settings.location_detection)} className={`toggle-track ${settings.location_detection ? 'on' : ''}`}>
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "data" && (
-                      <div className="space-y-6">
-                        <p className="text-sm text-[var(--color-text-3)]">Manage your data and account. All data stays synced across devices.</p>
-                        <button
-                          type="button"
-                          onClick={handleExportData}
-                          className="w-full btn-secondary"
-                        >
-                          <Download size={14} strokeWidth={1.5} className="shrink-0" /> Export All Data
-                        </button>
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                          <button
-                            type="button"
-                            onClick={() => setClearTasksConfirm(true)}
-                            className="w-full btn-danger"
-                          >
-                            Clear Completed Tasks
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setClearLocationsConfirm(true)}
-                            className="w-full btn-danger"
-                          >
-                            Clear Stale Locations
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <ConfirmModal isOpen={deleteAccountConfirm} onClose={() => setDeleteAccountConfirm(false)} onConfirm={handleDeleteAccount} title="Delete Account" description="This will permanently delete all your data. This cannot be undone." confirmLabel="Delete Account" inputRequired="DELETE" confirmDestructive />
-                    <ConfirmModal isOpen={clearTasksConfirm} onClose={() => setClearTasksConfirm(false)} onConfirm={handleClearCompleted} title="Clear Completed Tasks" description="Remove all completed tasks permanently?" confirmLabel="Clear Tasks" confirmDestructive />
-                    <ConfirmModal isOpen={clearLocationsConfirm} onClose={() => setClearLocationsConfirm(false)} onConfirm={handleClearStaleLocations} title="Clear Stale Locations" description="Remove locations not updated in 30+ days?" confirmLabel="Clear Locations" confirmDestructive />
-
+                        {saveStatus === "saved" && (
+                          <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-think)]">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                    <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[var(--status-danger)] hover:bg-[var(--status-danger-dim)] transition-colors">
+                      <LogOut className="w-4 h-4" /> Sign Out
+                    </button>
                   </div>
-                )}
+                </div>
+
+                {/* Main Content Area */}
+                <div className="flex-1 relative overflow-y-auto no-scrollbar">
+                  <button 
+                    onClick={() => setSettingsModalOpen(false)}
+                    className="btn-icon absolute top-4 right-4 z-10"
+                  >
+                    <X size={16} strokeWidth={1.5} className="shrink-0" />
+                  </button>
+
+                  {loading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
+                    </div>
+                  ) : (
+                    <div className="p-10 max-w-2xl">
+                      <h3 className="text-2xl font-bold text-[var(--color-text-1)] mb-8 border-b border-[var(--color-border)] pb-4">
+                        {TABS.find(t => t.id === activeTab)?.label}
+                      </h3>
+
+                      {activeTab === "account" && (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-2">Email</label>
+                            <input
+                              value={userEmail}
+                              readOnly
+                              className="input opacity-60 cursor-not-allowed"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-2">Display Name</label>
+                            <input
+                              value={settings.display_name || ""}
+                              onChange={e => updateSetting("display_name", e.target.value)}
+                              className="input"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-3">Avatar Color</label>
+                            <div className="flex flex-wrap gap-2">
+                              {['#F472B6', '#4ADE80', '#3B82F6', '#FBBF24', '#A855F7', '#EF4444'].map(color => (
+                                <button key={color} onClick={() => updateSetting("avatar_color", color)} className={`w-8 h-8 rounded-full transition-transform ${settings.avatar_color === color ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]' : 'opacity-70 hover:opacity-100'}`} style={{ backgroundColor: color }} />
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-2">Timezone</label>
+                            <Dropdown variant="select"
+                              value={settings.timezone || "UTC"}
+                              onChange={val => updateSetting("timezone", val)}
+                              options={
+                                typeof Intl !== "undefined" && "supportedValuesOf" in Intl
+                                  ? (Intl as any).supportedValuesOf("timeZone").map((tz: string) => ({ value: tz, label: tz.replace(/_/g, " ") }))
+                                  : [
+                                      { value: "UTC", label: "UTC" },
+                                      { value: "America/New_York", label: "Eastern Time (ET)" },
+                                      { value: "America/Chicago", label: "Central Time (CT)" },
+                                      { value: "America/Denver", label: "Mountain Time (MT)" },
+                                      { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+                                      { value: "Asia/Kolkata", label: "India Standard Time (IST)" },
+                                      { value: "Europe/London", label: "Greenwich Mean Time (GMT)" },
+                                    ]
+                              }
+                            />
+                          </div>
+                          <div className="pt-8 mt-8 border-t border-[var(--status-danger-border)]">
+                            <h4 className="text-sm font-semibold text-[var(--status-danger)] mb-2 flex items-center gap-2">Danger Zone</h4>
+                            <p className="text-xs text-[var(--color-text-3)] mb-4">Permanently delete your account and all data.</p>
+                            <button onClick={() => setDeleteAccountConfirm(true)} className="w-full btn-danger mt-4">
+                              Delete Account
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === "appearance" && (
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Theme Accent</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Select your primary colour palette</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => updateSetting("theme", "orange")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${settings.theme === 'orange' || !settings.theme ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Wahala (Orange)" />
+                              <button onClick={() => updateSetting("theme", "blue")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${settings.theme === 'blue' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Deep Navy" />
+                              <button onClick={() => updateSetting("theme", "forest")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${settings.theme === 'forest' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Forest" />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Color Mode</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Dark, Light, or System match</div>
+                            </div>
+                            <div className="w-40">
+                              <Dropdown variant="select"
+                                value={settings.color_mode || "dark"}
+                                onChange={val => updateSetting("color_mode", val)}
+                                className="w-full"
+                                options={[
+                                  { value: "dark", label: "Dark" },
+                                  { value: "light", label: "Light" },
+                                  { value: "system", label: "System Default" }
+                                ]}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Ambient Background</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Show moving gradients in the background</div>
+                            </div>
+                            <button onClick={() => updateSetting("ambient_bg", !settings.ambient_bg)} className={`toggle-track ${settings.ambient_bg ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Reduce Motion</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Minimize UI animations</div>
+                            </div>
+                            <button onClick={() => updateSetting("reduce_motion", !settings.reduce_motion)} className={`toggle-track ${settings.reduce_motion ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === "notifications" && (
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mb-6">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Master Toggle</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Enable all notifications</div>
+                            </div>
+                            <button onClick={() => updateSetting("notifications_enabled", !settings.notifications_enabled)} className={`toggle-track ${settings.notifications_enabled ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-label text-[var(--text-3)] block mb-2">Quiet Start</label>
+                              <input type="time" value={settings.quiet_start || "22:00"} onChange={e => updateSetting("quiet_start", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
+                            </div>
+                            <div>
+                              <label className="text-label text-[var(--text-3)] block mb-2">Quiet End</label>
+                              <input type="time" value={settings.quiet_end || "08:00"} onChange={e => updateSetting("quiet_end", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Daily Briefing</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Receive a summary of today&apos;s tasks</div>
+                            </div>
+                            <button onClick={() => updateSetting("daily_briefing", !settings.daily_briefing)} className={`toggle-track ${settings.daily_briefing ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Pomodoro Finish Sound</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Play a sound when timer completes</div>
+                            </div>
+                            <button onClick={() => updateSetting("pomodoro_sound", !settings.pomodoro_sound)} className={`toggle-track ${settings.pomodoro_sound ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Deadline Reminders</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Get notified as deadlines approach</div>
+                            </div>
+                            <button onClick={() => updateSetting("notif_overdue", !settings.notif_overdue)} className={`toggle-track ${settings.notif_overdue ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">People Briefings</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Reminder 30 min before a meeting</div>
+                            </div>
+                            <button onClick={() => updateSetting("notif_briefing", !settings.notif_briefing)} className={`toggle-track ${settings.notif_briefing ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Stale Location Alerts</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Remind to update locations older than 90 days</div>
+                            </div>
+                            <button onClick={() => updateSetting("notif_stale_threads", !settings.notif_stale_threads)} className={`toggle-track ${settings.notif_stale_threads ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === "focus" && (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-3">Work Duration (mins)</label>
+                            <div className="flex flex-wrap gap-2">
+                              {[15, 20, 25, 30, 45, 60].map(mins => (
+                                <button key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={cn("btn-preset", settings.pomodoro_duration === mins && "active")}>
+                                  {mins}m
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-3">Short Break (mins)</label>
+                            <div className="flex flex-wrap gap-2">
+                              {[3, 5, 10, 15].map(mins => (
+                                <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={cn("btn-preset", settings.short_break_duration === mins && "active")}>
+                                  {mins}m
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-3">Long Break (mins)</label>
+                            <div className="flex flex-wrap gap-2">
+                              {[15, 20, 30].map(mins => (
+                                <button key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={cn("btn-preset", settings.long_break_duration === mins && "active")}>
+                                  {mins}m
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Auto-start Breaks</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Automatically begin break timer when work finishes</div>
+                            </div>
+                            <button onClick={() => updateSetting("auto_start_breaks", !settings.auto_start_breaks)} className={`toggle-track ${settings.auto_start_breaks ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-3">Long Break After (sessions)</label>
+                            <div className="flex flex-wrap gap-2">
+                              {[2, 3, 4, 5].map(n => (
+                                <button key={n} onClick={() => updateSetting("pomodoro_long_break_interval", n)} className={cn("btn-preset", (settings.pomodoro_long_break_interval || 4) === n && "active")}>
+                                  {n}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === "tasks" && (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-3">Default View</label>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => updateSetting("default_view", "list")}
+                                className={cn("btn-preset", (settings.default_view === "list" || !settings.default_view) && "active")}
+                              >
+                                List View
+                              </button>
+                              <button
+                                onClick={() => updateSetting("default_view", "board")}
+                                className={cn("btn-preset", settings.default_view === "board" && "active")}
+                              >
+                                Board View
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-2">Auto-archive completed tasks after (days)</label>
+                            <input
+                              type="number"
+                              min={1} max={30}
+                              value={settings.auto_archive_days || 7}
+                              onChange={e => updateSetting("auto_archive_days", parseInt(e.target.value))}
+                              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
+                            />
+                          </div>
+                          <CategoryManager 
+                            title="Task Categories" 
+                            categoriesKey="do_categories" 
+                            colorsKey="do_category_colors" 
+                            defaultCategories={["work", "study", "personal", "errand", "health"]} 
+                            settings={settings}
+                            updateSetting={updateSetting}
+                            supabase={supabase}
+                          />
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Auto-snooze Overdue</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Automatically push overdue tasks to today</div>
+                            </div>
+                            <button onClick={() => updateSetting("auto_snooze", !settings.auto_snooze)} className={`toggle-track ${settings.auto_snooze ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === "people" && (
+                        <div className="space-y-6">
+                          <CategoryManager 
+                            title="Relationship Categories" 
+                            categoriesKey="people_categories" 
+                            colorsKey="relationship_colors" 
+                            defaultCategories={["friend", "family", "professor", "colleague", "teammate", "other"]} 
+                            settings={settings}
+                            updateSetting={updateSetting}
+                            supabase={supabase}
+                          />
+                        </div>
+                      )}
+
+                      {activeTab === "routing" && (
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Smart NLP Routing</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Automatically route captures based on natural language</div>
+                            </div>
+                            <button onClick={() => updateSetting("smart_routing_enabled", !settings.smart_routing_enabled)} className={`toggle-track ${settings.smart_routing_enabled ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">NLP Date Parsing</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Extract dates naturally from capture text</div>
+                            </div>
+                            <button onClick={() => updateSetting("nlp_date_parsing", settings.nlp_date_parsing === false ? true : false)} className={`toggle-track ${settings.nlp_date_parsing !== false ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+
+                          <div>
+                            <label className="text-label text-[var(--text-3)] block mb-3">Routing Confidence</label>
+                            <div className="flex flex-wrap gap-2">
+                              {['High', 'Medium', 'Low'].map(conf => (
+                                <button
+                                  key={conf}
+                                  onClick={() => updateSetting("routing_confidence", conf)}
+                                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.routing_confidence === conf || (!settings.routing_confidence && conf === 'Medium') ? 'bg-[var(--accent)] text-[var(--text-on-accent)] border-[var(--accent)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}
+                                >
+                                  {conf} {conf === 'High' && '(Auto-route)'} {conf === 'Medium' && '(Review)'} {conf === 'Low' && '(Ask)'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Enhanced routing via Ollama</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Use local LLM for advanced routing decisions</div>
+                            </div>
+                            <button onClick={() => updateSetting("ollama_enabled", !settings.ollama_enabled)} className={`toggle-track ${settings.ollama_enabled ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                          {settings.ollama_enabled && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                              <label className="text-label text-[var(--text-3)] block mb-2 mt-4">Ollama URL</label>
+                              <div className="flex gap-2">
+                                <input
+                                  value={settings.ollama_url || "http://localhost:11434"}
+                                  onChange={e => updateSetting("ollama_url", e.target.value)}
+                                  className="flex-1 bg-[var(--surface-input)] border border-[var(--border-input)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--border-input-focus)] focus:outline-none transition-colors"
+                                />
+                                <button 
+                                  onClick={async () => { 
+                                    const url = settings.ollama_url || "http://localhost:11434";
+                                    try {
+                                      const res = await fetch(`${url}/api/tags`);
+                                      if (res.ok) {
+                                        const data = await res.json();
+                                        const models = data.models || [];
+                                        const modelName = models.length > 0 ? models[0].name : "No models found";
+                                        toast.success(`Connected â€” model: ${modelName}`);
+                                      } else {
+                                        toast.error("Not reachable");
+                                      }
+                                    } catch {
+                                      toast.error("Not reachable");
+                                    }
+                                  }} 
+                                  className="px-4 py-3 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-sm font-semibold hover:bg-[var(--accent-dim-hover)] transition-colors whitespace-nowrap"
+                                >
+                                  Test connection
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Location Context</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Use location to prompt relevant tasks</div>
+                            </div>
+                            <button onClick={() => updateSetting("location_detection", !settings.location_detection)} className={`toggle-track ${settings.location_detection ? 'on' : ''}`}>
+                              <div className="toggle-thumb" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === "data" && (
+                        <div className="space-y-6">
+                          <p className="text-sm text-[var(--color-text-3)]">Manage your data and account. All data stays synced across devices.</p>
+                          <button
+                            type="button"
+                            onClick={handleExportData}
+                            className="w-full btn-secondary"
+                          >
+                            <Download size={14} strokeWidth={1.5} className="shrink-0" /> Export All Data
+                          </button>
+                          <div className="grid grid-cols-2 gap-4 mt-4">
+                            <button
+                              type="button"
+                              onClick={() => setClearTasksConfirm(true)}
+                              className="w-full btn-danger"
+                            >
+                              Clear Completed Tasks
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setClearLocationsConfirm(true)}
+                              className="w-full btn-danger"
+                            >
+                              Clear Stale Locations
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <ConfirmModal isOpen={deleteAccountConfirm} onClose={() => setDeleteAccountConfirm(false)} onConfirm={handleDeleteAccount} title="Delete Account" description="This will permanently delete all your data. This cannot be undone." confirmLabel="Delete Account" inputRequired="DELETE" confirmDestructive />
+                      <ConfirmModal isOpen={clearTasksConfirm} onClose={() => setClearTasksConfirm(false)} onConfirm={handleClearCompleted} title="Clear Completed Tasks" description="Remove all completed tasks permanently?" confirmLabel="Clear Tasks" confirmDestructive />
+                      <ConfirmModal isOpen={clearLocationsConfirm} onClose={() => setClearLocationsConfirm(false)} onConfirm={handleClearStaleLocations} title="Clear Stale Locations" description="Remove locations not updated in 30+ days?" confirmLabel="Clear Locations" confirmDestructive />
+
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </ModalErrorBoundary>
   );
 }
-

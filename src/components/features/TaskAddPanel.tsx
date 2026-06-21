@@ -1,3 +1,4 @@
+﻿import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
@@ -214,7 +215,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           d = parsedResults[0].start.date();
         } else {
           // Multiple results: combine their text and re-parse to merge date+time
-          // e.g. "tomorrow" + "at 9pm" → "tomorrow at 9pm" → single correct result
+          // e.g. "tomorrow" + "at 9pm" â†’ "tomorrow at 9pm" â†’ single correct result
           const combined = parsedResults.map((r) => r.text).join(" ");
           const merged = chrono.parse(combined);
           d =
@@ -346,7 +347,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         }
         
         if (error) {
-          console.error("Save error:", error);
+          logger.error("Save error:", error);
           toast.error(`Failed to ${taskToEdit ? "update" : "save"} task`, { description: error.message });
           setSaving(false);
           return;

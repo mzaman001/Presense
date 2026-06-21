@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,15 +18,15 @@ interface LocationItem {
 }
 
 const EMOJI_MAP: Record<string, string> = {
-  keys: "🔑", key: "🔑", wallet: "👛", phone: "📱", charger: "🔌",
-  laptop: "💻", headphones: "🎧", notebook: "📒", book: "📖", glasses: "👓",
-  watch: "⌚", bag: "🎒", card: "💳", id: "🪪", passport: "📕",
-  cable: "🔌", pen: "🖊️", bottle: "🍶", umbrella: "☂️", shoes: "👟",
+  keys: "ðŸ”‘", key: "ðŸ”‘", wallet: "ðŸ‘›", phone: "ðŸ“±", charger: "ðŸ”Œ",
+  laptop: "ðŸ’»", headphones: "ðŸŽ§", notebook: "ðŸ“’", book: "ðŸ“–", glasses: "ðŸ‘“",
+  watch: "âŒš", bag: "ðŸŽ’", card: "ðŸ’³", id: "ðŸªª", passport: "ðŸ“•",
+  cable: "ðŸ”Œ", pen: "ðŸ–Šï¸", bottle: "ðŸ¶", umbrella: "â˜‚ï¸", shoes: "ðŸ‘Ÿ",
 };
 
 function getEmoji(name: string): string {
   const lower = name.toLowerCase();
-  return Object.entries(EMOJI_MAP).find(([k]) => lower.includes(k))?.[1] ?? "📦";
+  return Object.entries(EMOJI_MAP).find(([k]) => lower.includes(k))?.[1] ?? "ðŸ“¦";
 }
 
 function daysAgo(dt: string): number {
@@ -74,7 +74,7 @@ export default function LocationsPage() {
     <>
     <div className="flex flex-col gap-6">
 
-      {/* Search bar — primary interaction */}
+      {/* Search bar â€” primary interaction */}
       <div className="relative">
         <Search size={13} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
         <input
@@ -91,7 +91,7 @@ export default function LocationsPage() {
       {noResults && (
         <GlassCard className="p-5 border-[var(--accent-border)]">
           <p className="text-sm text-[var(--color-text-3)] mb-3">
-            &ldquo;<span className="text-[var(--color-text-1)]">{search}</span>&rdquo; not found — log it now?
+            &ldquo;<span className="text-[var(--color-text-1)]">{search}</span>&rdquo; not found â€” log it now?
           </p>
           <button onClick={() => setShowAdd(true)} className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--text-on-accent)] text-sm font-semibold hover:bg-[var(--accent-hot)] transition-colors">
             Log "{search}"
@@ -140,7 +140,7 @@ export default function LocationsPage() {
                         <span className="text-[10px] text-[var(--color-text-3)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Probably moved?</span>
                       ) : isStale ? (
                         <button onClick={(e) => { e.stopPropagation(); markStillHere(item.id); }} className="text-[10px] text-[#FBBF24] flex items-center gap-1 hover:text-[var(--color-text-1)] transition-colors border border-[rgba(251,191,36,0.3)] px-2 py-0.5 rounded-full z-10 relative">
-                          Stale · Still here
+                          Stale Â· Still here
                         </button>
                       ) : (
                         <span className="text-[11px] text-[var(--color-text-3)] flex items-center gap-1">

@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+import { logger } from "@/lib/logger";
 
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -106,7 +107,7 @@ export default function PeoplePage() {
   const fetchPeople = useCallback(async () => {
     const { data, error } = await supabase.from("people").select("*").order("sort_order", { ascending: true, nullsFirst: false });
     if (error) {
-      console.error("Fetch people error:", error);
+      logger.error("Fetch people error:", error);
       setFetchError(error.message);
     }
     setPeople(data ?? []);
@@ -151,7 +152,7 @@ export default function PeoplePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ items: payload })
-        }).catch(err => console.error("Failed to reorder:", err));
+        }).catch(err => logger.error("Failed to reorder:", err));
 
         return updated;
       });

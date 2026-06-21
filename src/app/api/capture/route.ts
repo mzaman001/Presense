@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createClient } from '@/lib/supabase-server';
 import { routeCapture } from '@/lib/capture-router';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.error('Capture error:', error);
+    logger.error('Capture error:', error);
     return NextResponse.json({ error: 'Failed to process capture' }, { status: 500 });
   }
 }

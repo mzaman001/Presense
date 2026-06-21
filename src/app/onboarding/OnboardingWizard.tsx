@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+import { logger } from "@/lib/logger";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -78,7 +79,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       }
       setStep(2);
     } catch (e) {
-      console.error(e);
+      logger.error(e instanceof Error ? e.message : String(e));
       toast.error("Failed to save name");
     } finally {
       setSaving(false);
@@ -100,7 +101,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       }
       setStep(3);
     } catch (e) {
-      console.error(e);
+      logger.error(e instanceof Error ? e.message : String(e));
       toast.error("Failed to save struggles");
     } finally {
       setSaving(false);
@@ -129,7 +130,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       }
       setStep(4);
     } catch (e) {
-      console.error(e);
+      logger.error(e instanceof Error ? e.message : String(e));
       toast.error("Failed to save preferences");
     } finally {
       setSaving(false);
@@ -193,7 +194,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       }
       setStep(5);
     } catch (e) {
-      console.error(e);
+      logger.error(e instanceof Error ? e.message : String(e));
       toast.error("Failed to capture");
     } finally {
       setSaving(false);
@@ -211,7 +212,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       }
       router.push("/");
     } catch (e) {
-      console.error(e);
+      logger.error(e instanceof Error ? e.message : String(e));
       toast.error("Failed to complete onboarding");
       setSaving(false);
     }
@@ -333,7 +334,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
               <AnimatePresence>
                 {routedItem && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-4 left-4 bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
-                    <Zap className="w-4 h-4" /> → This will go to {routedItem.destination}
+                    <Zap className="w-4 h-4" /> â†’ This will go to {routedItem.destination}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -393,7 +394,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 </button>
               )}
               <button onClick={handleFinish} className="text-[var(--color-text-3)] text-sm font-medium hover:text-[var(--color-text-1)] transition-colors">
-                Skip tour →
+                Skip tour â†’
               </button>
             </div>
           </motion.div>

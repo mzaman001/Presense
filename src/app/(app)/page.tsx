@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -291,7 +291,7 @@ export default function HomeDashboard() {
           
           <div className="relative z-10 p-10 flex flex-col items-center justify-center text-center h-full">
             <span className="text-[10px] font-bold tracking-widest text-[var(--accent)] uppercase mb-4 px-3 py-1 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20">
-              ⚡ FOCUS NOW
+              âš¡ FOCUS NOW
             </span>
             <h2 className="text-3xl font-medium text-[var(--text-1)] mb-1">{primaryTask.title}</h2>
             <p className="text-label text-[var(--text-3)] mb-4">{heroReason}</p>
@@ -397,7 +397,7 @@ export default function HomeDashboard() {
           <div className="flex items-center justify-between">
             <h3 className="text-section-title text-[var(--text-1)]">Up Next</h3>
             <Link href="/do" className="text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] flex items-center gap-1">
-              {tasks.length > 1 ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — ` : ""}View all <ArrowRight className="w-3 h-3" />
+              {tasks.length > 1 ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown â€” ` : ""}View all <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
           {tasks.slice(1, 6).map((task, i) => (
