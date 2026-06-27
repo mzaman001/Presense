@@ -197,6 +197,8 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
   const isCurrentlyOpen = isOpen !== undefined ? isOpen : storeActiveRitual !== null;
 
   const handleClose = () => {
+    // Stamp close time so AppInitializer won't fire another ritual for 5 minutes
+    localStorage.setItem('presense_ritual_closed_at', String(Date.now()));
     if (onClose) onClose();
     else storeSetActiveRitual(null);
   };

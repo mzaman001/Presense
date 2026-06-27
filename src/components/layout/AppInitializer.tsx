@@ -32,26 +32,37 @@ export function AppInitializer({ initialSettings }: { initialSettings?: UserSett
       const shutdownTime = userSettings.shutdown_time || '18:00:00';
       const lastRitualDate = userSettings.last_ritual_date;
 
-      const shouldTriggerMorning = lastRitualDate !== todayString && isTimeAfter(nudgeTime);
-      const hasDoneEveningToday = localStorage.getItem('presense_evening_ritual_date') === todayString;
-      const shouldTriggerEvening = !hasDoneEveningToday && isTimeAfter(shutdownTime);
+      // Don't interrupt if a ritual is already open
+      if (useAppStore.getState().activeRitual !== null) return;
 
-      if (useAppStore.getState().activeRitual === null) {
-        if (shouldTriggerMorning) {
-          setActiveRitual('morning');
-        } else if (shouldTriggerEvening) {
-          setActiveRitual('evening');
-        }
+      // Don't fire within 5 minutes of a ritual being closed (prevents back-to-back chaining)
+      const lastClosedAt = parseInt(localStorage.getItem('presense_ritual_closed_at') || '0', 10);
+      if (Date.now() - lastClosedAt < 5 * 60 * 1000) return;
+
+      // Rule 1 — Morning: fires if not yet done today AND past nudge time
+      const morningDoneToday = lastRitualDate === todayString;
+      const shouldTriggerMorning = !morningDoneToday && isTimeAfter(nudgeTime);
+
+      // Rule 2 — Evening: ONLY fires if morning was already completed today
+      //           AND past shutdown time AND evening not yet done today
+      const eveningDoneToday = localStorage.getItem('presense_evening_ritual_date') === todayString;
+      const shouldTriggerEvening = morningDoneToday && !eveningDoneToday && isTimeAfter(shutdownTime);
+
+      if (shouldTriggerMorning) {
+        setActiveRitual('morning');
+      } else if (shouldTriggerEvening) {
+        setActiveRitual('evening');
       }
     };
 
-    // Run immediately on load
-    checkRituals();
+    // Slight delay on initial load so the UI is ready
+    const initialTimer = setTimeout(checkRituals, 2000);
 
-    // Check every 60 seconds (tick)
-    const interval = setInterval(checkRituals, 60000);
-    return () => clearInterval(interval);
+    // Check every 5 minutes (Sunsama-style — no need to hammer every 60s)
+    const interval = setInterval(checkRituals, 5 * 60 * 1000);
+    return () => { clearTimeout(initialTimer); clearInterval(interval); };
   }, [userSettings, setActiveRitual]);
+
 
   useEffect(() => {
     const isOnboarding = window.location.pathname.startsWith('/onboarding');
