@@ -1,5 +1,6 @@
 import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
@@ -706,11 +707,12 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
 
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Notes</label>
-                <textarea
+                <TextareaAutosize
                   placeholder="Additional context or details"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="input"
+                  minRows={2}
+                  className="input resize-none"
                 />
               </div>
             </div>

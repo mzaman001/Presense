@@ -99,3 +99,54 @@ Fix all UI/UX bugs identified in Phase 2 of the report:
 - [ ] Moving an item from the Inbox no longer triggers a hard SQL `.delete()` on the items table, but instead performs a safe state-transition or update.
 - [ ] UI latency for snoozing a task feels instantaneous due to optimistic client-side cache updates.
 </USER_REQUEST>
+
+## Follow-up — 2026-06-27T12:56:25Z
+
+<USER_REQUEST>
+# Teamwork Project Prompt — Phase 4
+
+> Status: Launched
+
+Implement Phase 4 (Sunsama Rituals & UI Polish) based on the approved spec. Object cross-linking has been deferred to Phase 4.5 to prioritize architecture stability.
+
+Working directory: .
+Integrity mode: demo
+
+## Pre-requisite: Realtime Hook Fix
+Before building the ritual, fix the `useRealtime` hook. It currently does a full refetch on every write and suppresses updates for 2.5s. Since the ritual overlay fires a burst of writes (snoozes, triage), debounce the hook properly so updates don't cause lag or redundant refetches.
+
+## Requirements
+
+### R1. Sunsama Daily Planning & Evening Review Ritual
+Implement the full-screen ritual flow directly in `src/app/(app)/layout.tsx` via a new global component (`src/components/features/RitualOverlay.tsx`), controlled by `useAppStore` state (`activeRitual: 'morning' | 'evening' | null`).
+
+**Database Updates (Table: `user_settings`)**
+- Add `last_ritual_date` (date) to track if the morning ritual was completed today.
+- Add `shutdown_time` (string/time, default `18:00`) for the evening review trigger.
+- Add `daily_capacity_minutes` (int, default `240`) for workload estimation.
+
+**Triggers**
+1. **Auto Morning**: In `AppInitializer.tsx`, if `now()` > `nudge_time` and `last_ritual_date` != today, trigger `'morning'`.
+2. **Auto Evening**: Trigger `'evening'` if `now()` > `shutdown_time`.
+3. **Manual**: Add a "Plan my day" button in `Navigation.tsx` (Sidebar) to manually trigger `'morning'`.
+
+**Morning Flow Components**
+- **Step 1: Triage (`MorningPlan.tsx`)**: Query tasks where status is `inbox` or `overdue`. Present full-width, one at a time/stack. Actions: "Do today", "Push to backlog" (leave status as-is), "Snooze". Cannot skip if items exist.
+- **Step 2: Commit (`MorningCommit.tsx`)**: List selected "today" tasks. Add per-task minute estimates (default 25m/1 Pomodoro). Create a `<WorkloadBar />` component—if sum > `daily_capacity_minutes`, show a soft overcommitment warning banner (do not block).
+- **Step 3: Done**: Write `last_ritual_date = today` to DB, close overlay, land on Home page.
+
+**Evening Flow Component**
+- **Evening Review (`EveningReview.tsx`)**: Query items completed today + session_logs for focus minutes. Show 3 panels: completed list, total focus minutes, incomplete carry-over list (bump deadline by 1 day for incomplete items with deadlines). Include a free-text "daily highlight" field that appends to today's Daily Note thread.
+
+### R2. Fluid Swipe Mechanics & Auto-growing Textareas
+- Apply the full-width Framer Motion swipe-to-delete mechanics (currently in `TaskCard.tsx`) to all list items across the app (Inbox items, Explore links, People CRM).
+- Replace static text inputs for notes and task descriptions with `react-textarea-autosize` so they grow naturally as the user types.
+
+## Acceptance Criteria
+- [ ] `useRealtime` is debounced and handles burst writes without 2.5s lockouts.
+- [ ] SQL migrations exist for the 3 new `user_settings` columns.
+- [ ] Ritual overlay interrupts the UI appropriately and can be triggered manually from the sidebar.
+- [ ] Triage flow safely snoozes, commits, or backlogs items. Workload Bar accurately tallies estimates.
+- [ ] Evening Review successfully tallies completed Pomodoros and carries over deadlines.
+- [ ] All lists support swipe-to-delete and `react-textarea-autosize` replaces rigid textareas.
+</USER_REQUEST>

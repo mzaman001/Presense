@@ -34,6 +34,9 @@ export interface UserSettings {
   nudge_time?: string;
   pomodoro_long_break_interval?: number;
   explore_custom_types?: string[];
+  last_ritual_date?: string;
+  shutdown_time?: string;
+  daily_capacity_minutes?: number;
   [key: string]: unknown;
 }
 
@@ -54,7 +57,10 @@ interface AppState {
   activeTimer: { taskId?: string; taskTitle?: string } | null;
   setActiveTimer: (timer: { taskId?: string; taskTitle?: string } | null) => void;
   lastMutationAt: number;
-  markMutation: () => void;
+  lastMutations: Record<string, number>;
+  markMutation: (table?: string) => void;
+  activeRitual: 'morning' | 'evening' | null;
+  setActiveRitual: (ritual: 'morning' | 'evening' | null) => void;
   prefetchedThreads: Record<string, unknown>;
   setPrefetchedThread: (id: string, thread: unknown) => void;
 }
@@ -76,7 +82,16 @@ export const useAppStore = create<AppState>((set) => ({
   activeTimer: null,
   setActiveTimer: (timer) => set({ activeTimer: timer }),
   lastMutationAt: 0,
-  markMutation: () => set({ lastMutationAt: Date.now() }),
+  lastMutations: {},
+  markMutation: (table) => set((state) => {
+    const now = Date.now();
+    return {
+      lastMutationAt: now,
+      lastMutations: table ? { ...state.lastMutations, [table]: now } : state.lastMutations,
+    };
+  }),
+  activeRitual: null,
+  setActiveRitual: (ritual) => set({ activeRitual: ritual }),
   prefetchedThreads: {},
   setPrefetchedThread: (id, thread) => set((state) => ({ prefetchedThreads: { ...state.prefetchedThreads, [id]: thread } })),
 }));

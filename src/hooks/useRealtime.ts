@@ -1,7 +1,9 @@
+"use client";
 import { logger } from "@/lib/logger";
 import { useEffect, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
+import { useDebouncedCallback } from "use-debounce";
 
 export function useRealtime(table: string, onUpdate: () => void) {
   const onUpdateRef = useRef(onUpdate);
@@ -12,6 +14,12 @@ export function useRealtime(table: string, onUpdate: () => void) {
 
   const supabase = useMemo(() => createClient(), []);
 
+  // Consolidate updates with 200ms debounce
+  const debouncedUpdate = useDebouncedCallback(() => {
+    logger.info(`[Realtime] Triggering debounced update for ${table}`);
+    onUpdateRef.current();
+  }, 200);
+
   useEffect(() => {
     
     // Create a generic subscription for INSERT, UPDATE, DELETE on the specified table
@@ -21,17 +29,17 @@ export function useRealtime(table: string, onUpdate: () => void) {
         'postgres_changes',
         { event: '*', schema: 'public', table: table },
         (payload) => {
-          // Check if we mutated locally within the last 2.5 seconds.
-          // If so, ignore this event as it's likely an echo of our own mutation,
-          // which prevents the UI from flickering back to an old state before the fetch completes.
-          const lastMutationAt = useAppStore.getState().lastMutationAt;
-          if (Date.now() - lastMutationAt < 2500) {
+          // Check if we mutated locally within the last 500ms for this specific table.
+          // If so, ignore this event as it's likely an echo of our own mutation.
+          const lastMutations = useAppStore.getState().lastMutations || {};
+          const lastMutationAt = lastMutations[table] || 0;
+          if (Date.now() - lastMutationAt < 500) {
             logger.info(`[Realtime] Ignoring echo on ${table} due to recent local mutation`);
             return;
           }
 
           logger.info(`[Realtime] Update on ${table}:`, payload);
-          onUpdateRef.current();
+          debouncedUpdate();
         }
       )
       .subscribe();
@@ -39,5 +47,5 @@ export function useRealtime(table: string, onUpdate: () => void) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, supabase]);
+  }, [table, supabase, debouncedUpdate]);
 }

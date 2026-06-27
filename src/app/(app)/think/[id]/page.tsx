@@ -2,6 +2,7 @@
 import { logger } from "@/lib/logger";
 
 import React, { useEffect, useState, useCallback, use } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -321,14 +322,19 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       <div className="fixed bottom-0 left-0 right-0 md:pl-[220px] p-4 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent z-40">
         <div className="max-w-2xl mx-auto">
           <form onSubmit={handleAddEntry} className="relative">
-            <textarea
+            <TextareaAutosize
               placeholder="Continue the thought..."
               value={newEntry}
               onChange={(e) => setNewEntry(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddEntry(e);
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  handleAddEntry(e);
+                }
               }}
-              className="input !pr-14 !rounded-2xl !py-4"
+              minRows={1}
+              maxRows={10}
+              className="input !pr-14 !rounded-2xl !py-4 resize-none"
             />
             <div className="absolute right-3 bottom-3 flex items-center gap-2">
               <span className="text-[10px] text-[var(--color-text-3)] font-mono hidden md:inline">Cmd+Enter</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Archive, Trash2, RefreshCcw, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase";
@@ -254,11 +255,11 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                 <label className="text-label text-[var(--text-3)] block mb-2">
                   Why are you saving this? <span className="text-red-400">*</span>
                 </label>
-                <textarea
+                <TextareaAutosize
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  rows={4}
-                  className="input"
+                  minRows={3}
+                  className="input resize-none"
                   placeholder="e.g. Fascinating idea from lecture / Riyaz recommended this book"
                 />
               </div>

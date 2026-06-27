@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Plus, Loader2, Link2, BookOpen, Lightbulb } from "lucide-react";
+import { Plus, Loader2, Link2, BookOpen, Lightbulb, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -34,6 +34,99 @@ const TYPE_COLORS: Record<string, string> = {
 const FILTERS = ["All Saved", "Links", "Notes", "Books"];
 const FILTER_MAP: Record<string, string | null> = {
   "All Saved": null, Links: "link", Notes: "note", Books: "book",
+};
+
+const ExploreItemCard = ({ 
+  item, 
+  setEditItem, 
+  deleteExploreItem, 
+  timeAgo 
+}: {
+  item: ExploreItem;
+  setEditItem: (item: ExploreItem) => void;
+  deleteExploreItem: (item: ExploreItem) => void;
+  timeAgo: (dt: string) => string;
+}) => {
+  const dragX = useMotionValue(0);
+  const deleteOpacity = useTransform(dragX, [0, -80], [0, 1]);
+  const deleteScale = useTransform(dragX, [0, -80], [0.7, 1]);
+
+  const handleDragEnd = async (_: any, info: any) => {
+    if (info.offset.x < -80) {
+      animate(dragX, -300, { duration: 0.2 });
+      deleteExploreItem(item);
+    } else {
+      animate(dragX, 0, { type: "spring", stiffness: 400, damping: 30 });
+    }
+  };
+
+  const mappedType = (item.type === "quote" || item.type === "concept") ? "note" : (["link", "note", "book"].includes(item.type) ? item.type : "note");
+  const Icon = TYPE_ICONS[mappedType] ?? Lightbulb;
+  const color = TYPE_COLORS[mappedType] ?? "#2DD4BF";
+  const isUnread = !item.revisited_at;
+
+  return (
+    <motion.div
+      layout
+      layoutId={item.id}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="group relative rounded-2xl overflow-hidden"
+    >
+      {/* Swipe-to-delete reveal layer */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
+        style={{
+          background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
+          opacity: deleteOpacity,
+        }}
+      >
+        <motion.div style={{ scale: deleteScale }}>
+          <Trash2 className="w-5 h-5 text-red-400" />
+        </motion.div>
+      </motion.div>
+
+      {/* Draggable card */}
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: -100, right: 0 }}
+        dragElastic={{ left: 0.15, right: 0 }}
+        onDragEnd={handleDragEnd}
+        style={{ x: dragX }}
+        className="relative"
+      >
+        <GlassCard
+          onClick={() => setEditItem(item)}
+          className={cn("p-5 hover:scale-[1.01] transition-transform relative group cursor-pointer hover:border-[var(--color-accent)]/30 !rounded-2xl", isUnread && "border-[var(--accent-dim-hover)]")}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}22` }}>
+              <Icon className="w-4 h-4" style={{ color }} />
+            </div>
+            <div className="flex-1 min-w-0 pr-24">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{item.title}</p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />}
+                  <span className="text-[10px] font-bold uppercase text-[var(--color-text-3)]">{mappedType}</span>
+                </div>
+              </div>
+              {item.note && item.note !== item.title && (
+                <p className="text-xs text-[rgba(255,255,255,0.45)] mt-1 line-clamp-2">{item.note}</p>
+              )}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {item.tags?.map((tag) => (
+                  <span key={tag} className="text-[10px] text-[rgba(255,255,255,0.35)] bg-[var(--color-surface)] px-2 py-0.5 rounded-full">#{tag}</span>
+                ))}
+                <span className="text-[11px] text-[rgba(255,255,255,0.25)] ml-auto">{timeAgo(item.saved_at)}</span>
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+      </motion.div>
+    </motion.div>
+  );
 };
 
 export default function ExplorePage() {
@@ -79,6 +172,36 @@ export default function ExplorePage() {
     if (days < 7) return `${days}d ago`;
     if (days < 30) return `${Math.floor(days / 7)}w ago`;
     return `${Math.floor(days / 30)}mo ago`;
+  };
+
+  const deleteExploreItem = async (item: ExploreItem) => {
+    setItems(prev => prev.filter(t => t.id !== item.id));
+
+    try {
+      const { error } = await supabase.from("explores").update({
+        status: "deleted",
+        deleted_at: new Date().toISOString()
+      }).eq("id", item.id);
+
+      if (error) throw error;
+      toast.success("Moved to trash", {
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              await supabase.from("explores").update({ status: "active", deleted_at: null }).eq("id", item.id);
+              setItems(prev => [item, ...prev]);
+            } catch {
+              toast.error("Failed to restore");
+              fetchItems();
+            }
+          }
+        }
+      });
+    } catch {
+      toast.error("Failed to delete");
+      fetchItems();
+    }
   };
 
   return (
@@ -128,68 +251,39 @@ export default function ExplorePage() {
             {FILTERS.map((f) => (
               <button
                 key={f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              "text-xs px-3 py-1.5 rounded-full border transition-all",
-              filter === f
-                ? "bg-[var(--accent)] text-[var(--color-background)] border-[var(--accent)] font-semibold"
-                : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
-            )}
-          >{f}</button>
-        ))}
-      </div>
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "text-xs px-3 py-1.5 rounded-full border transition-all",
+                  filter === f
+                    ? "bg-[var(--accent)] text-[var(--color-background)] border-[var(--accent)] font-semibold"
+                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
+                )}
+              >{f}</button>
+            ))}
+          </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
+            </div>
+          ) : items.length === 0 ? (
+            <GlassCard className="p-8 text-center">
+              <p className="text-sm text-[var(--color-text-3)]">Nothing saved yet. Capture &ldquo;interesting...&rdquo; or paste a URL.</p>
+            </GlassCard>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {items.map((item) => (
+                <ExploreItemCard
+                  key={item.id}
+                  item={item}
+                  setEditItem={setEditItem}
+                  deleteExploreItem={deleteExploreItem}
+                  timeAgo={timeAgo}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      ) : items.length === 0 ? (
-        <GlassCard className="p-8 text-center">
-          <p className="text-sm text-[var(--color-text-3)]">Nothing saved yet. Capture &ldquo;interesting...&rdquo; or paste a URL.</p>
-        </GlassCard>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {items.map((item, i) => {
-            const mappedType = (item.type === "quote" || item.type === "concept") ? "note" : (["link", "note", "book"].includes(item.type) ? item.type : "note");
-            const Icon = TYPE_ICONS[mappedType] ?? Lightbulb;
-            const color = TYPE_COLORS[mappedType] ?? "#2DD4BF";
-            const isUnread = !item.revisited_at;
-            return (
-              <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <GlassCard
-                  onClick={() => setEditItem(item)}
-                  className={cn("p-5 hover:scale-[1.01] transition-transform relative group cursor-pointer hover:border-[var(--color-accent)]/30", isUnread && "border-[var(--accent-dim-hover)]")}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}22` }}>
-                      <Icon className="w-4 h-4" style={{ color }} />
-                    </div>
-                  <div className="flex-1 min-w-0 pr-24">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{item.title}</p>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />}
-                        <span className="text-[10px] font-bold uppercase text-[var(--color-text-3)]">{mappedType}</span>
-                      </div>
-                    </div>
-                    {item.note && item.note !== item.title && (
-                      <p className="text-xs text-[rgba(255,255,255,0.45)] mt-1 line-clamp-2">{item.note}</p>
-                    )}
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {item.tags?.map((tag) => (
-                        <span key={tag} className="text-[10px] text-[rgba(255,255,255,0.35)] bg-[var(--color-surface)] px-2 py-0.5 rounded-full">#{tag}</span>
-                      ))}
-                      <span className="text-[11px] text-[rgba(255,255,255,0.25)] ml-auto">{timeAgo(item.saved_at)}</span>
-                    </div>
-                  </div>
-                </div>
-                </GlassCard>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
-      </div>
       </div>
 
       <ExploreDrawer 

@@ -1,5 +1,7 @@
-﻿import { logger } from "@/lib/logger";
+"use client";
+import { logger } from "@/lib/logger";
 import React, { useState } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, UserPlus, Loader2, Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase";
@@ -199,11 +201,12 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                 <label className="flex items-center gap-2 text-label text-[var(--text-3)] mb-3">
                   First Note (Optional)
                 </label>
-                <textarea
+                <TextareaAutosize
                   placeholder="What do you want to remember about them?"
                   value={firstNote}
                   onChange={(e) => setFirstNote(e.target.value)}
-                  className="input"
+                  minRows={2}
+                  className="input resize-none"
                 />
               </div>
             </div>

@@ -1,16 +1,17 @@
-﻿import { AmbientBackground } from "@/components/layout/AmbientBackground";
+import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { Sidebar, BottomNav } from "@/components/layout/Navigation";
 import { FAB } from "@/components/features/FAB";
 import { AppContentWrapper } from "@/components/layout/AppContentWrapper";
 import { AppInitializer } from "@/components/layout/AppInitializer";
 import { DynamicModals } from "@/components/layout/DynamicModals";
+import { RitualOverlay } from "@/components/features/RitualOverlay";
 import { Toaster } from "sonner";
 import QueryProvider from "@/components/layout/QueryProvider";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 
-// App layout â€” shown for all protected (app) pages
+// App layout — shown for all protected (app) pages
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -38,6 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Sidebar />
         {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
         <DynamicModals />
+        <RitualOverlay />
         <FAB />
         <AppContentWrapper>
           {children}

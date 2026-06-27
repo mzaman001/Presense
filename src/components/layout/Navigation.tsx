@@ -14,7 +14,8 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  Inbox
+  Inbox,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -111,6 +112,35 @@ export function Sidebar() {
 
       {/* Nav Items - 12px gap below capture implies mt-3 or just gap-1 in the nav */}
       <nav className={cn("flex-1 flex flex-col gap-1 w-full", isSidebarCollapsed ? "px-3" : "px-3")}>
+        {/* Plan my day Button */}
+        <div 
+          className="relative w-full"
+          onMouseEnter={() => setHoveredItem("plan-day")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          <button
+            onClick={() => {
+              const now = new Date();
+              const currentHours = now.getHours();
+              const ritual = currentHours >= 17 ? 'evening' : 'morning';
+              useAppStore.getState().setActiveRitual(ritual);
+            }}
+            className={cn(
+              "flex items-center h-[36px] transition-all relative group w-full mb-2",
+              isSidebarCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "rounded-[var(--radius-sm)] px-3 gap-3",
+              "text-[var(--accent)] bg-[var(--accent-dim)]/10 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)] border border-[var(--accent)]/15"
+            )}
+          >
+            <div className="flex items-center justify-center shrink-0">
+              <Sparkles size={18} strokeWidth={1.5} className="text-[var(--accent)]" />
+            </div>
+            {!isSidebarCollapsed && (
+              <span className="text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">Plan my day</span>
+            )}
+          </button>
+          {isSidebarCollapsed && <NavTooltip label="Plan my day" show={hoveredItem === "plan-day"} />}
+        </div>
+
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === "/remember/people" ? pathname.startsWith("/remember") : pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
