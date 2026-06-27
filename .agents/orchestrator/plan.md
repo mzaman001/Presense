@@ -1,26 +1,23 @@
-# Project: Presense Audit Plan
+# Project: Presense UX and Product Strategy Research Plan
 
 ## Architecture
-- The codebase is a Next.js application (web app).
-- Standard package configuration is defined in `package.json`.
-- Testing setup is defined in `vitest.config.ts`.
-- Linter setup is defined in `eslint.config.mjs`.
+- Codebase components: `Inbox` (`src/app/(app)/inbox/page.tsx`), `CaptureModal` (`src/components/features/CaptureModal.tsx`), `TaskCard` (`src/components/features/TaskCard.tsx`), `SettingsModal` (`src/components/features/SettingsModal.tsx`), `ExploreDrawer` (`src/components/features/ExploreDrawer.tsx`), `ThinkThread` (`src/app/(app)/think/page.tsx` and `src/app/(app)/think/[id]/page.tsx`).
+- Competitor analysis targets: Todoist, Sunsama, TickTick, Zen Browser, Things 3, Capacities, Craft.
+- Report delivery target: `presense_ux_research_report.md` in the project root.
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|---|---|---|---|
-| 1 | Setup & Exploration | Check workspace structure, package.json scripts, configuration files. | None | DONE |
-| 2 | Static Analysis & Linting | Run linters (eslint, tsc) to find performance, accessibility, SEO, code issues. | M1 | DONE |
-| 3 | Security & Vulnerability Scans | Run `npm audit` and security checks. | M1 | DONE |
-| 4 | Test Runs | Execute existing unit/E2E test suite (vitest / playwrigth etc.). | M1 | DONE |
-| 5 | Audit Report Synthesis | Compile all findings into a structured report with severity and recommended fixes. | M2, M3, M4 | DONE |
+| 1 | Deconstruct 18 Issues | Identify and catalog the 18 specific UX/UI and product issues of Presense from the codebase and specification. | None | DONE |
+| 2 | Codebase Audit & Exploration | Run explorer subagents to analyze `Inbox`, `CaptureModal`, `TaskCard`, `SettingsModal`, `ExploreDrawer`, and `ThinkThread`. | M1 | DONE |
+| 3 | Competitor Analysis | Study Todoist, Sunsama, TickTick, Zen Browser, Things 3, Capacities, and Craft for capture, settings, visual hierarchy, and performance. | M2 | DONE |
+| 4 | Report Synthesis & Review | Draft `presense_ux_research_report.md` mapping issues to solutions and extrapolating new features/changes. | M3 | DONE |
 
 ## Interface Contracts
-- None. This is a read-only audit project, not a code modification project.
+- Input: Local codebase and specification details in `output.txt` / `PLAN.md` / `FIX_LIST.md`.
+- Output: Markdown report saved at `presense_ux_research_report.md`.
 
 ## Code Layout
-- `package.json`: Project scripts and dependencies
-- `tsconfig.json`: TypeScript configurations
-- `eslint.config.mjs`: ESLint configuration
-- `src/`: Source code of the Next.js app
-- `vitest.config.ts`: Vitest test configuration
+- `presense_ux_research_report.md`: Final output report at the project root.
+- `.agents/orchestrator/plan.md`: Research milestones and execution plan.
+- `.agents/orchestrator/progress.md`: Execution tracking and logs.

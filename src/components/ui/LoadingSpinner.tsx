@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { motion } from "framer-motion";
@@ -101,7 +101,7 @@ export function LoadingSpinner({ size = "md", className, label }: LoadingSpinner
 }
 
 /**
- * Inline button spinner â€” replaces icon inside buttons during async ops.
+ * Inline button spinner — replaces icon inside buttons during async ops.
  */
 export function ButtonSpinner({ className }: { className?: string }) {
   return (

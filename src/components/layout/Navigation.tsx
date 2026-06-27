@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -226,10 +226,14 @@ export function Sidebar() {
       </div>
 
       {/* User Row - absolute positioned at the bottom 52px */}
-      <div className={cn(
-        "absolute bottom-0 left-0 w-full h-[52px] border-t border-[var(--border-subtle)] flex items-center",
-        isSidebarCollapsed ? "justify-center" : "px-4"
-      )}>
+      <button 
+        onClick={() => useAppStore.getState().setSettingsModalOpen(true, "account")}
+        className={cn(
+          "absolute bottom-0 left-0 w-full h-[52px] border-t border-[var(--border-subtle)] flex items-center transition-colors text-left",
+          "hover:bg-[var(--surface-hover)] cursor-pointer group/user",
+          isSidebarCollapsed ? "justify-center" : "px-4"
+        )}
+      >
         {userSettings?.display_name && (
           <div className={cn("flex items-center gap-3", !isSidebarCollapsed && "w-full")}>
             <Avatar 
@@ -244,7 +248,7 @@ export function Sidebar() {
             )}
           </div>
         )}
-      </div>
+      </button>
     </aside>
   );
 }

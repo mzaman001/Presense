@@ -1,4 +1,4 @@
-﻿import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
@@ -10,8 +10,8 @@ import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import * as chrono from "chrono-node";
-import nlp from "compromise";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ interface TaskAddPanelProps {
 }
 
 export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskAddPanelProps) {
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
   const [parsedDeadline, setParsedDeadline] = useState<Date | null>(null);
@@ -102,15 +103,37 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
 
   const confirmDelete = async () => {
     if (!taskToEdit) return;
+
+    // Save current caches for possible rollback
+    const previousTasks = queryClient.getQueryData<TaskEditData[]>(["tasks"]);
+    const previousDashboard = queryClient.getQueryData<{ tasks: TaskEditData[] }>(["dashboard"]);
+
+    // Optimistically remove from ["tasks"]
+    queryClient.setQueryData<TaskEditData[]>(["tasks"], old => old?.filter(t => t.id !== taskToEdit.id) ?? []);
+
+    // Optimistically remove from ["dashboard"]
+    queryClient.setQueryData<{ tasks: TaskEditData[] }>(["dashboard"], old => {
+      if (!old) return old;
+      return {
+        ...old,
+        tasks: old.tasks?.filter(t => t.id !== taskToEdit.id) ?? []
+      };
+    });
+
     try {
       useAppStore.getState().markMutation();
       const supabase = createClient();
       const { error } = await supabase.from("items").delete().eq("id", taskToEdit.id);
       if (error) throw error;
+      
       toast.success("Task deleted");
       if (onTaskAdded) onTaskAdded();
       onClose();
     } catch (err: unknown) {
+      // Rollback on failure
+      queryClient.setQueryData(["tasks"], previousTasks);
+      queryClient.setQueryData(["dashboard"], previousDashboard);
+
       const message = err instanceof Error ? err.message : "Failed to delete task";
       toast.error("Failed to delete task", { description: message });
     } finally {
@@ -215,7 +238,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           d = parsedResults[0].start.date();
         } else {
           // Multiple results: combine their text and re-parse to merge date+time
-          // e.g. "tomorrow" + "at 9pm" â†’ "tomorrow at 9pm" â†’ single correct result
+          // e.g. "tomorrow" + "at 9pm" → "tomorrow at 9pm" → single correct result
           const combined = parsedResults.map((r) => r.text).join(" ");
           const merged = chrono.parse(combined);
           d =

@@ -33,10 +33,10 @@ function formatCaptureDeadline(iso: string) {
 
 const SPACE_COLORS: Record<string, string> = {
   Do: "var(--color-do)",
-  "Remember â†’ People": "var(--color-people)",
+  "Remember → People": "var(--color-people)",
   Think: "var(--color-think)",
   Explore: "var(--color-explore)",
-  "Remember â†’ Locations": "#4ADE80",
+  "Remember → Locations": "#4ADE80",
   Inbox: "#FBBF24",
   "Choose space...": "var(--color-text-3)",
 };
@@ -44,8 +44,8 @@ const SPACE_COLORS: Record<string, string> = {
 const SPACE_OPTIONS = [
   { value: "Do", label: "Do" },
   { value: "Think", label: "Think" },
-  { value: "Remember â†’ People", label: "People" },
-  { value: "Remember â†’ Locations", label: "Locations" },
+  { value: "Remember → People", label: "People" },
+  { value: "Remember → Locations", label: "Locations" },
   { value: "Explore", label: "Explore" },
   { value: "Inbox", label: "Inbox" }
 ];
@@ -142,7 +142,7 @@ export function CaptureModal() {
               status: item.destination === "Inbox" ? "inbox" : "active",
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
-          } else if (item.destination === "Remember â†’ People") {
+          } else if (item.destination === "Remember → People") {
             const { data: person } = await supabase
               .from("people")
               .select("id, notes")
@@ -177,7 +177,7 @@ export function CaptureModal() {
               note: item.title,
             });
             if (error) throw new Error(`Explore: ${error.message}`);
-          } else if (item.destination === "Remember â†’ Locations") {
+          } else if (item.destination === "Remember → Locations") {
             const { error } = await supabase.from("locations").insert({
               user_id: user.id,
               item_name: item.item_name || item.title.split(" ")[0] || "Item",
@@ -270,18 +270,18 @@ export function CaptureModal() {
                         <>
                           {item.recurrence && (
                             <>
-                              <span className="text-[var(--color-text-3)]">Â·</span>
+                              <span className="text-[var(--color-text-3)]">·</span>
                               <span className="font-semibold">Recurrence:</span>
                               <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)]">
                                 {formatRRule(item.recurrence)}
                               </span>
                             </>
                           )}
-                          <span className="text-[var(--color-text-3)]">Â·</span>
+                          <span className="text-[var(--color-text-3)]">·</span>
                           <span className="font-semibold">Deadline:</span>
                           <div className="relative inline-flex items-center">
                             <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)] pointer-events-none whitespace-nowrap">
-                              {item.deadline ? formatCaptureDeadline(item.deadline) : "No deadline"} â–¾
+                              {item.deadline ? formatCaptureDeadline(item.deadline) : "No deadline"} ▼
                             </span>
                             <input
                               type="datetime-local"
@@ -293,9 +293,9 @@ export function CaptureModal() {
                         </>
                       )}
                       
-                      {item.destination === "Remember â†’ People" && (
+                      {item.destination === "Remember → People" && (
                         <>
-                          <span className="text-[var(--color-text-3)]">Â·</span>
+                          <span className="text-[var(--color-text-3)]">·</span>
                           <span className="font-semibold">Person:</span>
                           <input
                             value={item.person || ""}
@@ -306,9 +306,9 @@ export function CaptureModal() {
                         </>
                       )}
                       
-                      {item.destination === "Remember â†’ Locations" && (
+                      {item.destination === "Remember → Locations" && (
                         <>
-                          <span className="text-[var(--color-text-3)]">Â·</span>
+                          <span className="text-[var(--color-text-3)]">·</span>
                           <span className="font-semibold">Item:</span>
                           <input
                             value={item.item_name || ""}
@@ -337,7 +337,7 @@ export function CaptureModal() {
               {!routedItems ? (
                 <>
                   <span className="text-xs text-[var(--color-text-3)]">
-                    Smart routing via keyword detection â€” 100% free, no AI API
+                    Smart routing via keyword detection — 100% free, no AI API
                   </span>
                   <button
                     onClick={handleRoute}

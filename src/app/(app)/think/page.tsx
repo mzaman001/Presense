@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -11,6 +11,7 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAppStore } from "@/store/useAppStore";
 
 interface Thread {
   id: string;
@@ -26,6 +27,7 @@ interface Thread {
 export default function ThinkPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const setPrefetchedThread = useAppStore(s => s.setPrefetchedThread);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchive, setShowArchive] = useState(false);
@@ -244,7 +246,7 @@ export default function ThinkPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredThreads.filter(t => t.stale_prompt).map((thread, i) => (
                   <motion.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <Link href={`/think/${thread.id}`}>
+                    <Link href={`/think/${thread.id}`} onClick={() => setPrefetchedThread(thread.id, thread)}>
                       <GlassCard className="p-4 bg-[var(--surface-input)] border-[var(--accent-dim-hover)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer h-full">
                         <div className="flex items-start gap-3">
                           <div className="w-1 self-stretch rounded-full shrink-0 bg-[var(--accent)]" />
@@ -271,7 +273,7 @@ export default function ThinkPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredThreads.map((thread, i) => (
             <motion.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Link href={`/think/${thread.id}`}>
+              <Link href={`/think/${thread.id}`} onClick={() => setPrefetchedThread(thread.id, thread)}>
                 <GlassCard className="p-5 hover:scale-[1.01] transition-transform cursor-pointer h-full group relative">
                   {!showArchive && !showTrash && (
                     <button 

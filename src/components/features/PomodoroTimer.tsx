@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase";
@@ -188,7 +188,7 @@ export function PomodoroTimer() {
     });
   }, [getDuration, activeTimer]);
 
-  // Restore from localStorage on mount â€” intentional sync initialization
+  // Restore from localStorage on mount — intentional sync initialization
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (activeTimer) {
@@ -211,7 +211,7 @@ export function PomodoroTimer() {
   }, [activeTimer?.taskId]); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Phase change â†’ reset timer â€” intentional sync initialization
+  // Phase change → reset timer — intentional sync initialization
   // Skipped on first run if restore effect already handled initialization
   useEffect(() => {
     if (!activeTimer) return;
@@ -235,7 +235,7 @@ export function PomodoroTimer() {
     });
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Wall-clock countdown â€” immune to tab throttling
+  // Wall-clock countdown — immune to tab throttling
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => {

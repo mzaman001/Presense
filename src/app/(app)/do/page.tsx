@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -193,7 +193,7 @@ export default function DoPage() {
   const completeTask = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     
-    // Set completing state â€” TaskCard shows the checkmark animation
+    // Set completing state — TaskCard shows the checkmark animation
     setCompleting(id);
     
     // Delay removal so AnimatePresence can play the exit animation
@@ -363,7 +363,7 @@ export default function DoPage() {
                       {task.category}
                     </span>
                     <span className="text-[10px] text-[rgba(255,255,255,0.35)]">
-                      â€¢ Completed {new Date((task as any).completed_at).toLocaleDateString()}
+                      • Completed {new Date((task as any).completed_at).toLocaleDateString()}
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-[var(--color-text-1)] line-through">{task.title}</p>

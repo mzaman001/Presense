@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase";
-import { Inbox, Loader2, FolderInput, CheckCircle2, MessageSquare, Compass, Brain, X } from "lucide-react";
+import { Inbox, Loader2, FolderInput, CheckCircle2, MessageSquare, Compass, Brain, X, MapPin } from "lucide-react";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -21,6 +21,21 @@ export default function InboxPage() {
   
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
   const [slidingOut, setSlidingOut] = useState<string | null>(null);
+  const activeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        activeRouteItem &&
+        activeDropdownRef.current &&
+        !activeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setActiveRouteItem(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeRouteItem]);
 
   const { data: inboxItems = [], isLoading: loading, refetch } = useQuery({
     queryKey: ["inbox-tasks"],
@@ -51,24 +66,66 @@ export default function InboxPage() {
       queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => old?.filter(i => i.id !== id) ?? []);
 
       try {
+        let routedId: string | null = null;
+
         if (space === 'do') {
           await supabase.from('items').update({ status: 'active' }).eq('id', id);
         } else if (space === 'remember') {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            await supabase.from('items').delete().eq('id', id);
-            await supabase.from('people').insert({
+            await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+            const { data: inserted, error: insertError } = await supabase.from('people').insert({
               user_id: user.id,
               name: item.title,
               notes: [{ text: item.title, created_at: new Date().toISOString(), tag: "note" }]
-            });
+            }).select('id').single();
+
+            if (insertError) throw insertError;
+            if (inserted) {
+              routedId = inserted.id;
+            }
           }
         } else if (space === 'explore') {
-          await supabase.from('items').delete().eq('id', id);
-          await supabase.from('explores').insert({ user_id: item.user_id, title: item.title, type: 'other', status: 'active' });
+          await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+          const { data: inserted, error: insertError } = await supabase.from('explores').insert({
+            user_id: item.user_id,
+            title: item.title,
+            type: 'other',
+            status: 'active'
+          }).select('id').single();
+
+          if (insertError) throw insertError;
+          if (inserted) {
+            routedId = inserted.id;
+          }
         } else if (space === 'think') {
-          await supabase.from('items').delete().eq('id', id);
-          await supabase.from('threads').insert({ user_id: item.user_id, title: item.title, status: 'active', color_accent: '#2DD4BF' });
+          await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+          const { data: inserted, error: insertError } = await supabase.from('threads').insert({
+            user_id: item.user_id,
+            title: item.title,
+            status: 'active',
+            color_accent: '#2DD4BF'
+          }).select('id').single();
+
+          if (insertError) throw insertError;
+          if (inserted) {
+            routedId = inserted.id;
+          }
+        } else if (space === 'location') {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+            const { data: inserted, error: insertError } = await supabase.from('locations').insert({
+              user_id: user.id,
+              item_name: item.title,
+              location_text: item.title
+            }).select('id').single();
+
+            if (insertError) throw insertError;
+            if (inserted) {
+              routedId = inserted.id;
+            }
+          }
         }
 
         toast.success(`Routed to ${space}`, {
@@ -81,27 +138,25 @@ export default function InboxPage() {
                 if (space === 'do') {
                   await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
                 } else if (space === 'remember') {
-                  // Find the person we just created and delete, restore inbox item
-                  const { data: { user } } = await supabase.auth.getUser();
-                  if (user) {
-                    const { data: people } = await supabase.from('people').select('id').eq('user_id', user.id).eq('name', item.title).order('created_at', { ascending: false }).limit(1);
-                    if (people && people.length > 0) {
-                      await supabase.from('people').delete().eq('id', people[0].id);
-                    }
-                    await supabase.from('items').insert({ id, user_id: item.user_id, title: item.title, status: 'inbox' });
+                  if (routedId) {
+                    await supabase.from('people').delete().eq('id', routedId);
                   }
+                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
                 } else if (space === 'explore') {
-                  const { data: explores } = await supabase.from('explores').select('id').eq('user_id', item.user_id).eq('title', item.title).order('created_at', { ascending: false }).limit(1);
-                  if (explores && explores.length > 0) {
-                    await supabase.from('explores').delete().eq('id', explores[0].id);
+                  if (routedId) {
+                    await supabase.from('explores').delete().eq('id', routedId);
                   }
-                  await supabase.from('items').insert({ id, user_id: item.user_id, title: item.title, status: 'inbox' });
+                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
                 } else if (space === 'think') {
-                  const { data: threads } = await supabase.from('threads').select('id').eq('user_id', item.user_id).eq('title', item.title).order('created_at', { ascending: false }).limit(1);
-                  if (threads && threads.length > 0) {
-                    await supabase.from('threads').delete().eq('id', threads[0].id);
+                  if (routedId) {
+                    await supabase.from('threads').delete().eq('id', routedId);
                   }
-                  await supabase.from('items').insert({ id, user_id: item.user_id, title: item.title, status: 'inbox' });
+                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
+                } else if (space === 'location') {
+                  if (routedId) {
+                    await supabase.from('locations').delete().eq('id', routedId);
+                  }
+                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
                 }
                 // Restore to cache
                 queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
@@ -195,16 +250,19 @@ export default function InboxPage() {
               >
                 <p className="text-card-title text-[var(--text-1)] flex-1 text-lg">{item.title}</p>
                 <div className="flex items-center gap-2 w-full md:w-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
-                  <div className="relative flex-1 md:flex-none">
+                  <div 
+                    className="relative flex-1 md:flex-none"
+                    ref={activeRouteItem === item.id ? activeDropdownRef : null}
+                  >
                     <button 
-                      onClick={(e) => { e.stopPropagation(); setActiveRouteItem(activeRouteItem === item.id ? null : item.id); }}
+                      onClick={() => { setActiveRouteItem(activeRouteItem === item.id ? null : item.id); }}
                       className="btn-secondary w-full"
                     >
                       <FolderInput className="w-3.5 h-3.5" />
                       Route it
                     </button>
                     {activeRouteItem === item.id && (
-                      <div className="dropdown-panel absolute top-full mt-2 right-0 w-48 p-1 z-50 animate-in fade-in zoom-in-95 duration-100" onClick={e => e.stopPropagation()}>
+                      <div className="dropdown-panel absolute top-full mt-2 right-0 w-48 p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                         <button onClick={() => routeInboxItem(item.id, 'do')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4 text-[var(--color-do)]" /> Do (Task)
                         </button>
@@ -216,6 +274,9 @@ export default function InboxPage() {
                         </button>
                         <button onClick={() => routeInboxItem(item.id, 'remember')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                           <Brain className="w-4 h-4 text-[var(--color-people)]" /> Remember (Person)
+                        </button>
+                        <button onClick={() => routeInboxItem(item.id, 'location')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-[var(--color-people)]" /> Locations
                         </button>
                       </div>
                     )}

@@ -12,6 +12,7 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useAppStore } from "@/store/useAppStore";
 
 interface ThreadEntry {
   text: string;
@@ -33,14 +34,29 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params);
   const router = useRouter();
   const supabase = createClient();
-  const [thread, setThread] = useState<Thread | null>(null);
-  const [loading, setLoading] = useState(true);
+  const prefetchedThreads = useAppStore(s => s.prefetchedThreads);
+  const prefetched = prefetchedThreads[id] as Thread | undefined;
+  const [thread, setThread] = useState<Thread | null>(prefetched || null);
+  const [loading, setLoading] = useState(!prefetched);
   const [newEntry, setNewEntry] = useState("");
   const [saving, setSaving] = useState(false);
   const [linkedExplores, setLinkedExplores] = useState<any[]>([]);
   
   const [deleteThreadOpen, setDeleteThreadOpen] = useState(false);
   const [deleteEntryIndex, setDeleteEntryIndex] = useState<number | null>(null);
+
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const colorPickerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
+        setIsColorPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchThread = useCallback(async () => {
     const { data: threadData } = await supabase.from("threads").select("*").eq("id", id).single();
@@ -71,6 +87,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
   const handleColorChange = async (color: string) => {
     if (!thread) return;
+    setIsColorPickerOpen(false);
     try {
       const { error } = await supabase.from("threads").update({ color_accent: color }).eq("id", thread.id);
       if (error) throw error;
@@ -173,20 +190,29 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="relative group pt-1">
-            <div className="w-1.5 h-10 rounded-full shrink-0 cursor-pointer" style={{ backgroundColor: thread.color_accent }} />
-            <div className="absolute left-0 top-full pt-2 hidden group-hover:block z-50">
-              <div className="flex bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded-xl shadow-xl gap-2">
-                {["#FBBF24", "#F472B6", "#2DD4BF", "#A78BFA", "#60A5FA", "#F87171"].map(c => (
-                  <button 
-                    key={c} 
-                    onClick={() => handleColorChange(c)}
-                    className="w-4 h-4 rounded-full border border-[var(--color-border)] hover:scale-110 transition-transform"
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
+          <div className="relative pt-1" ref={colorPickerRef}>
+            <button 
+              type="button"
+              onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
+              className="w-1.5 h-10 rounded-full shrink-0 cursor-pointer focus:outline-none"
+              style={{ backgroundColor: thread.color_accent }}
+              title="Change thread accent color"
+            />
+            {isColorPickerOpen && (
+              <div className="absolute left-0 top-full pt-2 z-50">
+                <div className="flex bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded-xl shadow-xl gap-2">
+                  {["#FBBF24", "#F472B6", "#2DD4BF", "#A78BFA", "#60A5FA", "#F87171"].map(c => (
+                    <button 
+                      key={c} 
+                      type="button"
+                      onClick={() => handleColorChange(c)}
+                      className="w-4 h-4 rounded-full border border-[var(--color-border)] hover:scale-110 transition-transform"
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <div>
             <input 
@@ -269,7 +295,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
-              transition={{ delay: i * 0.04, duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+              transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
             <GlassCard className="p-5 border-l-2 border-l-transparent hover:border-l-[#2DD4BF] transition-all group relative">
               <p className="text-[15px] text-[var(--color-text-1)] leading-relaxed whitespace-pre-wrap pr-8">{entry.text}</p>

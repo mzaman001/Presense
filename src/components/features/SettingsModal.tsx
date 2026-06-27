@@ -13,6 +13,7 @@ import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
+import { useQueryClient } from "@tanstack/react-query";
 const TABS = [
   { id: "account", label: "Account", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -60,7 +61,7 @@ interface SettingsState {
   pomodoro_long_break_interval?: number;
 }
 
-function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKey, updateSetting, supabase }: {
+function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKey, updateSetting, setSettings, supabase }: {
   cat: string;
   initialColor: string;
   cats: string[];
@@ -68,6 +69,7 @@ function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKe
   categoriesKey: string;
   colorsKey: string;
   updateSetting: (key: string, value: unknown) => void;
+  setSettings: React.Dispatch<React.SetStateAction<SettingsState>>;
   supabase: ReturnType<typeof createClient>;
 }) {
   const [editName, setEditName] = useState(cat);
@@ -76,22 +78,49 @@ function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKe
     const trimmed = editName.trim().toLowerCase();
     if (trimmed && trimmed !== cat && !cats.includes(trimmed)) {
       const newCats = cats.map(c => c === cat ? trimmed : c);
-      updateSetting(categoriesKey, newCats);
-      if (colors[cat]) {
-        const newColors = { ...colors };
-        newColors[trimmed] = newColors[cat];
-        delete newColors[cat];
-        updateSetting(colorsKey, newColors);
-      }
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        if (categoriesKey === "do_categories") {
-          await supabase.from("items").update({ category: trimmed }).eq("user_id", user.id).ilike("category", cat);
-        } else if (categoriesKey === "people_categories") {
-          await supabase.from("people").update({ relationship: trimmed }).eq("user_id", user.id).ilike("relationship", cat);
+      try {
+        // 1. Invoke Postgres SQL RPC to atomically rename category across tables
+        const { error } = await supabase.rpc('rename_category', {
+          p_categories_key: categoriesKey,
+          p_colors_key: colorsKey,
+          p_old_category: cat,
+          p_new_category: trimmed
+        });
+        
+        if (error) throw error;
+
+        // 2. Synchronously update local modal state
+        setSettings((prev: SettingsState) => {
+          const next = { ...prev };
+          next[categoriesKey] = newCats;
+          if (colors[cat]) {
+            const newColors = { ...colors };
+            newColors[trimmed] = newColors[cat];
+            delete newColors[cat];
+            next[colorsKey] = newColors;
+          }
+          return next;
+        });
+
+        // 3. Synchronously update global AppStore state
+        const currentStoreSettings = useAppStore.getState().userSettings;
+        const updatedStoreSettings = {
+          ...currentStoreSettings,
+          [categoriesKey]: newCats,
+        };
+        if (colors[cat]) {
+          const newColors = { ...colors };
+          newColors[trimmed] = newColors[cat];
+          delete newColors[cat];
+          updatedStoreSettings[colorsKey] = newColors;
         }
+        useAppStore.getState().setUserSettings(updatedStoreSettings);
+
         toast.success(`Renamed category to ${trimmed}`);
+      } catch (err: any) {
+        toast.error("Failed to rename category", { description: err.message });
+        setEditName(cat);
       }
     } else {
       setEditName(cat);
@@ -156,6 +185,7 @@ function CategoryManager({
   defaultCategories,
   settings,
   updateSetting,
+  setSettings,
   supabase,
 }: { 
   title: string, 
@@ -164,6 +194,7 @@ function CategoryManager({
   defaultCategories: string[],
   settings: SettingsState,
   updateSetting: (key: string, value: unknown) => void,
+  setSettings: React.Dispatch<React.SetStateAction<SettingsState>>,
   supabase: ReturnType<typeof createClient>,
 }) {
   const cats: string[] = (settings[categoriesKey] as string[]) || defaultCategories;
@@ -182,7 +213,7 @@ function CategoryManager({
       <label className="block text-label text-[var(--text-3)]">{title}</label>
       <div className="space-y-2">
         {cats.map(cat => (
-          <CategoryItem key={cat} cat={cat} initialColor={colors[cat]} cats={cats} colors={colors} categoriesKey={categoriesKey} colorsKey={colorsKey} updateSetting={updateSetting} supabase={supabase} />
+          <CategoryItem key={cat} cat={cat} initialColor={colors[cat]} cats={cats} colors={colors} categoriesKey={categoriesKey} colorsKey={colorsKey} updateSetting={updateSetting} setSettings={setSettings} supabase={supabase} />
         ))}
         <div className="flex items-center gap-2 mt-2">
           <input 
@@ -203,11 +234,12 @@ function CategoryManager({
 }
 
 export function SettingsModal() {
-  const { isSettingsModalOpen, setSettingsModalOpen, setUserSettings } = useAppStore();
+  const { isSettingsModalOpen, setSettingsModalOpen, setUserSettings, settingsActiveTab, setSettingsActiveTab } = useAppStore();
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const queryClient = useQueryClient();
   
-  const [activeTab, setActiveTab] = useState("account");
+  const activeTab = settingsActiveTab || "account";
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [initialLoaded, setInitialLoaded] = useState(false);
@@ -348,6 +380,8 @@ export function SettingsModal() {
       if (!user) return;
       const { error } = await supabase.from("items").delete().eq("user_id", user.id).eq("status", "done");
       if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Completed tasks cleared");
       setClearTasksConfirm(false);
     } catch (err) {
@@ -363,6 +397,7 @@ export function SettingsModal() {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
       const { error } = await supabase.from("locations").delete().eq("user_id", user.id).lt("updated_at", thirtyDaysAgo);
       if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
       toast.success("Stale locations cleared");
       setClearLocationsConfirm(false);
     } catch (err) {
@@ -385,7 +420,7 @@ export function SettingsModal() {
         supabase.from("push_subscriptions").delete().eq("user_id", user.id),
         supabase.from("user_settings").delete().eq("user_id", user.id),
       ]);
-      // Sign out â€” user data deleted, account auth record requires server-side cleanup
+      // Sign out — user data deleted, account auth record requires server-side cleanup
       await supabase.auth.signOut();
       toast.success("Account data deleted");
       setSettingsModalOpen(false);
@@ -423,7 +458,7 @@ export function SettingsModal() {
                     {TABS.map(tab => (
                       <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
+                        onClick={() => setSettingsActiveTab(tab.id)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                           activeTab === tab.id 
                             ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" 
@@ -635,15 +670,7 @@ export function SettingsModal() {
                               <div className="toggle-thumb" />
                             </button>
                           </div>
-                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">People Briefings</div>
-                              <div className="text-sm text-[var(--color-text-3)]">Reminder 30 min before a meeting</div>
-                            </div>
-                            <button onClick={() => updateSetting("notif_briefing", !settings.notif_briefing)} className={`toggle-track ${settings.notif_briefing ? 'on' : ''}`}>
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
+
                           <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                             <div>
                               <div className="font-medium text-[var(--color-text-1)]">Stale Location Alerts</div>
@@ -658,46 +685,54 @@ export function SettingsModal() {
 
                       {activeTab === "focus" && (
                         <div className="space-y-6">
-                          <div>
-                            <label className="text-label text-[var(--text-3)] block mb-3">Work Duration (mins)</label>
-                            <div className="flex flex-wrap gap-2">
-                              {[15, 20, 25, 30, 45, 60].map(mins => (
-                                <button key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={cn("btn-preset", settings.pomodoro_duration === mins && "active")}>
-                                  {mins}m
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-label text-[var(--text-3)] block mb-3">Short Break (mins)</label>
-                            <div className="flex flex-wrap gap-2">
-                              {[3, 5, 10, 15].map(mins => (
-                                <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={cn("btn-preset", settings.short_break_duration === mins && "active")}>
-                                  {mins}m
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-label text-[var(--text-3)] block mb-3">Long Break (mins)</label>
-                            <div className="flex flex-wrap gap-2">
-                              {[15, 20, 30].map(mins => (
-                                <button key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={cn("btn-preset", settings.long_break_duration === mins && "active")}>
-                                  {mins}m
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                          <div className="p-5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] space-y-5">
+                            <div className="font-semibold text-sm text-[var(--color-text-1)]">Timer Durations</div>
+                            
                             <div>
-                              <div className="font-medium text-[var(--color-text-1)]">Auto-start Breaks</div>
-                              <div className="text-sm text-[var(--color-text-3)]">Automatically begin break timer when work finishes</div>
+                              <label className="text-label text-[var(--text-3)] block mb-2">Work Duration (mins)</label>
+                              <div className="flex flex-wrap gap-2">
+                                {[15, 20, 25, 30, 45, 60].map(mins => (
+                                  <button key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={cn("btn-preset", settings.pomodoro_duration === mins && "active")}>
+                                    {mins}m
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-                            <button onClick={() => updateSetting("auto_start_breaks", !settings.auto_start_breaks)} className={`toggle-track ${settings.auto_start_breaks ? 'on' : ''}`}>
-                              <div className="toggle-thumb" />
-                            </button>
+
+                            <div>
+                              <label className="text-label text-[var(--text-3)] block mb-2">Short Break (mins)</label>
+                              <div className="flex flex-wrap gap-2">
+                                {[3, 5, 10, 15].map(mins => (
+                                  <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={cn("btn-preset", settings.short_break_duration === mins && "active")}>
+                                    {mins}m
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-label text-[var(--text-3)] block mb-2">Long Break (mins)</label>
+                              <div className="flex flex-wrap gap-2">
+                                {[15, 20, 30].map(mins => (
+                                  <button key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={cn("btn-preset", settings.long_break_duration === mins && "active")}>
+                                    {mins}m
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border)]">
+                              <div>
+                                <div className="font-medium text-[var(--color-text-1)] text-sm">Auto-start Breaks</div>
+                                <div className="text-xs text-[var(--color-text-3)]">Automatically begin break timer when work finishes</div>
+                              </div>
+                              <button onClick={() => updateSetting("auto_start_breaks", !settings.auto_start_breaks)} className={`toggle-track ${settings.auto_start_breaks ? 'on' : ''}`}>
+                                <div className="toggle-thumb" />
+                              </button>
+                            </div>
                           </div>
-                          <div>
+
+                          <div className="p-5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                             <label className="text-label text-[var(--text-3)] block mb-3">Long Break After (sessions)</label>
                             <div className="flex flex-wrap gap-2">
                               {[2, 3, 4, 5].map(n => (
@@ -746,6 +781,7 @@ export function SettingsModal() {
                             defaultCategories={["work", "study", "personal", "errand", "health"]} 
                             settings={settings}
                             updateSetting={updateSetting}
+                            setSettings={setSettings}
                             supabase={supabase}
                           />
                           <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
@@ -769,6 +805,7 @@ export function SettingsModal() {
                             defaultCategories={["friend", "family", "professor", "colleague", "teammate", "other"]} 
                             settings={settings}
                             updateSetting={updateSetting}
+                            setSettings={setSettings}
                             supabase={supabase}
                           />
                         </div>
@@ -786,30 +823,7 @@ export function SettingsModal() {
                             </button>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">NLP Date Parsing</div>
-                              <div className="text-sm text-[var(--color-text-3)]">Extract dates naturally from capture text</div>
-                            </div>
-                            <button onClick={() => updateSetting("nlp_date_parsing", settings.nlp_date_parsing === false ? true : false)} className={`toggle-track ${settings.nlp_date_parsing !== false ? 'on' : ''}`}>
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
 
-                          <div>
-                            <label className="text-label text-[var(--text-3)] block mb-3">Routing Confidence</label>
-                            <div className="flex flex-wrap gap-2">
-                              {['High', 'Medium', 'Low'].map(conf => (
-                                <button
-                                  key={conf}
-                                  onClick={() => updateSetting("routing_confidence", conf)}
-                                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${settings.routing_confidence === conf || (!settings.routing_confidence && conf === 'Medium') ? 'bg-[var(--accent)] text-[var(--text-on-accent)] border-[var(--accent)]' : 'bg-transparent text-[var(--color-text-3)] border-[var(--color-border)] hover:border-[var(--color-border)]'}`}
-                                >
-                                  {conf} {conf === 'High' && '(Auto-route)'} {conf === 'Medium' && '(Review)'} {conf === 'Low' && '(Ask)'}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
 
                           <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
                             <div>
@@ -838,7 +852,7 @@ export function SettingsModal() {
                                         const data = await res.json();
                                         const models = data.models || [];
                                         const modelName = models.length > 0 ? models[0].name : "No models found";
-                                        toast.success(`Connected â€” model: ${modelName}`);
+                                        toast.success(`Connected — model: ${modelName}`);
                                       } else {
                                         toast.error("Not reachable");
                                       }

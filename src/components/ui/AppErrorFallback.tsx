@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { logger } from "@/lib/logger";
@@ -19,7 +19,7 @@ export function AppErrorFallback({ error, reset, sectionName = "this section" }:
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-6">
       <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center backdrop-blur-xl shadow-2xl">
-        <div className="mb-4 text-4xl">âš ï¸</div>
+        <div className="mb-4 text-4xl">⚠️</div>
         <h2 className="mb-2 text-xl font-semibold text-[var(--color-text-1)]">
           Something went wrong
         </h2>

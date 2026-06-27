@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -123,8 +123,7 @@ export function Dropdown({
   return (
     <div className={cn("relative", className)} ref={containerRef}>
       <button
-        onClick={(e) => {
-          e.stopPropagation();
+        onClick={() => {
           setIsOpen(!isOpen);
         }}
         className="px-3 py-1 rounded-full border text-xs font-semibold transition-colors flex items-center gap-1"
@@ -134,7 +133,7 @@ export function Dropdown({
           backgroundColor: isPlaceholder ? "transparent" : `${currentColor}20`,
         }}
       >
-        {isPlaceholder ? placeholder : selectedOption.label} â–¾
+        {isPlaceholder ? placeholder : selectedOption.label} ▼
       </button>
 
       <AnimatePresence>
@@ -158,8 +157,7 @@ export function Dropdown({
               return (
                 <button
                   key={optValue}
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={() => {
                     onChange(optValue);
                     setIsOpen(false);
                   }}

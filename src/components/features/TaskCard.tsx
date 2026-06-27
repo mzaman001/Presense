@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -7,6 +7,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -50,6 +51,7 @@ export const TaskCard = React.memo(({
   const markMutation = useAppStore(s => s.markMutation);
   const supabase = useMemo(() => createClient(), []);
   const [deleted, setDeleted] = useState(false);
+  const queryClient = useQueryClient();
 
   const dragX = useMotionValue(0);
   const deleteOpacity = useTransform(dragX, [0, SWIPE_DELETE_THRESHOLD], [0, 1]);
@@ -60,43 +62,91 @@ export const TaskCard = React.memo(({
   const isOverdue = label === "Overdue";
   const subtasks: {completed: boolean}[] = task.subtasks || [];
   const completedSubtasks = subtasks.filter(st => st.completed).length;
-  const priority = task.priority || 4;
+  const priority = Number(task.priority) || 4;
 
   const priorityDotColor =
-    priority === 1 ? "var(--space-do)" :
-    priority === 2 ? "var(--accent)" :
-    priority === 3 ? "var(--space-think)" :
-    "var(--text-4)";
+    priority === 1 ? "#ef4444" : // red
+    priority === 2 ? "#eab308" : // yellow
+    priority === 3 ? "#22c55e" : // green
+    "var(--text-4)";             // grey
 
-  const priorityGlow = priority === 1 ? "0 0 6px var(--space-do)" : "none";
+  const priorityGlow = 
+    priority === 1 ? "0 0 6px rgba(239, 68, 68, 0.5)" : 
+    priority === 2 ? "0 0 6px rgba(234, 179, 8, 0.5)" : 
+    "none";
   const isCompleting = completing === task.id;
 
   const handleDragEnd = async (_: any, info: any) => {
     if (info.offset.x < SWIPE_DELETE_THRESHOLD) {
-      // Haptic feedback on mobile
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         navigator.vibrate([10]);
       }
-      // Animate out then delete
+      
+      // Animate out card locally
       animate(dragX, -300, { duration: 0.25 });
       setDeleted(true);
-      const { error } = await supabase.from("items").update({ status: "archived" }).eq("id", task.id);
-      if (error) {
-        animate(dragX, 0, { duration: 0.3 });
-        setDeleted(false);
-        toast.error("Failed to delete task");
-      } else {
+      
+      // Save current caches for possible rollback
+      const previousTasks = queryClient.getQueryData<any[]>(["tasks"]);
+      const previousDashboard = queryClient.getQueryData<any>(["dashboard"]);
+
+      // Optimistically update ["tasks"]
+      queryClient.setQueryData<any[]>(["tasks"], old => old?.filter(t => t.id !== task.id) ?? []);
+
+      // Optimistically update ["dashboard"]
+      queryClient.setQueryData<any>(["dashboard"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          tasks: old.tasks?.filter((t: any) => t.id !== task.id) ?? []
+        };
+      });
+
+      try {
+        const { error } = await supabase.from("items").update({ status: "archived" }).eq("id", task.id);
+        if (error) throw error;
+
         markMutation();
         fetchTasks();
+        
         toast.success("Task archived", {
           action: {
             label: "Undo",
             onClick: async () => {
-              await supabase.from("items").update({ status: "active" }).eq("id", task.id);
-              fetchTasks();
+              const currentTasks = queryClient.getQueryData<any[]>(["tasks"]);
+              const currentDashboard = queryClient.getQueryData<any>(["dashboard"]);
+
+              // Optimistic restore
+              queryClient.setQueryData<any[]>(["tasks"], old => [...(old ?? []), task]);
+              queryClient.setQueryData<any>(["dashboard"], (old: any) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  tasks: [...(old.tasks ?? []), task]
+                };
+              });
+
+              try {
+                const { error: undoError } = await supabase.from("items").update({ status: "active" }).eq("id", task.id);
+                if (undoError) throw undoError;
+                fetchTasks();
+              } catch {
+                // Rollback undo
+                queryClient.setQueryData(["tasks"], currentTasks);
+                queryClient.setQueryData(["dashboard"], currentDashboard);
+                toast.error("Failed to restore task");
+              }
             }
           }
         });
+      } catch {
+        // Rollback on failure
+        queryClient.setQueryData(["tasks"], previousTasks);
+        queryClient.setQueryData(["dashboard"], previousDashboard);
+        
+        animate(dragX, 0, { duration: 0.3 });
+        setDeleted(false);
+        toast.error("Failed to delete task");
       }
     } else {
       animate(dragX, 0, { type: "spring", stiffness: 400, damping: 30 });
@@ -123,12 +173,13 @@ export const TaskCard = React.memo(({
         filter: "blur(4px)",
         transition: { duration: 0.3, ease: [0.4, 0, 1, 1] },
       }}
+      whileHover={{ y: -2 }}
       transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="group relative overflow-hidden rounded-2xl"
+      className="group relative rounded-2xl"
     >
       {/* Swipe-to-delete reveal layer */}
       <motion.div
-        className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl"
+        className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
         style={{
           background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
           opacity: deleteOpacity,
@@ -146,14 +197,13 @@ export const TaskCard = React.memo(({
         dragElastic={{ left: 0.15, right: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x: cardX }}
-        whileHover={{ y: -2 }}
         transition={{ duration: 0.25 }}
         className="relative"
       >
       <GlassCard
         onClick={() => openEditPanel(task)}
         className={cn(
-          "p-4 group cursor-pointer transition-all relative",
+          "p-4 group cursor-pointer transition-all relative !rounded-2xl",
           isOverdue && "border-[rgba(248,113,113,0.3)]",
           isCompleting && "border-[rgba(74,222,128,0.4)] bg-[rgba(74,222,128,0.06)]"
         )}
@@ -213,13 +263,13 @@ export const TaskCard = React.memo(({
 
             {task.first_step && (
               <p className="text-[12px] mt-1" style={{ color: isOverdue ? "var(--space-do)" : "var(--space-think)" }}>
-                â†’ {task.first_step}
+                → {task.first_step}
               </p>
             )}
 
             {task.recurrence && (
               <p className="text-[12px] mt-1" style={{ color: "var(--text-3)" }}>
-                â†» {formatRRule(task.recurrence)}
+                ⇆ {formatRRule(task.recurrence)}
               </p>
             )}
 
@@ -254,7 +304,7 @@ export const TaskCard = React.memo(({
                   return (
                     <div
                       key={id}
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-[var(--color-bg-elevated)]"
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-[var(--color-background)]"
                       style={{ backgroundColor: person.color, zIndex: 10 - index }}
                     >
                       {person.initials || person.name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
@@ -281,14 +331,40 @@ export const TaskCard = React.memo(({
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
-                    markMutation();
-                    await supabase.from('items').update({ snoozed_until: null }).eq('id', task.id);
-                    fetchTasks();
+                    
+                    const previousTasks = queryClient.getQueryData<any[]>(["tasks"]);
+                    const previousDashboard = queryClient.getQueryData<any>(["dashboard"]);
+
+                    // Optimistically set task.snoozed_until = null in ["tasks"]
+                    queryClient.setQueryData<any[]>(["tasks"], (old: any) => 
+                      old?.map((t: any) => t.id === task.id ? { ...t, snoozed_until: null } : t) ?? []
+                    );
+
+                    // Optimistically set task.snoozed_until = null in ["dashboard"]
+                    queryClient.setQueryData<any>(["dashboard"], (old: any) => {
+                      if (!old) return old;
+                      return {
+                        ...old,
+                        tasks: old.tasks?.map((t: any) => t.id === task.id ? { ...t, snoozed_until: null } : t) ?? []
+                      };
+                    });
+
+                    try {
+                      markMutation();
+                      const { error } = await supabase.from('items').update({ snoozed_until: null }).eq('id', task.id);
+                      if (error) throw error;
+                      fetchTasks();
+                    } catch {
+                      // Rollback on failure
+                      queryClient.setQueryData(["tasks"], previousTasks);
+                      queryClient.setQueryData(["dashboard"], previousDashboard);
+                      toast.error("Failed to cancel snooze");
+                    }
                   }}
                   className="ml-1"
                   style={{ color: "var(--text-3)" }}
                 >
-                  Ã—
+                  ×
                 </button>
               </div>
             )}
@@ -312,9 +388,74 @@ export const TaskCard = React.memo(({
     </motion.div>
   );
 }, (prevProps, nextProps) => {
+  // 1. Check simple properties passed directly to the card
   if (prevProps.completing !== nextProps.completing) return false;
-  if (prevProps.peopleMap !== nextProps.peopleMap) return false;
-  return JSON.stringify(prevProps.task) === JSON.stringify(nextProps.task);
+
+  // 2. Shallow check peopleMap if references changed
+  if (prevProps.peopleMap !== nextProps.peopleMap) {
+    if (!prevProps.peopleMap || !nextProps.peopleMap) return false;
+    const prevKeys = Object.keys(prevProps.peopleMap);
+    const nextKeys = Object.keys(nextProps.peopleMap);
+    if (prevKeys.length !== nextKeys.length) return false;
+    for (const key of prevKeys) {
+      const p = prevProps.peopleMap[key];
+      const n = nextProps.peopleMap[key];
+      if (!p || !n || p.name !== n.name || p.initials !== n.initials || p.color !== n.color) {
+        return false;
+      }
+    }
+  }
+
+  // 3. Shallow check task fields
+  const prevTask = prevProps.task;
+  const nextTask = nextProps.task;
+
+  if (!prevTask || !nextTask) return prevTask === nextTask;
+
+  // Primitive comparisons
+  if (
+    prevTask.id !== nextTask.id ||
+    prevTask.title !== nextTask.title ||
+    prevTask.status !== nextTask.status ||
+    prevTask.category !== nextTask.category ||
+    prevTask.priority !== nextTask.priority ||
+    prevTask.deadline !== nextTask.deadline ||
+    prevTask.first_step !== nextTask.first_step ||
+    prevTask.recurrence !== nextTask.recurrence ||
+    prevTask.time_spent_minutes !== nextTask.time_spent_minutes ||
+    prevTask.snoozed_until !== nextTask.snoozed_until
+  ) {
+    return false;
+  }
+
+  // Reference/Shallow-array comparison of linked_people_ids
+  const prevPeople = prevTask.linked_people_ids;
+  const nextPeople = nextTask.linked_people_ids;
+  if (prevPeople !== nextPeople) {
+    if (!prevPeople || !nextPeople) return false;
+    if (prevPeople.length !== nextPeople.length) return false;
+    for (let i = 0; i < prevPeople.length; i++) {
+      if (prevPeople[i] !== nextPeople[i]) return false;
+    }
+  }
+
+  // Reference/Shallow-array comparison of subtasks
+  const prevSub = prevTask.subtasks;
+  const nextSub = nextTask.subtasks;
+  if (prevSub !== nextSub) {
+    if (!prevSub || !nextSub) return false;
+    if (prevSub.length !== nextSub.length) return false;
+    for (let i = 0; i < prevSub.length; i++) {
+      if (
+        prevSub[i].completed !== nextSub[i].completed ||
+        prevSub[i].text !== nextSub[i].text
+      ) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 });
 
 TaskCard.displayName = "TaskCard";

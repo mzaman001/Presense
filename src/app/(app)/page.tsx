@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -307,25 +307,74 @@ export default function HomeDashboard() {
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 
                 const snoozedTask = primaryTask;
-                // Optimistic UI update
-                queryClient.setQueryData(['dashboard'], (old: any) => old ? { ...old, tasks: old.tasks.filter((t: any) => t.id !== snoozedTask.id) } : old);
                 
-                useAppStore.getState().markMutation();
-                await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", snoozedTask.id);
-                queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+                // Save current states for rollback
+                const previousDashboard = queryClient.getQueryData(['dashboard']);
+                const previousTasks = queryClient.getQueryData(['tasks']);
                 
-                toast.success("Snoozed until tomorrow", {
-                  duration: 8000,
-                  action: {
-                    label: "Undo",
-                    onClick: async () => {
-                      useAppStore.getState().markMutation();
-                      await supabase.from("items").update({ snoozed_until: null }).eq("id", snoozedTask.id);
-                      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-                      toast.success("Snooze reversed");
-                    }
-                  }
+                // Optimistic UI updates
+                queryClient.setQueryData(['dashboard'], (old: any) => {
+                  if (!old) return old;
+                  return {
+                    ...old,
+                    tasks: old.tasks.filter((t: any) => t.id !== snoozedTask.id)
+                  };
                 });
+                queryClient.setQueryData(['tasks'], (old: any[] | undefined) => 
+                  old?.filter(t => t.id !== snoozedTask.id) ?? []
+                );
+                
+                try {
+                  useAppStore.getState().markMutation();
+                  const { error } = await supabase.from("items").update({ snoozed_until: tomorrow.toISOString() }).eq("id", snoozedTask.id);
+                  if (error) throw error;
+
+                  queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+                  queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                  
+                  toast.success("Snoozed until tomorrow", {
+                    duration: 8000,
+                    action: {
+                      label: "Undo",
+                      onClick: async () => {
+                        const currentDashboard = queryClient.getQueryData(['dashboard']);
+                        const currentTasks = queryClient.getQueryData(['tasks']);
+                        
+                        // Optimistic restore (put task back)
+                        queryClient.setQueryData(['dashboard'], (old: any) => {
+                          if (!old) return old;
+                          return {
+                            ...old,
+                            tasks: [...old.tasks, { ...snoozedTask, snoozed_until: null }]
+                          };
+                        });
+                        queryClient.setQueryData(['tasks'], (old: any[] | undefined) => 
+                          old ? [...old, { ...snoozedTask, snoozed_until: null }] : []
+                        );
+                        
+                        try {
+                          useAppStore.getState().markMutation();
+                          const { error: undoError } = await supabase.from("items").update({ snoozed_until: null }).eq("id", snoozedTask.id);
+                          if (undoError) throw undoError;
+                          
+                          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+                          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                          toast.success("Snooze reversed");
+                        } catch {
+                          // Rollback undo
+                          queryClient.setQueryData(['dashboard'], currentDashboard);
+                          queryClient.setQueryData(['tasks'], currentTasks);
+                          toast.error("Failed to undo snooze");
+                        }
+                      }
+                    }
+                  });
+                } catch (error) {
+                  // Rollback snooze
+                  queryClient.setQueryData(['dashboard'], previousDashboard);
+                  queryClient.setQueryData(['tasks'], previousTasks);
+                  toast.error("Failed to snooze task");
+                }
               }}
               className="mt-4 text-xs text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors underline decoration-dashed underline-offset-4"
             >

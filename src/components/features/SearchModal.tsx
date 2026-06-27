@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
@@ -60,10 +60,10 @@ export function SearchModal() {
       const q = `%${debouncedQuery}%`;
 
       const [tasks, people, threads, explores, locations] = await Promise.all([
-        supabase.from("items").select("id, title").ilike("title", q).limit(5),
-        supabase.from("people").select("id, name").ilike("name", q).limit(5),
+        supabase.from("items").select("id, title").or(`title.ilike.${q},category.ilike.${q}`).limit(5),
+        supabase.from("people").select("id, name").or(`name.ilike.${q},relationship.ilike.${q}`).limit(5),
         supabase.from("threads").select("id, title").ilike("title", q).limit(5),
-        supabase.from("explores").select("id, title").ilike("title", q).limit(5),
+        supabase.from("explores").select("id, title").or(`title.ilike.${q},tags.cs.{${debouncedQuery}}`).limit(5),
         supabase.from("locations").select("id, item_name, location_text").or(`item_name.ilike.${q},location_text.ilike.${q}`).limit(5)
       ]);
 
@@ -182,7 +182,7 @@ export function SearchModal() {
             
             <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between text-xs text-[var(--color-text-3)]">
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">â†‘</kbd><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">â†“</kbd> to navigate</span>
+                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">↑</kbd><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">↓</kbd> to navigate</span>
                 <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">Enter</kbd> to select</span>
               </div>
               <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">Esc</kbd> to close</span>

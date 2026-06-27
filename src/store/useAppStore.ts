@@ -45,7 +45,9 @@ interface AppState {
   isSidebarCollapsed: boolean;
   toggleSidebar: () => void;
   isSettingsModalOpen: boolean;
-  setSettingsModalOpen: (open: boolean) => void;
+  setSettingsModalOpen: (open: boolean, defaultTab?: string) => void;
+  settingsActiveTab?: string;
+  setSettingsActiveTab: (tab: string) => void;
   userSettings: UserSettings;
   setUserSettings: (settings: UserSettings) => void;
   updateUserSetting: (key: string, value: unknown) => void;
@@ -53,6 +55,8 @@ interface AppState {
   setActiveTimer: (timer: { taskId?: string; taskTitle?: string } | null) => void;
   lastMutationAt: number;
   markMutation: () => void;
+  prefetchedThreads: Record<string, unknown>;
+  setPrefetchedThread: (id: string, thread: unknown) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -63,7 +67,9 @@ export const useAppStore = create<AppState>((set) => ({
   isSidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   isSettingsModalOpen: false,
-  setSettingsModalOpen: (open) => set({ isSettingsModalOpen: open }),
+  setSettingsModalOpen: (open, defaultTab) => set((state) => ({ isSettingsModalOpen: open, settingsActiveTab: defaultTab || state.settingsActiveTab })),
+  settingsActiveTab: "account",
+  setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
   userSettings: {},
   setUserSettings: (settings) => set({ userSettings: settings }),
   updateUserSetting: (key, value) => set((state) => ({ userSettings: { ...state.userSettings, [key]: value } })),
@@ -71,4 +77,6 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveTimer: (timer) => set({ activeTimer: timer }),
   lastMutationAt: 0,
   markMutation: () => set({ lastMutationAt: Date.now() }),
+  prefetchedThreads: {},
+  setPrefetchedThread: (id, thread) => set((state) => ({ prefetchedThreads: { ...state.prefetchedThreads, [id]: thread } })),
 }));

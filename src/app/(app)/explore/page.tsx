@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Plus, Loader2, Link2, BookOpen, Quote, Lightbulb, Star } from "lucide-react";
+import { Plus, Loader2, Link2, BookOpen, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -25,15 +25,15 @@ interface ExploreItem {
 }
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
-  link: Link2, book: BookOpen, quote: Quote, concept: Lightbulb, other: Star,
+  link: Link2, book: BookOpen, note: Lightbulb,
 };
 const TYPE_COLORS: Record<string, string> = {
-  link: "var(--color-accent)", book: "var(--accent)", quote: "#F472B6", concept: "#2DD4BF", other: "var(--accent)",
+  link: "var(--color-accent)", book: "var(--accent)", note: "#2DD4BF",
 };
 
-const FILTERS = ["All Saved", "Links", "Books", "Quotes", "Concepts"];
+const FILTERS = ["All Saved", "Links", "Notes", "Books"];
 const FILTER_MAP: Record<string, string | null> = {
-  "All Saved": null, Links: "link", Books: "book", Quotes: "quote", Concepts: "concept",
+  "All Saved": null, Links: "link", Notes: "note", Books: "book",
 };
 
 export default function ExplorePage() {
@@ -47,11 +47,6 @@ export default function ExplorePage() {
   const [editItem, setEditItem] = useState<ExploreItem | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
 
-  const customTypes = userSettings?.explore_custom_types || [];
-  const allFilters = [...FILTERS, ...customTypes.map((c: string) => c.charAt(0).toUpperCase() + c.slice(1))];
-  const dynamicFilterMap = { ...FILTER_MAP };
-  customTypes.forEach((c: string) => dynamicFilterMap[c.charAt(0).toUpperCase() + c.slice(1)] = c);
-
   const fetchItems = useCallback(async () => {
     let query = supabase.from("explores").select("*").order("saved_at", { ascending: false });
     
@@ -59,8 +54,14 @@ export default function ExplorePage() {
     else if (showArchive) query = query.eq("status", "archived");
     else query = query.eq("status", "active");
 
-    const typeFilter = dynamicFilterMap[filter];
-    if (typeFilter && !showTrash && !showArchive) query = query.eq("type", typeFilter);
+    const typeFilter = FILTER_MAP[filter];
+    if (typeFilter && !showTrash && !showArchive) {
+      if (typeFilter === "note") {
+        query = query.in("type", ["note", "quote", "concept"]);
+      } else {
+        query = query.eq("type", typeFilter);
+      }
+    }
     const { data } = await query;
     setItems(data ?? []);
     setLoading(false);
@@ -124,7 +125,7 @@ export default function ExplorePage() {
 
           {/* Filter pills */}
           <div className="flex gap-2 flex-wrap">
-            {allFilters.map((f) => (
+            {FILTERS.map((f) => (
               <button
                 key={f}
             onClick={() => setFilter(f)}
@@ -149,8 +150,9 @@ export default function ExplorePage() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {items.map((item, i) => {
-            const Icon = TYPE_ICONS[item.type] ?? Star;
-            const color = TYPE_COLORS[item.type] ?? "var(--accent)";
+            const mappedType = (item.type === "quote" || item.type === "concept") ? "note" : (["link", "note", "book"].includes(item.type) ? item.type : "note");
+            const Icon = TYPE_ICONS[mappedType] ?? Lightbulb;
+            const color = TYPE_COLORS[mappedType] ?? "#2DD4BF";
             const isUnread = !item.revisited_at;
             return (
               <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
@@ -167,7 +169,7 @@ export default function ExplorePage() {
                       <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{item.title}</p>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />}
-                        <span className="text-[10px] font-bold uppercase text-[var(--color-text-3)]">{item.type}</span>
+                        <span className="text-[10px] font-bold uppercase text-[var(--color-text-3)]">{mappedType}</span>
                       </div>
                     </div>
                     {item.note && item.note !== item.title && (

@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, Archive, Trash2, RefreshCcw, Plus, ChevronDown } from "lucide-react";
+import { X, Loader2, Archive, Trash2, RefreshCcw, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
@@ -15,7 +15,7 @@ interface ExploreDrawerProps {
   onSaved: () => void;
 }
 
-const PRESET_TYPES = ["link", "quote", "concept", "book", "movie", "article", "course", "podcast", "other"];
+const PRESET_TYPES = ["link", "note", "book"];
 
 export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerProps) {
   const supabase = createClient();
@@ -34,11 +34,12 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
 
   // Dropdown states
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
-  const [isCustomType, setIsCustomType] = useState(false);
-  const [customTypeInput, setCustomTypeInput] = useState("");
 
   const [isThreadDropdownOpen, setIsThreadDropdownOpen] = useState(false);
   const [threads, setThreads] = useState<any[]>([]);
+
+  const typeDropdownRef = useRef<HTMLDivElement>(null);
+  const threadDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -51,11 +52,10 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
         
         if (PRESET_TYPES.includes(item.type)) {
           setType(item.type);
-          setIsCustomType(false);
+        } else if (item.type === "quote" || item.type === "concept") {
+          setType("note");
         } else {
-          setType("custom");
-          setIsCustomType(true);
-          setCustomTypeInput(item.type);
+          setType("note");
         }
       } else {
         setTitle("");
@@ -64,8 +64,6 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
         setType("link");
         setTags([]);
         setLinkedThreadId(null);
-        setIsCustomType(false);
-        setCustomTypeInput("");
       }
 
       // Fetch threads
@@ -77,9 +75,17 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
 
   // Close dropdowns on outside click
   useEffect(() => {
-    const closeAll = () => { setIsTypeDropdownOpen(false); setIsThreadDropdownOpen(false); };
-    document.addEventListener("click", closeAll);
-    return () => document.removeEventListener("click", closeAll);
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(target)) {
+        setIsTypeDropdownOpen(false);
+      }
+      if (threadDropdownRef.current && !threadDropdownRef.current.contains(target)) {
+        setIsThreadDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleAddTag = (e: React.KeyboardEvent) => {
@@ -101,9 +107,6 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
     if (!title.trim()) return;
     setSaving(true);
     
-    let finalType = isCustomType ? customTypeInput.trim().toLowerCase() : type;
-    if (!finalType) finalType = "other";
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -113,7 +116,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
         title,
         url: url || null,
         note,
-        type: finalType,
+        type: type,
         tags,
         linked_thread_id: linkedThreadId || null,
       };
@@ -124,16 +127,6 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
       } else {
         const { error } = await supabase.from("explores").insert(payload);
         if (error) throw error;
-      }
-
-      // Add to custom types if new
-      if (isCustomType && finalType && !PRESET_TYPES.includes(finalType)) {
-        const currentCustoms = userSettings?.explore_custom_types || [];
-        if (!currentCustoms.includes(finalType)) {
-          const newCustoms = [...currentCustoms, finalType];
-          await supabase.from("user_settings").update({ explore_custom_types: newCustoms }).eq("user_id", user.id);
-          setUserSettings({ ...userSettings, explore_custom_types: newCustoms });
-        }
       }
 
       toast.success("Saved to Explore");
@@ -233,65 +226,29 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
 
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Type <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <button 
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setIsTypeDropdownOpen(!isTypeDropdownOpen); setIsThreadDropdownOpen(false); }}
-                    className="w-full flex items-center justify-between bg-[var(--surface-card)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
-                  >
-                    <span className="capitalize">{isCustomType ? (customTypeInput || "Custom") : type}</span>
-                    <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
-                  </button>
-                  <AnimatePresence>
-                    {isTypeDropdownOpen && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                        className="dropdown-panel absolute left-0 top-full mt-2 w-full p-1 z-50 flex flex-col gap-0.5"
-                      >
-                        {PRESET_TYPES.map(preset => (
-                          <button 
-                            key={preset} type="button"
-                            onClick={(e) => { e.stopPropagation(); setType(preset); setIsCustomType(false); setIsTypeDropdownOpen(false); }}
-                            className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] capitalize"
-                          >
-                            {preset}
-                          </button>
-                        ))}
-                        <div className="my-1 border-t border-[var(--color-border)]" />
-                        <button 
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setIsCustomType(true); setIsTypeDropdownOpen(false); }}
-                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[var(--surface-hover)] text-[var(--accent)] flex items-center gap-2"
-                        >
-                          <Plus className="w-3 h-3" /> Add custom type
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-                {isCustomType && (
-                  <motion.input
-                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                    autoFocus
-                    placeholder="Enter custom type and press save..."
-                    value={customTypeInput}
-                    onChange={(e) => setCustomTypeInput(e.target.value)}
-                    className="input mt-3 !border-[var(--accent)] focus:!border-[var(--accent)]"
-                  />
-                )}
+                <input
+                  type="text"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full bg-[var(--surface-input)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  placeholder="e.g. link, note, book"
+                  list="preset-explore-types"
+                />
+                <datalist id="preset-explore-types">
+                  {PRESET_TYPES.map(preset => <option key={preset} value={preset} />)}
+                </datalist>
               </div>
 
-              {type === 'link' && (
-                <div>
-                  <label className="text-label text-[var(--text-3)] block mb-2">URL</label>
-                  <input
-                    type="text"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    className="input"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="text-label text-[var(--text-3)] block mb-2">URL</label>
+                <input
+                  type="text"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="input"
+                  placeholder="e.g. https://example.com"
+                />
+              </div>
 
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">
@@ -306,33 +263,14 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                 />
               </div>
 
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Tags</label>
-                <div className="p-2 border border-[var(--color-border)] rounded-xl bg-[var(--surface-input)] focus-within:border-[var(--accent)] transition-colors flex flex-wrap gap-2">
-                  {tags.map((t) => (
-                    <span key={t} className="tag-pill !bg-[var(--accent-dim)] !text-[var(--accent)] !border-[var(--accent-border)]">
-                      {t}
-                      <button type="button" onClick={() => handleRemoveTag(t)} className="remove">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                  <input
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyDown={handleAddTag}
-                    placeholder="Add tag and press Enter..."
-                    className="flex-1 min-w-[140px] bg-transparent px-2 py-1 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none"
-                  />
-                </div>
-              </div>
+
 
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Link to Think Thread (Optional)</label>
-                <div className="relative">
+                <div className="relative" ref={threadDropdownRef}>
                   <button 
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
+                    onClick={() => { setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
                     className="w-full flex items-center justify-between bg-[var(--surface-card)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
                   >
                     <span className="truncate pr-4">
@@ -348,7 +286,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                       >
                         <button 
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setLinkedThreadId(null); setIsThreadDropdownOpen(false); }}
+                          onClick={() => { setLinkedThreadId(null); setIsThreadDropdownOpen(false); }}
                           className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-3)]"
                         >
                           -- No Thread Linked --
@@ -356,7 +294,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                         {threads.map(t => (
                           <button 
                             key={t.id} type="button"
-                            onClick={(e) => { e.stopPropagation(); setLinkedThreadId(t.id); setIsThreadDropdownOpen(false); }}
+                            onClick={() => { setLinkedThreadId(t.id); setIsThreadDropdownOpen(false); }}
                             className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] truncate"
                           >
                             {t.title}
