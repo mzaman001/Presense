@@ -185,25 +185,24 @@ function SortablePersonRow({
       </motion.div>
 
       {/* Draggable card container */}
-      <GlassCard className="p-0 hover:scale-[1.005] transition-transform overflow-hidden flex items-stretch !rounded-2xl">
-        <div 
-          {...attributes} 
-          {...listeners} 
-          className="w-8 flex items-center justify-center bg-[var(--color-surface)] border-r border-[var(--color-border)] cursor-grab active:cursor-grabbing hover:bg-[var(--color-surface)] transition-colors shrink-0"
-        >
-          <GripVertical className="w-4 h-4 text-[var(--color-text-3)]" />
-        </div>
-        
-        {/* Draggable inner wrapper */}
-        <motion.div
-          drag="x"
-          dragConstraints={{ left: -100, right: 0 }}
-          dragElastic={{ left: 0.15, right: 0 }}
-          onDragEnd={handleDragEnd}
-          style={{ x: dragX }}
-          className="flex-1 min-w-0 bg-[var(--color-background)]"
-        >
-          <Link href={`/remember/people/${person.id}`} className="block p-4">
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: -100, right: 0 }}
+        dragElastic={{ left: 0.15, right: 0 }}
+        onDragEnd={handleDragEnd}
+        style={{ x: dragX }}
+        className="relative z-10"
+      >
+        <GlassCard className="p-0 hover:scale-[1.005] hover:-translate-y-px transition-all duration-200 ease-out overflow-hidden flex items-stretch !rounded-2xl group-hover:border-[var(--accent-border)] bg-[var(--color-surface)]">
+          <div 
+            {...attributes} 
+            {...listeners} 
+            className="w-10 flex items-center justify-center border-r border-[var(--color-border)] cursor-grab active:cursor-grabbing hover:bg-[rgba(255,255,255,0.03)] transition-colors shrink-0"
+          >
+            <GripVertical className="w-4 h-4 text-[var(--color-text-3)]" />
+          </div>
+          
+          <Link href={`/remember/people/${person.id}`} className="flex-1 min-w-0 p-4 block hover:bg-[rgba(255,255,255,0.02)] transition-colors">
             <div className="flex items-center gap-3">
               <Avatar name={person.name} color={relColor} size="sm" />
               <div className="flex-1 min-w-0">
@@ -222,8 +221,8 @@ function SortablePersonRow({
               </div>
             </div>
           </Link>
-        </motion.div>
-      </GlassCard>
+        </GlassCard>
+      </motion.div>
     </div>
   );
 }
