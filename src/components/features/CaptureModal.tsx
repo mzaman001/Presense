@@ -336,8 +336,8 @@ export function CaptureModal() {
             <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] rounded-b-2xl">
               {!routedItems ? (
                 <>
-                  <span className="text-xs text-[var(--color-text-3)]">
-                    Smart routing via keyword detection — 100% free, no AI API
+                  <span className="text-xs text-[var(--color-text-3)] flex items-center gap-1.5">
+                    Press <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-[var(--border-default)] text-[10px] text-[var(--text-1)] border border-[var(--border-subtle)]">Enter</kbd> to auto-route
                   </span>
                   <button
                     onClick={handleRoute}
