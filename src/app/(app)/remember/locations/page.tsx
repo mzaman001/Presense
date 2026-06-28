@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,15 +18,15 @@ interface LocationItem {
 }
 
 const EMOJI_MAP: Record<string, string> = {
-  keys: "ðŸ”‘", key: "ðŸ”‘", wallet: "ðŸ‘›", phone: "ðŸ“±", charger: "ðŸ”Œ",
-  laptop: "ðŸ’»", headphones: "ðŸŽ§", notebook: "ðŸ“’", book: "ðŸ“–", glasses: "ðŸ‘“",
-  watch: "âŒš", bag: "ðŸŽ’", card: "ðŸ’³", id: "ðŸªª", passport: "ðŸ“•",
-  cable: "ðŸ”Œ", pen: "ðŸ–Šï¸", bottle: "ðŸ¶", umbrella: "â˜‚ï¸", shoes: "ðŸ‘Ÿ",
+  keys: "🔑", key: "🔑", wallet: "👛", phone: "📱", charger: "🔌",
+  laptop: "💻", headphones: "🎧", notebook: "📓", book: "📖", glasses: "👓",
+  watch: "⌚", bag: "🎒", card: "💳", id: "🪪", passport: "🛂",
+  cable: "🔌", pen: "🖊️", bottle: "🍼", umbrella: "☂️", shoes: "👟",
 };
 
 function getEmoji(name: string): string {
   const lower = name.toLowerCase();
-  return Object.entries(EMOJI_MAP).find(([k]) => lower.includes(k))?.[1] ?? "ðŸ“¦";
+  return Object.entries(EMOJI_MAP).find(([k]) => lower.includes(k))?.[1] ?? "📦";
 }
 
 function daysAgo(dt: string): number {

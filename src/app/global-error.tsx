@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { logger } from "@/lib/logger";
@@ -21,7 +21,7 @@ export default function GlobalError({
       <body>
         <div className="flex min-h-screen items-center justify-center bg-[#111111] p-6 text-white font-sans">
           <div className="w-full max-w-md rounded-2xl border border-[rgba(255,255,255,0.1)] bg-[#1A1A1A] p-8 text-center shadow-2xl">
-            <div className="mb-4 text-5xl">âš ï¸</div>
+            <div className="mb-4 text-5xl">⚠️</div>
             <h2 className="mb-2 text-2xl font-bold">Fatal Application Error</h2>
             <p className="mb-6 text-sm text-gray-400">
               Presense encountered an unexpected error. Your data is safe.

@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -16,9 +16,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Presense â€” Your External Brain",
+  title: "Presense — Your External Brain",
   description:
-    "Presense is a personal productivity web app that captures tasks, people, thoughts, and memories â€” and surfaces them back to you at the right moment.",
+    "Presense is a personal productivity web app that captures tasks, people, thoughts, and memories — and surfaces them back to you at the right moment.",
   keywords: ["productivity", "second brain", "tasks", "notes", "capture"],
   icons: {
     icon: "/icon.svg",

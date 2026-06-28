@@ -1,6 +1,6 @@
-﻿import { TaskCardSkeleton } from "@/components/ui/Skeleton";
+import { TaskCardSkeleton } from "@/components/ui/Skeleton";
 
-// Root-level loading skeleton â€” shown during Server Component streaming
+// Root-level loading skeleton — shown during Server Component streaming
 export default function AppLoading() {
   return (
     <div className="space-y-6 p-4 md:p-8">

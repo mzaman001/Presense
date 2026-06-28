@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
@@ -66,7 +66,7 @@ export default function LoginPage() {
         {initError && (
           <div className="mb-5 p-3 rounded-[var(--radius-md)] text-sm font-medium"
             style={{ background: "var(--status-danger-dim)", border: "0.5px solid var(--status-danger-border)", color: "var(--status-danger)" }}>
-            âš ï¸ {initError}
+            ⚠️ {initError}
           </div>
         )}
 
