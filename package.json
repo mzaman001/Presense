@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node -e \"const fs = require('fs'); if (fs.existsSync('src/proxy.ts')) fs.unlinkSync('src/proxy.ts');\" && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

@@ -31,3 +31,18 @@ export function formatRRule(rrule: string | null | undefined): string {
   }
   return "Recurring";
 }
+
+export function extractMentions(text: string): string[] {
+  const regex = /@\[[^\]]+\]\(([^)]+)\)/g;
+  const uuidRegex = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
+  const matches: string[] = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const id = match[1];
+    if (uuidRegex.test(id)) {
+      matches.push(id);
+    }
+  }
+  return matches;
+}
+

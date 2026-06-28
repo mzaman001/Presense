@@ -1,11 +1,11 @@
 "use client";
 import { logger } from "@/lib/logger";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
-import { formatRRule } from "@/lib/utils";
+import { formatRRule, cn, extractMentions } from "@/lib/utils";
 import { Sparkles, Loader2, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { RoutedItem } from "@/lib/capture-router";
@@ -59,6 +59,97 @@ export function CaptureModal() {
   const [taskExtras, setTaskExtras] = useState<{ [idx: number]: { first_step: string; ifthen_trigger: string } }>({});
   const [saved, setSaved] = useState(false);
   const supabase = useMemo(() => createClient(), []);
+
+  const [people, setPeople] = useState<{ id: string; name: string }[]>([]);
+  const [showPopover, setShowPopover] = useState(false);
+  const [popoverSearch, setPopoverSearch] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    async function fetchPeople() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id);
+      if (data) {
+        setPeople(data);
+      }
+    }
+    if (isCaptureModalOpen) {
+      fetchPeople();
+    }
+  }, [isCaptureModalOpen, supabase]);
+
+  const filteredPeople = useMemo(() => {
+    return people.filter(p =>
+      p.name.toLowerCase().includes(popoverSearch.toLowerCase())
+    );
+  }, [people, popoverSearch]);
+
+  const handleSelectPerson = useCallback((person: { id: string; name: string }) => {
+    if (!inputRef.current) return;
+    const val = input;
+    const selectionStart = inputRef.current.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, selectionStart);
+    const textAfterCursor = val.slice(selectionStart);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+
+    const mentionText = `@[${person.name}](${person.id})`;
+    const newVal = val.slice(0, lastAtIndex) + mentionText + " " + textAfterCursor;
+    setInput(newVal);
+    setShowPopover(false);
+
+    // Focus input and move cursor
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const cursorPosition = lastAtIndex + mentionText.length + 1;
+        inputRef.current.setSelectionRange(cursorPosition, cursorPosition);
+      }
+    }, 0);
+  }, [input]);
+
+  const handleInputChange = (val: string) => {
+    setInput(val);
+
+    if (!inputRef.current) return;
+    const selectionStart = inputRef.current.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, selectionStart);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+
+    if (lastAtIndex !== -1 && (lastAtIndex === 0 || textBeforeCursor[lastAtIndex - 1] === " ")) {
+      const search = textBeforeCursor.slice(lastAtIndex + 1);
+      if (!search.includes(" ")) {
+        setShowPopover(true);
+        setPopoverSearch(search);
+        setSelectedIndex(0);
+        return;
+      }
+    }
+    setShowPopover(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showPopover && filteredPeople.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % filteredPeople.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + filteredPeople.length) % filteredPeople.length);
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        handleSelectPerson(filteredPeople[selectedIndex]);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setShowPopover(false);
+      }
+    } else {
+      if (e.key === "Enter" && !routedItems) {
+        handleRoute();
+      }
+    }
+  };
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -130,6 +221,7 @@ export function CaptureModal() {
         routedItems.map(async (item, idx) => {
           const extras = taskExtras[idx] ?? {};
           if (item.destination === "Do" || item.destination === "Inbox") {
+            const mentions = extractMentions(item.title);
             const { error } = await supabase.from("items").insert({
               user_id: user.id,
               title: item.title,
@@ -140,6 +232,7 @@ export function CaptureModal() {
               deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
               recurrence: (item as RoutedItem & { recurrence?: string }).recurrence ?? null,
               status: item.destination === "Inbox" ? "inbox" : "active",
+              linked_people: mentions,
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
           } else if (item.destination === "Remember → People") {
@@ -162,10 +255,12 @@ export function CaptureModal() {
               if (error) throw new Error(`People: ${error.message}`);
             }
           } else if (item.destination === "Think") {
+            const mentions = extractMentions(item.title);
             const { error } = await supabase.from("threads").insert({
               user_id: user.id,
               title: item.title.slice(0, 60),
               entries: [{ text: item.title, created_at: new Date().toISOString(), starred: false }],
+              linked_people: mentions,
             });
             if (error) throw new Error(`Think: ${error.message}`);
           } else if (item.destination === "Explore") {
@@ -219,26 +314,49 @@ export function CaptureModal() {
             className="modal relative w-full max-w-2xl"
           >
             {/* Input row */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl relative">
               {routedItems ? (
                 <Sparkles className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" />
               ) : (
                 <Search className="w-5 h-5 text-[var(--color-text-3)] shrink-0" />
               )}
               <input
+                ref={inputRef}
                 autoFocus
                 type="text"
                 placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
                 className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
                 disabled={!!routedItems || isRouting}
-                onKeyDown={(e) => { if (e.key === "Enter" && !routedItems) handleRoute(); }}
+                onKeyDown={handleKeyDown}
               />
               {!routedItems && (
                 <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[var(--color-surface)]">
                   Enter
                 </kbd>
+              )}
+
+              {/* Mentions dropdown overlay */}
+              {showPopover && filteredPeople.length > 0 && (
+                <div
+                  className="absolute left-0 right-0 top-full z-50 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-lg max-h-60 overflow-y-auto"
+                  data-testid="mentions-popover"
+                >
+                  {filteredPeople.map((person, idx) => (
+                    <button
+                      key={person.id}
+                      onClick={() => handleSelectPerson(person)}
+                      className={cn(
+                        "w-full px-4 py-2 text-left hover:bg-[rgba(255,255,255,0.05)] focus:outline-none text-sm text-[var(--color-text-1)]",
+                        idx === selectedIndex && "bg-[rgba(255,255,255,0.08)]"
+                      )}
+                      type="button"
+                    >
+                      {person.name}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 

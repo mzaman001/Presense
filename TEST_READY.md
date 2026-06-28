@@ -1,45 +1,46 @@
-# Phase 3 Test Suite Integration - Ready for Execution
+# Phase 5 E2E Testing Track - Ready for Execution
 
-This document summarizes the comprehensive integration and E2E test suite implemented for Phase 3 requirements.
+This document details the test suite verifying Next.js Edge Auth Middleware (Proxy) routing, database migrations, and Mentions extraction UI logic.
 
-## Test Runner Commands
+## Test Runner Command
 
-To execute the Phase 3 integration test suite, run:
+To run the test suite:
 
 ```bash
-# Run only the Phase 3 test suite
-npm test src/lib/__tests__/phase3.test.tsx
+npm run test
+```
 
-# Run all tests in the project
-npm test
+To run only the newly created Phase 5 tests:
+
+```bash
+# Run middleware test
+npx vitest run src/lib/__tests__/middleware.test.ts
+
+# Run mentions test
+npx vitest run src/lib/__tests__/mentions.test.tsx
 ```
 
 ---
 
-## Phase 3 Requirements Checklist
+## E2E Testing Track Tiers
 
-This checklist tracks the integration tests implemented in `src/lib/__tests__/phase3.test.tsx` and their verification target behaviors.
+Our testing architecture is structured into four distinct verification tiers to ensure comprehensive validation from core logic up to real-world integration.
 
-### [ ] R1: ExploreDrawer & SearchModal
-- [ ] **ExploreDrawer Preset Types**: `ExploreDrawer` dropdown lists exactly "link", "note", and "book".
-- [ ] **No Custom Types**: No input or button exists inside `ExploreDrawer` to create a custom type.
-- [ ] **Search by Category**: `SearchModal` returns items filtered/grouped by category (e.g. searching "study" returns matching tasks).
-- [ ] **Search by Tag**: `SearchModal` queries/filters explore items by their tags (e.g. searching "productivity" returns explores with the corresponding tag).
+### Tier 1: Feature Coverage
+Focuses on the verification of individual features, components, and unit functions in isolation.
+- **Auth Middleware Redirects**: Validates that unauthenticated requests to `/` or protected routes are correctly redirected to `/login` with a `307` temporary redirect, and that authenticated requests accessing `/login` are redirected to `/`.
+- **Mentions Parsing**: Validates that the `extractMentions` helper successfully parses text for mentions formatted as `@[Person Name](uuid)` and returns the list of UUIDs.
 
-### [ ] R2: SettingsModal
-- [ ] **Blocked Settings Toggles**: "Routing Confidence", "NLP for dates", and "People Briefings" are completely hidden from the DOM.
-- [ ] **Auto-start Breaks Grouping**: The "Auto-start breaks" toggle is grouped inside a "Timer Durations" layout card under the Focus tab.
-- [ ] **Active Tab Default**: Settings modal automatically defaults the selected tab to the value specified in `useAppStore.getState().settingsActiveTab`.
+### Tier 2: Boundary
+Focuses on validation of input limits, empty states, and invalid/malformed request scenarios.
+- **Parsing Edge Cases**: Validates `extractMentions` behavior when dealing with no mentions, malformed formats (e.g. missing brackets or parentheses), multiple consecutive mentions, or names with special characters (e.g., hyphens, periods).
+- **Middleware Path Routing Boundaries**: Validates that middleware respects route configurations (like matcher boundaries) and handles edge-case paths correctly.
 
-### [ ] R3: TaskCard & Think Thread Page
-- [ ] **Overlapping Avatars styling**: Avatars in `TaskCard` overlapping layout have a `border-2 border-[var(--color-bg-elevated)]` class (border matching the background).
-- [ ] **No Clip on Hover**: The outer container in `TaskCard` does not set `overflow-hidden` during hover actions, preventing any clipping.
-- [ ] **Think Detail Page Initializer**: Page transitions are optimized by checking `window.prefetchedThreads` and initializing state immediately to avoid lag or loaders.
-- [ ] **Animation Stagger Delays**: Delays on thread list items/entries are disabled (or set to 0) to ensure snappy transitions.
-- [ ] **Touch Viewport Color Picker**: On mobile / touch viewports, the color picker is triggered via click rather than relying on hover styles.
+### Tier 3: Cross-Feature
+Tests integrations and data/state flow across different features of the application.
+- **Mentions Popover Interaction**: Verifies that user interaction in the input field (typing `@`) queries/triggers rendering of the popover selection list, and clicking a person inserts the mention metadata into the input field value.
+- **Supabase Authentication State Integration**: Verifies that the Edge Auth Middleware correctly interacts with `@supabase/ssr`'s `createServerClient` context to retrieve session tokens from cookies.
 
----
-
-## Test Suite Architecture Summary
-
-The integration tests render each component using React Testing Library (`@testing-library/react`), mocked router contexts (`next/navigation`), dynamic Supabase clients (`@/lib/supabase`), and a wrapping provider for TanStack React Query (`QueryClientProvider`). Mock states are modified prior to rendering each component to simulate user settings, auth scopes, database responses, and viewport parameters.
+### Tier 4: Real-World
+Simulates user behavior in end-to-end scenarios, including state transitions and database synchronization.
+- **E2E Auth & Mentions Flow**: Validates the end-to-end journey of a user: logging in, redirected from `/login` to `/` (authenticated), opening a capture modal or input field, typing a message with `@` mention to pull up team members, selecting a teammate, saving the note, and ensuring database tables (like `people` or `items`) reflect the mentions mapping.

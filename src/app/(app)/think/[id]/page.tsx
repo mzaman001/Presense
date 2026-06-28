@@ -10,7 +10,7 @@ import { ArrowLeft, Loader2, Send, Sparkles, Trash2, Archive, Pin, RefreshCcw } 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
-import { cn } from "@/lib/utils";
+import { cn, extractMentions } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useAppStore } from "@/store/useAppStore";
@@ -42,6 +42,101 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   const [newEntry, setNewEntry] = useState("");
   const [saving, setSaving] = useState(false);
   const [linkedExplores, setLinkedExplores] = useState<any[]>([]);
+
+  const [people, setPeople] = useState<{ id: string; name: string }[]>([]);
+  const [showPopover, setShowPopover] = useState(false);
+  const [popoverSearch, setPopoverSearch] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    async function fetchPeople() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id);
+      if (data) {
+        setPeople(data);
+      }
+    }
+    fetchPeople();
+  }, [supabase]);
+
+  const filteredPeople = React.useMemo(() => {
+    return people.filter(p =>
+      p.name.toLowerCase().includes(popoverSearch.toLowerCase())
+    );
+  }, [people, popoverSearch]);
+
+  const handleSelectPerson = useCallback((person: { id: string; name: string }) => {
+    if (!textareaRef.current) return;
+    const val = newEntry;
+    const selectionStart = textareaRef.current.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, selectionStart);
+    const textAfterCursor = val.slice(selectionStart);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+
+    const mentionText = `@[${person.name}](${person.id})`;
+    const newVal = val.slice(0, lastAtIndex) + mentionText + " " + textAfterCursor;
+    setNewEntry(newVal);
+    setShowPopover(false);
+
+    // Focus textarea and move cursor
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const cursorPosition = lastAtIndex + mentionText.length + 1;
+        textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
+      }
+    }, 0);
+  }, [newEntry]);
+
+  const handleInputChange = (val: string) => {
+    setNewEntry(val);
+
+    if (!textareaRef.current) return;
+    const selectionStart = textareaRef.current.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, selectionStart);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+
+    if (lastAtIndex !== -1 && (lastAtIndex === 0 || textBeforeCursor[lastAtIndex - 1] === " " || textBeforeCursor[lastAtIndex - 1] === "\n")) {
+      const search = textBeforeCursor.slice(lastAtIndex + 1);
+      if (!search.includes(" ") && !search.includes("\n")) {
+        setShowPopover(true);
+        setPopoverSearch(search);
+        setSelectedIndex(0);
+        return;
+      }
+    }
+    setShowPopover(false);
+  };
+
+  const getLinkedPeople = (entriesList: ThreadEntry[]) => {
+    const allMentions = entriesList.flatMap(e => extractMentions(e.text || ""));
+    return Array.from(new Set(allMentions));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showPopover && filteredPeople.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % filteredPeople.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + filteredPeople.length) % filteredPeople.length);
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        handleSelectPerson(filteredPeople[selectedIndex]);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setShowPopover(false);
+      }
+    } else {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleAddEntry(e);
+      }
+    }
+  };
   
   const [deleteThreadOpen, setDeleteThreadOpen] = useState(false);
   const [deleteEntryIndex, setDeleteEntryIndex] = useState<number | null>(null);
@@ -140,11 +235,13 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     try {
       const entry = { text: newEntry.trim(), created_at: new Date().toISOString() };
       const updatedEntries = [...(thread.entries || []), entry];
+      const linkedPeople = getLinkedPeople(updatedEntries);
       
       const { error } = await supabase.from("threads").update({ 
         entries: updatedEntries,
         last_updated: new Date().toISOString(),
-        stale_prompt: null // Clear stale prompt if they revisit
+        stale_prompt: null, // Clear stale prompt if they revisit
+        linked_people: linkedPeople
       }).eq("id", thread.id);
 
       if (error) throw error;
@@ -172,7 +269,11 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     if (!thread || deleteEntryIndex === null) return;
     try {
       const updatedEntries = thread.entries.filter((_, i) => i !== deleteEntryIndex);
-      const { error } = await supabase.from("threads").update({ entries: updatedEntries }).eq("id", thread.id);
+      const linkedPeople = getLinkedPeople(updatedEntries);
+      const { error } = await supabase.from("threads").update({ 
+        entries: updatedEntries,
+        linked_people: linkedPeople
+      }).eq("id", thread.id);
       if (error) throw error;
       setThread({ ...thread, entries: updatedEntries });
       toast.success("Entry deleted");
@@ -322,16 +423,32 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       <div className="fixed bottom-0 left-0 right-0 md:pl-[220px] p-4 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent z-40">
         <div className="max-w-2xl mx-auto">
           <form onSubmit={handleAddEntry} className="relative">
+            {showPopover && filteredPeople.length > 0 && (
+              <div
+                className="absolute left-0 right-0 bottom-full z-50 mb-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-lg max-h-60 overflow-y-auto"
+                data-testid="mentions-popover"
+              >
+                {filteredPeople.map((person, idx) => (
+                  <button
+                    key={person.id}
+                    onClick={() => handleSelectPerson(person)}
+                    className={cn(
+                      "w-full px-4 py-2 text-left hover:bg-[rgba(255,255,255,0.05)] focus:outline-none text-sm text-[var(--color-text-1)]",
+                      idx === selectedIndex && "bg-[rgba(255,255,255,0.08)]"
+                    )}
+                    type="button"
+                  >
+                    {person.name}
+                  </button>
+                ))}
+              </div>
+            )}
             <TextareaAutosize
+              ref={textareaRef}
               placeholder="Continue the thought..."
               value={newEntry}
-              onChange={(e) => setNewEntry(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  handleAddEntry(e);
-                }
-              }}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
               minRows={1}
               maxRows={10}
               className="input !pr-14 !rounded-2xl !py-4 resize-none"
