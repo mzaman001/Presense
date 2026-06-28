@@ -1,2 +1,0 @@
-# Victory Audit Plan
-TBD
