@@ -1,6 +1,6 @@
 "use client";
 import { logger } from "@/lib/logger";
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 import { useDebouncedCallback } from "use-debounce";
@@ -20,7 +20,18 @@ export function useRealtime(table: string, onUpdate: () => void) {
     onUpdateRef.current();
   }, 200);
 
+  const [isVisible, setIsVisible] = useState(true);
+  
   useEffect(() => {
+    const handleVisibility = () => setIsVisible(document.visibilityState === 'visible');
+    window.addEventListener('visibilitychange', handleVisibility);
+    // Set initial state since window might not be defined initially in SSR
+    handleVisibility();
+    return () => window.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible) return;
     
     // Create a generic subscription for INSERT, UPDATE, DELETE on the specified table
     const channel = supabase
@@ -47,5 +58,5 @@ export function useRealtime(table: string, onUpdate: () => void) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, supabase, debouncedUpdate]);
+  }, [table, supabase, debouncedUpdate, isVisible]);
 }

@@ -8,6 +8,7 @@ import { AddPersonPanel } from "@/components/features/AddPersonPanel";
 import { Plus, Loader2, Clock, ChevronRight, GripVertical, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/hooks/useRealtime";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
@@ -328,8 +329,8 @@ export default function PeoplePage() {
   return (
     <div>
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
+        <div className="py-6">
+          <PageSkeleton count={5} type="person" />
         </div>
       ) : (
         <div className="flex flex-col gap-8">

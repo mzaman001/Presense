@@ -109,10 +109,13 @@ export default function LoginPage() {
             <form onSubmit={handleMagicLink} className="space-y-3 mb-4">
               <input
                 type="email"
+                name="email"
+                id="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 className="input w-full"
               />
               <div className="flex justify-end">

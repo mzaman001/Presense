@@ -331,6 +331,11 @@ export function CaptureModal() {
                 disabled={!!routedItems || isRouting}
                 onKeyDown={handleKeyDown}
               />
+              {input && !routedItems && !isRouting && (
+                <button onClick={() => { handleInputChange(""); inputRef.current?.focus(); }} aria-label="Clear input" className="p-1 mr-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded hover:bg-[var(--color-surface)] transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
               {!routedItems && (
                 <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[var(--color-surface)]">
                   Enter

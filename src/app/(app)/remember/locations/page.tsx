@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Search, Plus, Loader2, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
 
@@ -112,8 +113,8 @@ export default function LocationsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
+        <div className="py-6">
+          <PageSkeleton count={4} type="task" />
         </div>
       ) : (
         <div className="space-y-2">

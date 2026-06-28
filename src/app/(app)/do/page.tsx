@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { TaskCard } from "@/components/features/TaskCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Clock, Play, Check, Zap, Calendar } from "lucide-react";
+import { Plus, Loader2, Clock, Play, Check, Zap, Calendar, Wind, CheckCircle2 } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -351,9 +351,13 @@ export default function DoPage() {
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-4">Archived Tasks</h2>
           {archivedTasks.length === 0 ? (
-            <div className="text-sm text-[var(--color-text-3)] text-center py-8 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl">
-              No completed tasks yet.
-            </div>
+            <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
+              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-6 h-6 text-[var(--color-text-3)]" />
+              </div>
+              <h3 className="text-[var(--color-text-1)] font-medium mb-2">No completed tasks yet</h3>
+              <p className="text-sm text-[var(--color-text-3)] max-w-sm">When you finish tasks, they will appear here in your archive.</p>
+            </GlassCard>
           ) : (
             archivedTasks.filter(t => categoryFilter === "all" || t.category === categoryFilter).map(task => (
               <GlassCard key={task.id} className="p-4 opacity-70 hover:opacity-100 transition-opacity flex justify-between items-center">
@@ -386,9 +390,19 @@ export default function DoPage() {
            {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} />}
            <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} />
           {overdue.length === 0 && today.length === 0 && (
-            <div className="text-sm text-[var(--color-text-3)] text-center py-12 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl md:col-span-2">
-              No tasks due today. Take a breath.
-            </div>
+            <GlassCard className="p-12 text-center md:col-span-2 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
+              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+                <Wind className="w-6 h-6 text-[var(--color-text-3)]" />
+              </div>
+              <h3 className="text-[var(--color-text-1)] font-medium mb-2">You're all caught up!</h3>
+              <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">No tasks due today. Take a breath or plan ahead.</p>
+              <button 
+                onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+                className="btn-secondary gap-2"
+              >
+                <Plus size={16} /> Add Task
+              </button>
+            </GlassCard>
           )}
         </div>
       ) : (

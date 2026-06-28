@@ -275,6 +275,16 @@ export function SettingsModal() {
   }, [isSettingsModalOpen, supabase, setUserSettings]);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isSettingsModalOpen) {
+        setSettingsModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSettingsModalOpen, setSettingsModalOpen]);
+
+  useEffect(() => {
     if (!initialLoaded) return;
     
     const save = async () => {
@@ -496,6 +506,7 @@ export function SettingsModal() {
                 <div className="flex-1 relative overflow-y-auto no-scrollbar">
                   <button 
                     onClick={() => setSettingsModalOpen(false)}
+                    aria-label="Close settings"
                     className="btn-icon absolute top-4 right-4 z-10"
                   >
                     <X size={16} strokeWidth={1.5} className="shrink-0" />

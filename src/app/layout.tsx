@@ -26,8 +26,13 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-export const viewport = {
-  themeColor: "#E5B41E",
+import type { Viewport } from "next";
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0e0e10" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  ],
 };
 
 import { ToastProvider } from "@/components/ui/ToastProvider";
@@ -36,6 +41,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}>
       <head>
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" />
+        <noscript>
+          <style>{`
+            .no-js-fallback {
+              position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+              background: #0e0e10; color: #fff; z-index: 9999;
+              display: flex; align-items: center; justify-content: center;
+              font-family: sans-serif;
+            }
+          `}</style>
+          <div className="no-js-fallback">
+            Presense requires JavaScript to run. Please enable it in your browser settings.
+          </div>
+        </noscript>
         <Script
           id="theme-init"
           strategy="beforeInteractive"

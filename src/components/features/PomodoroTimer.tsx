@@ -391,6 +391,7 @@ export function PomodoroTimer() {
           <div className="flex items-center gap-5">
             <button
               onClick={() => setShowConfirmEnd(true)}
+              aria-label="End session"
               className={cn(
                 "w-11 h-11 rounded-full flex items-center justify-center transition-all",
                 "bg-white/5 border border-white/10 text-[var(--text-3)]",
@@ -419,6 +420,7 @@ export function PomodoroTimer() {
                   setIsRunning(true);
                 }
               }}
+              aria-label={isRunning ? "Pause" : "Play"}
               className="w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg"
               style={{ background: cfg.ring }}
               title={isRunning ? "Pause" : "Play"}
@@ -431,6 +433,7 @@ export function PomodoroTimer() {
 
             <button
               onClick={handleSkip}
+              aria-label="Skip phase"
               className={cn(
                 "w-11 h-11 rounded-full flex items-center justify-center transition-all",
                 "bg-white/5 border border-white/10 text-[var(--text-3)]",

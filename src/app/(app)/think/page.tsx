@@ -8,10 +8,11 @@ import { Plus, Loader2, Sparkles, Pin, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
+import { PageSkeleton } from "@/components/ui/Skeleton";
+import { useAppStore } from "@/store/useAppStore";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useAppStore } from "@/store/useAppStore";
 
 interface Thread {
   id: string;
@@ -232,8 +233,8 @@ export default function ThinkPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
+        <div className="py-6">
+          <PageSkeleton count={4} type="card" />
         </div>
       ) : (
         <>
@@ -264,8 +265,18 @@ export default function ThinkPage() {
           )}
 
           {filteredThreads.length === 0 ? (
-            <GlassCard className="p-8 text-center mt-6">
-              <p className="text-sm text-[var(--color-text-3)]">No threads yet. Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo;</p>
+            <GlassCard className="p-12 text-center mt-6 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
+              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+                <Sparkles className="w-6 h-6 text-[var(--color-text-3)]" />
+              </div>
+              <h3 className="text-[var(--color-text-1)] font-medium mb-2">No threads yet</h3>
+              <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo; to start expanding your ideas.</p>
+              <button 
+                onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+                className="btn-primary gap-2"
+              >
+                <Plus size={16} /> New Thought
+              </button>
             </GlassCard>
           ) : (
             <div>

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
-import { Search, X, Loader2, CheckSquare, Users, MessageSquare, Compass, MapPin } from "lucide-react";
+import { Search, X, Loader2, CheckSquare, Users, MessageSquare, Compass, MapPin, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDebounce } from "use-debounce";
@@ -136,22 +136,37 @@ export function SearchModal() {
                 placeholder="Search everything..."
                 className="flex-1 bg-transparent border-none text-[var(--color-text-1)] text-lg py-4 pl-4 focus:outline-none focus:ring-0 placeholder-[rgba(255,255,255,0.3)]"
               />
+              {query && (
+                <button onClick={() => { setQuery(""); inputRef.current?.focus(); }} aria-label="Clear search" className="p-2 ml-1 mr-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface)] transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
               {loading && <Loader2 className="w-5 h-5 animate-spin text-[var(--color-text-3)]" />}
-              <button onClick={() => setSearchModalOpen(false)} className="p-2 ml-2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface)] transition-colors">
-                <X className="w-5 h-5" />
+              <div className="w-px h-6 bg-[var(--color-border)] mx-1"></div>
+              <button onClick={() => setSearchModalOpen(false)} aria-label="Close search modal" className="p-2 ml-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface)] transition-colors">
+                <span className="text-[10px] font-mono mr-1 border border-[rgba(255,255,255,0.2)] rounded px-1 hidden sm:inline-block">ESC</span>
+                <X className="w-5 h-5 hidden" />
               </button>
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto p-2">
               {!query && (
-                <div className="p-8 text-center text-[var(--color-text-3)] text-sm">
-                  Type to search across tasks, people, threads, explores, and locations.
+                <div className="p-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+                    <Search className="w-6 h-6 text-[var(--color-text-3)]" />
+                  </div>
+                  <h3 className="text-[var(--color-text-1)] font-medium mb-2">Search your brain</h3>
+                  <p className="text-sm text-[var(--color-text-3)] max-w-[250px]">Type to search across tasks, people, threads, explores, and locations.</p>
                 </div>
               )}
               
               {query && !loading && results.length === 0 && (
-                <div className="p-8 text-center text-[var(--color-text-3)] text-sm">
-                  No results found for &ldquo;{query}&rdquo;
+                <div className="p-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+                    <AlertCircle className="w-6 h-6 text-[var(--color-text-3)]" />
+                  </div>
+                  <h3 className="text-[var(--color-text-1)] font-medium mb-2">No results</h3>
+                  <p className="text-sm text-[var(--color-text-3)]">No results found for &ldquo;{query}&rdquo;</p>
                 </div>
               )}
 

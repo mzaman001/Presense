@@ -82,6 +82,7 @@ export function Sidebar() {
         
         <button 
           onClick={toggleSidebar}
+          aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
             "absolute top-1/2 -translate-y-1/2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors p-2 flex items-center justify-center",
             isSidebarCollapsed ? "right-0" : "right-0"
