@@ -13,9 +13,9 @@ import { toast } from "sonner";
 import * as chrono from "chrono-node";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { useQueryClient } from "@tanstack/react-query";
-
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface TaskEditData {
   id: string;
@@ -29,6 +29,7 @@ interface TaskEditData {
   subtasks?: { id: string; text: string; completed: boolean }[];
   recurrence?: string | null;
   linked_people_ids?: string[] | null;
+  time_estimate?: number | null;
 }
 
 interface TaskAddPanelProps {
@@ -48,6 +49,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
   const [isManualDate, setIsManualDate] = useState(false);
   const [category, setCategory] = useState("work");
   const [priority, setPriority] = useState<number | null>(null);
+  const [timeEstimate, setTimeEstimate] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [firstStep, setFirstStep] = useState("");
   const [subtasks, setSubtasks] = useState<{id: string, text: string, completed: boolean}[]>([]);
@@ -163,6 +165,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setIsManualDate(false);
         setCategory(taskToEdit.category || "work");
         setPriority(taskToEdit.priority || null);
+        setTimeEstimate(taskToEdit.time_estimate || null);
         setNotes(taskToEdit.notes || "");
         setFirstStep(taskToEdit.first_step || "");
         setSubtasks(taskToEdit.subtasks || []);
@@ -194,7 +197,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         if (taskToEdit.deadline) {
           const d = new Date(taskToEdit.deadline);
           setParsedDeadline(d);
-          setDeadline(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+          setDeadline(format(d, "yyyy-MM-dd'T'HH:mm"));
         } else {
           setParsedDeadline(null);
           setDeadline("");
@@ -203,7 +206,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         if (taskToEdit.start_date) {
           const d = new Date(taskToEdit.start_date);
           setParsedStartDate(d);
-          setStartDate(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+          setStartDate(format(d, "yyyy-MM-dd'T'HH:mm"));
         } else {
           setParsedStartDate(null);
           setStartDate("");
@@ -220,6 +223,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setIsManualDate(false);
         setCategory("work");
         setPriority(null);
+        setTimeEstimate(null);
         setNotes("");
         setFirstStep("");
         setSubtasks([]);
@@ -250,11 +254,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 ).start.date();
         }
         setParsedDeadline(d);
-        setDeadline(
-          new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-            .toISOString()
-            .slice(0, 16)
-        );
+        setDeadline(format(d, "yyyy-MM-dd'T'HH:mm"));
       } else {
         setParsedDeadline(null);
         setDeadline("");
@@ -295,7 +295,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       return;
     }
     setParsedDeadline(d);
-    setDeadline(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+    setDeadline(format(d, "yyyy-MM-dd'T'HH:mm"));
   };
 
   const handleSave = async () => {
@@ -347,6 +347,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
           category,
           status: "active",
           priority: priority ?? 4,
+          time_estimate: timeEstimate,
           notes: notes.trim() || null,
           subtasks: subtasks.filter(st => st.text.trim() !== ""),
           linked_people_ids: linkedPeopleIds
@@ -626,6 +627,19 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     </motion.button>
                   ))}
                 </div>
+              </div>
+
+              {/* Time Estimate */}
+              <div>
+                <label className="text-label text-[var(--text-3)] block mb-2">Time Estimate (minutes) <span className="text-[var(--text-4)]">(optional)</span></label>
+                <input
+                  type="number"
+                  placeholder="e.g. 30"
+                  value={timeEstimate === null ? "" : timeEstimate}
+                  onChange={(e) => setTimeEstimate(e.target.value ? parseInt(e.target.value) : null)}
+                  className="input"
+                  min={1}
+                />
               </div>
 
               {/* Linked People */}

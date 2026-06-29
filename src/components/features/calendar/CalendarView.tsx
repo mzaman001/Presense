@@ -9,6 +9,7 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
+  closestCenter,
 } from "@dnd-kit/core";
 import {
   startOfWeek,
@@ -19,10 +20,6 @@ import {
   subMonths,
   format,
   parseISO,
-  setHours,
-  setMinutes,
-  setSeconds,
-  setMilliseconds,
 } from "date-fns";
 import { WeekView } from "./WeekView";
 import { MonthView } from "./MonthView";
@@ -34,23 +31,12 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface Task {
-  id: string;
-  title: string;
-  deadline: string | null;
-  status: string;
-  category: string;
-  priority?: number | null;
-  first_step: string | null;
-  ifthen_trigger: string | null;
-  snoozed_until?: string | null;
-  recurrence?: string | null;
-  linked_people_ids?: string[] | null;
-}
+import { Task } from "@/types/calendar";
 
 interface CalendarViewProps {
   tasks: Task[];
   onEditTask: (task: Task) => void;
+  categoryFilter?: string;
 }
 
 type CalendarSubView = "week" | "month";
@@ -90,12 +76,23 @@ function parseDateId(id: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
+export function CalendarView({ tasks, onEditTask, categoryFilter }: CalendarViewProps) {
   const supabase = React.useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
-  const [subView, setSubView] = useState<CalendarSubView>("week");
+  const [subView, setSubView] = useState<CalendarSubView>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("presense_calendar_view");
+      if (saved === "week" || saved === "month") return saved;
+    }
+    return "week";
+  });
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  const filteredTasks = React.useMemo(() => {
+    if (!categoryFilter || categoryFilter === "all") return tasks;
+    return tasks.filter((t) => t.category === categoryFilter);
+  }, [tasks, categoryFilter]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -146,8 +143,8 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
 
       const taskId = active.id as string;
       const dropId = over.id as string;
-      const task = tasks.find((t) => t.id === taskId);
-      if (!task) return;
+      const targetTask = tasks.find((t) => t.id === taskId);
+      if (!targetTask) return;
 
       let newDeadline: Date | null = null;
 
@@ -158,8 +155,8 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
       } else if (dropId.startsWith("date-")) {
         // Month view drop: preserve time if task had a time, else midnight
         const targetDay = parseDateId(dropId);
-        if (targetDay && task.deadline) {
-          const originalDate = parseISO(task.deadline);
+        if (targetDay && targetTask.deadline) {
+          const originalDate = parseISO(targetTask.deadline);
           newDeadline = new Date(
             targetDay.getFullYear(),
             targetDay.getMonth(),
@@ -176,7 +173,7 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
 
       if (!newDeadline) return;
 
-      const previousDeadline = task.deadline;
+      const previousDeadline = targetTask.deadline;
       const newDeadlineISO = newDeadline.toISOString();
 
       // Optimistic update
@@ -261,7 +258,10 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
           {(["week", "month"] as CalendarSubView[]).map((v) => (
             <button
               key={v}
-              onClick={() => setSubView(v)}
+              onClick={() => {
+                setSubView(v);
+                localStorage.setItem("presense_calendar_view", v);
+              }}
               className={cn(
                 "px-4 py-1 text-xs font-semibold rounded-full transition-all capitalize",
                 subView === v
@@ -278,6 +278,7 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
       {/* DndContext wraps both views */}
       <DndContext
         sensors={sensors}
+        collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -285,13 +286,13 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
           {subView === "week" ? (
             <WeekView
               weekStart={weekStart}
-              tasks={tasks}
+              tasks={filteredTasks}
               onEditTask={onEditTask}
             />
           ) : (
             <MonthView
               currentMonth={currentDate}
-              tasks={tasks}
+              tasks={filteredTasks}
               onEditTask={onEditTask}
             />
           )}

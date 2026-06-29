@@ -335,25 +335,23 @@ export default function DoPage() {
         />
       )}
 
-      {/* Category filter pills — hidden in calendar view */}
-      {viewMode !== "calendar" && (
-        <div className="flex gap-2 flex-wrap">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
-              className={cn(
-                "text-xs px-3 py-1.5 rounded-full border transition-all capitalize",
-                categoryFilter === cat
-                  ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-semibold"
-                  : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
-              )}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Category filter pills */}
+      <div className="flex gap-2 flex-wrap">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setCategoryFilter(cat)}
+            className={cn(
+              "text-xs px-3 py-1.5 rounded-full border transition-all capitalize",
+              categoryFilter === cat
+                ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-semibold"
+                : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
+            )}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <PageSkeleton count={5} type="task" />
@@ -393,7 +391,7 @@ export default function DoPage() {
           )}
         </div>
       ) : viewMode === "calendar" ? (
-        <CalendarView tasks={tasks} onEditTask={openEditPanel} />
+        <CalendarView tasks={tasks} onEditTask={openEditPanel} categoryFilter={categoryFilter} />
       ) : viewMode === "today" ? (
         <div className={cn(
           "gap-6",

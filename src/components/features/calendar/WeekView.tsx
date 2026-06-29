@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   format,
@@ -15,29 +15,17 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 
-interface Task {
-  id: string;
-  title: string;
-  deadline: string | null;
-  status: string;
-  category: string;
-  priority?: number | null;
-  first_step: string | null;
-  ifthen_trigger: string | null;
-  snoozed_until?: string | null;
-  recurrence?: string | null;
-  linked_people_ids?: string[] | null;
-}
+import { Task } from "@/types/calendar";
+
+const HOUR_HEIGHT = 48; // px per hour
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const DAYS = 7;
 
 interface WeekViewProps {
   weekStart: Date;
   tasks: Task[];
   onEditTask: (task: Task) => void;
 }
-
-const HOUR_HEIGHT = 64; // px per hour
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const DAYS = 7;
 
 /** Detects whether a task is "all-day" — deadline with no time (midnight 00:00:00 UTC or local) */
 function isAllDayTask(deadline: string): boolean {
@@ -48,6 +36,69 @@ function isAllDayTask(deadline: string): boolean {
 function getTopOffset(deadline: string): number {
   const d = new Date(deadline);
   return (d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT;
+}
+
+/** Calculates overlap layout for side-by-side rendering */
+function calculateOverlap(tasks: Task[]) {
+  // Sort by start time (hour + min)
+  const sorted = [...tasks].sort((a, b) => {
+    const dA = parseISO(a.deadline!);
+    const dB = parseISO(b.deadline!);
+    return dA.getTime() - dB.getTime();
+  });
+
+  const layout: { task: Task; left: number; width: number }[] = [];
+  
+  let columns: Task[][] = [];
+  let lastEventEnding: number | null = null;
+
+  function packColumns() {
+    const numColumns = columns.length;
+    columns.forEach((col, colIdx) => {
+      col.forEach((task) => {
+        layout.push({
+          task,
+          left: (colIdx / numColumns) * 100,
+          width: (1 / numColumns) * 100,
+        });
+      });
+    });
+  }
+
+  sorted.forEach((task) => {
+    const d = parseISO(task.deadline!);
+    const start = d.getHours() + d.getMinutes() / 60;
+    const end = start + 1; // standard block assumption for overlapping calculation
+
+    if (lastEventEnding !== null && start >= lastEventEnding) {
+      packColumns();
+      columns = [];
+      lastEventEnding = null;
+    }
+
+    let placed = false;
+    for (const col of columns) {
+      const lastInCol = col[col.length - 1];
+      const lastStart =
+        parseISO(lastInCol.deadline!).getHours() +
+        parseISO(lastInCol.deadline!).getMinutes() / 60;
+      
+      // If start is >= lastStart + 1 hour (assuming 1h duration), we can place it underneath.
+      // But for pure vertical columns, a task can be in this column only if it starts after the previous ends.
+      // To keep it simple, React Big Calendar does this:
+      if (start >= lastStart + (lastInCol.time_estimate ? lastInCol.time_estimate / 60 : 1)) {
+        col.push(task);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) columns.push([task]);
+
+    lastEventEnding = Math.max(lastEventEnding || 0, end);
+  });
+
+  if (columns.length > 0) packColumns();
+  return layout;
 }
 
 /** Droppable slot for individual hour cells */
@@ -63,7 +114,6 @@ function DroppableSlot({
   onClick: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
-  const isHalfHour = hour % 1 !== 0;
 
   return (
     <div
@@ -71,10 +121,9 @@ function DroppableSlot({
       onClick={onClick}
       className={cn(
         "border-t border-[rgba(255,255,255,0.04)] relative group cursor-pointer transition-colors",
-        isOver ? "bg-[var(--accent-dim)]/20" : "hover:bg-[rgba(255,255,255,0.02)]"
+        isOver ? "bg-[var(--accent)]/10" : "hover:bg-[rgba(255,255,255,0.04)]"
       )}
       style={{ height: HOUR_HEIGHT }}
-      title={`${format(dayDate, "EEE, MMM d")} at ${format(new Date().setHours(hour, 0, 0), "h:mm a")}`}
     >
       {/* Half-hour subdivision line */}
       <div className="absolute top-1/2 left-0 right-0 border-t border-[rgba(255,255,255,0.02)]" />
@@ -95,7 +144,7 @@ function DroppableAllDay({ id, children }: { id: string; children: React.ReactNo
       ref={setNodeRef}
       className={cn(
         "flex-1 min-h-[32px] p-1 space-y-0.5 rounded transition-colors",
-        isOver ? "bg-[var(--accent-dim)]/20" : ""
+        isOver ? "bg-[var(--accent)]/10" : ""
       )}
     >
       {children}
@@ -104,9 +153,24 @@ function DroppableAllDay({ id, children }: { id: string; children: React.ReactNo
 }
 
 export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
-  const { setCaptureModalOpen, setCaptureModalPrefill } = useAppStore();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const now = new Date();
+  const setCaptureModalOpen = useAppStore((s) => s.setCaptureModalOpen);
+  const setCaptureModalPrefill = useAppStore((s) => s.setCaptureModalPrefill);
+  
+  const [now, setNow] = useState(new Date());
+  const [currentTimeTop, setCurrentTimeTop] = useState(() => {
+    const d = new Date();
+    return (d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT;
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const d = new Date();
+      setNow(d);
+      setCurrentTimeTop((d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Auto-scroll to 8am on mount
   useEffect(() => {
@@ -126,26 +190,22 @@ export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
   }
 
   function handleSlotClick(day: Date, hour: number) {
-    const dayName = format(day, "EEEE");
-    const timeStr = format(new Date().setHours(hour, 0, 0, 0), "h:mm a");
+    const dayName = format(day, "yyyy-MM-dd");
+    const timeStr = format(new Date().setHours(hour, 0, 0, 0), "HH:mm");
     setCaptureModalPrefill(`on ${dayName} at ${timeStr}`);
     setCaptureModalOpen(true);
   }
 
   function handleAllDayClick(day: Date) {
-    const dayStr = format(day, "EEEE, MMMM d");
+    const dayStr = format(day, "yyyy-MM-dd");
     setCaptureModalPrefill(`on ${dayStr}`);
     setCaptureModalOpen(true);
   }
-
-  // Current time indicator position
-  const currentTimeTop = (now.getHours() + now.getMinutes() / 60) * HOUR_HEIGHT;
 
   return (
     <div className="flex flex-col h-full overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
       {/* Column headers */}
       <div className="flex border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] shrink-0">
-        {/* Time gutter */}
         <div className="w-14 shrink-0" />
         {weekDays.map((day) => {
           const today = isToday(day);
@@ -210,8 +270,8 @@ export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
       </div>
 
       {/* Scrollable grid */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto relative">
-        <div className="flex" style={{ height: HOUR_HEIGHT * 24 }}>
+      <div ref={scrollRef} className="flex-1 overflow-auto relative">
+        <div className="flex min-w-[800px]" style={{ height: HOUR_HEIGHT * 24 }}>
           {/* Time labels */}
           <div className="w-14 shrink-0 relative">
             {HOURS.map((hour) => (
@@ -264,11 +324,12 @@ export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
                   </div>
                 )}
 
-                {/* Task chips — absolutely positioned */}
-                {dayTasksForColumn.map((task) => {
+                {/* Task chips — absolutely positioned with overlap layout */}
+                {calculateOverlap(dayTasksForColumn).map(({ task, left, width }) => {
                   const top = task.deadline ? getTopOffset(task.deadline) : 0;
-                  // Min height = 30 min worth of height
-                  const minHeight = HOUR_HEIGHT / 2;
+                  const estimatedMinutes = (task.time_estimate as number) || 30; // fallback to 30 min height
+                  const minHeight = (estimatedMinutes / 60) * HOUR_HEIGHT;
+                  
                   return (
                     <CalendarTaskChip
                       key={task.id}
@@ -276,7 +337,10 @@ export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
                       variant="week"
                       style={{
                         top,
-                        minHeight,
+                        left: `${left}%`,
+                        width: `${width}%`,
+                        height: Math.max(minHeight, 24),
+                        minHeight: Math.max(minHeight, 24),
                         zIndex: 10,
                       }}
                       onEdit={onEditTask}

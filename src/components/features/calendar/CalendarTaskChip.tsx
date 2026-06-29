@@ -8,19 +8,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { format } from "date-fns";
 
-interface Task {
-  id: string;
-  title: string;
-  deadline: string | null;
-  status: string;
-  category: string;
-  priority?: number | null;
-  first_step: string | null;
-  ifthen_trigger: string | null;
-  snoozed_until?: string | null;
-  recurrence?: string | null;
-  linked_people_ids?: string[] | null;
-}
+import { Task } from "@/types/calendar";
 
 interface CalendarTaskChipProps {
   task: Task;

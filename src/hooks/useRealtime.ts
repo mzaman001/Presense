@@ -43,7 +43,7 @@ export function useRealtime(table: string, onUpdate: () => void) {
           // Check if we mutated locally within the last 500ms for this specific table.
           // If so, ignore this event as it's likely an echo of our own mutation.
           const lastMutations = useAppStore.getState().lastMutations || {};
-          const lastMutationAt = lastMutations[table] || 0;
+          const lastMutationAt = Math.max(lastMutations[table] || 0, lastMutations['_global'] || 0);
           if (Date.now() - lastMutationAt < 500) {
             logger.info(`[Realtime] Ignoring echo on ${table} due to recent local mutation`);
             return;

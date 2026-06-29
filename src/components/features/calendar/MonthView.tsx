@@ -19,19 +19,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
-interface Task {
-  id: string;
-  title: string;
-  deadline: string | null;
-  status: string;
-  category: string;
-  priority?: number | null;
-  first_step: string | null;
-  ifthen_trigger: string | null;
-  snoozed_until?: string | null;
-  recurrence?: string | null;
-  linked_people_ids?: string[] | null;
-}
+import { Task } from "@/types/calendar";
 
 interface MonthViewProps {
   currentMonth: Date;
@@ -72,14 +60,21 @@ function DayPopover({
   tasks,
   onClose,
   onEditTask,
+  isBottomRow
 }: {
   date: Date;
   tasks: Task[];
   onClose: () => void;
   onEditTask: (task: Task) => void;
+  isBottomRow?: boolean;
 }) {
   return (
-    <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3 space-y-1.5">
+    <div
+      className={cn(
+        "absolute z-50 left-0 w-64 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3 space-y-1.5",
+        isBottomRow ? "bottom-full mb-1" : "top-full mt-1"
+      )}
+    >
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-semibold text-[var(--color-text-1)]">
           {format(date, "EEEE, MMMM d")}
@@ -117,20 +112,31 @@ export function MonthView({ currentMonth, tasks, onEditTask }: MonthViewProps) {
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const allDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
-  function getTasksForDay(day: Date): Task[] {
-    return tasks.filter((t) => {
-      if (!t.deadline) return false;
+  // Memoize tasks by day for O(1) lookup
+  const tasksByDay = React.useMemo(() => {
+    const map: Record<string, Task[]> = {};
+    tasks.forEach((t) => {
+      if (!t.deadline) return;
       try {
-        return isSameDay(parseISO(t.deadline), day);
+        const d = parseISO(t.deadline);
+        const dayStr = format(d, "yyyy-MM-dd");
+        if (!map[dayStr]) map[dayStr] = [];
+        map[dayStr].push(t);
       } catch {
-        return false;
+        // ignore invalid dates
       }
     });
+    return map;
+  }, [tasks]);
+
+  function getTasksForDay(day: Date) {
+    const dayStr = format(day, "yyyy-MM-dd");
+    return tasksByDay[dayStr] || [];
   }
 
   function handleDayClick(day: Date, e: React.MouseEvent) {
     e.stopPropagation();
-    const dayStr = format(day, "EEEE, MMMM d");
+    const dayStr = format(day, "EEEE, MMMM d, yyyy");
     setCaptureModalPrefill(`on ${dayStr}`);
     setCaptureModalOpen(true);
   }
@@ -154,14 +160,15 @@ export function MonthView({ currentMonth, tasks, onEditTask }: MonthViewProps) {
 
       {/* Calendar grid */}
       <div className="flex-1 overflow-auto">
-        <div className="grid grid-cols-7 auto-rows-fr h-full">
-          {allDays.map((day) => {
+        <div className="grid grid-cols-7 auto-rows-fr h-full min-w-[800px]">
+          {allDays.map((day, index) => {
             const dayTasks = getTasksForDay(day);
             const visible = dayTasks.slice(0, MAX_VISIBLE);
             const overflow = dayTasks.length - MAX_VISIBLE;
             const isCurrentMonth = isSameMonth(day, currentMonth);
             const today = isToday(day);
             const isPopoverOpen = popoverDay && isSameDay(popoverDay, day);
+            const isBottomRow = Math.floor(index / 7) >= 4;
 
             return (
               <DroppableDay
@@ -218,6 +225,7 @@ export function MonthView({ currentMonth, tasks, onEditTask }: MonthViewProps) {
                     tasks={dayTasks}
                     onClose={() => setPopoverDay(null)}
                     onEditTask={onEditTask}
+                    isBottomRow={isBottomRow}
                   />
                 )}
               </DroppableDay>

@@ -51,6 +51,8 @@ const SPACE_OPTIONS = [
 ];
 
 const toLocalISOString = (date: Date) => {
+  // Use date-fns to format in local time as YYYY-MM-DDTHH:mm
+  // This avoids timezone math issues around DST
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
@@ -58,6 +60,7 @@ const toLocalISOString = (date: Date) => {
 export function CaptureModal() {
   const { isCaptureModalOpen, setCaptureModalOpen, userSettings, captureModalPrefill, setCaptureModalPrefill } = useAppStore();
   const [input, setInput] = useState("");
+  const [lastRoutedInput, setLastRoutedInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [routedItems, setRoutedItems] = useState<RoutedItem[] | null>(null);
@@ -116,9 +119,6 @@ export function CaptureModal() {
 
   const handleInputChange = (val: string) => {
     setInput(val);
-    if (routedItems) {
-      setRoutedItems(null);
-    }
 
     if (!inputRef.current) return;
     const selectionStart = inputRef.current.selectionStart || 0;
@@ -154,7 +154,7 @@ export function CaptureModal() {
       }
     } else {
       if (e.key === "Enter") {
-        if (!routedItems) {
+        if (!routedItems || input !== lastRoutedInput) {
           handleRoute();
         } else {
           handleConfirm();
@@ -208,6 +208,7 @@ export function CaptureModal() {
   const handleRoute = useCallback(async () => {
     if (!input.trim()) return;
     setIsRouting(true);
+    setLastRoutedInput(input);
     try {
       const res = await fetch("/api/capture", {
         method: "POST",
