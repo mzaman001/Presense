@@ -45,6 +45,8 @@ export interface UserSettings {
 interface AppState {
   isCaptureModalOpen: boolean;
   setCaptureModalOpen: (open: boolean) => void;
+  captureModalPrefill: string | null;
+  setCaptureModalPrefill: (text: string | null) => void;
   isSearchModalOpen: boolean;
   setSearchModalOpen: (open: boolean) => void;
   isSidebarCollapsed: boolean;
@@ -70,6 +72,8 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   isCaptureModalOpen: false,
   setCaptureModalOpen: (open) => set({ isCaptureModalOpen: open }),
+  captureModalPrefill: null,
+  setCaptureModalPrefill: (text) => set({ captureModalPrefill: text }),
   isSearchModalOpen: false,
   setSearchModalOpen: (open) => set({ isSearchModalOpen: open }),
   isSidebarCollapsed: false,

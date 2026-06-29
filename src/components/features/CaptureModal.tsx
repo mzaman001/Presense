@@ -56,7 +56,7 @@ const toLocalISOString = (date: Date) => {
 };
 
 export function CaptureModal() {
-  const { isCaptureModalOpen, setCaptureModalOpen, userSettings } = useAppStore();
+  const { isCaptureModalOpen, setCaptureModalOpen, userSettings, captureModalPrefill, setCaptureModalPrefill } = useAppStore();
   const [input, setInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -188,7 +188,13 @@ export function CaptureModal() {
 
 
   useEffect(() => {
-    if (!isCaptureModalOpen) {
+    if (isCaptureModalOpen) {
+      // If a prefill string was set (e.g., from clicking a calendar slot), populate input
+      if (captureModalPrefill) {
+        setInput(captureModalPrefill);
+        setCaptureModalPrefill(null);
+      }
+    } else {
       const timer = setTimeout(() => {
         setInput("");
         setRoutedItems(null);
@@ -197,7 +203,7 @@ export function CaptureModal() {
       }, 200);
       return () => clearTimeout(timer);
     }
-  }, [isCaptureModalOpen]);
+  }, [isCaptureModalOpen, captureModalPrefill, setCaptureModalPrefill]);
 
   const handleRoute = useCallback(async () => {
     if (!input.trim()) return;

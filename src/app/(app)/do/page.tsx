@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { TaskCard } from "@/components/features/TaskCard";
+import { CalendarView } from "@/components/features/calendar/CalendarView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Clock, Play, Check, Zap, Calendar, Wind, CheckCircle2 } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -158,15 +159,15 @@ export default function DoPage() {
     prevTaskIdsRef.current = currentIds;
   }, [tasks]);
 
-  const [viewMode, setViewMode] = useState<"board" | "today">(() => {
+  const [viewMode, setViewMode] = useState<"board" | "today" | "calendar">(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("presense_do_view");
-      if (saved === "today" || saved === "board") return saved as "board" | "today";
+      if (saved === "today" || saved === "board" || saved === "calendar") return saved as "board" | "today" | "calendar";
     }
     return "board";
   });
 
-  const toggleViewMode = (mode: "board" | "today") => {
+  const toggleViewMode = (mode: "board" | "today" | "calendar") => {
     setViewMode(mode);
     localStorage.setItem("presense_do_view", mode);
   };
@@ -298,13 +299,19 @@ export default function DoPage() {
                 onClick={() => toggleViewMode("board")}
                 className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "board" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
               >
-                All
+                Board
               </button>
               <button
                 onClick={() => toggleViewMode("today")}
                 className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "today" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
               >
                 Today
+              </button>
+              <button
+                onClick={() => toggleViewMode("calendar")}
+                className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "calendar" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
+              >
+                Calendar
               </button>
             </div>
             <button 
@@ -320,7 +327,7 @@ export default function DoPage() {
         </button>
       </div>
 
-      {!showArchive && (
+      {!showArchive && viewMode !== "calendar" && (
         <ContextualTip 
           id="do_space" 
           title="Tasks that move" 
@@ -328,23 +335,25 @@ export default function DoPage() {
         />
       )}
 
-      {/* Category filter pills */}
-      <div className="flex gap-2 flex-wrap">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setCategoryFilter(cat)}
-            className={cn(
-              "text-xs px-3 py-1.5 rounded-full border transition-all capitalize",
-              categoryFilter === cat
-                ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-semibold"
-                : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
-            )}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+      {/* Category filter pills — hidden in calendar view */}
+      {viewMode !== "calendar" && (
+        <div className="flex gap-2 flex-wrap">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-full border transition-all capitalize",
+                categoryFilter === cat
+                  ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)] font-semibold"
+                  : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <PageSkeleton count={5} type="task" />
@@ -383,6 +392,8 @@ export default function DoPage() {
             ))
           )}
         </div>
+      ) : viewMode === "calendar" ? (
+        <CalendarView tasks={tasks} onEditTask={openEditPanel} />
       ) : viewMode === "today" ? (
         <div className={cn(
           "gap-6",
