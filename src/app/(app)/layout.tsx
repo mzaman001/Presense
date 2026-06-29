@@ -5,7 +5,6 @@ import { AppContentWrapper } from "@/components/layout/AppContentWrapper";
 import { AppInitializer } from "@/components/layout/AppInitializer";
 import { DynamicModals } from "@/components/layout/DynamicModals";
 import { RitualOverlay } from "@/components/features/RitualOverlay";
-import { Toaster } from "sonner";
 import QueryProvider from "@/components/layout/QueryProvider";
 
 import { createClient } from "@/lib/supabase-server";
@@ -45,7 +44,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </AppContentWrapper>
         <BottomNav />
-        <Toaster />
       </QueryProvider>
     </>
   );

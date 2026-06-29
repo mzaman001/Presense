@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 // This client component wrapper allows us to use dynamic() with ssr:false
 // for heavy modals, reducing the initial bundle significantly.

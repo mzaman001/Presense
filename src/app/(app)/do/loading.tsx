@@ -1,4 +1,4 @@
-﻿import { TaskCardSkeleton } from "@/components/ui/Skeleton";
+import { TaskCardSkeleton } from "@/components/ui/Skeleton";
 
 export default function DoLoading() {
   return (

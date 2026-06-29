@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { AppErrorFallback } from "@/components/ui/AppErrorFallback";
 

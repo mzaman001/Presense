@@ -26,14 +26,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-import type { Viewport } from "next";
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0e0e10" },
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-  ],
-};
 
 import { ToastProvider } from "@/components/ui/ToastProvider";
 
@@ -68,9 +61,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 html.classList.remove('theme-blue', 'theme-forest', 'theme-navy', 'light', 'reduce-motion');
                 if (theme === 'blue') html.classList.add('theme-navy');
                 else if (theme === 'forest') html.classList.add('theme-forest');
-                if (mode === 'light') html.classList.add('light');
-                else if (mode === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches) html.classList.add('light');
+                var isLight = mode === 'light' || (mode === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isLight) html.classList.add('light');
                 if (reduceMotion) html.classList.add('reduce-motion');
+                
+                var metaTheme = document.createElement('meta');
+                metaTheme.name = 'theme-color';
+                metaTheme.content = isLight ? '#ffffff' : '#0e0e10';
+                document.head.appendChild(metaTheme);
               } catch(e) {}
             `,
           }}

@@ -1,4 +1,4 @@
-﻿import { PersonCardSkeleton } from "@/components/ui/Skeleton";
+import { PersonCardSkeleton } from "@/components/ui/Skeleton";
 
 export default function RememberLoading() {
   return (
