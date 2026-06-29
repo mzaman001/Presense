@@ -2,7 +2,7 @@
 import { logger } from "@/lib/logger";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { m, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { formatRRule, cn, extractMentions } from "@/lib/utils";
@@ -73,7 +73,6 @@ export function CaptureModal() {
   const [popoverSearch, setPopoverSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [inputFocused, setInputFocused] = useState(false);
 
   useEffect(() => {
     async function fetchPeople() {
@@ -329,14 +328,14 @@ export function CaptureModal() {
       <AnimatePresence>
         {isCaptureModalOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] p-4">
-          <m.div
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setCaptureModalOpen(false)}
           />
-          <m.div
+          <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
@@ -344,15 +343,7 @@ export function CaptureModal() {
             className="modal relative w-full max-w-2xl"
           >
             {/* Input row */}
-            <div
-              className="flex items-center gap-3 px-5 py-4 border-b rounded-t-2xl relative transition-all duration-300"
-              style={{
-                borderColor: inputFocused ? "rgba(229,180,30,0.3)" : "rgba(255,255,255,0.08)",
-                boxShadow: inputFocused
-                  ? "inset 0 0 0 1px rgba(229,180,30,0.15), 0 0 20px rgba(229,180,30,0.08), 0 0 40px rgba(229,180,30,0.04)"
-                  : "none",
-              }}
-            >
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl relative">
               {routedItems ? (
                 <Sparkles className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" />
               ) : (
@@ -368,8 +359,6 @@ export function CaptureModal() {
                 onChange={(e) => handleInputChange(e.target.value)}
                 disabled={isRouting}
                 onKeyDown={handleKeyDown}
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
               />
               {input && !routedItems && !isRouting && (
                 <button onClick={() => { handleInputChange(""); inputRef.current?.focus(); }} aria-label="Clear input" className="p-1 mr-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded hover:bg-[var(--color-surface)] transition-colors">
@@ -495,21 +484,10 @@ export function CaptureModal() {
 
             {/* Saved animation */}
             {saved && (
-              <m.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: [0.8, 1.15, 0.95, 1] }}
-                transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                className="flex items-center justify-center gap-2 p-6 text-[#4ADE80]"
-              >
-                <m.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 12, delay: 0.1 }}
-                >
-                  <Check className="w-5 h-5" />
-                </m.div>
+              <div className="flex items-center justify-center gap-2 p-6 text-[#4ADE80]">
+                <Check className="w-5 h-5" />
                 <span className="text-sm font-medium">Saved!</span>
-              </m.div>
+              </div>
             )}
 
             {/* Action bar */}
@@ -547,7 +525,7 @@ export function CaptureModal() {
                 </>
               ) : null}
             </div>
-          </m.div>
+          </motion.div>
         </div>
         )}
       </AnimatePresence>

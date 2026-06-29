@@ -299,12 +299,7 @@ export function CalendarView({ tasks, onEditTask, categoryFilter }: CalendarView
         </div>
 
         {/* Ghost overlay shown while dragging */}
-        <DragOverlay
-          dropAnimation={{
-            duration: 250,
-            easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          }}
-        >
+        <DragOverlay dropAnimation={null}>
           {activeTask ? (
             <CalendarTaskChipOverlay task={activeTask} />
           ) : null}

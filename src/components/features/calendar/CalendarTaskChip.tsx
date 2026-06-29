@@ -134,8 +134,8 @@ export function CalendarTaskChip({
       }}
       className={cn(
         "absolute left-1 right-1 rounded-md px-2 py-1 cursor-grab active:cursor-grabbing overflow-hidden select-none group",
-        "transition-all duration-200",
-        isBeingDragged ? "opacity-0 scale-95" : "opacity-100 shadow-sm hover:shadow-md hover:scale-[1.02]"
+        "transition-opacity shadow-sm",
+        isBeingDragged ? "opacity-0" : "opacity-100"
       )}
       style={{
         ...draggableStyle,
@@ -171,17 +171,14 @@ export function CalendarTaskChipOverlay({ task }: { task: Task }) {
 
   return (
     <div
-      className="rounded-md px-2 py-1 overflow-hidden pointer-events-none"
+      className="rounded-md px-2 py-1 overflow-hidden shadow-2xl pointer-events-none rotate-1 scale-105"
       style={{
-        backgroundColor: `${categoryColor}50`,
+        backgroundColor: `${categoryColor}40`,
         borderLeft: `3px solid ${categoryColor}`,
-        border: `1px solid ${categoryColor}70`,
+        border: `1px solid ${categoryColor}60`,
         borderLeftWidth: "3px",
         width: 160,
         minHeight: 40,
-        boxShadow: `0 12px 28px rgba(0,0,0,0.35), 0 4px 10px ${categoryColor}30, 0 0 0 1px ${categoryColor}20`,
-        transform: "scale(1.06) rotate(1.5deg)",
-        transition: "transform 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
       }}
     >
       <p className="text-[11px] font-semibold text-[var(--color-text-1)] leading-tight truncate">

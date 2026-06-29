@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { Search, X, Loader2, CheckSquare, Users, MessageSquare, Compass, MapPin, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { m, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -91,7 +91,7 @@ export function SearchModal() {
     <ModalErrorBoundary modalName="Search Modal" onClose={() => setSearchModalOpen(false)}>
       <AnimatePresence>
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4">
-          <m.div 
+          <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
@@ -99,12 +99,12 @@ export function SearchModal() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
           
-          <m.div 
+          <motion.div 
             ref={dialogRef}
-            initial={{ opacity: 0, scale: 0.92, y: -16 }}
+            initial={{ opacity: 0, scale: 0.97, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -8 }}
-            transition={{ type: "spring", stiffness: 350, damping: 24, mass: 0.8 }}
+            exit={{ opacity: 0, scale: 0.97, y: -8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
             className="modal relative w-full max-w-2xl overflow-hidden"
             role="dialog"
             aria-modal="true"
@@ -171,11 +171,8 @@ export function SearchModal() {
               )}
 
               {results.map((result, i) => (
-                <m.button
+                <button
                   key={`${result.type}-${result.id}-${i}`}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04, type: "spring", stiffness: 400, damping: 28 }}
                   onClick={() => {
                     setSearchModalOpen(false);
                     router.push(result.path);
@@ -194,7 +191,7 @@ export function SearchModal() {
                     <div className="text-[var(--color-text-1)] font-medium truncate">{result.title}</div>
                     <div className="text-xs text-[var(--color-text-3)] capitalize">{result.type}</div>
                   </div>
-                </m.button>
+                </button>
               ))}
             </div>
             
@@ -205,7 +202,7 @@ export function SearchModal() {
               </div>
               <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">Esc</kbd> to close</span>
             </div>
-          </m.div>
+          </motion.div>
         </div>
       </AnimatePresence>
     </ModalErrorBoundary>

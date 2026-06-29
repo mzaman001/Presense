@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
-import { m, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Check, AlertTriangle, Sparkles, Moon, ArrowRight,
   Clock, BookOpen, Smile, ChevronLeft, Sun, Inbox, SkipForward,
@@ -33,35 +33,25 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
       </div>
 
       <div className="relative h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-        <m.div
+        <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
-          transition={{ type: "spring", stiffness: 120, damping: 20 }}
+          transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="absolute inset-y-0 left-0 rounded-full"
           style={{
             background: isOver
               ? "linear-gradient(90deg, var(--status-today), var(--status-overdue))"
               : "linear-gradient(90deg, var(--accent), var(--status-done))",
-          }}
-        />
-        <m.div
-          initial={{ width: 0, opacity: 0 }}
-          animate={{ width: `${pct}%`, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 120, damping: 20 }}
-          className="absolute inset-y-0 left-0 pointer-events-none"
-          style={{
-            background: isOver
-              ? "radial-gradient(circle at 100% 50%, var(--status-overdue) 0%, transparent 70%)"
-              : "radial-gradient(circle at 100% 50%, var(--accent) 0%, transparent 70%)",
-            filter: "blur(4px)",
-            opacity: 0.6,
+            boxShadow: isOver
+              ? "0 0 8px var(--status-overdue)"
+              : "0 0 8px var(--accent)",
           }}
         />
       </div>
 
       <AnimatePresence>
         {isOver && (
-          <m.div
+          <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
@@ -75,7 +65,7 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
             <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-3)" }}>
               Over capacity — consider snoozing a task or two. Rest is part of the plan.
             </p>
-          </m.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -90,7 +80,7 @@ function TriageCard({ task, onAction }: {
   const isOverdue = task.status === "overdue" || (task.deadline && new Date(task.deadline) < new Date(new Date().setHours(0,0,0,0)));
 
   return (
-    <m.div
+    <motion.div
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -180,7 +170,7 @@ function TriageCard({ task, onAction }: {
           <SkipForward className="w-3.5 h-3.5" /> Backlog
         </button>
       </div>
-    </m.div>
+    </motion.div>
   );
 }
 
@@ -473,7 +463,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
 
   return (
     <AnimatePresence>
-      <m.div
+      <motion.div
         key="ritual-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -509,7 +499,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           }}
         />
 
-        <m.div
+        <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -574,7 +564,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
               {isMorning && (
                 <div className="flex items-center gap-1.5">
                   {[1, 2].map(s => (
-                    <m.div
+                    <motion.div
                       key={s}
                       animate={{ width: step === s ? 20 : 6, opacity: step === s ? 1 : 0.35 }}
                       transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -619,12 +609,12 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
               <AnimatePresence mode="wait">
                 {step === 1 ? (
                   /* Step 1: Triage */
-                  <m.div
+                  <motion.div
                     key="step1"
-                    initial={{ opacity: 0, x: -20, scale: 0.98 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: -30, scale: 0.97, filter: "blur(4px)" }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2 }}
                     className="space-y-3"
                   >
                     {triageTasks.length === 0 ? (
@@ -671,15 +661,15 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                         </AnimatePresence>
                       </>
                     )}
-                  </m.div>
+                  </motion.div>
                 ) : (
                   /* Step 2: Commit */
-                  <m.div
+                  <motion.div
                     key="step2"
-                    initial={{ opacity: 0, x: 20, scale: 0.98 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: 30, scale: 0.97, filter: "blur(4px)" }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ duration: 0.2 }}
                     className="space-y-3"
                   >
                     {todayTasks.length === 0 ? (
@@ -760,7 +750,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                         <WorkloadBar total={totalEstimate} capacity={capacity} />
                       </>
                     )}
-                  </m.div>
+                  </motion.div>
                 )}
               </AnimatePresence>
             ) : (
@@ -850,7 +840,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                     <div className="space-y-1.5">
                       <AnimatePresence mode="popLayout">
                         {triageTasks.map(t => (
-                          <m.div
+                          <motion.div
                             key={t.id}
                             layout
                             exit={{ opacity: 0, x: 20 }}
@@ -865,7 +855,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                             >
                               → Tomorrow
                             </button>
-                          </m.div>
+                          </motion.div>
                         ))}
                       </AnimatePresence>
                     </div>
@@ -952,7 +942,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
 
             {isMorning ? (
               step === 1 ? (
-                <m.button
+                <motion.button
                   whileTap={{ scale: 0.97 }}
                   disabled={triageTasks.length > 0}
                   onClick={() => setStep(2)}
@@ -965,9 +955,9 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   }}
                 >
                   Next <ArrowRight className="w-4 h-4" />
-                </m.button>
+                </motion.button>
               ) : (
-                <m.button
+                <motion.button
                   whileTap={{ scale: 0.97 }}
                   disabled={saving}
                   onClick={handleFinishMorning}
@@ -979,10 +969,10 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   }}
                 >
                   {saving ? "Saving…" : "Lock in my day"} <Sparkles className="w-4 h-4" />
-                </m.button>
+                </motion.button>
               )
             ) : (
-              <m.button
+              <motion.button
                 whileTap={{ scale: 0.97 }}
                 disabled={saving}
                 onClick={handleFinishEvening}
@@ -994,11 +984,11 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 }}
               >
                 {saving ? "Saving…" : "Shut down"} <Moon className="w-4 h-4" />
-              </m.button>
+              </motion.button>
             )}
           </div>
-        </m.div>
-      </m.div>
+        </motion.div>
+      </motion.div>
     </AnimatePresence>
   );
 }
