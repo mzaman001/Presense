@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { GlassCard } from "@/components/ui/GlassCard";
 
 interface InboxItem {
   id: string;
@@ -342,9 +343,13 @@ export default function InboxPage() {
       ) : (
         <div className="max-w-2xl mx-auto space-y-4 pt-4">
           {inboxItems.length === 0 ? (
-            <div className="text-sm text-[var(--color-text-3)] text-center py-16 border border-dashed border-[rgba(255,255,255,0.08)] rounded-xl">
-              Inbox zero. Mind clear.
-            </div>
+            <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
+              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-6 h-6 text-[var(--color-text-3)]" />
+              </div>
+              <h3 className="text-[var(--color-text-1)] font-medium mb-2">Inbox Zero</h3>
+              <p className="text-sm text-[var(--color-text-3)] max-w-sm">You've processed everything. Your mind is clear for the day ahead.</p>
+            </GlassCard>
           ) : (
             inboxItems.map((item) => (
               <InboxItemCard

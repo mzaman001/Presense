@@ -117,7 +117,7 @@ export default function LocationsPage() {
           <PageSkeleton count={4} type="task" />
         </div>
       ) : items.length === 0 && !search.trim() ? (
-        <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
+        <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
           <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
             <MapPin className="w-6 h-6 text-[var(--color-text-3)]" />
           </div>
@@ -125,7 +125,7 @@ export default function LocationsPage() {
           <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Log an item to remember where you put it.</p>
           <button 
             onClick={() => setShowAdd(true)}
-            className="btn-secondary gap-2 mx-auto"
+            className="btn-primary gap-2 mx-auto"
           >
             <Plus size={16} /> Log Item
           </button>

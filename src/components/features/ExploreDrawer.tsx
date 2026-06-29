@@ -246,6 +246,9 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                   type="text"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSave();
+                  }}
                   className="input"
                   placeholder="e.g. https://example.com"
                 />

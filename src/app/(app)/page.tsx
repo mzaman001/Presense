@@ -125,13 +125,12 @@ export default function HomeDashboard() {
       const currentDay = now.getDay() || 7;
       const mondayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay + 1, 0, 0, 0, 0);
 
-      const [tasksRes, inboxRes, peopleRes, threadsRes, exploresRes, settingsRes, doneRes, sessionsRes] = await Promise.all([
+      const [tasksRes, inboxRes, peopleRes, threadsRes, exploresRes, doneRes, sessionsRes] = await Promise.all([
         supabase.from("items").select("*").in("status", ["active", "overdue"]),
         supabase.from("items").select("*").eq("status", "inbox"),
         supabase.from("people").select("*"),
         supabase.from("threads").select("*"),
         supabase.from("explores").select("*").is("revisited_at", null),
-        supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
         supabase.from("items").select("*").eq("status", "done").gte("completed_at", mondayStart.toISOString()).order("completed_at", { ascending: false }),
         supabase.from("session_logs").select("*").gte("completed_at", mondayStart.toISOString()).eq("type", "work")
       ]);
@@ -165,10 +164,6 @@ export default function HomeDashboard() {
           return aPrio - bPrio;
         });
         upNext = sorted.filter(t => !t.snoozed_until || new Date(t.snoozed_until) <= now);
-      }
-
-      if (settingsRes.data) {
-        setUserSettings(settingsRes.data);
       }
 
       return {

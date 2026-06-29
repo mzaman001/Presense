@@ -153,18 +153,32 @@ export function CaptureModal() {
         setShowPopover(false);
       }
     } else {
-      if (e.key === "Enter" && !routedItems) {
-        handleRoute();
+      if (e.key === "Enter") {
+        if (!routedItems) {
+          handleRoute();
+        } else {
+          handleConfirm();
+        }
       }
     }
   };
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      const isInput = (e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA" || (e.target as HTMLElement).isContentEditable;
+      
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setCaptureModalOpen(true);
       }
+      
+      if (!isInput && !e.metaKey && !e.ctrlKey) {
+        if (e.key === "c" || e.key === "n") {
+          e.preventDefault();
+          setCaptureModalOpen(true);
+        }
+      }
+
       if (e.key === "Escape") setCaptureModalOpen(false);
     };
     window.addEventListener("keydown", down);
@@ -384,7 +398,13 @@ export function CaptureModal() {
                     <input
                       value={item.title}
                       onChange={(e) => updateRoutedItem(idx, { title: e.target.value })}
-                      className="input-title"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleConfirm();
+                        }
+                      }}
+                      className="input-title bg-transparent border-none outline-none font-semibold text-lg text-[var(--color-text-1)] w-full placeholder:text-[rgba(255,255,255,0.25)]"
                     />
                     
                     <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">

@@ -372,7 +372,7 @@ export default function PeoplePage() {
               )}
             </div>
             {others.length === 0 && today.length === 0 ? (
-              <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
+              <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
                 {fetchError ? (
                   <p className="text-sm text-red-400">Error loading people: {fetchError}</p>
                 ) : (
@@ -384,7 +384,7 @@ export default function PeoplePage() {
                     <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Add someone manually, or capture &ldquo;Meeting with Alex&rdquo; to automatically create a profile.</p>
                     <button 
                       onClick={() => setIsPanelOpen(true)}
-                      className="btn-secondary gap-2 mx-auto"
+                      className="btn-primary gap-2 mx-auto"
                     >
                       <Plus size={16} /> Add Person
                     </button>

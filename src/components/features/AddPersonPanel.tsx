@@ -124,6 +124,9 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                   placeholder="Person's name..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSave();
+                  }}
                   className="input"
                 />
               </div>

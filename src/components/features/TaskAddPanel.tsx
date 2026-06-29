@@ -427,6 +427,12 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                   placeholder="What needs to be done?"
                   value={title}
                   onChange={handleTitleChange}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSave();
+                    }
+                  }}
                   className="input-title"
                 />
               </div>

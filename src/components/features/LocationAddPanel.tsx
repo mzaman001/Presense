@@ -1,4 +1,4 @@
-﻿import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Trash2 } from "lucide-react";
@@ -136,6 +136,9 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
                     autoFocus
                     value={itemName}
                     onChange={(e) => setItemName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSave();
+                    }}
                     placeholder="e.g. Keys, Passport, Charger"
                     className="input"
                   />
