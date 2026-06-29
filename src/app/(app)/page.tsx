@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check } from "lucide-react";
+import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
@@ -46,6 +46,55 @@ interface ExploreItem {
   type: string;
 }
 
+function RitualStatusBadge({ userSettings }: { userSettings: any }) {
+  const setActiveRitual = useAppStore(s => s.setActiveRitual);
+  const now = new Date();
+  const todayStr = now.toLocaleDateString("en-CA");
+  const morningDone = userSettings?.last_ritual_date === todayStr;
+  const eveningDone = userSettings?.last_evening_ritual_date === todayStr;
+  const shutdownTime = userSettings?.shutdown_time || "17:00:00";
+  const shutdownHour = shutdownTime.split(':')[0];
+  const shutdownAmPm = parseInt(shutdownHour) >= 12 ? `${parseInt(shutdownHour) === 12 ? 12 : parseInt(shutdownHour) - 12} PM` : `${parseInt(shutdownHour)} AM`;
+  const streak = userSettings?.ritual_streak || 0;
+
+  const StreakBadge = () => streak > 0 ? (
+    <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold">
+      🔥 {streak}
+    </span>
+  ) : null;
+
+  if (morningDone && eveningDone) {
+    return (
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--status-done)]/10 border border-[var(--status-done)]/20 mt-3 text-[12px] text-[var(--status-done)] font-medium">
+        <CheckCircle2 className="w-3.5 h-3.5" /> Day complete — Great work today
+        <StreakBadge />
+      </div>
+    );
+  }
+
+  if (morningDone) {
+    return (
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-dim)]/10 border border-[var(--accent-border)] mt-3 text-[12px] text-[var(--text-3)] font-medium">
+        <CheckCircle2 className="w-3.5 h-3.5 text-[var(--accent)]" /> Day planned <span className="mx-1 opacity-50">•</span> Evening review at {shutdownAmPm}
+        <StreakBadge />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-3">
+      <button 
+        onClick={() => setActiveRitual('morning')}
+        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-colors text-[12px] text-orange-400 font-medium group"
+      >
+        <Sparkles className="w-3.5 h-3.5" /> You haven't planned your day yet 
+        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+      </button>
+      <StreakBadge />
+    </div>
+  );
+}
+
 export default function HomeDashboard() {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
@@ -58,7 +107,10 @@ export default function HomeDashboard() {
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleClick = () => setActiveRouteItem(null);
+    const handleClick = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('.dropdown-trigger')) return;
+      setActiveRouteItem(null);
+    };
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, []);
@@ -221,9 +273,7 @@ export default function HomeDashboard() {
               {userSettings?.display_name ? `, ${userSettings.display_name.split(' ')[0]}` : ', you'}.
             </span>
           </h1>
-          {userSettings?.daily_briefing !== false && (
-            <p className="text-[var(--color-text-3)] mt-1">Here is your focus for today.</p>
-          )}
+          <RitualStatusBadge userSettings={userSettings} />
         </div>
         <button 
           onClick={() => setShowReview(!showReview)}
@@ -502,7 +552,7 @@ export default function HomeDashboard() {
                   <div className="relative flex-1 md:flex-none">
                     <button 
                       onClick={(e) => { e.stopPropagation(); setActiveRouteItem(activeRouteItem === item.id ? null : item.id); }}
-                      className="btn-secondary w-full"
+                      className="btn-secondary w-full dropdown-trigger"
                     >
                       <FolderInput className="w-3.5 h-3.5" />
                       Route it

@@ -192,7 +192,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                   type="datetime-local"
                   value={nextMeeting}
                   onChange={(e) => setNextMeeting(e.target.value)}
-                  className="input [color-scheme:dark]"
+                  className="input"
                 />
               </div>
 

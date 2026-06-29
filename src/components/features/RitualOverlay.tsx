@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -196,16 +196,17 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
   const activeRitual = type !== undefined ? type : storeActiveRitual;
   const isCurrentlyOpen = isOpen !== undefined ? isOpen : storeActiveRitual !== null;
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     // Stamp close time so AppInitializer won't fire another ritual for 5 minutes
     localStorage.setItem('presense_ritual_closed_at', String(Date.now()));
     if (onClose) onClose();
     else storeSetActiveRitual(null);
-  };
+  }, [onClose, storeSetActiveRitual]);
 
   const [step, setStep] = useState<1 | 2>(1);
   const [triageTasks, setTriageTasks] = useState<any[]>([]);
   const [todayTasks, setTodayTasks] = useState<any[]>([]);
+  const [tomorrowTasks, setTomorrowTasks] = useState<any[]>([]);
   const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [focusMinutes, setFocusMinutes] = useState(0);
   const [reflection, setReflection] = useState("");
@@ -214,6 +215,23 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
 
   const capacity = userSettings?.daily_capacity_minutes ?? 240;
   const todayString = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
+
+  useEffect(() => {
+    if (!isCurrentlyOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) return;
+      if (e.key === "Escape") { handleClose(); return; }
+      if (activeRitual === "morning" && step === 1 && triageTasks.length > 0) {
+        const firstTask = triageTasks[0];
+        if (e.key === "Enter" || e.key === "1") handleTriageAction(firstTask.id, "today");
+        if (e.key === "2") handleTriageAction(firstTask.id, "snooze");
+        if (e.key === "3") handleTriageAction(firstTask.id, "backlog");
+      }
+      if (activeRitual === "morning" && step === 2 && e.key === "Backspace") setStep(1);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isCurrentlyOpen, activeRitual, step, triageTasks, handleClose]);
 
   useEffect(() => {
     if (!activeRitual) return;
@@ -250,6 +268,9 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
         setTriageTasks((incomplete || []).filter(t =>
           t.deadline && new Date(t.deadline).getTime() < todayStart + 86400000
         ));
+        setTomorrowTasks((incomplete || []).filter(t =>
+          t.deadline && new Date(t.deadline).getTime() >= todayStart + 86400000 && new Date(t.deadline).getTime() < todayStart + 86400000 * 2
+        ));
         setFocusMinutes((logs || []).reduce((s: number, l: any) => s + (l.duration_minutes || 0), 0));
         setReflection("");
       }
@@ -260,17 +281,34 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
 
   const handleTriageAction = async (taskId: string, action: "today" | "backlog" | "snooze") => {
     const task = triageTasks.find(t => t.id === taskId);
+    if (!task) return;
+    
     setTriageTasks(prev => prev.filter(t => t.id !== taskId));
     const now = new Date();
     const payload =
       action === "today"  ? { status: "active", deadline: now.toISOString() } :
       action === "snooze" ? { status: "active", deadline: new Date(now.getTime() + 86400000).toISOString() } :
                             { status: "active", deadline: null };
-    if (action === "today" && task) setTodayTasks(prev => [...prev, { ...task, ...payload }]);
+    
+    if (action === "today") setTodayTasks(prev => [...prev, { ...task, ...payload }]);
+    
     try {
       const { error } = await supabase.from("items").update(payload).eq("id", taskId);
       if (error) throw error;
       markMutation("items");
+      
+      const actionLabels = { today: "Moved to Today", backlog: "Moved to Backlog", snooze: "Snoozed until tomorrow" };
+      toast.success(actionLabels[action], {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            if (action === "today") setTodayTasks(prev => prev.filter(t => t.id !== taskId));
+            setTriageTasks(prev => [task, ...prev]);
+            await supabase.from("items").update({ status: task.status, deadline: task.deadline }).eq("id", taskId);
+            markMutation("items");
+          }
+        }
+      });
     } catch { toast.error("Failed to update task"); }
   };
 
@@ -288,10 +326,35 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user");
-      const { error } = await supabase.from("user_settings").update({ last_ritual_date: todayString }).eq("user_id", user.id);
+      
+      let newStreak = userSettings?.ritual_streak || 0;
+      const lastRitual = userSettings?.last_ritual_date;
+      if (lastRitual) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yStr = yesterday.toLocaleDateString("en-CA");
+        if (lastRitual !== yStr && lastRitual !== todayString) {
+          // Missed a day
+          newStreak = 0;
+        }
+      }
+      
+      if (lastRitual !== todayString) {
+        newStreak += 1;
+      }
+      
+      const { error } = await supabase.from("user_settings").update({ 
+        last_ritual_date: todayString,
+        ritual_streak: newStreak
+      }).eq("user_id", user.id);
       if (error) throw error;
+      
+      const { error: logError } = await supabase.from("ritual_logs").insert({ user_id: user.id, ritual_type: "morning" });
+      if (logError) console.error("Failed to log morning ritual:", logError);
+      
       updateUserSetting("last_ritual_date", todayString);
-      toast.success("Morning planning done — have a focused day!");
+      updateUserSetting("ritual_streak", newStreak);
+      toast.success("Morning planning done — have a focused day! ☀️");
       handleClose();
       router.push("/");
     } catch (err: any) {
@@ -300,13 +363,30 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
   };
 
   const handleCarryOver = async (taskId: string) => {
+    const task = triageTasks.find(t => t.id === taskId);
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     setTriageTasks(prev => prev.filter(t => t.id !== taskId));
+    
     try {
       const { error } = await supabase.from("items").update({ deadline: tomorrow.toISOString() }).eq("id", taskId);
       if (error) throw error;
       markMutation("items");
+
+      toast.success("Carried over to tomorrow", {
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            if (task) {
+              setTriageTasks(prev => [task, ...prev]);
+              try {
+                await supabase.from("items").update({ deadline: task.deadline }).eq("id", taskId);
+                markMutation("items");
+              } catch { toast.error("Failed to undo"); }
+            }
+          }
+        }
+      });
     } catch { toast.error("Failed to carry over"); }
   };
 
@@ -333,15 +413,43 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           markMutation("threads");
         }
       }
-      const { error } = await supabase.from("user_settings").update({ last_ritual_date: todayString }).eq("user_id", user.id);
+      
+      let newStreak = userSettings?.ritual_streak || 0;
+      if (userSettings?.last_evening_ritual_date !== todayString && userSettings?.last_ritual_date !== todayString) {
+        newStreak += 1;
+      }
+
+      const { error } = await supabase.from("user_settings").update({ 
+        last_evening_ritual_date: todayString,
+        ritual_streak: newStreak
+      }).eq("user_id", user.id);
       if (error) throw error;
-      updateUserSetting("last_ritual_date", todayString);
-      localStorage.setItem("presense_evening_ritual_date", todayString);
-      toast.success("Shutdown complete. Rest well.");
+      
+      const { error: logError } = await supabase.from("ritual_logs").insert({ user_id: user.id, ritual_type: "evening" });
+      if (logError) console.error("Failed to log evening ritual:", logError);
+      
+      updateUserSetting("last_evening_ritual_date", todayString);
+      updateUserSetting("ritual_streak", newStreak);
+      toast.success("Shutdown complete. Rest well. 🌙");
       handleClose();
     } catch (err: any) {
       toast.error("Failed to complete evening ritual", { description: err.message });
     } finally { setSaving(false); }
+  };
+  
+  const handleSkip = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      if (activeRitual === "morning") {
+        await supabase.from("user_settings").update({ last_ritual_date: todayString }).eq("user_id", user.id);
+        updateUserSetting("last_ritual_date", todayString);
+      } else {
+        await supabase.from("user_settings").update({ last_evening_ritual_date: todayString }).eq("user_id", user.id);
+        updateUserSetting("last_evening_ritual_date", todayString);
+      }
+    }
+    toast.success("Ritual skipped for today. You can always open it from the sidebar.");
+    handleClose();
   };
 
   const totalEstimate = todayTasks.reduce((s, t) => s + (t.time_estimate || 0), 0);
@@ -462,6 +570,13 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   ))}
                 </div>
               )}
+              <button
+                onClick={handleSkip}
+                className="text-[11px] font-medium transition-all hover:text-white"
+                style={{ color: "var(--text-4)" }}
+              >
+                Skip today
+              </button>
               <button
                 onClick={handleClose}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
@@ -743,6 +858,33 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   </div>
                 )}
 
+                {/* Tomorrow Preview */}
+                {tomorrowTasks.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Up next tomorrow</p>
+                    <div
+                      className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto"
+                      style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
+                    >
+                      {tomorrowTasks.map((t, i) => (
+                        <div
+                          key={t.id}
+                          className="flex items-center gap-3 px-4 py-2.5 opacity-60"
+                          style={{ borderBottom: i < tomorrowTasks.length - 1 ? "0.5px solid var(--border-subtle)" : "none" }}
+                        >
+                          <div
+                            className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                            style={{ background: "var(--accent-dim)", border: "0.5px solid var(--accent-border)" }}
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+                          </div>
+                          <p className="text-[12px] truncate" style={{ color: "var(--text-4)" }}>{t.title}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Reflection */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -752,7 +894,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   <TextareaAutosize
                     value={reflection}
                     onChange={e => setReflection(e.target.value)}
-                    placeholder="What went well today? What do you want to carry into tomorrow?"
+                    placeholder="What went well today? What is your ONE thing for tomorrow?"
                     minRows={3}
                     className="w-full px-4 py-3 text-[13px] rounded-xl resize-none focus:outline-none transition-all leading-relaxed"
                     style={{
@@ -784,7 +926,15 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
               >
                 <ChevronLeft className="w-4 h-4" /> Back
               </button>
-            ) : <div />}
+            ) : (
+              <button
+                onClick={handleSkip}
+                className="text-[13px] font-medium transition-colors hover:text-[var(--text-2)] px-2 py-1"
+                style={{ color: "var(--text-4)" }}
+              >
+                Skip today
+              </button>
+            )}
 
             {isMorning ? (
               step === 1 ? (
@@ -807,14 +957,14 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   whileTap={{ scale: 0.97 }}
                   disabled={saving}
                   onClick={handleFinishMorning}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold transition-all"
+                  className="flex items-center gap-2 px-6 py-3 rounded-full text-[14px] font-bold transition-all"
                   style={{
                     background: "var(--accent)",
                     color: "var(--text-on-accent)",
-                    boxShadow: "var(--shadow-button-primary)",
+                    boxShadow: "0 4px 20px var(--accent-glow), inset 0 1px 1px rgba(255,255,255,0.2)",
                   }}
                 >
-                  {saving ? "Saving…" : "Start my day"} <Sparkles className="w-4 h-4" />
+                  {saving ? "Saving…" : "Lock in my day"} <Sparkles className="w-4 h-4" />
                 </motion.button>
               )
             ) : (

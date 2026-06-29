@@ -217,7 +217,7 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
     let cleanTitle = text;
     
     if (recurrencePhraseToRemove) {
-      cleanTitle = cleanTitle.replace(new RegExp(recurrencePhraseToRemove, 'i'), '').replace(/\s+/g, ' ').trim();
+      cleanTitle = cleanTitle.replace(new RegExp(escapeRegex(recurrencePhraseToRemove), 'i'), '').replace(/\s+/g, ' ').trim();
     }
     
     if (parsedDate) {

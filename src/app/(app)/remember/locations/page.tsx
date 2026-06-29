@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Search, Plus, Loader2, Clock, AlertCircle } from "lucide-react";
+import { Search, Plus, Loader2, Clock, AlertCircle, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -116,6 +116,20 @@ export default function LocationsPage() {
         <div className="py-6">
           <PageSkeleton count={4} type="task" />
         </div>
+      ) : items.length === 0 && !search.trim() ? (
+        <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
+          <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+            <MapPin className="w-6 h-6 text-[var(--color-text-3)]" />
+          </div>
+          <h3 className="text-[var(--color-text-1)] font-medium mb-2">No locations here</h3>
+          <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Log an item to remember where you put it.</p>
+          <button 
+            onClick={() => setShowAdd(true)}
+            className="btn-secondary gap-2 mx-auto"
+          >
+            <Plus size={16} /> Log Item
+          </button>
+        </GlassCard>
       ) : (
         <div className="space-y-2">
           {items.map((item, i) => {

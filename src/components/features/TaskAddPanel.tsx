@@ -516,7 +516,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                             type="datetime-local"
                             value={deadline || ""}
                             onChange={handleManualDateChange}
-                            className="input [color-scheme:dark] !py-1.5 !px-2 !text-xs"
+                            className="input !py-1.5 !px-2 !text-xs"
                           />
                         </div>
                         <div>
@@ -528,7 +528,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                               setStartDate(e.target.value);
                               setParsedStartDate(e.target.value ? new Date(e.target.value) : null);
                             }}
-                            className="input [color-scheme:dark] !py-1.5 !px-2 !text-xs"
+                            className="input !py-1.5 !px-2 !text-xs"
                           />
                         </div>
                       </div>

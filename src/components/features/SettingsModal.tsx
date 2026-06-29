@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
-import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database, Users, Plus, Trash2 } from "lucide-react";
+import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database, Users, Plus, Trash2, Sparkles, Moon } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 const TABS = [
   { id: "account", label: "Account", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "ritual", label: "Daily Ritual", icon: Sparkles },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "focus", label: "Focus", icon: Timer },
   { id: "tasks", label: "Tasks", icon: CheckSquare },
@@ -58,7 +59,9 @@ interface SettingsState {
   location_detection?: boolean;
   daily_briefing_time?: string;
   nudge_time?: string;
+  shutdown_time?: string;
   pomodoro_long_break_interval?: number;
+  daily_capacity_minutes?: number;
 }
 
 function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKey, updateSetting, setSettings, supabase }: {
@@ -646,11 +649,11 @@ export function SettingsModal() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="text-label text-[var(--text-3)] block mb-2">Quiet Start</label>
-                              <input type="time" value={settings.quiet_start || "22:00"} onChange={e => updateSetting("quiet_start", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
+                              <input type="time" value={settings.quiet_start || "22:00"} onChange={e => updateSetting("quiet_start", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none" />
                             </div>
                             <div>
                               <label className="text-label text-[var(--text-3)] block mb-2">Quiet End</label>
-                              <input type="time" value={settings.quiet_end || "08:00"} onChange={e => updateSetting("quiet_end", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none [color-scheme:dark]" />
+                              <input type="time" value={settings.quiet_end || "08:00"} onChange={e => updateSetting("quiet_end", e.target.value)} className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none" />
                             </div>
                           </div>
 
@@ -751,6 +754,50 @@ export function SettingsModal() {
                                   {n}
                                 </button>
                               ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === "ritual" && (
+                        <div className="space-y-6">
+                          <div className="p-5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] space-y-6">
+                            <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-4">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--accent-dim)]">
+                                <Sparkles className="w-5 h-5 text-[var(--accent)]" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-[var(--text-1)]">Daily Ritual</h4>
+                                <p className="text-xs text-[var(--text-4)]">Configure your morning planning and evening review times.</p>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-6">
+                              <div>
+                                <label className="text-label text-[var(--text-3)] block mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-orange-400" /> Morning Nudge</label>
+                                <input type="time" value={settings.nudge_time || "10:00"} onChange={e => updateSetting("nudge_time", e.target.value)} className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none" />
+                                <p className="text-[11px] text-[var(--text-4)] mt-2">When should we remind you to plan your day?</p>
+                              </div>
+                              <div>
+                                <label className="text-label text-[var(--text-3)] block mb-2 flex items-center gap-1.5"><Moon className="w-3.5 h-3.5 text-blue-400" /> Evening Shutdown</label>
+                                <input type="time" value={settings.shutdown_time || "17:00"} onChange={e => updateSetting("shutdown_time", e.target.value)} className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none" />
+                                <p className="text-[11px] text-[var(--text-4)] mt-2">When do you usually finish work?</p>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-label text-[var(--text-3)] block mb-2">Daily Capacity (mins)</label>
+                              <div className="flex items-center gap-4">
+                                <input
+                                  type="range"
+                                  min="60" max="720" step="30"
+                                  value={settings.daily_capacity_minutes || 240}
+                                  onChange={e => updateSetting("daily_capacity_minutes", parseInt(e.target.value))}
+                                  className="flex-1 accent-[var(--accent)]"
+                                />
+                                <span className="w-16 text-right font-medium text-[var(--text-1)]">{Math.floor((settings.daily_capacity_minutes || 240) / 60)}h {(settings.daily_capacity_minutes || 240) % 60}m</span>
+                              </div>
+                              <p className="text-[11px] text-[var(--text-4)] mt-2">Used for workload visualization during morning planning.</p>
                             </div>
                           </div>
                         </div>

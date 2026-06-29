@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +60,7 @@ export function Popover({ trigger, content, placement = "bottom-start", classNam
             exit={{ opacity: 0, y: 5, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
             className={cn(
-              "absolute z-[100] min-w-[200px] rounded-xl border border-[var(--color-border)] bg-[#111111] shadow-2xl [color-scheme:dark]",
+              "absolute z-[100] min-w-[200px] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl",
               placementClasses[placement],
               className
             )}

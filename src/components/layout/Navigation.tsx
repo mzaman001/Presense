@@ -15,7 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Inbox,
-  Sparkles
+  Sparkles,
+  CheckCircle2,
+  Moon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -84,8 +86,7 @@ export function Sidebar() {
           onClick={toggleSidebar}
           aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
-            "absolute top-1/2 -translate-y-1/2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors p-2 flex items-center justify-center",
-            isSidebarCollapsed ? "right-0" : "right-0"
+            "absolute top-1/2 -translate-y-1/2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors p-2 flex items-center justify-center right-0"
           )}
         >
           {isSidebarCollapsed ? <ChevronRight size={16} strokeWidth={1.5} /> : <ChevronLeft size={16} strokeWidth={1.5} />}
@@ -119,26 +120,56 @@ export function Sidebar() {
           onMouseEnter={() => setHoveredItem("plan-day")}
           onMouseLeave={() => setHoveredItem(null)}
         >
-          <button
-            onClick={() => {
-              const now = new Date();
-              const currentHours = now.getHours();
-              const ritual = currentHours >= 17 ? 'evening' : 'morning';
-              useAppStore.getState().setActiveRitual(ritual);
-            }}
-            className={cn(
-              "flex items-center h-[36px] transition-all relative group w-full mb-2",
-              isSidebarCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "rounded-[var(--radius-sm)] px-3 gap-3",
-              "text-[var(--accent)] bg-[var(--accent-dim)]/10 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)] border border-[var(--accent)]/15"
-            )}
-          >
-            <div className="flex items-center justify-center shrink-0">
-              <Sparkles size={18} strokeWidth={1.5} className="text-[var(--accent)]" />
-            </div>
-            {!isSidebarCollapsed && (
-              <span className="text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">Plan my day</span>
-            )}
-          </button>
+          {(() => {
+            const now = new Date();
+            const currentHours = now.getHours();
+            const todayStr = now.toLocaleDateString("en-CA");
+            const morningDone = userSettings?.last_ritual_date === todayStr;
+            const eveningDone = userSettings?.last_evening_ritual_date === todayStr;
+            const shutdownHour = parseInt(userSettings?.shutdown_time?.split(':')[0] || '17', 10);
+            
+            let state: "morning" | "evening" | "done" | "all_done" = "morning";
+            
+            if (morningDone && eveningDone) state = "all_done";
+            else if (morningDone && currentHours >= shutdownHour) state = "evening";
+            else if (morningDone) state = "done";
+            
+            const Icon = state === "all_done" || state === "done" ? CheckCircle2 :
+                         state === "evening" ? Moon : Sparkles;
+                         
+            const label = state === "all_done" ? "All done ✓" :
+                          state === "done" ? "Day planned ✓" :
+                          state === "evening" ? "Evening review" : "Plan my day";
+
+            return (
+              <button
+                onClick={() => {
+                  if (useAppStore.getState().activeRitual) return;
+                  if (state === "all_done" || state === "done") {
+                    return; // Prevent reopening if completed
+                  }
+                  useAppStore.getState().setActiveRitual(state === "evening" ? "evening" : "morning");
+                }}
+                className={cn(
+                  "flex items-center h-[36px] transition-all relative group w-full mb-2",
+                  isSidebarCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "rounded-[var(--radius-sm)] px-3 gap-3",
+                  (state === "all_done" || state === "done") 
+                    ? "text-[var(--text-4)] hover:text-[var(--text-1)] bg-transparent hover:bg-[rgba(255,255,255,0.02)]" 
+                    : "text-[var(--accent)] bg-[var(--accent-dim)]/10 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)] border border-[var(--accent)]/15"
+                )}
+              >
+                <div className="flex items-center justify-center shrink-0">
+                  <Icon size={18} strokeWidth={1.5} className={(state === "all_done" || state === "done") ? "" : "text-[var(--accent)]"} />
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">
+                    {hoveredItem === "plan-day" && state === "done" ? "Review your day" : 
+                     hoveredItem === "plan-day" && state === "all_done" ? "Already done" : label}
+                  </span>
+                )}
+              </button>
+            );
+          })()}
           {isSidebarCollapsed && <NavTooltip label="Plan my day" show={hoveredItem === "plan-day"} />}
         </div>
 

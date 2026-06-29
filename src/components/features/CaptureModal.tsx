@@ -50,6 +50,11 @@ const SPACE_OPTIONS = [
   { value: "Inbox", label: "Inbox" }
 ];
 
+const toLocalISOString = (date: Date) => {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 export function CaptureModal() {
   const { isCaptureModalOpen, setCaptureModalOpen, userSettings } = useAppStore();
   const [input, setInput] = useState("");
@@ -111,6 +116,9 @@ export function CaptureModal() {
 
   const handleInputChange = (val: string) => {
     setInput(val);
+    if (routedItems) {
+      setRoutedItems(null);
+    }
 
     if (!inputRef.current) return;
     const selectionStart = inputRef.current.selectionStart || 0;
@@ -328,7 +336,7 @@ export function CaptureModal() {
                 className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
                 value={input}
                 onChange={(e) => handleInputChange(e.target.value)}
-                disabled={!!routedItems || isRouting}
+                disabled={isRouting}
                 onKeyDown={handleKeyDown}
               />
               {input && !routedItems && !isRouting && (
@@ -408,9 +416,9 @@ export function CaptureModal() {
                             </span>
                             <input
                               type="datetime-local"
-                              value={item.deadline ? new Date(new Date(item.deadline).getTime() - new Date(item.deadline).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
+                              value={item.deadline ? toLocalISOString(new Date(item.deadline)) : ""}
                               onChange={(e) => updateRoutedItem(idx, { deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
                           </div>
                         </>

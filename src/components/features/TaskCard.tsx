@@ -153,8 +153,6 @@ export const TaskCard = React.memo(({
     }
   };
 
-  if (deleted) return null;
-
   return (
     <motion.div
       layout
@@ -296,9 +294,9 @@ export const TaskCard = React.memo(({
             </span>
 
             {/* Linked People Avatars */}
-            {peopleMap && task.linked_people_ids && task.linked_people_ids.length > 0 && (
-              <div className="flex -space-x-1.5" title={task.linked_people_ids.map((id: string) => peopleMap[id]?.name).filter(Boolean).join(', ')}>
-                {task.linked_people_ids.map((id: string, index: number) => {
+            {peopleMap && task.linked_people && task.linked_people.length > 0 && (
+              <div className="flex -space-x-1.5" title={task.linked_people.map((id: string) => peopleMap[id]?.name).filter(Boolean).join(', ')}>
+                {task.linked_people.map((id: string, index: number) => {
                   const person = peopleMap[id];
                   if (!person) return null;
                   return (
@@ -428,9 +426,9 @@ export const TaskCard = React.memo(({
     return false;
   }
 
-  // Reference/Shallow-array comparison of linked_people_ids
-  const prevPeople = prevTask.linked_people_ids;
-  const nextPeople = nextTask.linked_people_ids;
+  // Reference/Shallow-array comparison of linked_people
+  const prevPeople = prevTask.linked_people;
+  const nextPeople = nextTask.linked_people;
   if (prevPeople !== nextPeople) {
     if (!prevPeople || !nextPeople) return false;
     if (prevPeople.length !== nextPeople.length) return false;

@@ -35,6 +35,8 @@ export interface UserSettings {
   pomodoro_long_break_interval?: number;
   explore_custom_types?: string[];
   last_ritual_date?: string;
+  last_evening_ritual_date?: string;
+  ritual_streak?: number;
   shutdown_time?: string;
   daily_capacity_minutes?: number;
   [key: string]: unknown;
@@ -56,7 +58,7 @@ interface AppState {
   updateUserSetting: (key: string, value: unknown) => void;
   activeTimer: { taskId?: string; taskTitle?: string } | null;
   setActiveTimer: (timer: { taskId?: string; taskTitle?: string } | null) => void;
-  lastMutationAt: number;
+
   lastMutations: Record<string, number>;
   markMutation: (table?: string) => void;
   activeRitual: 'morning' | 'evening' | null;
@@ -81,13 +83,12 @@ export const useAppStore = create<AppState>((set) => ({
   updateUserSetting: (key, value) => set((state) => ({ userSettings: { ...state.userSettings, [key]: value } })),
   activeTimer: null,
   setActiveTimer: (timer) => set({ activeTimer: timer }),
-  lastMutationAt: 0,
+
   lastMutations: {},
   markMutation: (table) => set((state) => {
     const now = Date.now();
     return {
-      lastMutationAt: now,
-      lastMutations: table ? { ...state.lastMutations, [table]: now } : state.lastMutations,
+      lastMutations: { ...state.lastMutations, [table || '_global']: now },
     };
   }),
   activeRitual: null,

@@ -256,15 +256,16 @@ export default function DoPage() {
   });
 
   const filtered = startedTasks.filter(t => {
-    if (categoryFilter === "all") return t.status === "active";
+    const isActiveOrOverdue = t.status === "active" || t.status === "overdue";
+    if (categoryFilter === "all") return isActiveOrOverdue;
     if (categoryFilter === "inbox") return t.status === "inbox";
     if (categoryFilter === "today") {
-      if (!t.deadline || t.status !== "active") return false;
+      if (!t.deadline || !isActiveOrOverdue) return false;
       const d = new Date(t.deadline);
       const now = new Date();
       return (d <= now || d.toDateString() === now.toDateString());
     }
-    return t.category === categoryFilter && t.status === "active";
+    return t.category === categoryFilter && isActiveOrOverdue;
   });
   
   const overdue = filtered.filter((t) => t.deadline && new Date(t.deadline) < now);
@@ -413,6 +414,21 @@ export default function DoPage() {
            {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
            {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
            {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
+           {!isBoardView && overdue.length === 0 && today.length === 0 && upcoming.length === 0 && (
+             <GlassCard className="p-12 text-center md:col-span-3 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
+               <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+                 <Wind className="w-6 h-6 text-[var(--color-text-3)]" />
+               </div>
+               <h3 className="text-[var(--color-text-1)] font-medium mb-2">You're all caught up!</h3>
+               <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">No tasks in this view. Take a breath or plan ahead.</p>
+               <button 
+                 onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+                 className="btn-secondary gap-2 mx-auto"
+               >
+                 <Plus size={16} /> Add Task
+               </button>
+             </GlassCard>
+           )}
         </div>
       )}
 

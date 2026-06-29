@@ -294,7 +294,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                   type="time"
                   value={wakeTime}
                   onChange={e => setWakeTime(e.target.value)}
-                  className="w-full bg-transparent text-2xl font-bold text-[var(--color-text-1)] outline-none [color-scheme:dark]"
+                  className="w-full bg-transparent text-2xl font-bold text-[var(--color-text-1)] outline-none"
                 />
               </div>
               <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 space-y-2">
@@ -303,7 +303,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                   type="time"
                   value={sleepTime}
                   onChange={e => setSleepTime(e.target.value)}
-                  className="w-full bg-transparent text-2xl font-bold text-[var(--color-text-1)] outline-none [color-scheme:dark]"
+                  className="w-full bg-transparent text-2xl font-bold text-[var(--color-text-1)] outline-none"
                 />
               </div>
             </div>

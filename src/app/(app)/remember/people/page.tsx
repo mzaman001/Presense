@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { AddPersonPanel } from "@/components/features/AddPersonPanel";
-import { Plus, Loader2, Clock, ChevronRight, GripVertical, Trash2 } from "lucide-react";
+import { Plus, Loader2, Clock, ChevronRight, GripVertical, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/hooks/useRealtime";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -372,11 +372,23 @@ export default function PeoplePage() {
               )}
             </div>
             {others.length === 0 && today.length === 0 ? (
-              <GlassCard className="p-8 text-center">
+              <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
                 {fetchError ? (
                   <p className="text-sm text-red-400">Error loading people: {fetchError}</p>
                 ) : (
-                  <p className="text-sm text-[var(--color-text-3)]">No people yet. Add someone or capture &ldquo;Riyaz said to...&rdquo;</p>
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+                      <Users className="w-6 h-6 text-[var(--color-text-3)]" />
+                    </div>
+                    <h3 className="text-[var(--color-text-1)] font-medium mb-2">No people yet</h3>
+                    <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Add someone or capture &ldquo;Riyaz said to...&rdquo;</p>
+                    <button 
+                      onClick={() => setIsPanelOpen(true)}
+                      className="btn-secondary gap-2 mx-auto"
+                    >
+                      <Plus size={16} /> Add Person
+                    </button>
+                  </>
                 )}
               </GlassCard>
             ) : (

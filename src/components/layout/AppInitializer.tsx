@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useAppStore, UserSettings } from "@/store/useAppStore";
+import { toast } from "sonner";
 
 function isTimeAfter(timeStr: string) {
   if (!timeStr) return false;
@@ -45,13 +46,24 @@ export function AppInitializer({ initialSettings }: { initialSettings?: UserSett
 
       // Rule 2 — Evening: ONLY fires if morning was already completed today
       //           AND past shutdown time AND evening not yet done today
-      const eveningDoneToday = localStorage.getItem('presense_evening_ritual_date') === todayString;
+      const eveningDoneToday = userSettings.last_evening_ritual_date === todayString;
       const shouldTriggerEvening = morningDoneToday && !eveningDoneToday && isTimeAfter(shutdownTime);
 
+      const notifyAndOpen = (type: 'morning' | 'evening', message: string) => {
+        if (typeof window !== "undefined" && "Notification" in window) {
+          if (Notification.permission === "granted" && document.hidden) {
+            new Notification(message);
+          } else if (Notification.permission !== "denied") {
+            Notification.requestPermission();
+          }
+        }
+        setActiveRitual(type);
+      };
+
       if (shouldTriggerMorning) {
-        setActiveRitual('morning');
+        notifyAndOpen('morning', "Time for your morning planning ☀️");
       } else if (shouldTriggerEvening) {
-        setActiveRitual('evening');
+        notifyAndOpen('evening', "Time to wind down 🌙");
       }
     };
 
