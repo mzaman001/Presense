@@ -414,7 +414,7 @@ export default function DoPage() {
            {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
            {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
            {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
-           {!isBoardView && overdue.length === 0 && today.length === 0 && upcoming.length === 0 && (
+           {overdue.length === 0 && today.length === 0 && upcoming.length === 0 && (
              <GlassCard className="p-12 text-center md:col-span-3 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
                <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
                  <Wind className="w-6 h-6 text-[var(--color-text-3)]" />

@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Search, Plus, Loader2, Clock, AlertCircle, MapPin } from "lucide-react";
+import { Search, Plus, Loader2, Clock, AlertCircle, MapPin, Key, Wallet, Smartphone, Plug, Laptop, Headphones, Notebook, Book, Glasses, Watch, Briefcase, CreditCard, IdCard, Plane, PenTool, Baby, Umbrella, Footprints, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -18,16 +18,16 @@ interface LocationItem {
   updated_at: string;
 }
 
-const EMOJI_MAP: Record<string, string> = {
-  keys: "🔑", key: "🔑", wallet: "👛", phone: "📱", charger: "🔌",
-  laptop: "💻", headphones: "🎧", notebook: "📓", book: "📖", glasses: "👓",
-  watch: "⌚", bag: "🎒", card: "💳", id: "🪪", passport: "🛂",
-  cable: "🔌", pen: "🖊️", bottle: "🍼", umbrella: "☂️", shoes: "👟",
+const ICON_MAP: Record<string, React.ElementType> = {
+  keys: Key, key: Key, wallet: Wallet, phone: Smartphone, charger: Plug,
+  laptop: Laptop, headphones: Headphones, notebook: Notebook, book: Book, glasses: Glasses,
+  watch: Watch, bag: Briefcase, card: CreditCard, id: IdCard, passport: Plane,
+  cable: Plug, pen: PenTool, bottle: Baby, umbrella: Umbrella, shoes: Footprints,
 };
 
-function getEmoji(name: string): string {
+function getIcon(name: string): React.ElementType {
   const lower = name.toLowerCase();
-  return Object.entries(EMOJI_MAP).find(([k]) => lower.includes(k))?.[1] ?? "📦";
+  return Object.entries(ICON_MAP).find(([k]) => lower.includes(k))?.[1] ?? Package;
 }
 
 function daysAgo(dt: string): number {
@@ -145,7 +145,9 @@ export default function LocationsPage() {
                   isVeryStale && "opacity-50"
                 )}>
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl shrink-0">{getEmoji(item.item_name)}</span>
+                    <div className="w-8 h-8 rounded-full bg-[rgba(255,255,255,0.05)] flex items-center justify-center shrink-0">
+                      {React.createElement(getIcon(item.item_name), { className: "w-4 h-4 text-[var(--color-text-2)]" })}
+                    </div>
                     <div className="flex-1 min-w-0 pr-20">
                       <p className={cn("text-sm font-semibold text-[var(--color-text-1)]", isVeryStale && "line-through opacity-60")}>{item.item_name}</p>
                       <p className="text-xs text-[var(--color-text-3)] truncate">{item.location_text}</p>

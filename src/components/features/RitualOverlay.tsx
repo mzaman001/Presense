@@ -354,7 +354,9 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
       
       updateUserSetting("last_ritual_date", todayString);
       updateUserSetting("ritual_streak", newStreak);
-      toast.success("Morning planning done — have a focused day! ☀️");
+      toast.success("Morning planning done — have a focused day!", {
+        icon: <Sun className="w-4 h-4 text-orange-400" />
+      });
       handleClose();
       router.push("/");
     } catch (err: any) {
@@ -430,7 +432,9 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
       
       updateUserSetting("last_evening_ritual_date", todayString);
       updateUserSetting("ritual_streak", newStreak);
-      toast.success("Shutdown complete. Rest well. 🌙");
+      toast.success("Shutdown complete. Rest well.", {
+        icon: <Moon className="w-4 h-4 text-blue-400" />
+      });
       handleClose();
     } catch (err: any) {
       toast.error("Failed to complete evening ritual", { description: err.message });

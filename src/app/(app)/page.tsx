@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check, Sparkles } from "lucide-react";
+import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check, Sparkles, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
@@ -59,7 +59,7 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
 
   const StreakBadge = () => streak > 0 ? (
     <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold">
-      🔥 {streak}
+      <Flame className="w-3.5 h-3.5" /> {streak}
     </span>
   ) : null;
 

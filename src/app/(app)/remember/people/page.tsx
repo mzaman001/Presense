@@ -380,8 +380,8 @@ export default function PeoplePage() {
                     <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
                       <Users className="w-6 h-6 text-[var(--color-text-3)]" />
                     </div>
-                    <h3 className="text-[var(--color-text-1)] font-medium mb-2">No people yet</h3>
-                    <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Add someone or capture &ldquo;Riyaz said to...&rdquo;</p>
+                    <h3 className="text-[var(--color-text-1)] font-medium mb-2">Your network is empty</h3>
+                    <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Add someone manually, or capture &ldquo;Meeting with Alex&rdquo; to automatically create a profile.</p>
                     <button 
                       onClick={() => setIsPanelOpen(true)}
                       className="btn-secondary gap-2 mx-auto"

@@ -61,9 +61,9 @@ export function AppInitializer({ initialSettings }: { initialSettings?: UserSett
       };
 
       if (shouldTriggerMorning) {
-        notifyAndOpen('morning', "Time for your morning planning ☀️");
+        notifyAndOpen('morning', "Time for your morning planning.");
       } else if (shouldTriggerEvening) {
-        notifyAndOpen('evening', "Time to wind down 🌙");
+        notifyAndOpen('evening', "Time to wind down.");
       }
     };
 
