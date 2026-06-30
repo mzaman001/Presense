@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { ArrowRight, Loader2, Brain, Users, Lightbulb, Bookmark, CheckCircle2, Zap, Compass, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -230,7 +230,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
     <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
       <AnimatePresence mode="wait">
         {step === 1 && (
-          <motion.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-md space-y-6">
+          <m.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-md space-y-6">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--color-text-1)]">What should we call you?</h1>
             <div className="space-y-2">
               <input
@@ -250,11 +250,11 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
             >
               {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Next <ArrowRight className="w-5 h-5" /></>}
             </button>
-          </motion.div>
+          </m.div>
         )}
 
         {step === 2 && (
-          <motion.div key="step2" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-lg space-y-8">
+          <m.div key="step2" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-lg space-y-8">
             <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-1)] text-center">What keeps slipping through the cracks?</h1>
             <div className="grid grid-cols-2 gap-4">
               {STRUGGLES.map((s) => {
@@ -281,11 +281,11 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Next <ArrowRight className="w-5 h-5" /></>}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
 
         {step === 3 && (
-          <motion.div key="step3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-md space-y-8">
+          <m.div key="step3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-md space-y-8">
             <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-1)]">When does your day usually start and end?</h1>
             <div className="space-y-6">
               <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 space-y-2">
@@ -317,11 +317,11 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Next <ArrowRight className="w-5 h-5" /></>}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
 
         {step === 4 && (
-          <motion.div key="step4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-xl space-y-8">
+          <m.div key="step4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-xl space-y-8">
             <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-1)]">Let's try it. What's one thing on your mind right now?</h1>
             <div className="relative">
               <textarea
@@ -333,9 +333,9 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
               />
               <AnimatePresence>
                 {routedItem && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-4 left-4 bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
+                  <m.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-4 left-4 bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
                     <Zap className="w-4 h-4" /> → This will go to {routedItem.destination}
-                  </motion.div>
+                  </m.div>
                 )}
               </AnimatePresence>
             </div>
@@ -349,14 +349,14 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : "Capture & continue"}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
 
         {step === 5 && (
-          <motion.div key="step5" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm flex flex-col items-center text-center space-y-8">
+          <m.div key="step5" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm flex flex-col items-center text-center space-y-8">
             <div className="relative w-full h-64 overflow-hidden rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] flex flex-col items-center justify-center p-8">
               <AnimatePresence mode="wait">
-                <motion.div
+                <m.div
                   key={tourIndex}
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -366,7 +366,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                   {React.createElement(TOUR_CARDS[tourIndex].icon, { className: "w-16 h-16 mb-6", style: { color: TOUR_CARDS[tourIndex].color } })}
                   <h2 className="text-2xl font-bold text-[var(--color-text-1)] mb-3">{TOUR_CARDS[tourIndex].id === "ready" ? `Presense is set up for you, ${name.split(" ")[0]}. Let's go.` : TOUR_CARDS[tourIndex].title}</h2>
                   <p className="text-[var(--color-text-2)]">{TOUR_CARDS[tourIndex].desc}</p>
-                </motion.div>
+                </m.div>
               </AnimatePresence>
             </div>
             
@@ -397,7 +397,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 Skip tour →
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

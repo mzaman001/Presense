@@ -26,7 +26,13 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
+import type { Viewport } from "next";
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover'
+};
 
 import { ToastProvider } from "@/components/ui/ToastProvider";
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,14 +56,14 @@ export function ConfirmModal({
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={isConfirming ? undefined : onClose}
           />
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
@@ -117,7 +117,7 @@ export function ConfirmModal({
                 {confirmLabel}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>

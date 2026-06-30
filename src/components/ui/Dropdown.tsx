@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -76,14 +76,14 @@ export function Dropdown({
           <span className={isPlaceholder ? "text-[var(--color-text-3)]" : ""}>
             {selectedOption.label || placeholder}
           </span>
-          <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <m.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
             <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
-          </motion.div>
+          </m.div>
         </button>
 
         <AnimatePresence>
           {isOpen && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scaleY: 0.9 }}
               animate={{ opacity: 1, scaleY: 1 }}
               exit={{ opacity: 0, scaleY: 0.9 }}
@@ -112,7 +112,7 @@ export function Dropdown({
                   </button>
                 );
               })}
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>
@@ -138,7 +138,7 @@ export function Dropdown({
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scaleY: 0.9 }}
             animate={{ opacity: 1, scaleY: 1 }}
             exit={{ opacity: 0, scaleY: 0.9 }}
@@ -171,7 +171,7 @@ export function Dropdown({
                 </button>
               );
             })}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

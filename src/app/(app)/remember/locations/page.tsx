@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Search, Plus, Loader2, Clock, AlertCircle, MapPin, Key, Wallet, Smartphone, Plug, Laptop, Headphones, Notebook, Book, Glasses, Watch, Briefcase, CreditCard, IdCard, Plane, PenTool, Baby, Umbrella, Footprints, Package } from "lucide-react";
@@ -137,7 +137,7 @@ export default function LocationsPage() {
             const isStale = days >= 30 && days < 90;
             const isVeryStale = days >= 90;
             return (
-              <motion.div key={item.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
+              <m.div key={item.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
                 <GlassCard 
                   onClick={() => setEditingItem(item)}
                   className={cn("px-4 py-3 relative group cursor-pointer hover:border-[var(--accent-border)] transition-all duration-200 ease-out hover:scale-[1.01] hover:-translate-y-px",
@@ -167,7 +167,7 @@ export default function LocationsPage() {
                     </div>
                   </div>
                 </GlassCard>
-              </motion.div>
+              </m.div>
             );
           })}
         </div>

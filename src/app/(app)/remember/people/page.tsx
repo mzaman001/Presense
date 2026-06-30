@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Avatar } from "@/components/ui/Avatar";
@@ -71,7 +71,7 @@ const TodayPersonCard = ({
   const relColor = person.color || useAppStore.getState().userSettings?.relationship_colors?.[relKey] || RELATIONSHIP_COLORS[relKey] || RELATIONSHIP_COLORS.other;
 
   return (
-    <motion.div
+    <m.div
       layout
       layoutId={person.id}
       initial={{ opacity: 0, y: 8 }}
@@ -80,20 +80,20 @@ const TodayPersonCard = ({
       className="group relative rounded-2xl overflow-hidden animate-in fade-in"
     >
       {/* Swipe-to-delete reveal layer */}
-      <motion.div
+      <m.div
         className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
         style={{
           background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
           opacity: deleteOpacity,
         }}
       >
-        <motion.div style={{ scale: deleteScale }}>
+        <m.div style={{ scale: deleteScale }}>
           <Trash2 className="w-5 h-5 text-red-400" />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
 
       {/* Draggable card */}
-      <motion.div
+      <m.div
         drag="x"
         dragConstraints={{ left: -100, right: 0 }}
         dragElastic={{ left: 0.15, right: 0 }}
@@ -122,8 +122,8 @@ const TodayPersonCard = ({
             ))}
           </GlassCard>
         </Link>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 };
 
@@ -172,20 +172,20 @@ function SortablePersonRow({
   return (
     <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-50 z-50", "group relative rounded-2xl overflow-hidden")}>
       {/* Swipe-to-delete reveal layer */}
-      <motion.div
+      <m.div
         className="absolute inset-y-0 right-0 left-8 flex items-center justify-end pr-5 rounded-r-2xl overflow-hidden"
         style={{
           background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
           opacity: deleteOpacity,
         }}
       >
-        <motion.div style={{ scale: deleteScale }}>
+        <m.div style={{ scale: deleteScale }}>
           <Trash2 className="w-5 h-5 text-red-400" />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
 
       {/* Draggable card container */}
-      <motion.div
+      <m.div
         drag="x"
         dragConstraints={{ left: -100, right: 0 }}
         dragElastic={{ left: 0.15, right: 0 }}
@@ -222,7 +222,7 @@ function SortablePersonRow({
             </div>
           </Link>
         </GlassCard>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface LoadingSpinnerProps {
@@ -27,7 +27,7 @@ export function LoadingSpinner({ size = "md", className, label }: LoadingSpinner
     >
       <div style={{ width: dim, height: dim }} className="relative">
         {/* Outer ring */}
-        <motion.svg
+        <m.svg
           width={dim}
           height={dim}
           viewBox={`0 0 ${dim} ${dim}`}
@@ -51,11 +51,11 @@ export function LoadingSpinner({ size = "md", className, label }: LoadingSpinner
               <stop offset="100%" stopColor="var(--accent)" stopOpacity="1" />
             </linearGradient>
           </defs>
-        </motion.svg>
+        </m.svg>
 
         {/* Inner ring (counter-rotation) */}
         {size !== "sm" && (
-          <motion.svg
+          <m.svg
             width={dim}
             height={dim}
             viewBox={`0 0 ${dim} ${dim}`}
@@ -74,11 +74,11 @@ export function LoadingSpinner({ size = "md", className, label }: LoadingSpinner
               strokeDasharray={`${(r - 6) * 2 * Math.PI * 0.3} ${(r - 6) * 2 * Math.PI * 0.7}`}
               opacity={0.5}
             />
-          </motion.svg>
+          </m.svg>
         )}
 
         {/* Center dot */}
-        <motion.div
+        <m.div
           className="absolute inset-0 flex items-center justify-center"
           animate={{ scale: [1, 1.3, 1] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
@@ -90,7 +90,7 @@ export function LoadingSpinner({ size = "md", className, label }: LoadingSpinner
               height: size === "sm" ? 4 : size === "md" ? 5 : 7,
             }}
           />
-        </motion.div>
+        </m.div>
       </div>
 
       {label && (
@@ -105,7 +105,7 @@ export function LoadingSpinner({ size = "md", className, label }: LoadingSpinner
  */
 export function ButtonSpinner({ className }: { className?: string }) {
   return (
-    <motion.svg
+    <m.svg
       width="14"
       height="14"
       viewBox="0 0 14 14"
@@ -124,6 +124,6 @@ export function ButtonSpinner({ className }: { className?: string }) {
         strokeDasharray="22 12"
         opacity={0.9}
       />
-    </motion.svg>
+    </m.svg>
   );
 }

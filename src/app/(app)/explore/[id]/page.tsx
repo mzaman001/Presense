@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 const PRESET_TYPES = ["link", "quote", "concept", "book", "movie", "article", "course", "podcast", "other"];
 
@@ -199,7 +199,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                 </button>
                 <AnimatePresence>
                   {isTypeDropdownOpen && (
-                    <motion.div 
+                    <m.div 
                       initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
                       className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5"
                     >
@@ -220,13 +220,13 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                       >
                         <Plus className="w-3 h-3" /> Custom Type
                       </button>
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
               </div>
 
               {isCustomType && (
-                <motion.input
+                <m.input
                   initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                   autoFocus
                   placeholder="Enter custom type..."
@@ -274,7 +274,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
               </button>
               <AnimatePresence>
                 {isThreadDropdownOpen && (
-                  <motion.div 
+                  <m.div 
                     initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
                     className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
                   >
@@ -294,7 +294,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                         {t.title}
                       </button>
                     ))}
-                  </motion.div>
+                  </m.div>
                 )}
               </AnimatePresence>
             </div>

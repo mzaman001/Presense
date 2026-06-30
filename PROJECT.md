@@ -1,36 +1,31 @@
-# Project: Presense Phase 4 (Sunsama Rituals & UI Polish)
+# Project: Presense Phase 2 (Realtime Channels & TanStack Query Integration)
 
 ## Architecture
-- **State management**: Zustand (`src/store/useAppStore.ts`) handles active states like `activeRitual` ('morning' | 'evening' | null) and setting states.
-- **Database schemas**: Supabase table `user_settings` tracking ritual dates and constraints.
-- **UI & Layout**: `RitualOverlay` wraps the app layout (`src/app/(app)/layout.tsx`) and handles full-screen takeover based on state.
-- **Interactions**: Framer Motion for swipe mechanics; `react-textarea-autosize` for auto-sizing text inputs.
+- **State management**: Zustand (`src/store/useAppStore.ts`) manages mutation timestamps via `lastMutations`. Centralized provider state tracks active channel subscriptions.
+- **Realtime system**: Supabase Realtime channel subscriptions consolidated into a single `RealtimeProvider`.
+- **Query management**: TanStack Query (`@tanstack/react-query`) handles local state caches. Mutations trigger cache invalidation via `queryClient.invalidateQueries`.
+- **Verification**: Playwright (`tests/realtime.spec.ts`) verifies single channel subscription behavior and liveness during tab visibility changes.
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | E2E Testing Suite | Create test files in `src/lib/__tests__/phase4.test.tsx` and publish `TEST_READY.md` | None | IN_PROGRESS (Conv: 0ba421da) |
-| 2 | Realtime Hook Fix | Fix debouncing in `useRealtime.ts` | None | IN_PROGRESS (Conv: 19470d71) |
-| 3 | Database Migration | Apply SQL migrations for `user_settings` | None | IN_PROGRESS (Conv: 19470d71) |
-| 4 | Sunsama Morning/Evening Ritual | Build `RitualOverlay.tsx`, trigger from `AppInitializer.tsx` and `Navigation.tsx` | M2, M3 | IN_PROGRESS (Conv: 19470d71) |
-| 5 | Swipe Mechanics & Textarea Polish | Standardize swipe-to-delete and `react-textarea-autosize` | None | IN_PROGRESS (Conv: 19470d71) |
+| 1 | E2E Testing Suite | Create Playwright test suite `tests/realtime.spec.ts` & publish `TEST_READY.md` | None | IN_PROGRESS (Conv: pending_e2e) |
+| 2 | Codebase Exploration | Analyze existing realtime hook usages, store, and TanStack query setup | None | DONE |
+| 3 | Centralized RealtimeProvider | Implement `RealtimeProvider` component wrapping Layout | M2 | DONE |
+| 4 | useRealtime Hook Refactor | Refactor `useRealtime` hook to consume the provider and invalidate queries | M3 | DONE |
+| 5 | Echo Guard Hoisting | Hoist mutation marking/echo guard into `RealtimeProvider` | M3, M4 | DONE |
+| 6 | E2E Verification & Hardening | Validate implementation against tests and perform adversarial hardening | M1, M5 | IN_PROGRESS (Conv: pending_impl) |
 
 ## Interface Contracts
-### appStore ↔ RitualOverlay
-- `activeRitual`: 'morning' | 'evening' | null
-- `userSettings`: UserSettings object containing `last_ritual_date`, `shutdown_time`, `daily_capacity_minutes`
-- `updateUserSetting(key, value)`: updates setting in state and triggers DB write
+### RealtimeProvider ↔ useRealtime
+- Provider provides a pub/sub or event-based registry or React context allowing `useRealtime` hooks to subscribe to table update events.
+- Central channel is reused if multiple components request the same table.
 
-### database ↔ user_settings
-- `last_ritual_date`: date
-- `shutdown_time`: text (default '18:00')
-- `daily_capacity_minutes`: integer (default 240)
+### useRealtime hook ↔ TanStack Query
+- Hook does not fetch data directly. It calls `queryClient.invalidateQueries` when a PostgreSQL change event is received for the subscribed table.
 
 ## Code Layout
 - `src/hooks/useRealtime.ts`: Realtime subscription hook
-- `src/components/features/RitualOverlay.tsx`: Sunsama full-screen flow overlay
-- `src/components/features/MorningPlan.tsx`: Step 1 of Morning Ritual (Triage)
-- `src/components/features/MorningCommit.tsx`: Step 2 of Morning Ritual (Commit & Estimates)
-- `src/components/features/EveningReview.tsx`: Evening Review step
-- `src/components/layout/AppInitializer.tsx`: Automatically triggers rituals based on time and date
-- `src/components/layout/Navigation.tsx`: Sidebar manual planning trigger
+- `src/components/providers/RealtimeProvider.tsx`: Centralized Realtime subscription provider
+- `src/store/useAppStore.ts`: App store containing mutation flags
+- `tests/realtime.spec.ts`: Playwright test suite for realtime behavior

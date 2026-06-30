@@ -2,7 +2,7 @@
 import { logger } from "@/lib/logger";
 import React, { useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { X, UserPlus, Loader2, Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -91,7 +91,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -99,7 +99,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
             className="fixed -inset-[100px] bg-black/60 backdrop-blur-sm z-40 transform-gpu"
           />
           
-          <motion.div
+          <m.div
             initial={{ x: "100%", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
@@ -223,7 +223,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save Changes"}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

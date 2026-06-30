@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, use } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { Avatar } from "@/components/ui/Avatar";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -285,7 +285,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
             timeline.map((note, i) => {
               const originalIndex = timeline.length - 1 - i;
               return (
-                <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                <m.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <GlassCard className="p-4 group relative">
                     <button 
                       onClick={() => setNoteToDelete(originalIndex)}
@@ -299,7 +299,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                       {new Date(note.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     </p>
                   </GlassCard>
-                </motion.div>
+                </m.div>
               );
             })
           )}

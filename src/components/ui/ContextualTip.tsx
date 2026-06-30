@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Lightbulb } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 interface ContextualTipProps {
   id: string;
@@ -26,7 +26,7 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: -10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.2 } }}
@@ -45,7 +45,7 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
           >
             <X className="w-4 h-4" />
           </button>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

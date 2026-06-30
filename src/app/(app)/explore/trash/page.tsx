@@ -26,10 +26,10 @@ export default function ExploreTrashPage() {
     ]);
 
     const combined = [
-      ...(exploresRes.data || []).map(i => ({ ...i, __type: 'explore' })),
-      ...(itemsRes.data || []).map(i => ({ ...i, __type: 'item' })),
-      ...(threadsRes.data || []).map(i => ({ ...i, __type: 'thread' }))
-    ].sort((a, b) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
+      ...(exploresRes.data || []).map((i: any) => ({ ...i, __type: 'explore' })),
+      ...(itemsRes.data || []).map((i: any) => ({ ...i, __type: 'item' })),
+      ...(threadsRes.data || []).map((i: any) => ({ ...i, __type: 'thread' }))
+    ].sort((a: any, b: any) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
 
     setItems(combined);
     setLoading(false);

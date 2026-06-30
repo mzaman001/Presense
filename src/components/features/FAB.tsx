@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -8,7 +8,7 @@ export function FAB() {
   const setCaptureModalOpen = useAppStore((state) => state.setCaptureModalOpen);
 
   return (
-    <motion.button
+    <m.button
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       whileHover={{ scale: 1.05 }}
@@ -24,7 +24,7 @@ export function FAB() {
       aria-label="New Task"
     >
       <Plus className="w-8 h-8" />
-    </motion.button>
+    </m.button>
   );
 }
 

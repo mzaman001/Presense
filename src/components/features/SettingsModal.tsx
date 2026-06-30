@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database, Users, Plus, Trash2, Sparkles, Moon } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { useDebounce } from "use-debounce";
@@ -448,12 +448,12 @@ export function SettingsModal() {
     <ModalErrorBoundary modalName="Settings Modal" onClose={() => setSettingsModalOpen(false)}>
       <AnimatePresence>
         {isSettingsModalOpen && (
-          <motion.div 
+          <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={() => setSettingsModalOpen(false)}
           >
-            <motion.div 
+            <m.div 
               ref={dialogRef}
               initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
               transition={{ type: "spring", stiffness: 300, damping: 28 }}
@@ -488,14 +488,14 @@ export function SettingsModal() {
                     <div className="flex items-center gap-2 text-xs font-medium h-6 px-2 mb-2">
                       <AnimatePresence mode="wait">
                         {saveStatus === "saving" && (
-                          <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-text-3)]">
+                          <m.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-text-3)]">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
-                          </motion.div>
+                          </m.div>
                         )}
                         {saveStatus === "saved" && (
-                          <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-think)]">
+                          <m.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-think)]">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Saved
-                          </motion.div>
+                          </m.div>
                         )}
                       </AnimatePresence>
                     </div>
@@ -893,7 +893,7 @@ export function SettingsModal() {
                             </button>
                           </div>
                           {settings.ollama_enabled && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                            <m.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
                               <label className="text-label text-[var(--text-3)] block mb-2 mt-4">Ollama URL</label>
                               <div className="flex gap-2">
                                 <input
@@ -923,7 +923,7 @@ export function SettingsModal() {
                                   Test connection
                                 </button>
                               </div>
-                            </motion.div>
+                            </m.div>
                           )}
                           <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
                             <div>
@@ -974,8 +974,8 @@ export function SettingsModal() {
                   )}
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         )}
       </AnimatePresence>
     </ModalErrorBoundary>

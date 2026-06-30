@@ -6,7 +6,7 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { GlassCard } from "@/components/ui/GlassCard";
 
 interface InboxItem {
@@ -46,7 +46,7 @@ const InboxItemCard = ({
   };
 
   return (
-    <motion.div
+    <m.div
       layout
       layoutId={item.id}
       initial={{ opacity: 0, y: 8 }}
@@ -56,20 +56,20 @@ const InboxItemCard = ({
       className="group relative rounded-2xl overflow-hidden"
     >
       {/* Swipe-to-delete reveal layer */}
-      <motion.div
+      <m.div
         className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
         style={{
           background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
           opacity: deleteOpacity,
         }}
       >
-        <motion.div style={{ scale: deleteScale }}>
+        <m.div style={{ scale: deleteScale }}>
           <Trash2 className="w-5 h-5 text-red-400" />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
 
       {/* Draggable content */}
-      <motion.div
+      <m.div
         drag="x"
         dragConstraints={{ left: -100, right: 0 }}
         dragElastic={{ left: 0.15, right: 0 }}
@@ -122,8 +122,8 @@ const InboxItemCard = ({
             </button>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 };
 

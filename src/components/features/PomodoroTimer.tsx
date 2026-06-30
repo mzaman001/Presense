@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 import { X, Play, Pause, SkipForward, Square, Timer } from "lucide-react";
 import { ConfirmModal } from "../ui/ConfirmModal";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -284,7 +284,7 @@ export function PomodoroTimer() {
 
   if (!activeTimer) return null;
 
-  const m   = Math.floor(displayTime / 60).toString().padStart(2, "0");
+  const mins   = Math.floor(displayTime / 60).toString().padStart(2, "0");
   const s   = (displayTime % 60).toString().padStart(2, "0");
   const r   = 90;
   const circ = 2 * Math.PI * r;
@@ -295,7 +295,7 @@ export function PomodoroTimer() {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <m.div
         key="pomodoro-overlay"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -305,7 +305,7 @@ export function PomodoroTimer() {
         style={{ background: "rgba(8, 6, 16, 0.92)", backdropFilter: "blur(20px)" }}
       >
         {/* Atmospheric orb */}
-        <motion.div
+        <m.div
           key={phase}
           initial={{ opacity: 0, scale: 0.6 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -354,7 +354,7 @@ export function PomodoroTimer() {
                 stroke="rgba(255,255,255,0.06)"
                 strokeWidth="6"
               />
-              <motion.circle
+              <m.circle
                 cx="110" cy="110" r={r}
                 fill="none"
                 stroke={cfg.ring}
@@ -377,7 +377,7 @@ export function PomodoroTimer() {
                   color: cfg.text,
                 }}
               >
-                {m}:{s}
+                {mins}:{s}
               </span>
             </div>
           </div>
@@ -460,7 +460,7 @@ export function PomodoroTimer() {
             }
             confirmLabel={phase === "work" ? "End Session" : "Close Timer"}
           />
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 }

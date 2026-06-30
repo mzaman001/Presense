@@ -6,9 +6,12 @@ import { AppInitializer } from "@/components/layout/AppInitializer";
 import { DynamicModals } from "@/components/layout/DynamicModals";
 import { RitualOverlay } from "@/components/features/RitualOverlay";
 import QueryProvider from "@/components/layout/QueryProvider";
+import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+
+import { MotionProvider } from "@/components/layout/MotionProvider";
 
 // App layout — shown for all protected (app) pages
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -33,18 +36,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       <AppInitializer initialSettings={settings} />
-      <QueryProvider>
-        <AmbientBackground />
-        <Sidebar />
-        {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
-        <DynamicModals />
-        <RitualOverlay />
-        <FAB />
-        <AppContentWrapper>
-          {children}
-        </AppContentWrapper>
-        <BottomNav />
-      </QueryProvider>
+      <MotionProvider>
+        <QueryProvider>
+          <RealtimeProvider>
+            <AmbientBackground />
+            <Sidebar />
+            {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
+            <DynamicModals />
+            <RitualOverlay />
+            <FAB />
+            <AppContentWrapper>
+              {children}
+            </AppContentWrapper>
+            <BottomNav />
+          </RealtimeProvider>
+        </QueryProvider>
+      </MotionProvider>
     </>
   );
 }

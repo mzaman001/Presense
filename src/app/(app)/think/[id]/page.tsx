@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 
 import React, { useEffect, useState, useCallback, use } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ArrowLeft, Loader2, Send, Sparkles, Trash2, Archive, Pin, RefreshCcw } from "lucide-react";
@@ -391,7 +391,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       <div className="space-y-6">
         <AnimatePresence mode="popLayout">
           {(thread.entries || []).map((entry, i) => (
-            <motion.div
+            <m.div
               key={`${entry.created_at}-${i}`}
               layout
               initial={{ opacity: 0, y: 12 }}
@@ -414,7 +414,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
                 <Trash2 className="w-4 h-4" />
               </button>
             </GlassCard>
-          </motion.div>
+          </m.div>
         ))}
         </AnimatePresence>
       </div>

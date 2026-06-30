@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check, Sparkles, Flame } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import Link from "next/link";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
@@ -139,7 +139,7 @@ export default function HomeDashboard() {
       if (tasksRes.data) {
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         
-        const sorted = tasksRes.data.sort((a, b) => {
+        const sorted = tasksRes.data.sort((a: any, b: any) => {
           const aPrio = a.priority ?? 4;
           const bPrio = b.priority ?? 4;
 
@@ -163,7 +163,7 @@ export default function HomeDashboard() {
 
           return aPrio - bPrio;
         });
-        upNext = sorted.filter(t => !t.snoozed_until || new Date(t.snoozed_until) <= now);
+        upNext = sorted.filter((t: any) => !t.snoozed_until || new Date(t.snoozed_until) <= now);
       }
 
       return {
@@ -201,12 +201,12 @@ export default function HomeDashboard() {
       if (space === 'do') {
         await supabase.from('items').update({ status: 'active' }).eq('id', id);
       } else if (space === 'explore') {
-        const item = inboxItems.find(i => i.id === id);
+        const item = inboxItems.find((i: any) => i.id === id);
         if (!item) return;
         await supabase.from('items').delete().eq('id', id);
         await supabase.from('explores').insert({ user_id: item.user_id, title: item.title, type: 'other', status: 'active' });
       } else if (space === 'think') {
-        const item = inboxItems.find(i => i.id === id);
+        const item = inboxItems.find((i: any) => i.id === id);
         if (!item) return;
         await supabase.from('items').delete().eq('id', id);
         await supabase.from('threads').insert({ user_id: item.user_id, title: item.title, status: 'active', color_accent: '#2DD4BF' });
@@ -302,7 +302,7 @@ export default function HomeDashboard() {
               No tasks completed in the last 7 days.
             </GlassCard>
           ) : (
-            doneTasks.map(task => (
+            doneTasks.map((task: any) => (
               <GlassCard key={task.id} className="p-4 flex justify-between items-center opacity-80">
                 <div>
                   <h4 className="text-card-title text-[var(--text-1)] line-through">{task.title}</h4>
@@ -495,7 +495,7 @@ export default function HomeDashboard() {
             </Link>
           </div>
           {tasks.slice(1, 6).map((task, i) => (
-            <motion.div
+            <m.div
               key={task.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -517,7 +517,7 @@ export default function HomeDashboard() {
                 </div>
                 <ArrowRight className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2 mt-1" />
               </GlassCard>
-            </motion.div>
+            </m.div>
           ))}
           {tasks.length <= 1 && (
             <div className="p-4 border border-dashed border-[var(--color-border)] rounded-2xl text-center text-sm text-[var(--color-text-3)]">
@@ -540,7 +540,7 @@ export default function HomeDashboard() {
                 View all <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
-            {inboxItems.map(item => (
+            {inboxItems.map((item: any) => (
               <GlassCard key={item.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-amber-500/5 border-amber-500/20 group">
                 <p className="text-card-title text-[var(--text-1)] flex-1">{item.title}</p>
                 <div className="flex items-center gap-2 w-full md:w-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">

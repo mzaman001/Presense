@@ -1,6 +1,6 @@
 import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { X, Loader2, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -96,7 +96,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
     <>
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <m.div 
             key="backdrop"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed -inset-[100px] bg-black/60 backdrop-blur-sm z-40 transform-gpu"
@@ -104,7 +104,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
           />
         )}
         {isOpen && (
-          <motion.div
+          <m.div
             key="panel"
             initial={{ x: "100%", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -177,7 +177,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (itemToEdit ? "Save Changes" : "Log Location")}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
       <ConfirmModal

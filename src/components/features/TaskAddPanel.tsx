@@ -1,7 +1,7 @@
 import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
@@ -395,7 +395,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -403,7 +403,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
             className="fixed -inset-[100px] bg-black/60 backdrop-blur-sm z-40 transform-gpu"
           />
           
-          <motion.div
+          <m.div
             initial={{ x: "100%", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
@@ -617,14 +617,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     { val: 3, label: "Medium", colorClass: "bg-teal-500/10 text-teal-500 border-teal-500/30 hover:bg-teal-500/20", activeClass: "bg-teal-500 text-white border-teal-500" },
                     { val: 4, label: "Low", colorClass: "bg-slate-500/10 text-slate-500 border-slate-500/30 hover:bg-slate-500/20", activeClass: "bg-slate-500 text-white border-slate-500" }
                   ].map((p) => (
-                    <motion.button
+                    <m.button
                       key={p.val}
                       whileTap={{ scale: 0.92 }}
                       onClick={() => setPriority(priority === p.val ? null : p.val)}
                       className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${priority === p.val ? p.activeClass : p.colorClass}`}
                     >
                       P{p.val} {p.label}
-                    </motion.button>
+                    </m.button>
                   ))}
                 </div>
               </div>
@@ -683,7 +683,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                     const cColor = DEFAULT_DO_COLORS[cat] || "var(--color-text-3)";
                     const isActive = category === cat;
                     return (
-                      <motion.button
+                      <m.button
                         key={cat}
                         whileTap={{ scale: 0.92 }}
                         onClick={() => setCategory(isActive ? "" : cat)}
@@ -697,7 +697,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                         }`}
                       >
                         {cat}
-                      </motion.button>
+                      </m.button>
                     );
                   })}
                   {isAddingCategory ? (
@@ -755,7 +755,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (taskToEdit ? "Save Changes" : "Save Task")}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -73,7 +73,7 @@ const Column = ({
           </div>
         ) : (
           colTasks.map((t) => (
-            <motion.div
+            <m.div
               key={t.id}
               layout
               initial={newTaskIds.has(t.id) ? { opacity: 0, y: -12, scale: 0.97 } : false}
@@ -88,7 +88,7 @@ const Column = ({
                 fetchTasks={fetchTasks}
                 peopleMap={peopleMap}
               />
-            </motion.div>
+            </m.div>
           ))
         )}
       </AnimatePresence>

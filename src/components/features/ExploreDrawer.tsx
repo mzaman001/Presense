@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { X, Loader2, Archive, Trash2, RefreshCcw, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -187,7 +187,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
     <>
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -197,7 +197,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
           />
         )}
         {isOpen && (
-          <motion.div
+          <m.div
             key="panel"
             initial={{ x: "100%", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -284,7 +284,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                   </button>
                   <AnimatePresence>
                     {isThreadDropdownOpen && (
-                      <motion.div 
+                      <m.div 
                         initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
                         className="dropdown-panel absolute left-0 top-full mt-2 w-full p-1 z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
                       >
@@ -304,7 +304,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                             {t.title}
                           </button>
                         ))}
-                      </motion.div>
+                      </m.div>
                     )}
                   </AnimatePresence>
                 </div>
@@ -340,7 +340,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (item ? "Save Changes" : "Save")}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
       {item && (

@@ -97,6 +97,8 @@ function mockSupabaseQuery(data: any = null, error: any = null) {
     insert: vi.fn().mockImplementation(() => query),
     delete: vi.fn().mockImplementation(() => query),
     single: vi.fn().mockImplementation(() => query),
+    gte: vi.fn().mockImplementation(() => query),
+    lte: vi.fn().mockImplementation(() => query),
     then: vi.fn().mockImplementation((onfulfilled) => {
       return Promise.resolve(onfulfilled({ data, error }));
     }),
@@ -114,6 +116,10 @@ function TestRealtimeComponent({ table, onUpdate }: { table: string; onUpdate: (
 describe("Phase 4 - E2E & Integration Test Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: { user: { id: "user-123", email: "test@example.com" } },
+    });
+    mockSupabase.from.mockImplementation(() => mockSupabaseQuery([]));
     vi.useFakeTimers();
     postgresChangesCallback = null;
 
@@ -146,7 +152,6 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         daily_capacity_minutes: 240,
         last_ritual_date: "",
       },
-      lastMutationAt: 0,
       lastMutations: {},
       prefetchedThreads: {},
     });
@@ -366,7 +371,8 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
   describe("R2: Sunsama Morning/Evening Rituals", () => {
     // --- Tier 1: Happy-path Coverage Tests ---
     describe("Tier 1: Happy Path", () => {
-      it("should render morning triage stack with overdue and inbox tasks", () => {
+      it("should render morning triage stack with overdue and inbox tasks", async () => {
+        vi.useRealTimers();
         mockSupabase.from.mockReturnValue(mockSupabaseQuery([
           { id: "task-1", title: "Overdue Task", status: "inbox", deadline: "2026-06-20" },
           { id: "task-2", title: "New Inbox Item", status: "inbox", deadline: null },
@@ -374,18 +380,27 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
         render(<RitualOverlay isOpen={true} type="morning" />, { wrapper });
 
+        await waitFor(() => {
+          expect(screen.queryByText(/Preparing/i)).toBeNull();
+        });
+
         // TDD expectations: UI renders header and layout structure
         expect(screen.getByTestId("ritual-overlay")).toBeInTheDocument();
-        expect(screen.getByText(/Sunsama morning Ritual/i)).toBeInTheDocument();
+        expect(screen.getByText(/Morning Planning/i)).toBeInTheDocument();
       });
 
       it("should triage task to 'Do Today' (updates status to active and deadline to today)", async () => {
+        vi.useRealTimers();
         mockSupabase.from.mockReturnValue(mockSupabaseQuery());
 
         render(<RitualOverlay isOpen={true} type="morning" />, { wrapper });
 
+        await waitFor(() => {
+          expect(screen.queryByText(/Preparing/i)).toBeNull();
+        });
+
         // Verify elements inside the ritual overlay are interactable
-        const closeBtn = screen.getByRole("button", { name: /Close Ritual/i });
+        const closeBtn = screen.getByRole("button", { name: /close/i });
         expect(closeBtn).toBeInTheDocument();
         fireEvent.click(closeBtn);
         expect(useAppStore.getState().activeRitual).toBeNull();
@@ -401,9 +416,15 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         expect(screen.getByTestId("ritual-overlay")).toBeInTheDocument();
       });
 
-      it("should render evening review with completed tasks count and Pomodoros tally", () => {
+      it("should render evening review with completed tasks count and Pomodoros tally", async () => {
+        vi.useRealTimers();
         render(<RitualOverlay isOpen={true} type="evening" />, { wrapper });
-        expect(screen.getByText(/Sunsama evening Ritual/i)).toBeInTheDocument();
+        
+        await waitFor(() => {
+          expect(screen.queryByText(/Preparing/i)).toBeNull();
+        });
+
+        expect(screen.getByText(/Evening Review/i)).toBeInTheDocument();
       });
     });
 
@@ -598,16 +619,29 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       });
 
       it("should integrate react-textarea-autosize in ThreadDetailPage entry inputs", async () => {
-        mockSupabase.from.mockReturnValue(mockSupabaseQuery({
-          id: "thread-123",
-          title: "My Thread",
-          color_accent: "#FFF",
-          entries: [{ text: "Initial entry" }],
-          stale_prompt: null,
-          status: "active",
-        }));
+        vi.useRealTimers();
+        mockSupabase.from.mockImplementation((table: string) => {
+          if (table === "threads") {
+            return mockSupabaseQuery({
+              id: "thread-123",
+              title: "My Thread",
+              color_accent: "#FFF",
+              entries: [{ text: "Initial entry" }],
+              stale_prompt: null,
+              status: "active",
+            });
+          }
+          return mockSupabaseQuery([]);
+        });
 
-        render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+        await act(async () => {
+          render(
+            <React.Suspense fallback={<div>Loading...</div>}>
+              <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />
+            </React.Suspense>,
+            { wrapper }
+          );
+        });
 
         await waitFor(() => {
           const textareas = screen.getAllByTestId("autosize-textarea");

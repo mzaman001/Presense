@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Plus, Loader2, Link2, BookOpen, Lightbulb, Trash2 } from "lucide-react";
@@ -67,7 +67,7 @@ const ExploreItemCard = ({
   const isUnread = !item.revisited_at;
 
   return (
-    <motion.div
+    <m.div
       layout
       layoutId={item.id}
       initial={{ opacity: 0, y: 8 }}
@@ -76,20 +76,20 @@ const ExploreItemCard = ({
       className="group relative rounded-2xl overflow-hidden"
     >
       {/* Swipe-to-delete reveal layer */}
-      <motion.div
+      <m.div
         className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
         style={{
           background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
           opacity: deleteOpacity,
         }}
       >
-        <motion.div style={{ scale: deleteScale }}>
+        <m.div style={{ scale: deleteScale }}>
           <Trash2 className="w-5 h-5 text-red-400" />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
 
       {/* Draggable card */}
-      <motion.div
+      <m.div
         drag="x"
         dragConstraints={{ left: -100, right: 0 }}
         dragElastic={{ left: 0.15, right: 0 }}
@@ -125,8 +125,8 @@ const ExploreItemCard = ({
             </div>
           </div>
         </GlassCard>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 };
 

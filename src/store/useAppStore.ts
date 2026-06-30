@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { markMutation as markProviderMutation } from "@/components/providers/RealtimeProvider";
 
 export interface UserSettings {
   display_name?: string;
@@ -91,6 +92,7 @@ export const useAppStore = create<AppState>((set) => ({
   lastMutations: {},
   markMutation: (table) => set((state) => {
     const now = Date.now();
+    markProviderMutation(table);
     return {
       lastMutations: { ...state.lastMutations, [table || '_global']: now },
     };

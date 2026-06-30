@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { pageVariants, pageTransition } from "@/lib/animations";
 
 /**
@@ -10,7 +10,7 @@ import { pageVariants, pageTransition } from "@/lib/animations";
  */
 export default function AppTemplate({ children }: { children: React.ReactNode }) {
   return (
-    <motion.div
+    <m.div
       variants={pageVariants}
       initial="initial"
       animate="animate"
@@ -19,6 +19,6 @@ export default function AppTemplate({ children }: { children: React.ReactNode })
       className="h-full w-full"
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

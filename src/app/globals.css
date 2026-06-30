@@ -24,6 +24,14 @@
 }
 
 :root {
+  /* === NEW TOKENS === */
+  --text-base: clamp(14px, 0.3vw + 13px, 15px);
+  --touch-target: 44px;
+  --sheet-radius: 20px;
+  --sheet-handle-w: 36px;
+  --blur-elevated: blur(24px);
+  accent-color: var(--accent);
+
   /* === BACKGROUND SYSTEM === */
   --bg-base: #0F0A00;
   --bg-elevated: #1A1000;
@@ -1243,4 +1251,10 @@ html.reduce-motion .orb {
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@media (max-width: 767px) {
+  .input, textarea, select {
+    font-size: max(16px, var(--text-md, 16px));
+  }
 }
