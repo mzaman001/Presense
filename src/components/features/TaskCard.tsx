@@ -8,6 +8,7 @@ import { cn, formatRRule } from "@/lib/utils";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useHaptics } from "@/hooks/useHaptics";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -30,6 +31,7 @@ function formatTimeSpent(minutes: number | undefined | null) {
 }
 
 const SWIPE_DELETE_THRESHOLD = -80;
+const SWIPE_COMPLETE_THRESHOLD = 80;
 
 export const TaskCard = React.memo(({
   task,
@@ -52,10 +54,13 @@ export const TaskCard = React.memo(({
   const supabase = useMemo(() => createClient(), []);
   const [deleted, setDeleted] = useState(false);
   const queryClient = useQueryClient();
+  const haptics = useHaptics();
 
   const dragX = useMotionValue(0);
   const deleteOpacity = useTransform(dragX, [0, SWIPE_DELETE_THRESHOLD], [0, 1]);
   const deleteScale = useTransform(dragX, [0, SWIPE_DELETE_THRESHOLD], [0.7, 1]);
+  const completeOpacity = useTransform(dragX, [0, SWIPE_COMPLETE_THRESHOLD], [0, 1]);
+  const completeScale = useTransform(dragX, [0, SWIPE_COMPLETE_THRESHOLD], [0.7, 1]);
   const cardX = dragX;
 
   const label = formatDeadline(task.deadline);
@@ -78,9 +83,7 @@ export const TaskCard = React.memo(({
 
   const handleDragEnd = async (_: any, info: any) => {
     if (info.offset.x < SWIPE_DELETE_THRESHOLD) {
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate([10]);
-      }
+      haptics.heavy();
       
       // Animate out card locally
       animate(dragX, -300, { duration: 0.25 });
@@ -139,7 +142,7 @@ export const TaskCard = React.memo(({
             }
           }
         });
-      } catch {
+      } catch (err) {
         // Rollback on failure
         queryClient.setQueryData(["tasks"], previousTasks);
         queryClient.setQueryData(["dashboard"], previousDashboard);
@@ -175,6 +178,19 @@ export const TaskCard = React.memo(({
       transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
       className="group relative rounded-2xl"
     >
+      {/* Swipe-to-complete reveal layer */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-start pl-5 rounded-2xl overflow-hidden"
+        style={{
+          background: "linear-gradient(-90deg, transparent 0%, rgba(74,222,128,0.15) 60%, rgba(34,197,94,0.25) 100%)",
+          opacity: completeOpacity,
+        }}
+      >
+        <motion.div style={{ scale: completeScale }}>
+          <Check className="w-5 h-5 text-green-400" />
+        </motion.div>
+      </motion.div>
+
       {/* Swipe-to-delete reveal layer */}
       <motion.div
         className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
@@ -191,8 +207,8 @@ export const TaskCard = React.memo(({
       {/* Draggable card */}
       <motion.div
         drag="x"
-        dragConstraints={{ left: -120, right: 0 }}
-        dragElastic={{ left: 0.15, right: 0 }}
+        dragConstraints={{ left: -120, right: 120 }}
+        dragElastic={{ left: 0.15, right: 0.15 }}
         onDragEnd={handleDragEnd}
         style={{ x: cardX }}
         transition={{ duration: 0.25 }}

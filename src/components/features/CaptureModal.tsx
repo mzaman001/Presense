@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import type { RoutedItem } from "@/lib/capture-router";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
+import { Sheet } from "@/components/ui/Sheet";
 
 function formatCaptureDeadline(iso: string) {
   const d = new Date(iso);
@@ -325,24 +326,9 @@ export function CaptureModal() {
 
   return (
     <ModalErrorBoundary modalName="Capture Modal" onClose={() => setCaptureModalOpen(false)}>
-      <AnimatePresence>
-        {isCaptureModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setCaptureModalOpen(false)}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 280, damping: 26, duration: 0.22 }}
-            className="modal relative w-full max-w-2xl"
-          >
-            {/* Input row */}
+      <Sheet isOpen={isCaptureModalOpen} onClose={() => setCaptureModalOpen(false)}>
+        <div className="relative w-full max-w-2xl mx-auto">
+          {/* Input row */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl relative">
               {routedItems ? (
                 <Sparkles className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" />
@@ -523,12 +509,10 @@ export function CaptureModal() {
                     {isSaving ? "Saving..." : "Confirm & Save"}
                   </button>
                 </>
-              ) : null}
+                )}
             </div>
-          </motion.div>
         </div>
-        )}
-      </AnimatePresence>
+      </Sheet>
     </ModalErrorBoundary>
   );
 }

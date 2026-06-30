@@ -10,6 +10,7 @@ import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
+import { Sheet } from "@/components/ui/Sheet";
 
 export function SearchModal() {
   const { isSearchModalOpen, setSearchModalOpen } = useAppStore();
@@ -34,20 +35,6 @@ export function SearchModal() {
       setSelectedIndex(0);
     }
   }, [isSearchModalOpen]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "/" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setSearchModalOpen(true);
-      }
-      if (e.key === "Escape" && isSearchModalOpen) {
-        setSearchModalOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSearchModalOpen, setSearchModalOpen]);
 
   useEffect(() => {
     async function performSearch() {
@@ -89,28 +76,9 @@ export function SearchModal() {
 
   return (
     <ModalErrorBoundary modalName="Search Modal" onClose={() => setSearchModalOpen(false)}>
-      <AnimatePresence>
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4">
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            onClick={() => setSearchModalOpen(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          
-          <motion.div 
-            ref={dialogRef}
-            initial={{ opacity: 0, scale: 0.97, y: -8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: -8 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className="modal relative w-full max-w-2xl overflow-hidden"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Search"
-          >
-            <div className="flex items-center px-4 border-b border-[var(--color-border)]">
+      <Sheet isOpen={isSearchModalOpen} onClose={() => setSearchModalOpen(false)}>
+        <div className="relative w-full max-w-2xl mx-auto overflow-hidden">
+          <div className="flex items-center px-4 border-b border-[var(--color-border)]">
               <Search size={13} strokeWidth={1.5} className="text-[var(--text-3)] ml-2" />
               <input
                 ref={inputRef}
@@ -202,9 +170,9 @@ export function SearchModal() {
               </div>
               <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)]">Esc</kbd> to close</span>
             </div>
-          </motion.div>
+          </div>
         </div>
-      </AnimatePresence>
+      </Sheet>
     </ModalErrorBoundary>
   );
 }

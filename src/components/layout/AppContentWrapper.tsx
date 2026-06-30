@@ -45,6 +45,10 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
           case "4": router.push("/think"); break;
           case "5": router.push("/explore"); break;
           case "6": router.push("/"); break;
+          case "c":
+            e.preventDefault();
+            setCaptureModalOpen(true);
+            break;
           case "/":
             e.preventDefault();
             setSearchModalOpen(true);

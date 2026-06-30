@@ -1,6 +1,7 @@
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { Sidebar, BottomNav } from "@/components/layout/Navigation";
-import { FAB } from "@/components/features/FAB";
+import { MobileDrawer } from "@/components/layout/MobileDrawer";
+import { MobileTopBar } from "@/components/layout/MobileTopBar";
 import { AppContentWrapper } from "@/components/layout/AppContentWrapper";
 import { AppInitializer } from "@/components/layout/AppInitializer";
 import { DynamicModals } from "@/components/layout/DynamicModals";
@@ -40,11 +41,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <QueryProvider>
           <RealtimeProvider>
             <AmbientBackground />
+            <MobileTopBar />
             <Sidebar />
+            <MobileDrawer />
             {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
             <DynamicModals />
             <RitualOverlay />
-            <FAB />
             <AppContentWrapper>
               {children}
             </AppContentWrapper>

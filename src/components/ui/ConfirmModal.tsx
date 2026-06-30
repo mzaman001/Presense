@@ -2,6 +2,7 @@ import React from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Sheet } from "@/components/ui/Sheet";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -53,35 +54,11 @@ export function ConfirmModal({
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={isConfirming ? undefined : onClose}
-          />
-          <m.div
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 280, damping: 26, duration: 0.22 }}
-            className="modal relative w-full max-w-md p-6"
-          >
-            {!isConfirming && (
-              <button
-                onClick={onClose}
-                className="btn-icon absolute top-4 right-4"
-              >
-                <X size={16} strokeWidth={1.5} className="shrink-0" />
-              </button>
-            )}
-            <div className="mb-6 pr-8">
-              <h2 className="text-[var(--color-text-1)] font-semibold text-lg mb-2">{title}</h2>
-              <p className="text-[var(--color-text-2)] text-sm">{description}</p>
-            </div>
+    <Sheet isOpen={isOpen} onClose={isConfirming ? () => {} : onClose} title={title}>
+      <div className="flex flex-col h-full">
+        <div className="mb-6">
+          <p className="text-[var(--color-text-2)] text-sm">{description}</p>
+        </div>
             {inputRequired && (
               <div className="mb-6">
                 <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2">
@@ -117,9 +94,7 @@ export function ConfirmModal({
                 {confirmLabel}
               </button>
             </div>
-          </m.div>
-        </div>
-      )}
-    </AnimatePresence>
+      </div>
+    </Sheet>
   );
 }

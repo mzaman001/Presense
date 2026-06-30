@@ -317,12 +317,40 @@ export function Sidebar() {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const setCaptureModalOpen = useAppStore(s => s.setCaptureModalOpen);
+
+  const mobileNavItems = [
+    { href: "/", label: "Home", icon: Home },
+    { href: "/do", label: "Do", icon: Check },
+    { href: "capture", label: "Capture", icon: Plus, isAction: true },
+    { href: "/think", label: "Think", icon: MessageSquare },
+    { href: "/explore", label: "Explore", icon: Compass },
+  ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 w-full border-t border-[var(--border-subtle)] bg-[var(--color-background)]/95 backdrop-blur-2xl z-40 pb-safe">
       <div className="flex items-center justify-around px-2">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href === "/remember/people" ? pathname.startsWith("/remember") : pathname.startsWith(`${item.href}/`));
+        {mobileNavItems.map((item) => {
+          if (item.isAction) {
+            return (
+              <button
+                key="capture"
+                onClick={() => {
+                  if (typeof navigator !== "undefined" && navigator.vibrate) {
+                    navigator.vibrate([15]);
+                  }
+                  setCaptureModalOpen(true);
+                }}
+                className="flex flex-col items-center justify-center gap-1 min-h-[56px] min-w-[44px] flex-1 py-2 rounded-xl transition-all active:scale-95 text-[var(--color-text-1)]"
+              >
+                <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-[var(--color-text-1)] text-[var(--color-background)] shadow-lg -mt-6 border-[4px] border-[var(--color-background)]">
+                  <Plus size={24} strokeWidth={2} />
+                </div>
+              </button>
+            );
+          }
+
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
             <Link

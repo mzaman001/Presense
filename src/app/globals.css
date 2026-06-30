@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 @theme inline {
   --font-sans: var(--font-sans);
@@ -570,12 +570,15 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: var(--weight-regular);
 }
 
+.numeric-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 /* === GLASS CARD SYSTEM === */
 @layer components {
   .glass-card {
     background: var(--surface-card);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
     border: 0.5px solid var(--border-card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
@@ -588,7 +591,18 @@ h1, h2, h3, h4, h5, h6 {
       transform var(--transition-base);
   }
 
-  .glass-card::before {
+  .glass-card-elevated {
+    background: var(--surface-card);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card-hover);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-card::before, .glass-card-elevated::before {
     content: '';
     position: absolute;
     top: 0;

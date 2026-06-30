@@ -32,7 +32,7 @@ interface Task {
 }
 
 
-const Column = ({ 
+const Column = React.memo(({ 
   title, 
   tasks: colTasks, 
   accent, 
@@ -94,7 +94,8 @@ const Column = ({
       </AnimatePresence>
     </div>
   </div>
-);
+));
+Column.displayName = "Column";
 
 export default function DoPage() {
   const supabase = useMemo(() => createClient(), []);

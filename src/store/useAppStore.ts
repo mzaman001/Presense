@@ -52,6 +52,8 @@ interface AppState {
   setSearchModalOpen: (open: boolean) => void;
   isSidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  isMobileDrawerOpen: boolean;
+  setIsMobileDrawerOpen: (open: boolean) => void;
   isSettingsModalOpen: boolean;
   setSettingsModalOpen: (open: boolean, defaultTab?: string) => void;
   settingsActiveTab?: string;
@@ -79,6 +81,8 @@ export const useAppStore = create<AppState>((set) => ({
   setSearchModalOpen: (open) => set({ isSearchModalOpen: open }),
   isSidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+  isMobileDrawerOpen: false,
+  setIsMobileDrawerOpen: (open) => set({ isMobileDrawerOpen: open }),
   isSettingsModalOpen: false,
   setSettingsModalOpen: (open, defaultTab) => set((state) => ({ isSettingsModalOpen: open, settingsActiveTab: defaultTab || state.settingsActiveTab })),
   settingsActiveTab: "account",
