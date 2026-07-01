@@ -22,8 +22,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { Avatar } from "@/components/ui/Avatar";
-import { m, AnimatePresence } from "framer-motion";
+import { m } from "framer-motion";
 import { useIsTouch } from "@/hooks/useIsTouch";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -33,25 +34,6 @@ const navItems = [
   { href: "/think", label: "Think", icon: MessageSquare },
   { href: "/explore", label: "Explore", icon: Compass },
 ];
-
-function NavTooltip({ label, shortcut, show }: { label: string, shortcut?: string, show: boolean }) {
-  return (
-    <AnimatePresence>
-      {show && (
-        <m.div
-          initial={{ opacity: 0, x: -5 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -5 }}
-          transition={{ duration: 0.15, delay: 0.4 }}
-          className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full bg-[var(--surface-dropdown)] border border-[var(--border-strong)] text-xs font-medium shadow-xl z-50 whitespace-nowrap flex items-center gap-2 pointer-events-none text-white"
-        >
-          {label}
-          {shortcut && <span className="text-[10px] opacity-70">{shortcut}</span>}
-        </m.div>
-      )}
-    </AnimatePresence>
-  );
-}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -111,7 +93,16 @@ export function Sidebar() {
         >
           <Plus size={isSidebarCollapsed ? 18 : 14} strokeWidth={1.5} className={cn("shrink-0", !isSidebarCollapsed && "mr-2")} />
           {!isSidebarCollapsed && <span className="whitespace-nowrap overflow-hidden text-ellipsis">Quick Capture</span>}
-          {isSidebarCollapsed && <NavTooltip label="Quick Capture" shortcut="Cmd+K" show={hoveredItem === "capture"} />}
+          {isSidebarCollapsed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="absolute inset-0" />
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Quick Capture <span className="text-[10px] opacity-70">Cmd+K</span>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </button>
       </div>
 
@@ -171,8 +162,17 @@ export function Sidebar() {
                 )}
               </button>
             );
-          })()}
-          {isSidebarCollapsed && <NavTooltip label="Plan my day" show={hoveredItem === "plan-day"} />}
+          }          )()}
+          {isSidebarCollapsed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="absolute inset-0" />
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Plan my day
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         {navItems.map((item) => {
@@ -229,7 +229,14 @@ export function Sidebar() {
               </Link>
               
               {isSidebarCollapsed && (
-                <NavTooltip label={item.label} show={hoveredItem === item.href} />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="absolute inset-0" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           );
@@ -262,7 +269,16 @@ export function Sidebar() {
               </div>
             )}
           </button>
-          {isSidebarCollapsed && <NavTooltip label="Search" shortcut="Cmd+K" show={hoveredItem === "search"} />}
+          {isSidebarCollapsed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="absolute inset-0" />
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Search <span className="text-[10px] opacity-70">Cmd+K</span>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         {/* Settings */}
@@ -286,7 +302,16 @@ export function Sidebar() {
               <span className="text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">Settings</span>
             )}
           </button>
-          {isSidebarCollapsed && <NavTooltip label="Settings" show={hoveredItem === "settings"} />}
+          {isSidebarCollapsed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="absolute inset-0" />
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Settings
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Sheet } from "@/components/ui/Sheet";
+import { m, AnimatePresence } from "framer-motion";
 
 interface ExploreDrawerProps {
   item?: any;

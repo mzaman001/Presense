@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { ExploreDrawer } from "@/components/features/ExploreDrawer";
 import { LenisProvider } from "@/components/layout/LenisProvider";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface ExploreItem {
   id: string;
@@ -214,26 +215,16 @@ export default function ExplorePage() {
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
             <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Explore</h1>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => { setShowArchive(false); setShowTrash(false); }}
-                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !showArchive && !showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-              >
-                Active
-              </button>
-              <button 
-                onClick={() => { setShowArchive(true); setShowTrash(false); }}
-                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-              >
-                Archive
-              </button>
-              <button 
-                onClick={() => { setShowTrash(true); setShowArchive(false); }}
-                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-              >
-                Trash
-              </button>
-            </div>
+            <Tabs value={showTrash ? "trash" : showArchive ? "archive" : "active"} onValueChange={(v) => {
+              setShowArchive(v === "archive");
+              setShowTrash(v === "trash");
+            }}>
+              <TabsList variant="line" className="border-[var(--color-border)]">
+                <TabsTrigger value="active" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Active</TabsTrigger>
+                <TabsTrigger value="archive" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Archive</TabsTrigger>
+                <TabsTrigger value="trash" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Trash</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
         <button onClick={() => setIsAddDrawerOpen(true)} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
