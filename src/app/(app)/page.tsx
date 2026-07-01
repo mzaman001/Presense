@@ -14,8 +14,6 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
-import { LenisProvider } from "@/components/layout/LenisProvider";
-import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 
 interface TaskItem {
   id: string;
@@ -261,7 +259,6 @@ export default function HomeDashboard() {
   }
 
   return (
-    <LenisProvider>
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
       <header className="mb-8 flex items-end justify-between">
         <div>
@@ -477,23 +474,13 @@ export default function HomeDashboard() {
       </div>
 
       <div className="flex flex-col md:flex-row items-center gap-4 mt-6">
-        <GlassCard className="flex-1 p-5 flex flex-col gap-2 w-full">
-          <div className="flex items-center justify-between">
-            <span className="text-card-title text-[var(--color-text-3)] uppercase tracking-wider">Pomodoros this week</span>
-            <span className="text-2xl font-semibold text-[var(--color-text-1)]"><AnimatedNumber value={pomodorosThisWeek} /></span>
-          </div>
-          <Progress value={Math.min(100, pomodorosThisWeek * 10)} className="w-full">
-            <ProgressLabel className="sr-only">Pomodoros</ProgressLabel>
-          </Progress>
+        <GlassCard className="flex-1 p-5 flex items-center justify-between w-full">
+          <span className="text-card-title text-[var(--color-text-3)] uppercase tracking-wider">Pomodoros this week</span>
+          <span className="text-2xl font-semibold text-[var(--color-text-1)]"><AnimatedNumber value={pomodorosThisWeek} /></span>
         </GlassCard>
-        <GlassCard className="flex-1 p-5 flex flex-col gap-2 w-full">
-          <div className="flex items-center justify-between">
-            <span className="text-card-title text-[var(--color-text-3)] uppercase tracking-wider">Tasks completed this week</span>
-            <span className="text-2xl font-semibold text-[var(--color-text-1)]"><AnimatedNumber value={doneTasks.length} /></span>
-          </div>
-          <Progress value={Math.min(100, doneTasks.length * 5)} className="w-full">
-            <ProgressLabel className="sr-only">Tasks completed</ProgressLabel>
-          </Progress>
+        <GlassCard className="flex-1 p-5 flex items-center justify-between w-full">
+          <span className="text-card-title text-[var(--color-text-3)] uppercase tracking-wider">Tasks completed this week</span>
+          <span className="text-2xl font-semibold text-[var(--color-text-1)]"><AnimatedNumber value={doneTasks.length} /></span>
         </GlassCard>
       </div>
 
@@ -599,7 +586,6 @@ export default function HomeDashboard() {
       )}
       <TaskAddPanel isOpen={isTaskPanelOpen} onClose={() => { setIsTaskPanelOpen(false); setTimeout(() => setTaskToEdit(null), 300); }} onTaskAdded={refreshData} taskToEdit={taskToEdit} />
     </div>
-    </LenisProvider>
   );
 }
 

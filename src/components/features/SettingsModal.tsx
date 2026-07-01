@@ -259,6 +259,15 @@ export function SettingsModal() {
   const dialogRef = useDialogFocus(isSettingsModalOpen);
 
   useEffect(() => {
+    if (isSettingsModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isSettingsModalOpen]);
+
+  useEffect(() => {
     if (!isSettingsModalOpen) return;
     
     async function loadSettings() {
@@ -433,6 +442,8 @@ export function SettingsModal() {
         supabase.from("session_logs").delete().eq("user_id", user.id),
         supabase.from("push_subscriptions").delete().eq("user_id", user.id),
         supabase.from("user_settings").delete().eq("user_id", user.id),
+        supabase.from("categories").delete().eq("user_id", user.id),
+        supabase.from("ritual_logs").delete().eq("user_id", user.id),
       ]);
       // Delete the auth user via server-side API
       const res = await fetch("/api/account", { method: "DELETE" });
@@ -513,7 +524,7 @@ export function SettingsModal() {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 relative overflow-y-auto no-scrollbar">
+                <div className="flex-1 relative overflow-y-auto overscroll-contain no-scrollbar">
                   <button 
                     onClick={() => setSettingsModalOpen(false)}
                     aria-label="Close settings"

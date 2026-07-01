@@ -234,6 +234,15 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
   }, [isCurrentlyOpen, activeRitual, step, triageTasks, handleClose]);
 
   useEffect(() => {
+    if (isCurrentlyOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isCurrentlyOpen]);
+
+  useEffect(() => {
     if (!activeRitual) return;
     setStep(1);
     const fetchData = async () => {
@@ -596,7 +605,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           <div className="mx-6 mb-4" style={{ height: "0.5px", background: "var(--border-subtle)" }} />
 
           {/* ── Body ──────────────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4 scrollbar-thin">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-4 space-y-4 scrollbar-thin">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <div
@@ -808,7 +817,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   <div className="space-y-2">
                     <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Done today</p>
                     <div
-                      className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto"
+                      className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto overscroll-contain"
                       style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
                     >
                       {completedTasks.map((t, i) => (
@@ -867,7 +876,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   <div className="space-y-2">
                     <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Up next tomorrow</p>
                     <div
-                      className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto"
+                      className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto overscroll-contain"
                       style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
                     >
                       {tomorrowTasks.map((t, i) => (
