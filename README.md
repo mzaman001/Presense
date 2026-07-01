@@ -51,6 +51,10 @@ We believe that your mind is for having ideas, not holding them. Presense provid
 - ⚡ **Realtime Sync** — Every list, count, and status updates instantly across all spaces via Supabase Realtime. No refreshes. No stale data. Performance polished.
 - 🧹 **Aggressive Cleanup** — Edge Functions enforce a 30-day soft-delete cycle on explores and old tasks. Your workspace stays pristine automatically.
 - 🎨 **Bespoke Glassmorphic UI** — Atmospheric backgrounds, translucent glass surfaces, warm amber accents, and fluid micro-interactions. A premium design that feels alive and highly responsive.
+- 📱 **Offline Support** — Full PWA capabilities with service worker caching. Work offline and sync when back online.
+- 🔗 **Smooth Scrolling** — Lenis-powered smooth scrolling for Think and Explore spaces.
+- ✨ **Ambient Particles** — Floating particle dots that enhance the atmospheric background.
+- 📊 **Connection Status** — Real-time connection indicator with reconnection feedback.
 
 ---
 
