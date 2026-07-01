@@ -13,6 +13,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { LenisProvider } from "@/components/layout/LenisProvider";
 
 interface Thread {
   id: string;
@@ -165,7 +166,8 @@ export default function ThinkPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <LenisProvider>
+      <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <div>
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
@@ -333,6 +335,7 @@ export default function ThinkPage() {
         </>
       )}
     </div>
+    </LenisProvider>
   );
 }
 

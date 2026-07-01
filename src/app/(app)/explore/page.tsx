@@ -12,6 +12,7 @@ import { PageSkeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { ExploreDrawer } from "@/components/features/ExploreDrawer";
+import { LenisProvider } from "@/components/layout/LenisProvider";
 
 interface ExploreItem {
   id: string;
@@ -206,7 +207,8 @@ export default function ExplorePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <LenisProvider>
+      <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <div>
           <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
@@ -304,6 +306,7 @@ export default function ExplorePage() {
         onSaved={fetchItems} 
       />
     </div>
+    </LenisProvider>
   );
 }
 
