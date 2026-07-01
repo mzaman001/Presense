@@ -19,7 +19,7 @@ export default function GlobalError({
   return (
     <html>
       <body style={{ background: "#0e0e10", color: "#e8e8ec", fontFamily: "Inter, system-ui, sans-serif", margin: 0 }}>
-        <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", padding: "24px" }}>
+        <div style={{ display: "flex", minHeight: "100dvh", alignItems: "center", justifyContent: "center", padding: "24px" }}>
           <div style={{
             width: "100%", maxWidth: "420px", padding: "40px 32px",
             background: "rgba(255,255,255,0.04)",

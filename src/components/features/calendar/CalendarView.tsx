@@ -223,7 +223,7 @@ export function CalendarView({ tasks, onEditTask, categoryFilter }: CalendarView
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] min-h-[600px]">
+    <div className="flex flex-col h-[calc(100dvh-180px)] min-h-[600px]">
       {/* Calendar toolbar */}
       <div className="flex items-center justify-between mb-4 shrink-0">
         {/* Navigation */}

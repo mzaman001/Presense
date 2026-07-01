@@ -121,7 +121,7 @@ export function Sidebar() {
           onMouseLeave={() => setHoveredItem(null)}
         >
           {(() => {
-            const now = new Date();
+            const now = useMemo(() => new Date(), []);
             const currentHours = now.getHours();
             const todayStr = now.toLocaleDateString("en-CA");
             const morningDone = userSettings?.last_ritual_date === todayStr;
@@ -328,7 +328,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full border-t border-[var(--border-subtle)] bg-[var(--color-background)]/95 backdrop-blur-2xl z-40 pb-safe">
+    <nav className="md:hidden fixed bottom-0 left-0 w-full border-t border-[var(--border-subtle)] bg-[var(--color-background)]/95 backdrop-blur-md z-40 pb-safe">
       <div className="flex items-center justify-around px-2">
         {mobileNavItems.map((item) => {
           if (item.isAction) {
