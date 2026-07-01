@@ -5,6 +5,7 @@ import { X, Loader2, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
+import { Sheet } from "@/components/ui/Sheet";
 
 interface LocationAddPanelProps {
   isOpen: boolean;
@@ -94,31 +95,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
 
   return (
     <>
-      <AnimatePresence>
-        {isOpen && (
-          <m.div 
-            key="backdrop"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed -inset-[100px] bg-black/60 backdrop-blur-sm z-40 transform-gpu"
-            onClick={onClose}
-          />
-        )}
-        {isOpen && (
-          <m.div
-            key="panel"
-            initial={{ x: "100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "100%", opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="fixed top-0 right-0 h-[100dvh] w-full md:top-3 md:right-3 md:h-[calc(100dvh-24px)] md:w-[420px] md:rounded-2xl bg-[var(--color-surface)] backdrop-blur-2xl border-l md:border border-[var(--color-border)] z-50 flex flex-col shadow-2xl overflow-hidden"
-          >
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] md:rounded-t-2xl">
-              <h2 className="text-lg font-bold text-[var(--color-text-1)]">{itemToEdit ? "Edit Location" : "Log Location"}</h2>
-              <button onClick={onClose} className="btn-icon">
-                <X size={16} strokeWidth={1.5} className="shrink-0" />
-              </button>
-            </div>
-
+      <Sheet isOpen={isOpen} onClose={onClose} title={itemToEdit ? "Edit Location" : "Log Location"}>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {errorMsg && (
                 <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -177,9 +154,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (itemToEdit ? "Save Changes" : "Log Location")}
               </button>
             </div>
-          </m.div>
-        )}
-      </AnimatePresence>
+      </Sheet>
       <ConfirmModal
         isOpen={deleteConfirm}
         onClose={() => setDeleteConfirm(false)}

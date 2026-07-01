@@ -7,6 +7,7 @@ import { X, UserPlus, Loader2, Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
+import { Sheet } from "@/components/ui/Sheet";
 
 interface AddPersonPanelProps {
   isOpen: boolean;
@@ -88,31 +89,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed -inset-[100px] bg-black/60 backdrop-blur-sm z-40 transform-gpu"
-          />
-          
-          <m.div
-            initial={{ x: "100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "100%", opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="fixed top-0 right-0 h-[100dvh] w-full md:top-3 md:right-3 md:h-[calc(100dvh-24px)] md:w-[420px] md:rounded-2xl bg-[var(--color-surface)] backdrop-blur-2xl border-l md:border border-[var(--color-border)] z-50 flex flex-col shadow-2xl overflow-hidden"
-          >
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] md:rounded-t-2xl">
-              <h2 className="text-lg font-bold text-[var(--color-text-1)]">Add Person</h2>
-              <button onClick={onClose} className="btn-icon">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
+    <Sheet isOpen={isOpen} onClose={onClose} title="Add Person">
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Name */}
               <div>
@@ -223,10 +200,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save Changes"}
               </button>
             </div>
-          </m.div>
-        </>
-      )}
-    </AnimatePresence>
+    </Sheet>
   );
 }
 

@@ -13,6 +13,7 @@ import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
+import { Sheet } from "@/components/ui/Sheet";
 import { useQueryClient } from "@tanstack/react-query";
 const TABS = [
   { id: "account", label: "Account", icon: User },

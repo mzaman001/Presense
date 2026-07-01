@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface SheetProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ interface SheetProps {
 }
 
 export function Sheet({ isOpen, onClose, title, children, className }: SheetProps) {
+  const dialogRef = useDialogFocus(isOpen);
+
   // Prevent body scroll when open
   useEffect(() => {
     if (isOpen) {
@@ -53,6 +56,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
           {/* Sheet Container */}
           <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end md:justify-center md:items-center p-0 md:p-6">
             <m.div
+              ref={dialogRef}
               drag="y"
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={0.2}
@@ -71,6 +75,9 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
                 "md:max-w-xl md:max-h-[85vh]",
                 className
               )}
+              role="dialog"
+              aria-modal="true"
+              aria-label={typeof title === "string" ? title : undefined}
             >
               {/* Mobile Drag Handle */}
               <div className="w-full flex justify-center pt-3 pb-1 md:hidden">
