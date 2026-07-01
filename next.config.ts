@@ -31,6 +31,7 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
+  turbopack: {},
   async headers() {
     return [
       {
