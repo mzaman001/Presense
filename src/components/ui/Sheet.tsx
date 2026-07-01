@@ -72,10 +72,10 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
                   onClose();
                 }
               }}
-              initial={{ y: "100%", scale: 0.95, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              exit={{ y: "100%", scale: 0.95, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               className={cn(
                 "pointer-events-auto w-full max-h-[90vh] bg-[var(--color-background)] flex flex-col",
                 "rounded-t-[24px] md:rounded-[20px] shadow-2xl overflow-hidden border border-[var(--border-subtle)]",
@@ -91,18 +91,20 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
                 <div className="w-12 h-1.5 rounded-full bg-[var(--border-strong)] opacity-50" />
               </div>
 
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 md:p-5 border-b border-[var(--border-subtle)] shrink-0">
-                <div className="text-[17px] font-semibold text-[var(--color-text-1)]">
-                  {title}
+              {/* Header - only show if title is provided */}
+              {title && (
+                <div className="flex items-center justify-between px-4 py-3 md:p-5 border-b border-[var(--border-subtle)] shrink-0">
+                  <div className="text-[17px] font-semibold text-[var(--color-text-1)]">
+                    {title}
+                  </div>
+                  <button
+                    onClick={onClose}
+                    className="p-1.5 rounded-full text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] transition-colors"
+                  >
+                    <X size={20} strokeWidth={2} />
+                  </button>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-1.5 rounded-full text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] transition-colors"
-                >
-                  <X size={20} strokeWidth={2} />
-                </button>
-              </div>
+              )}
 
               {/* Content */}
               <div className="p-4 md:p-5 overflow-y-auto overscroll-contain flex-1">

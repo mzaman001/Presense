@@ -354,15 +354,15 @@ export function PomodoroTimer() {
                 stroke="rgba(255,255,255,0.06)"
                 strokeWidth="6"
               />
-              <m.circle
+              <circle
                 cx="110" cy="110" r={r}
                 fill="none"
                 stroke={cfg.ring}
                 strokeWidth="6"
                 strokeLinecap="round"
                 strokeDasharray={circ}
-                animate={{ strokeDashoffset: dashoffset }}
-                transition={{ duration: 0.9, ease: "linear" }}
+                strokeDashoffset={dashoffset}
+                style={{ transition: "stroke-dashoffset 0.9s linear" }}
               />
             </svg>
 

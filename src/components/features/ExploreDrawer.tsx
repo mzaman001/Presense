@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { m, AnimatePresence } from "framer-motion";
 import { X, Loader2, Archive, Trash2, RefreshCcw, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Sheet } from "@/components/ui/Sheet";
 
 interface ExploreDrawerProps {
   item?: any;
@@ -185,34 +185,12 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
 
   return (
     <>
-      <AnimatePresence>
-        {isOpen && (
-          <m.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed -inset-[100px] bg-black/60 backdrop-blur-sm z-40 transform-gpu"
-          />
-        )}
-        {isOpen && (
-          <m.div
-            key="panel"
-            initial={{ x: "100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "100%", opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="fixed top-0 right-0 h-[100dvh] w-full md:top-3 md:right-3 md:h-[calc(100dvh-24px)] md:w-[420px] md:rounded-2xl bg-[var(--color-surface)] backdrop-blur-2xl border-l md:border border-[var(--color-border)] z-50 flex flex-col shadow-2xl overflow-hidden"
-          >
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] md:rounded-t-2xl">
-              <h2 className="text-lg font-bold text-[var(--color-text-1)]">{item ? "Edit Explore Item" : "Save to Explore"}</h2>
-              <button onClick={onClose} className="btn-icon">
-                <X size={16} strokeWidth={1.5} className="shrink-0" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <Sheet
+        isOpen={isOpen}
+        onClose={onClose}
+        title={item ? "Edit Explore Item" : "Save to Explore"}
+      >
+            <div className="space-y-6">
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">
                   Title <span className="text-red-400">*</span>
@@ -340,9 +318,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (item ? "Save Changes" : "Save")}
               </button>
             </div>
-          </m.div>
-        )}
-      </AnimatePresence>
+      </Sheet>
       {item && (
         <ConfirmModal
           isOpen={deleteConfirm}

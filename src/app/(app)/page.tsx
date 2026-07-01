@@ -14,6 +14,7 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
+import { LenisProvider } from "@/components/layout/LenisProvider";
 
 interface TaskItem {
   id: string;
@@ -259,6 +260,7 @@ export default function HomeDashboard() {
   }
 
   return (
+    <LenisProvider>
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
       <header className="mb-8 flex items-end justify-between">
         <div>
@@ -586,6 +588,7 @@ export default function HomeDashboard() {
       )}
       <TaskAddPanel isOpen={isTaskPanelOpen} onClose={() => { setIsTaskPanelOpen(false); setTimeout(() => setTaskToEdit(null), 300); }} onTaskAdded={refreshData} taskToEdit={taskToEdit} />
     </div>
+    </LenisProvider>
   );
 }
 
