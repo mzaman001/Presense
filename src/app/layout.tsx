@@ -36,6 +36,7 @@ export const viewport: Viewport = {
 
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-500">
         <TooltipProvider>
+          <ConnectionStatus />
           {children}
         </TooltipProvider>
         <ToastProvider />

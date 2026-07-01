@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { m, AnimatePresence } from "framer-motion";
+import { useIsTouch } from "@/hooks/useIsTouch";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -58,6 +59,7 @@ export function Sidebar() {
   const toggleSidebar = useAppStore(s => s.toggleSidebar);
   const userSettings = useAppStore(s => s.userSettings);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const isTouch = useIsTouch();
 
   return (
     <aside 
@@ -212,8 +214,9 @@ export function Sidebar() {
                     size={18} 
                     strokeWidth={1.5}
                     className={cn(
-                      "transition-colors",
-                      isActive ? "text-[var(--accent)]" : "text-[var(--text-3)] group-hover:text-[var(--text-2)]"
+                      "transition-all",
+                      isActive ? "text-[var(--accent)]" : "text-[var(--text-3)] group-hover:text-[var(--text-2)]",
+                      !isTouch && !isActive && "group-hover:translate-x-0.5"
                     )} 
                   />
                 </div>
