@@ -15,7 +15,7 @@ import {
   Inbox,
   X
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -34,14 +34,14 @@ export function MobileDrawer() {
     <AnimatePresence>
       {isMobileDrawerOpen && (
         <>
-          <motion.div 
+          <m.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsMobileDrawerOpen(false)}
             className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
           />
-          <motion.div 
+          <m.div 
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
@@ -110,7 +110,7 @@ export function MobileDrawer() {
                 <span className="text-[15px]">Settings</span>
               </button>
             </div>
-          </motion.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

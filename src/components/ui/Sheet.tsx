@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +42,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
       {isOpen && (
         <>
           {/* Backdrop */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -52,7 +52,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
 
           {/* Sheet Container */}
           <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end md:justify-center md:items-center p-0 md:p-6">
-            <motion.div
+            <m.div
               drag="y"
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={0.2}
@@ -94,7 +94,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               <div className="p-4 md:p-5 overflow-y-auto overscroll-contain flex-1">
                 {children}
               </div>
-            </motion.div>
+            </m.div>
           </div>
         </>
       )}

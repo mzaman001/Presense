@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { Search, X, Loader2, CheckSquare, Users, MessageSquare, Compass, MapPin, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -27,9 +27,7 @@ export function SearchModal() {
   useEffect(() => {
     if (isSearchModalOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
-      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = "unset";
       setQuery("");
       setResults([]);
       setSelectedIndex(0);

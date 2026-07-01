@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { Avatar } from "@/components/ui/Avatar";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -37,7 +37,7 @@ function NavTooltip({ label, shortcut, show }: { label: string, shortcut?: strin
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, x: -5 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -5 }}
@@ -46,7 +46,7 @@ function NavTooltip({ label, shortcut, show }: { label: string, shortcut?: strin
         >
           {label}
           {shortcut && <span className="text-[10px] opacity-70">{shortcut}</span>}
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );
@@ -198,7 +198,7 @@ export function Sidebar() {
                 {!isSidebarCollapsed && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-[20px]">
                     {isActive && (
-                      <motion.div
+                      <m.div
                         layoutId="sidebar-active"
                         className="absolute inset-0 bg-[var(--accent)] rounded-r-full"
                         transition={{ type: "spring", stiffness: 350, damping: 30 }}
@@ -370,7 +370,7 @@ export function BottomNav() {
                   className={cn("shrink-0 transition-colors", isActive ? "text-[var(--accent)]" : "text-[var(--text-3)]")}
                 />
                 {isActive && (
-                  <motion.div
+                  <m.div
                     layoutId="bottom-nav-active"
                     className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--accent)]"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}

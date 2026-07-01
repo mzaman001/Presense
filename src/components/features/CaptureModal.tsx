@@ -2,7 +2,7 @@
 import { logger } from "@/lib/logger";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { formatRRule, cn, extractMentions } from "@/lib/utils";
@@ -262,7 +262,7 @@ export function CaptureModal() {
               deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
               recurrence: (item as RoutedItem & { recurrence?: string }).recurrence ?? null,
               status: item.destination === "Inbox" ? "inbox" : "active",
-              linked_people: mentions,
+              linked_people_ids: mentions,
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
           } else if (item.destination === "Remember → People") {
@@ -290,7 +290,7 @@ export function CaptureModal() {
               user_id: user.id,
               title: item.title.slice(0, 60),
               entries: [{ text: item.title, created_at: new Date().toISOString(), starred: false }],
-              linked_people: mentions,
+              linked_people_ids: mentions,
             });
             if (error) throw new Error(`Think: ${error.message}`);
           } else if (item.destination === "Explore") {

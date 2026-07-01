@@ -433,9 +433,15 @@ export function SettingsModal() {
         supabase.from("push_subscriptions").delete().eq("user_id", user.id),
         supabase.from("user_settings").delete().eq("user_id", user.id),
       ]);
-      // Sign out — user data deleted, account auth record requires server-side cleanup
+      // Delete the auth user via server-side API
+      const res = await fetch("/api/account", { method: "DELETE" });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || "Failed to delete auth account");
+      }
+      // Sign out after successful deletion
       await supabase.auth.signOut();
-      toast.success("Account data deleted");
+      toast.success("Account deleted");
       setSettingsModalOpen(false);
       router.push("/login");
     } catch (err) {

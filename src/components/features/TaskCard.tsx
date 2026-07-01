@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Check, Clock, Play, Timer, Trash2 } from "lucide-react";
@@ -157,7 +157,7 @@ export const TaskCard = React.memo(({
   };
 
   return (
-    <motion.div
+    <m.div
       layout
       layoutId={task.id}
       initial={{ opacity: 0, y: 12 }}
@@ -179,33 +179,33 @@ export const TaskCard = React.memo(({
       className="group relative rounded-2xl"
     >
       {/* Swipe-to-complete reveal layer */}
-      <motion.div
+      <m.div
         className="absolute inset-0 flex items-center justify-start pl-5 rounded-2xl overflow-hidden"
         style={{
           background: "linear-gradient(-90deg, transparent 0%, rgba(74,222,128,0.15) 60%, rgba(34,197,94,0.25) 100%)",
           opacity: completeOpacity,
         }}
       >
-        <motion.div style={{ scale: completeScale }}>
+        <m.div style={{ scale: completeScale }}>
           <Check className="w-5 h-5 text-green-400" />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
 
       {/* Swipe-to-delete reveal layer */}
-      <motion.div
+      <m.div
         className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
         style={{
           background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
           opacity: deleteOpacity,
         }}
       >
-        <motion.div style={{ scale: deleteScale }}>
+        <m.div style={{ scale: deleteScale }}>
           <Trash2 className="w-5 h-5 text-red-400" />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
 
       {/* Draggable card */}
-      <motion.div
+      <m.div
         drag="x"
         dragConstraints={{ left: -120, right: 120 }}
         dragElastic={{ left: 0.15, right: 0.15 }}
@@ -231,7 +231,7 @@ export const TaskCard = React.memo(({
         )}
 
         <div className="flex items-start gap-3">
-          <motion.button
+          <m.button
             onClick={(e) => completeTask(e, task.id)}
             animate={isCompleting ? {
               scale: [1, 1.2, 1],
@@ -244,7 +244,7 @@ export const TaskCard = React.memo(({
             )}
           >
             {isCompleting && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
-          </motion.button>
+          </m.button>
 
           <div className="flex-1 min-w-0 pr-4">
             <div className="flex items-center gap-2 mb-1">
@@ -262,7 +262,7 @@ export const TaskCard = React.memo(({
               </span>
             </div>
 
-            <motion.p
+            <m.p
               className="text-[14px] font-semibold leading-snug"
               style={{ color: "var(--text-1)" }}
               animate={isCompleting ? {
@@ -273,7 +273,7 @@ export const TaskCard = React.memo(({
               transition={{ duration: 0.25 }}
             >
               {task.title}
-            </motion.p>
+            </m.p>
 
             {task.first_step && (
               <p className="text-[12px] mt-1" style={{ color: isOverdue ? "var(--space-do)" : "var(--space-think)" }}>
@@ -398,8 +398,8 @@ export const TaskCard = React.memo(({
           </div>
         </div>
       </GlassCard>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }, (prevProps, nextProps) => {
   // 1. Check simple properties passed directly to the card
