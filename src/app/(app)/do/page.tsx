@@ -13,6 +13,7 @@ import { Plus, Loader2, Clock, Play, Check, Zap, Calendar, Wind, CheckCircle2 } 
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useHaptics } from "@/hooks/useHaptics";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
@@ -112,6 +113,7 @@ export default function DoPage() {
   const userSettings = useAppStore(s => s.userSettings);
   const setActiveTimer = useAppStore(s => s.setActiveTimer);
   const isBoardView = userSettings?.default_view === "board";
+  const haptics = useHaptics();
 
   const { data: tasks = [], isLoading: loading, refetch: fetchTasks } = useQuery({
     queryKey: ["tasks"],
@@ -197,6 +199,7 @@ export default function DoPage() {
     
     // Set completing state — TaskCard shows the checkmark animation
     setCompleting(id);
+    haptics.success();
     
     // Delay removal so AnimatePresence can play the exit animation
     setTimeout(() => {

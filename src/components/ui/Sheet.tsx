@@ -5,6 +5,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { useVisualViewport } from "@/hooks/useVisualViewport";
 
 interface SheetProps {
   isOpen: boolean;
@@ -16,6 +17,12 @@ interface SheetProps {
 
 export function Sheet({ isOpen, onClose, title, children, className }: SheetProps) {
   const dialogRef = useDialogFocus(isOpen);
+  const vp = useVisualViewport();
+
+  // Calculate keyboard offset for mobile
+  const keyboardOffset = typeof window !== "undefined" && window.visualViewport
+    ? Math.max(0, (window.innerHeight || 0) - (vp.height || 0) - (window.visualViewport.offsetTop || 0))
+    : 0;
 
   // Prevent body scroll when open
   useEffect(() => {
@@ -54,7 +61,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
           />
 
           {/* Sheet Container */}
-          <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end md:justify-center md:items-center p-0 md:p-6">
+          <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end md:justify-center md:items-center p-0 md:p-6" style={{ paddingBottom: `${keyboardOffset}px` }}>
             <m.div
               ref={dialogRef}
               drag="y"

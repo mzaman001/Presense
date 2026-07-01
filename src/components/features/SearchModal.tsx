@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
+import { useHaptics } from "@/hooks/useHaptics";
 
 export function SearchModal() {
   const { isSearchModalOpen, setSearchModalOpen } = useAppStore();
@@ -23,10 +24,12 @@ export function SearchModal() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const dialogRef = useDialogFocus(isSearchModalOpen);
+  const haptics = useHaptics();
 
   useEffect(() => {
     if (isSearchModalOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
+      haptics.selection();
     } else {
       setQuery("");
       setResults([]);

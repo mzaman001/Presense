@@ -12,6 +12,7 @@ import type { RoutedItem } from "@/lib/capture-router";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
+import { useHaptics } from "@/hooks/useHaptics";
 
 function formatCaptureDeadline(iso: string) {
   const d = new Date(iso);
@@ -68,6 +69,7 @@ export function CaptureModal() {
   const [taskExtras, setTaskExtras] = useState<{ [idx: number]: { first_step: string; ifthen_trigger: string } }>({});
   const [saved, setSaved] = useState(false);
   const supabase = useMemo(() => createClient(), []);
+  const haptics = useHaptics();
 
   const [people, setPeople] = useState<{ id: string; name: string }[]>([]);
   const [showPopover, setShowPopover] = useState(false);
@@ -86,8 +88,9 @@ export function CaptureModal() {
     }
     if (isCaptureModalOpen) {
       fetchPeople();
+      haptics.selection();
     }
-  }, [isCaptureModalOpen, supabase]);
+  }, [isCaptureModalOpen, supabase, haptics]);
 
   const filteredPeople = useMemo(() => {
     return people.filter(p =>
