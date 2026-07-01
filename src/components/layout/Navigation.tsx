@@ -60,6 +60,7 @@ export function Sidebar() {
   const userSettings = useAppStore(s => s.userSettings);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const isTouch = useIsTouch();
+  const now = useMemo(() => new Date(), []);
 
   return (
     <aside 
@@ -123,7 +124,6 @@ export function Sidebar() {
           onMouseLeave={() => setHoveredItem(null)}
         >
           {(() => {
-            const now = useMemo(() => new Date(), []);
             const currentHours = now.getHours();
             const todayStr = now.toLocaleDateString("en-CA");
             const morningDone = userSettings?.last_ritual_date === todayStr;
