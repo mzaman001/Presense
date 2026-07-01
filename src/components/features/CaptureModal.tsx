@@ -512,7 +512,7 @@ export function CaptureModal() {
                     {isSaving ? "Saving..." : "Confirm & Save"}
                   </button>
                 </>
-                )}
+              ) : null}
             </div>
         </div>
       </Sheet>
