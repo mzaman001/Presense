@@ -3,23 +3,50 @@
 
 -- ============================================================
 -- M2: SECURITY DEFINER search_path hardening
--- Prevents search_path injection attacks on all 4 RPC functions
+-- Prevents search_path injection attacks on all RPC functions
+-- Note: increment_pomodoro_count was dropped in 007, only 3
+-- functions remain: handle_new_user, increment_time_spent, rename_category
 -- ============================================================
-ALTER FUNCTION public.handle_new_user()
-  SET search_path = pg_catalog, public;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'handle_new_user'
+  ) THEN
+    ALTER FUNCTION public.handle_new_user()
+      SET search_path = pg_catalog, public;
+  END IF;
+END $$;
 
-ALTER FUNCTION public.increment_pomodoro_count()
-  SET search_path = pg_catalog, public;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'increment_time_spent'
+  ) THEN
+    ALTER FUNCTION public.increment_time_spent()
+      SET search_path = pg_catalog, public;
+  END IF;
+END $$;
 
-ALTER FUNCTION public.increment_time_spent()
-  SET search_path = pg_catalog, public;
-
-ALTER FUNCTION public.rename_category(
-  p_user_id uuid,
-  p_old_name text,
-  p_new_name text
-)
-  SET search_path = pg_catalog, public;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'rename_category'
+  ) THEN
+    ALTER FUNCTION public.rename_category(
+      p_categories_key text,
+      p_colors_key text,
+      p_old_category text,
+      p_new_category text
+    )
+      SET search_path = pg_catalog, public;
+  END IF;
+END $$;
 
 -- ============================================================
 -- M5: Fix last_evening_ritual_date type mismatch (TEXT → DATE)
