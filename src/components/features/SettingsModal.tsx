@@ -401,7 +401,10 @@ export function SettingsModal() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { error } = await supabase.from("items").delete().eq("user_id", user.id).eq("status", "done");
+      const { error } = await supabase.from("items")
+        .update({ status: "deleted", deleted_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .eq("status", "done");
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });

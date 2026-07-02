@@ -426,7 +426,18 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
       }
       
       let newStreak = userSettings?.ritual_streak || 0;
-      if (userSettings?.last_evening_ritual_date !== todayString && userSettings?.last_ritual_date !== todayString) {
+      const lastEvening = userSettings?.last_evening_ritual_date;
+      const lastMorning = userSettings?.last_ritual_date;
+      if (lastEvening || lastMorning) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yStr = yesterday.toLocaleDateString("en-CA");
+        const lastDate = lastEvening || lastMorning;
+        if (lastDate !== yStr && lastDate !== todayString) {
+          newStreak = 0;
+        }
+      }
+      if (lastEvening !== todayString && lastMorning !== todayString) {
         newStreak += 1;
       }
 
