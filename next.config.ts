@@ -20,11 +20,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns', '@dnd-kit/core', '@dnd-kit/sortable'],
+    optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns', '@dnd-kit/core', '@dnd-kit/sortable', 'compromise', 'lenis', '@base-ui/react'],
   },
   images: {
     formats: ['image/avif', 'image/webp'],

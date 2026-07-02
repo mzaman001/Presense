@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Geist } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { headers } from "next/headers";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -37,16 +38,21 @@ export const viewport: Viewport = {
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
+import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
 import { cn } from "@/lib/utils";
+import { env } from "@/lib/env";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce') ?? undefined;
+
   return (
     <html lang="en" suppressHydrationWarning className={cn("h-full", "antialiased", inter.variable, jetbrainsMono.variable, "font-sans", geist.variable)}>
       <head>
-        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" />
+        <link rel="preconnect" href={env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" />
         <noscript>
           <style>{`
             .no-js-fallback {
@@ -63,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script
           id="theme-init"
           strategy="beforeInteractive"
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               try {
@@ -89,6 +96,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-500">
         <TooltipProvider>
           <ConnectionStatus />
+          <UpdatePrompt />
           {children}
         </TooltipProvider>
         <ToastProvider />

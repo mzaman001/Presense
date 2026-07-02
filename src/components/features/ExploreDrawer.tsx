@@ -69,7 +69,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
       }
 
       // Fetch threads
-      supabase.from("threads").select("id, title").eq("status", "active").then(({ data }) => {
+      supabase.from("threads").select("id, title").eq("status", "active").then(({ data }: { data: any }) => {
         setThreads(data || []);
       });
     }
@@ -134,8 +134,8 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
       toast.success("Saved to Explore");
       onSaved();
       onClose();
-    } catch (err: any) {
-      toast.error("Failed to save", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to save", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setSaving(false);
     }
@@ -151,8 +151,8 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
       toast.success(`Item ${newStatus === "active" ? "restored" : "archived"}`);
       onSaved();
       onClose();
-    } catch (err: any) {
-      toast.error("Failed to update status", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to update status", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setSaving(false);
     }
@@ -177,8 +177,8 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
       }
       onSaved();
       onClose();
-    } catch (err: any) {
-      toast.error("Failed to delete item", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to delete item", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setDeleteConfirm(false);
     }
@@ -313,7 +313,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
               )}
               <button
                 onClick={handleSave}
-                disabled={saving || !title.trim() || !note.trim()}
+                disabled={saving || !title.trim() || !note?.trim()}
                 className="flex-1 btn-primary py-3 w-full disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (item ? "Save Changes" : "Save")}

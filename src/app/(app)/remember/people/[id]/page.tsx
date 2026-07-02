@@ -71,8 +71,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       const { error } = await supabase.from("people").update({ relationship: newRel }).eq("id", person.id);
       if (error) throw error;
       toast.success("Relationship updated");
-    } catch (err: any) {
-      toast.error("Failed to update", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to update", { description: err instanceof Error ? err.message : "Unknown error" });
     }
   };
 
@@ -91,8 +91,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       const { error } = await supabase.from("people").update({ name: newName, initials: newInitials }).eq("id", person.id);
       if (error) throw error;
       toast.success("Name updated");
-    } catch (err: any) {
-      toast.error("Failed to update name", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to update name", { description: err instanceof Error ? err.message : "Unknown error" });
       // Revert on error
       fetchPerson();
     }
@@ -121,8 +121,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       setPerson({ ...person, notes: updatedNotes, last_seen: new Date().toISOString() });
       setNewNote("");
       toast.success("Note added");
-    } catch (err: any) {
-      toast.error("Failed to add note", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to add note", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setSaving(false);
     }
@@ -136,8 +136,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       if (error) throw error;
       setPerson({ ...person, notes: updatedNotes });
       toast.success("Note removed");
-    } catch (err: any) {
-      toast.error("Failed to remove note", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to remove note", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setNoteToDelete(null);
     }
@@ -151,8 +151,8 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       if (error) throw error;
       toast.success(`${person.name} deleted`);
       router.push("/remember/people");
-    } catch (err: any) {
-      toast.error("Failed to delete person", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to delete person", { description: err instanceof Error ? err.message : "Unknown error" });
       setIsDeleting(false);
     }
   };

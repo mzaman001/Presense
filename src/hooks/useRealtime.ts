@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDebouncedCallback } from "use-debounce";
 import { createClient } from "@/lib/supabase";
@@ -73,16 +73,6 @@ export function useRealtime(
     }
   }, 200);
 
-  // Tab visibility state for fallback mode
-  const [isVisible, setIsVisible] = useState(true);
-  useEffect(() => {
-    if (context) return; // Only needed for fallback mode
-    const handleVisibility = () => setIsVisible(document.visibilityState === "visible");
-    window.addEventListener("visibilitychange", handleVisibility);
-    handleVisibility();
-    return () => window.removeEventListener("visibilitychange", handleVisibility);
-  }, [context]);
-
   // 1. Context-based subscription path
   useEffect(() => {
     if (!context) return;
@@ -100,7 +90,6 @@ export function useRealtime(
   // 2. Standalone fallback path
   useEffect(() => {
     if (context) return;
-    if (!isVisible) return;
 
     logger.warn(`[Realtime] RealtimeContext is null, falling back to standalone subscription for ${table}`);
     const supabase = createClient();
@@ -118,6 +107,8 @@ export function useRealtime(
               logger.info(`[Realtime] Ignoring echo on ${table} due to recent local mutation`);
               return;
             }
+            // Gate visibility INSIDE the callback, not in the effect deps
+            if (document.visibilityState !== "visible") return;
 
             logger.info(`[Realtime] Update on ${table}:`, payload);
             debouncedUpdate(payload);
@@ -133,6 +124,6 @@ export function useRealtime(
         supabase.removeChannel(channel);
       }
     };
-  }, [table, context, debouncedUpdate, isVisible]);
+  }, [table, context, debouncedUpdate]);
 }
 

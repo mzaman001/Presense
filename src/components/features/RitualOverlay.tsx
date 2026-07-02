@@ -255,11 +255,11 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           .from("items").select("*").in("status", ["inbox", "active", "overdue"]);
         if (tasks) {
           const todayStart = new Date().setHours(0, 0, 0, 0);
-          setTriageTasks(tasks.filter(t =>
+          setTriageTasks(tasks.filter((t: any) =>
             t.status === "inbox" || t.status === "overdue" ||
             (t.status === "active" && t.deadline && new Date(t.deadline).getTime() < todayStart)
           ));
-          setTodayTasks(tasks.filter(t =>
+          setTodayTasks(tasks.filter((t: any) =>
             t.status === "active" && t.deadline &&
             new Date(t.deadline).getTime() >= todayStart &&
             new Date(t.deadline).getTime() < todayStart + 86400000
@@ -274,10 +274,10 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           supabase.from("session_logs").select("*").eq("type", "work").gte("completed_at", startISO),
         ]);
         setCompletedTasks(completed || []);
-        setTriageTasks((incomplete || []).filter(t =>
+        setTriageTasks((incomplete || []).filter((t: any) =>
           t.deadline && new Date(t.deadline).getTime() < todayStart + 86400000
         ));
-        setTomorrowTasks((incomplete || []).filter(t =>
+        setTomorrowTasks((incomplete || []).filter((t: any) =>
           t.deadline && new Date(t.deadline).getTime() >= todayStart + 86400000 && new Date(t.deadline).getTime() < todayStart + 86400000 * 2
         ));
         setFocusMinutes((logs || []).reduce((s: number, l: any) => s + (l.duration_minutes || 0), 0));
@@ -368,8 +368,8 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
       });
       handleClose();
       router.push("/");
-    } catch (err: any) {
-      toast.error("Failed to save", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to save", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally { setSaving(false); }
   };
 
@@ -456,8 +456,8 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
         icon: <Moon className="w-4 h-4 text-blue-400" />
       });
       handleClose();
-    } catch (err: any) {
-      toast.error("Failed to complete evening ritual", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to complete evening ritual", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally { setSaving(false); }
   };
   

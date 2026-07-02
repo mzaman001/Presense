@@ -23,23 +23,23 @@ export function LenisProvider({ children, root = false, options }: LenisProvider
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       touchMultiplier: 2,
-      ...options,
     });
 
     setLenis(lenisInstance);
 
+    let rafId: number;
     function raf(time: number) {
       lenisInstance.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
-
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
     return () => {
+      cancelAnimationFrame(rafId);
       lenisInstance.destroy();
       setLenis(null);
     };
-  }, [options]);
+  }, []);
 
   return (
     <LenisContext.Provider value={lenis}>

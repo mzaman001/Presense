@@ -402,6 +402,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
                 </label>
                 <input
                   autoFocus
+                  inputMode="text"
+                  autoCapitalize="sentences"
                   placeholder="What needs to be done?"
                   value={title}
                   onChange={handleTitleChange}

@@ -1,0 +1,3 @@
+ALTER TABLE explores ALTER COLUMN note DROP NOT NULL;
+ALTER TABLE explores ALTER COLUMN note SET DEFAULT NULL;
+UPDATE explores SET note = NULL WHERE note = '';

@@ -27,7 +27,7 @@ export function useDialogFocus(isOpen: boolean) {
         if (focusable.length > 0) {
           focusable[0].focus();
         }
-      }, 50);
+      }, 350);
 
       return () => clearTimeout(timer);
     } else {
@@ -36,7 +36,7 @@ export function useDialogFocus(isOpen: boolean) {
         if (previousFocusRef.current) {
           previousFocusRef.current.focus();
         }
-      }, 50);
+      }, 350);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);

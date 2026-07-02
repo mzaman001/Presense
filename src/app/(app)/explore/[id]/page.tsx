@@ -109,8 +109,8 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
       if (error) throw error;
       toast.success("Saved");
       router.push("/explore");
-    } catch (err: any) {
-      toast.error("Failed to save", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to save", { description: err instanceof Error ? err.message : "Unknown error" });
       setSaving(false);
     }
   };
@@ -122,8 +122,8 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
       if (error) throw error;
       toast.success(newStatus === "archived" ? "Archived" : "Restored");
       router.push("/explore");
-    } catch (err: any) {
-      toast.error("Failed to archive", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to archive", { description: err instanceof Error ? err.message : "Unknown error" });
     }
   };
 
@@ -134,8 +134,8 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
       if (error) throw error;
       toast.success("Deleted (30-day trash)");
       router.push("/explore");
-    } catch (err: any) {
-      toast.error("Failed to delete", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to delete", { description: err instanceof Error ? err.message : "Unknown error" });
     }
   };
 

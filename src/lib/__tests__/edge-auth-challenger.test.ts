@@ -5,14 +5,37 @@ import { middleware } from "@/middleware";
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "mock-anon-key";
 
+// Mock env module to prevent throwing at import time (env.ts uses lazy getters, but mock to be safe)
+vi.mock("@/lib/env", () => ({
+  env: {
+    get NEXT_PUBLIC_SUPABASE_URL() { return process.env.NEXT_PUBLIC_SUPABASE_URL; },
+    get NEXT_PUBLIC_SUPABASE_ANON_KEY() { return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; },
+    get SUPABASE_SERVICE_ROLE_KEY() { return process.env.SUPABASE_SERVICE_ROLE_KEY; },
+    get UPSTASH_REDIS_REST_URL() { return process.env.UPSTASH_REDIS_REST_URL; },
+    get UPSTASH_REDIS_REST_TOKEN() { return process.env.UPSTASH_REDIS_REST_TOKEN; },
+  },
+}));
+
 // Define mock actions and response structures
+function createMockHeaders() {
+  const store = new Map<string, string>();
+  return {
+    set: vi.fn((name: string, value: string) => store.set(name, value)),
+    get: vi.fn((name: string) => store.get(name) || null),
+    append: vi.fn((name: string, value: string) => {
+      const existing = store.get(name);
+      store.set(name, existing ? `${existing}; ${value}` : value);
+    }),
+  };
+}
+
 const mockRedirect = vi.fn((url) => {
   const urlStr = typeof url === "string" ? url : url.toString();
   const parsedUrl = new URL(urlStr);
   const cookieStore = new Map<string, any>();
   return {
     status: 307,
-    headers: { Location: urlStr },
+    headers: createMockHeaders(),
     url: urlStr,
     nextUrl: parsedUrl,
     cookies: {
@@ -28,6 +51,7 @@ const mockNext = vi.fn((reqInfo) => {
   const cookieStore = new Map<string, any>();
   return {
     status: 200,
+    headers: createMockHeaders(),
     cookies: {
       getAll: vi.fn(() => Array.from(cookieStore.values())),
       set: vi.fn((name, value, options) => {
@@ -99,9 +123,7 @@ function createMockRequest(pathname: string, searchParamsStr = "", initialCookie
   return {
     nextUrl,
     url: urlStr,
-    headers: {
-      get: vi.fn((key) => initialHeaders.get(key.toLowerCase()) || null),
-    },
+    headers: new Headers(),
     cookies: {
       getAll: vi.fn(() => Array.from(cookieMap.values())),
       set: vi.fn((name, value, options) => {
@@ -153,11 +175,15 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("verifies middleware behavior when supabase.auth.getUser throws an exception", async () => {
-      // In the implementation, there is no try-catch around getUser(), so it throws to the caller/Next.js runtime.
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       mockGetUser.mockRejectedValue(new Error("Database connection timeout"));
       const req = createMockRequest("/do");
+      const res = await middleware(req);
 
-      await expect(middleware(req)).rejects.toThrow("Database connection timeout");
+      expect(mockRedirect).toHaveBeenCalled();
+      expect(res.status).toBe(307);
+      expect(res.url).toContain("/login");
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -202,30 +228,24 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
       expect(res.status).toBe(200);
     });
 
-    it("unauthenticated request to capital letters auth path (/LOGIN) redirects to /login because startsWith('/login') is case-sensitive", async () => {
+    it("allows unauthenticated request to capital letters auth path (/LOGIN) without redirect", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/LOGIN");
       const res = await middleware(req);
 
-      // Since /LOGIN does not start with lowercase '/login', isAuthRoute is false.
-      // Unauthenticated user -> redirects to /login.
-      expect(mockRedirect).toHaveBeenCalled();
-      expect(res.status).toBe(307);
-      expect(res.url).toBe("http://localhost/login");
+      expect(mockRedirect).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalled();
+      expect(res.status).toBe(200);
     });
 
-    it("authenticated request to capital letters auth path (/LOGIN) does NOT redirect to / (remains on /LOGIN) due to case sensitivity in startsWith('/login')", async () => {
+    it("redirects authenticated request on capital letters auth path (/LOGIN) to /", async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
       const req = createMockRequest("/LOGIN");
       const res = await middleware(req);
 
-      // For authenticated user:
-      // Since /LOGIN is case-sensitive, isAuthRoute is false.
-      // The condition (user && isAuthRoute) is false.
-      // So no redirect to / occurs.
-      expect(mockRedirect).not.toHaveBeenCalled();
-      expect(mockNext).toHaveBeenCalled();
-      expect(res.status).toBe(200);
+      expect(mockRedirect).toHaveBeenCalled();
+      expect(res.status).toBe(307);
+      expect(res.url).toBe("http://localhost/");
     });
 
     it("unauthenticated request to protected path with parameters (/do?param=1) redirects to /login preserving the parameters", async () => {

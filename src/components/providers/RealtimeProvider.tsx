@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useRef, useCallback, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 
@@ -26,6 +26,12 @@ export interface RealtimeContextType {
 
 export const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined);
 
+export const RealtimeStatusContext = createContext<"connected" | "reconnecting" | "disconnected">("connected");
+
+export function useRealtimeConnectionStatus() {
+  return useContext(RealtimeStatusContext);
+}
+
 export function useRealtimeContext() {
   const context = useContext(RealtimeContext);
   if (context === undefined) {
@@ -38,6 +44,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const listenersRef = useRef<Record<string, Set<(payload?: any) => void>>>({});
   const channelsRef = useRef<Record<string, any>>({});
   const pendingUpdatesRef = useRef<Record<string, boolean>>({});
+  const teardownTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "reconnecting" | "disconnected">("connected");
 
   // Clean up all channels on unmount
   useEffect(() => {
@@ -51,6 +59,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         }
       });
       channelsRef.current = {};
+      // Clean up any pending teardown timers
+      Object.values(teardownTimers.current).forEach(clearTimeout);
+      teardownTimers.current = {};
     };
   }, []);
 
@@ -85,7 +96,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: table },
-        (payload) => {
+        (payload: any) => {
           // Hoisted echo lockout guard: check getLastMutationTime
           if (Date.now() - getLastMutationTime(table) < 500) {
             logger.info(`[RealtimeProvider] Ignoring echo on ${table} due to recent local mutation`);
@@ -105,7 +116,15 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           }
         }
       )
-      .subscribe();
+      .subscribe((status: string, err: any) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setConnectionStatus('disconnected');
+        } else if (status === 'CLOSED') {
+          setConnectionStatus('reconnecting');
+        } else if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+        }
+      });
 
     channelsRef.current[table] = channel;
   }, []);
@@ -133,12 +152,21 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       subscribeToChannel(table);
     }
 
+    // Cancel any pending teardown
+    if (teardownTimers.current[table]) {
+      clearTimeout(teardownTimers.current[table]);
+      delete teardownTimers.current[table];
+    }
+
     return () => {
       tableListeners.delete(callback);
-      // When counts go 1 -> 0, unsubscribe
+      // When counts go 1 -> 0, delay teardown — user might navigate back
       if (tableListeners.size === 0) {
-        unsubscribeFromChannel(table);
-        delete listenersRef.current[table];
+        teardownTimers.current[table] = setTimeout(() => {
+          unsubscribeFromChannel(table);
+          delete listenersRef.current[table];
+          delete teardownTimers.current[table];
+        }, 5000);
       }
     };
   }, [subscribeToChannel, unsubscribeFromChannel]);
@@ -146,8 +174,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo(() => ({ subscribe, markMutation }), [subscribe]);
 
   return (
-    <RealtimeContext.Provider value={value}>
-      {children}
-    </RealtimeContext.Provider>
+    <RealtimeStatusContext.Provider value={connectionStatus}>
+      <RealtimeContext.Provider value={value}>
+        {children}
+      </RealtimeContext.Provider>
+    </RealtimeStatusContext.Provider>
   );
 }

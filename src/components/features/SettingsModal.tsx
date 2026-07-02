@@ -122,8 +122,8 @@ function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKe
         useAppStore.getState().setUserSettings(updatedStoreSettings);
 
         toast.success(`Renamed category to ${trimmed}`);
-      } catch (err: any) {
-        toast.error("Failed to rename category", { description: err.message });
+      } catch (err: unknown) {
+        toast.error("Failed to rename category", { description: err instanceof Error ? err.message : "Unknown error" });
         setEditName(cat);
       }
     } else {
@@ -449,7 +449,11 @@ export function SettingsModal() {
         supabase.from("ritual_logs").delete().eq("user_id", user.id),
       ]);
       // Delete the auth user via server-side API
-      const res = await fetch("/api/account", { method: "DELETE" });
+      const res = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmToken: user.email ?? "" }),
+      });
       if (!res.ok) {
         const { error } = await res.json();
         throw new Error(error || "Failed to delete auth account");

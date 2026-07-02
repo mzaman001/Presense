@@ -78,19 +78,16 @@ export function CaptureModal() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    async function fetchPeople() {
+    if (!isCaptureModalOpen || !showPopover) return;
+    let cancelled = false;
+    (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id);
-      if (data) {
-        setPeople(data);
-      }
-    }
-    if (isCaptureModalOpen) {
-      fetchPeople();
-      haptics.selection();
-    }
-  }, [isCaptureModalOpen, supabase, haptics]);
+      if (!user || cancelled) return;
+      const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id).limit(50);
+      if (!cancelled) setPeople(data ?? []);
+    })();
+    return () => { cancelled = true; };
+  }, [isCaptureModalOpen, showPopover, supabase]);
 
   const filteredPeople = useMemo(() => {
     return people.filter(p =>
@@ -342,6 +339,10 @@ export function CaptureModal() {
                 ref={inputRef}
                 autoFocus
                 type="text"
+                inputMode="text"
+                autoComplete="off"
+                autoCapitalize="sentences"
+                autoCorrect="off"
                 placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
                 className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
                 value={input}

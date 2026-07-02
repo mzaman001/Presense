@@ -1419,3 +1419,50 @@ html.reduce-motion .orb {
 }
 
 /* Particles removed */
+
+/* T4-3: content-visibility for desktop lists */
+@media (min-width: 768px) {
+  .task-card-wrapper,
+  .explore-item-wrapper,
+  .thread-row-wrapper {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 88px;
+  }
+}
+
+/* T5-3: iOS input zoom fix — force 16px floor on mobile */
+@media (max-width: 767px) {
+  input.input,
+  textarea.input,
+  select.input,
+  .input-title,
+  .input-search {
+    font-size: max(16px, var(--text-md));
+  }
+}
+
+/* T5-5: prevent iOS scroll chaining */
+body {
+  overscroll-behavior-y: contain;
+}
+
+.modal,
+.dropdown-panel,
+[data-sonner-toast] {
+  overscroll-behavior: contain;
+}
+
+/* T5-6: disable iOS long-press context menu on UI chrome */
+body {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Re-enable for content where copy is intentional */
+.thread-entry,
+.thread-title,
+.person-note,
+.task-title {
+  -webkit-touch-callout: default;
+  user-select: text;
+}

@@ -99,6 +99,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
                   </div>
                   <button
                     onClick={onClose}
+                    aria-label="Close"
                     className="p-1.5 rounded-full text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] transition-colors"
                   >
                     <X size={20} strokeWidth={2} />

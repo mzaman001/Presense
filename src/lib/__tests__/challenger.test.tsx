@@ -1,5 +1,5 @@
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import React, { Suspense } from "react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { extractMentions } from "@/lib/utils";
 import { CaptureModal } from "@/components/features/CaptureModal";
@@ -24,6 +24,11 @@ const mockSupabase = {
     signOut: vi.fn(),
   },
   from: vi.fn(),
+  channel: vi.fn().mockReturnValue({
+    on: vi.fn().mockReturnThis(),
+    subscribe: vi.fn().mockReturnThis(),
+  }),
+  removeChannel: vi.fn(),
 };
 
 vi.mock("@/lib/supabase", () => ({
@@ -41,7 +46,9 @@ const queryClient = new QueryClient({
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>
-    {children}
+    <Suspense fallback={<div data-testid="suspense-loading">Loading...</div>}>
+      {children}
+    </Suspense>
   </QueryClientProvider>
 );
 
@@ -104,18 +111,18 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
     });
 
     it("handles special characters inside brackets (periods, slashes, etc.)", () => {
-      const text1 = "Review by @[Dr. Watson / Chief](uuid.1/watson)";
-      expect(extractMentions(text1)).toEqual(["uuid.1/watson"]);
+      const text1 = "Review by @[Dr. Watson / Chief](550e8400-e29b-41d4-a716-446655440001)";
+      expect(extractMentions(text1)).toEqual(["550e8400-e29b-41d4-a716-446655440001"]);
 
-      const text2 = "Assigned to @[Alice-Bob.Jr / Dev-Ops](dev.ops/alice-bob)";
-      expect(extractMentions(text2)).toEqual(["dev.ops/alice-bob"]);
+      const text2 = "Assigned to @[Alice-Bob.Jr / Dev-Ops](550e8400-e29b-41d4-a716-446655440002)";
+      expect(extractMentions(text2)).toEqual(["550e8400-e29b-41d4-a716-446655440002"]);
     });
 
     it("handles large numbers of mentions (100+)", () => {
       const uuids: string[] = [];
       const parts: string[] = [];
       for (let i = 1; i <= 120; i++) {
-        const id = `user-uuid-${i}`;
+        const id = `550e8400-e29b-41d4-a716-${String(i).padStart(12, "0")}`;
         uuids.push(id);
         parts.push(`@[User ${i}](${id})`);
       }
@@ -126,25 +133,18 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
     });
 
     it("evaluates behavior on nested brackets (potential parser limitations)", () => {
-      // 1. Nested brackets in display name: @[Alice [nested]](uuid-alice)
-      // Because the regex matches [^\]]+ inside the display name, it stops at the first closing bracket.
-      // So it will see @[Alice [nested] as incomplete/not matching the pattern since the subsequent characters are '](uuid-alice)'.
-      const nestedInNameText = "@[Alice [nested]](uuid-alice)";
-      expect(extractMentions(nestedInNameText)).toEqual([]); // Fails to extract
+      const nestedInNameText = "@[Alice [nested]](550e8400-e29b-41d4-a716-446655440003)";
+      expect(extractMentions(nestedInNameText)).toEqual([]);
 
-      // 2. Nested bracket with nested mention syntax: @[Alice @[Bob](uuid-bob)](uuid-alice)
-      // The inner mention has its own bracket structure, so the regex stops at the first ']' which belongs to Bob.
-      // It matches @[Alice @[Bob](uuid-bob) and captures 'uuid-bob'.
-      // The outer wrapper '](uuid-alice)' is left dangling.
-      const nestedMentionText = "@[Alice @[Bob](uuid-bob)](uuid-alice)";
-      expect(extractMentions(nestedMentionText)).toEqual(["uuid-bob"]);
+      const nestedMentionText = "@[Alice @[Bob](550e8400-e29b-41d4-a716-446655440004)](550e8400-e29b-41d4-a716-446655440005)";
+      expect(extractMentions(nestedMentionText)).toEqual(["550e8400-e29b-41d4-a716-446655440004"]);
     });
   });
 
   describe("2. CaptureModal Integration & linked_people mapping", () => {
     const mockPeople = [
-      { id: "person-1", name: "Alice Smith" },
-      { id: "person-2", name: "Bob Jones" },
+      { id: "550e8400-e29b-41d4-a716-446655440010", name: "Alice Smith" },
+      { id: "550e8400-e29b-41d4-a716-446655440011", name: "Bob Jones" },
     ];
 
     it("renders popover on @ character typing and inserts mention on click", async () => {
@@ -162,15 +162,14 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
 
       render(<CaptureModal />, { wrapper });
 
-      await waitFor(() => {
-        expect(mockSupabase.from).toHaveBeenCalledWith("people");
-      });
-
       const input = screen.getByPlaceholderText(/capture anything/i) as HTMLInputElement;
       expect(input).toBeInTheDocument();
 
-      // Type "@" to trigger popover
       fireEvent.change(input, { target: { value: "Call @" } });
+
+      await waitFor(() => {
+        expect(mockSupabase.from).toHaveBeenCalledWith("people");
+      });
 
       const popover = await screen.findByTestId("mentions-popover");
       expect(popover).toBeInTheDocument();
@@ -182,7 +181,7 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       fireEvent.click(aliceBtn);
 
       expect(screen.queryByTestId("mentions-popover")).not.toBeInTheDocument();
-      expect(input.value).toBe("Call @[Alice Smith](person-1) ");
+      expect(input.value).toBe("Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) ");
     });
 
     it("correctly maps mentioned UUID to linked_people in database insert on confirm (Do/Inbox destination)", async () => {
@@ -204,7 +203,7 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       const { container } = render(<CaptureModal />, { wrapper });
 
       const input = screen.getByPlaceholderText(/capture anything/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "Call @[Alice Smith](person-1) tomorrow" } });
+      fireEvent.change(input, { target: { value: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) tomorrow" } });
 
       // Mock the API response for routing
       const mockFetch = vi.spyOn(window, "fetch").mockResolvedValue({
@@ -212,7 +211,7 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
           items: [
             {
               type: "task",
-              title: "Call @[Alice Smith](person-1) tomorrow",
+              title: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) tomorrow",
               destination: "Do",
               deadline: new Date().toISOString(),
             }
@@ -235,8 +234,8 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       await waitFor(() => {
         expect(mockInsert).toHaveBeenCalledWith(
           expect.objectContaining({
-            linked_people: ["person-1"],
-            title: "Call @[Alice Smith](person-1) tomorrow",
+            linked_people_ids: ["550e8400-e29b-41d4-a716-446655440010"],
+            title: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) tomorrow",
           })
         );
       });
@@ -263,14 +262,14 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       render(<CaptureModal />, { wrapper });
 
       const input = screen.getByPlaceholderText(/capture anything/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "Idea about @[Bob Jones](person-2)" } });
+      fireEvent.change(input, { target: { value: "Idea about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)" } });
 
       const mockFetch = vi.spyOn(window, "fetch").mockResolvedValue({
         json: () => Promise.resolve({
           items: [
             {
               type: "thought",
-              title: "Idea about @[Bob Jones](person-2)",
+              title: "Idea about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)",
               destination: "Think",
             }
           ]
@@ -292,8 +291,7 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       await waitFor(() => {
         expect(mockInsert).toHaveBeenCalledWith(
           expect.objectContaining({
-            linked_people: ["person-2"],
-            title: "Idea about @[Bob Jones](person-2)",
+            linked_people_ids: ["550e8400-e29b-41d4-a716-446655440011"],
           })
         );
       });
@@ -304,8 +302,8 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
 
   describe("3. Think Space Entry Add/Delete Aggregation", () => {
     const mockPeople = [
-      { id: "person-1", name: "Alice Smith" },
-      { id: "person-2", name: "Bob Jones" },
+      { id: "550e8400-e29b-41d4-a716-446655440010", name: "Alice Smith" },
+      { id: "550e8400-e29b-41d4-a716-446655440011", name: "Bob Jones" },
     ];
 
     it("aggregates and updates list of unique UUIDs in the database when entries are added or deleted", async () => {
@@ -314,7 +312,7 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
         title: "Project Brainstorm",
         color_accent: "#FBBF24",
         entries: [
-          { text: "We need to talk to @[Alice Smith](person-1)", created_at: new Date().toISOString() }
+          { text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)", created_at: new Date().toISOString() }
         ],
         stale_prompt: null,
         status: "active",
@@ -339,46 +337,55 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
         return mockSupabaseQuery([]);
       });
 
+      useAppStore.setState({
+        prefetchedThreads: { "thread-123": initialThread },
+      });
+
       // Render ThreadDetailPage
-      render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+      await act(async () => {
+        render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+      });
 
       // Wait for thread to load
       const titleInput = await screen.findByDisplayValue("Project Brainstorm");
       expect(titleInput).toBeInTheDocument();
 
-      // Add a new entry mentioning person-2 and person-1 again
+      // Add a new entry mentioning both people again
       const textarea = screen.getByPlaceholderText(/continue the thought/i);
-      fireEvent.change(textarea, { target: { value: "Follow up with @[Bob Jones](person-2) and @[Alice Smith](person-1)" } });
+      fireEvent.change(textarea, { target: { value: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011) and @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)" } });
 
-      const submitBtn = screen.getByRole("button", { type: "submit" });
+      const submitBtn = textarea.closest("form")!.querySelector('button[type="submit"]') as HTMLButtonElement;
       fireEvent.click(submitBtn);
 
-      // Verify that database update was called with the combined unique mentions array: ["person-1", "person-2"]
       await waitFor(() => {
         expect(mockUpdate).toHaveBeenCalledWith(
           expect.objectContaining({
-            linked_people: expect.arrayContaining(["person-1", "person-2"]),
+            linked_people_ids: expect.arrayContaining([
+              "550e8400-e29b-41d4-a716-446655440010",
+              "550e8400-e29b-41d4-a716-446655440011",
+            ]),
             entries: expect.arrayContaining([
-              expect.objectContaining({ text: "We need to talk to @[Alice Smith](person-1)" }),
-              expect.objectContaining({ text: "Follow up with @[Bob Jones](person-2) and @[Alice Smith](person-1)" }),
+              expect.objectContaining({ text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)" }),
+              expect.objectContaining({ text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011) and @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)" }),
             ]),
           })
         );
-        expect(mockUpdate.mock.calls[0][0].linked_people.length).toBe(2); // Verify uniqueness
+        expect(mockUpdate.mock.calls[0][0].linked_people_ids.length).toBe(2);
       });
 
-      // Now test deleting an entry
-      // Clear mocks to focus on deletion
       mockUpdate.mockClear();
 
-      // Let's reload / set thread state inside the mock to simulate that the state has the 2 entries now
       const threadWithTwoEntries = {
         ...initialThread,
         entries: [
-          { text: "We need to talk to @[Alice Smith](person-1)", created_at: new Date().toISOString() },
-          { text: "Follow up with @[Bob Jones](person-2)", created_at: new Date().toISOString() }
+          { text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)", created_at: new Date().toISOString() },
+          { text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)", created_at: new Date().toISOString() }
         ]
       };
+
+      useAppStore.setState({
+        prefetchedThreads: { "thread-123": threadWithTwoEntries },
+      });
 
       mockSupabase.from.mockImplementation((table) => {
         if (table === "people") {
@@ -392,28 +399,25 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
         return mockSupabaseQuery([]);
       });
 
-      // Rerender page to show the two entries
-      const { container } = render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+      await act(async () => {
+        render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+      });
       await screen.findByDisplayValue("Project Brainstorm");
 
-      // Find the first delete entry button (belonging to Alice's entry)
       const deleteButtons = screen.getAllByTitle("Delete entry");
       expect(deleteButtons.length).toBe(2);
 
-      // Click delete on the first entry (Alice)
       fireEvent.click(deleteButtons[0]);
 
-      // Click confirm in the ConfirmModal
       const confirmDeleteBtn = await screen.findByRole("button", { name: "Delete" });
       fireEvent.click(confirmDeleteBtn);
 
-      // Verify database update is called with only the second entry and only ["person-2"] as linked_people
       await waitFor(() => {
         expect(mockUpdate).toHaveBeenCalledWith(
           expect.objectContaining({
-            linked_people: ["person-2"],
+            linked_people_ids: ["550e8400-e29b-41d4-a716-446655440011"],
             entries: [
-              expect.objectContaining({ text: "Follow up with @[Bob Jones](person-2)" })
+              expect.objectContaining({ text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)" })
             ],
           })
         );

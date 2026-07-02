@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server';
 import { routeCapture } from '@/lib/capture-router';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { NextResponse } from 'next/server';
+import { captureSchema } from '@/lib/schemas';
 
 export async function POST(request: Request) {
   try {
@@ -17,10 +18,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const { text, settings } = await request.json();
-    if (!text?.trim()) {
-      return NextResponse.json({ error: 'Text is required' }, { status: 400 });
+    const parsed = captureSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
+    const { text, settings } = parsed.data;
 
     // Fetch user's known people for name matching
     const { data: people } = await supabase

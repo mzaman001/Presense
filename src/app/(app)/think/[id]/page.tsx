@@ -176,8 +176,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       if (error) throw error;
       setThread({ ...thread, is_pinned: newPinStatus });
       toast.success(newPinStatus ? "Thread pinned" : "Thread unpinned");
-    } catch (error: any) {
-      toast.error("Failed to pin thread", { description: error.message });
+    } catch (error: unknown) {
+      toast.error("Failed to pin thread", { description: error instanceof Error ? error.message : "Unknown error" });
     }
   };
 
@@ -189,8 +189,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       if (error) throw error;
       setThread({ ...thread, color_accent: color });
       toast.success("Color updated");
-    } catch (error: any) {
-      toast.error("Failed to update color", { description: error.message });
+    } catch (error: unknown) {
+      toast.error("Failed to update color", { description: error instanceof Error ? error.message : "Unknown error" });
     }
   };
 
@@ -202,8 +202,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       if (error) throw error;
       toast.success(newStatus === "active" ? "Thread restored" : "Thread archived");
       router.push("/think");
-    } catch (error: any) {
-      toast.error("Failed to update thread status", { description: error.message });
+    } catch (error: unknown) {
+      toast.error("Failed to update thread status", { description: error instanceof Error ? error.message : "Unknown error" });
     }
   };
 
@@ -220,8 +220,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         toast.success("Moved to trash");
       }
       router.push("/think");
-    } catch (err: any) {
-      toast.error("Failed to delete", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to delete", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setDeleteThreadOpen(false);
     }
@@ -249,9 +249,9 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       setThread({ ...thread, entries: updatedEntries, stale_prompt: null });
       setNewEntry("");
       toast.success("Added to thread");
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Think error:", error);
-      toast.error("Failed to save thought", { description: error.message });
+      toast.error("Failed to save thought", { description: error instanceof Error ? error.message : "Unknown error" });
     } finally {
       setSaving(false);
     }
@@ -277,8 +277,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       if (error) throw error;
       setThread({ ...thread, entries: updatedEntries });
       toast.success("Entry deleted");
-    } catch (err: any) {
-      toast.error("Failed to delete entry", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to delete entry", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setDeleteEntryIndex(null);
     }

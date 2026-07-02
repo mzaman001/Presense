@@ -1,6 +1,6 @@
 import React from "react";
 import { render, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { RealtimeProvider, useRealtimeContext } from "../RealtimeProvider";
 
 // Mock Supabase Client Infrastructure
@@ -71,7 +71,12 @@ function TestConsumer({
 describe("RealtimeProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     postgresChangesCallbacks = {};
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("should provide subscribe function and register channel on first subscriber", () => {
@@ -154,6 +159,14 @@ describe("RealtimeProvider", () => {
     // Unsubscribe second listener
     act(() => {
       if (unsubscribe2) unsubscribe2();
+    });
+
+    // Channel should NOT be removed immediately (5-second grace period)
+    expect(mockSupabase.removeChannel).not.toHaveBeenCalled();
+
+    // Advance timer by 5 seconds to trigger the debounced teardown
+    act(() => {
+      vi.advanceTimersByTime(5000);
     });
 
     // Now channel should be removed since refCount reached 0

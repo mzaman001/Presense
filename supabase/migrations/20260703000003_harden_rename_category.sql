@@ -12,7 +12,6 @@ AS $$
 DECLARE
   v_user_id uuid;
 BEGIN
-  -- Get the authenticated user ID
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
@@ -26,45 +25,40 @@ BEGIN
     RAISE EXCEPTION 'Invalid new category name';
   END IF;
 
-  -- Validate categories_key and execute atomic updates
   IF p_categories_key = 'do_categories' THEN
-    -- Update settings categories array and rename key in do_category_colors jsonb
     UPDATE public.user_settings
-    SET 
+    SET
       do_categories = array_replace(do_categories, p_old_category, p_new_category),
-      do_category_colors = CASE 
-        WHEN do_category_colors ? p_old_category THEN 
+      do_category_colors = CASE
+        WHEN do_category_colors ? p_old_category THEN
           (do_category_colors - p_old_category) || jsonb_build_object(p_new_category, do_category_colors->p_old_category)
-        ELSE 
-          do_category_colors 
+        ELSE
+          do_category_colors
       END
     WHERE user_id = v_user_id;
 
-    -- Update tasks/items table
     UPDATE public.items
     SET category = p_new_category
-    WHERE user_id = v_user_id 
+    WHERE user_id = v_user_id
       AND category = p_old_category;
 
   ELSIF p_categories_key = 'people_categories' THEN
-    -- Update settings categories array and rename key in relationship_colors jsonb
     UPDATE public.user_settings
-    SET 
+    SET
       people_categories = array_replace(people_categories, p_old_category, p_new_category),
-      relationship_colors = CASE 
-        WHEN relationship_colors ? p_old_category THEN 
+      relationship_colors = CASE
+        WHEN relationship_colors ? p_old_category THEN
           (relationship_colors - p_old_category) || jsonb_build_object(p_new_category, relationship_colors->p_old_category)
-        ELSE 
-          relationship_colors 
+        ELSE
+          relationship_colors
       END
     WHERE user_id = v_user_id;
 
-    -- Update people table (relationship column)
     UPDATE public.people
     SET relationship = p_new_category
-    WHERE user_id = v_user_id 
+    WHERE user_id = v_user_id
       AND relationship = p_old_category;
-      
+
   ELSE
     RAISE EXCEPTION 'Invalid categories key: %', p_categories_key;
   END IF;

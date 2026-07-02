@@ -64,8 +64,8 @@ export default function LocationsPage() {
       if (error) throw error;
       setItems((prev) => prev.map((i) => i.id === id ? { ...i, updated_at: new Date().toISOString() } : i));
       toast.success("Location updated");
-    } catch (err: any) {
-      toast.error("Failed to update location", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to update location", { description: err instanceof Error ? err.message : "Unknown error" });
     }
   };
 

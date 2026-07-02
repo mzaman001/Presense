@@ -50,22 +50,19 @@ export function SearchModal() {
       const [tasks, people, threads, explores, locations] = await Promise.all([
         supabase.from("items").select("id, title").or(`title.ilike.${q},category.ilike.${q}`).limit(5),
         supabase.from("people").select("id, name").or(`name.ilike.${q},relationship.ilike.${q}`).limit(5),
-        supabase.from("threads").select("id, title").ilike("title", q).limit(5),
+        supabase.from("threads").select("id, title").or(`title.ilike.${q}`).limit(5),
         supabase.from("explores").select("id, title").or(`title.ilike.${q},tags.cs.{${debouncedQuery}}`).limit(5),
         supabase.from("locations").select("id, item_name, location_text").or(`item_name.ilike.${q},location_text.ilike.${q}`).limit(5)
       ]);
 
       const combined = [
-        ...(tasks.data || []).map((t) => ({ ...t, type: "task", icon: CheckSquare, path: "/do" })),
-        ...(people.data || []).map((p) => ({ ...p, title: p.name, type: "person", icon: Users, path: "/people" })),
-        ...(threads.data || []).map((t) => ({ ...t, type: "thread", icon: MessageSquare, path: `/think/${t.id}` })),
-        ...(explores.data || []).map((e) => ({ ...e, type: "explore", icon: Compass, path: "/explore" })),
-        ...(locations.data || []).map((l) => ({ ...l, title: `${l.item_name} - ${l.location_text}`, type: "location", icon: MapPin, path: "/locations" }))
+        ...(tasks.data || []).map((t: any) => ({ ...t, type: "task", icon: CheckSquare, path: "/do" })),
+        ...(people.data || []).map((p: any) => ({ ...p, title: p.name, type: "person", icon: Users, path: "/people" })),
+        ...(threads.data || []).map((t: any) => ({ ...t, type: "thread", icon: MessageSquare, path: `/think/${t.id}` })),
+        ...(explores.data || []).map((e: any) => ({ ...e, type: "explore", icon: Compass, path: "/explore" })),
+        ...(locations.data || []).map((l: any) => ({ ...l, title: `${l.item_name} - ${l.location_text}`, type: "location", icon: MapPin, path: "/locations" }))
       ];
 
-      setResults(combined);
-      setLoading(false);
-      setSelectedIndex(0);
       setResults(combined);
       setLoading(false);
       setSelectedIndex(0);
@@ -84,6 +81,9 @@ export function SearchModal() {
               <input
                 ref={inputRef}
                 type="text"
+                inputMode="search"
+                autoComplete="off"
+                autoCapitalize="none"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {

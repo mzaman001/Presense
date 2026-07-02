@@ -45,8 +45,8 @@ export default function ExploreTrashPage() {
       if (error) throw error;
       setItems(items.filter(i => i.id !== item.id));
       toast.success("Item restored");
-    } catch (err: any) {
-      toast.error("Failed to restore", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to restore", { description: err instanceof Error ? err.message : "Unknown error" });
     }
   };
 
@@ -58,8 +58,8 @@ export default function ExploreTrashPage() {
       if (error) throw error;
       setItems(items.filter(i => i.id !== itemToPermanentDelete.id));
       toast.success("Permanently deleted");
-    } catch (err: any) {
-      toast.error("Failed to delete", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to delete", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setItemToPermanentDelete(null);
     }

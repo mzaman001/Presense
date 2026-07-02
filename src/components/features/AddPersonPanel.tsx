@@ -81,8 +81,8 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
         if (onPersonAdded) onPersonAdded();
         onClose();
       }
-    } catch (err: any) {
-      toast.error("Unexpected error", { description: err.message || "Could not add person" });
+    } catch (err: unknown) {
+      toast.error("Unexpected error", { description: (err instanceof Error ? err.message : "Unknown error") || "Could not add person" });
     } finally {
       setSaving(false);
     }
@@ -98,6 +98,8 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                 </label>
                 <input
                   autoFocus
+                  inputMode="text"
+                  autoCapitalize="words"
                   placeholder="Person's name..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}

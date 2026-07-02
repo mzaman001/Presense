@@ -223,10 +223,10 @@ export default function DoPage() {
         duration: 5000
       });
       if (showArchive) fetchArchived();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setCompleting(null);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      toast.error("Failed to complete task", { description: err.message });
+      toast.error("Failed to complete task", { description: err instanceof Error ? err.message : "Unknown error" });
     }
   };
 
@@ -237,7 +237,7 @@ export default function DoPage() {
       fetchTasks();
       fetchArchived();
       toast.success("Task restored");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("Failed to restore task");
     }
   };

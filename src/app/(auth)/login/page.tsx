@@ -126,6 +126,8 @@ export default function LoginPage() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
+                inputMode="email"
+                autoCapitalize="none"
                 className="input w-full"
               />
               <div className="flex justify-end">

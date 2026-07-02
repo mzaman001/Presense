@@ -47,9 +47,9 @@ export function Sidebar() {
   return (
     <aside 
       className={cn(
-        "sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40 group/sidebar border-r border-[var(--border-subtle)] bg-[var(--color-background)]",
-        "transition-[width] duration-250 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
-        isSidebarCollapsed ? "w-[64px]" : "w-[220px]"
+        "sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40 group/sidebar border-r border-[var(--border-subtle)] bg-[var(--color-background)] w-[220px]",
+        "transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+        isSidebarCollapsed && "-translate-x-full"
       )}
     >
       {/* Header section: 60px tall */}
@@ -95,7 +95,7 @@ export function Sidebar() {
           {!isSidebarCollapsed && <span className="whitespace-nowrap overflow-hidden text-ellipsis">Quick Capture</span>}
           {isSidebarCollapsed && (
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <div className="absolute inset-0" />
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -165,7 +165,7 @@ export function Sidebar() {
           }          )()}
           {isSidebarCollapsed && (
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <div className="absolute inset-0" />
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -230,7 +230,7 @@ export function Sidebar() {
               
               {isSidebarCollapsed && (
                 <Tooltip>
-                  <TooltipTrigger asChild>
+                  <TooltipTrigger>
                     <div className="absolute inset-0" />
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={8}>
@@ -271,7 +271,7 @@ export function Sidebar() {
           </button>
           {isSidebarCollapsed && (
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <div className="absolute inset-0" />
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -304,7 +304,7 @@ export function Sidebar() {
           </button>
           {isSidebarCollapsed && (
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <div className="absolute inset-0" />
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>

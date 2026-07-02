@@ -68,10 +68,10 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
         if (onLocationAdded) onLocationAdded();
         onClose();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Save error:", err);
-      setErrorMsg(err.message);
-      toast.error(itemToEdit ? "Failed to update location" : "Failed to log location", { description: err.message });
+      setErrorMsg(err instanceof Error ? err.message : "Unknown error");
+      toast.error(itemToEdit ? "Failed to update location" : "Failed to log location", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setSaving(false);
     }
@@ -86,8 +86,8 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
       toast.success("Location deleted");
       if (onLocationAdded) onLocationAdded();
       onClose();
-    } catch (err: any) {
-      toast.error("Failed to delete location", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Failed to delete location", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setDeleteConfirm(false);
     }

@@ -176,11 +176,11 @@ CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger AS $$
 BEGIN
   INSERT INTO public.user_settings (user_id, display_name)
-  VALUES (NEW.id, NEW.raw_user_meta_data->>'full_name')
+  VALUES (NEW.id, left(NEW.raw_user_meta_data->>'full_name', 100))
   ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
