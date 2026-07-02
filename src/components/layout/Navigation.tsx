@@ -80,30 +80,31 @@ export function Sidebar() {
 
       {/* Quick Capture Button */}
       <div className={cn("shrink-0", isSidebarCollapsed ? "p-3 pt-4" : "p-3")}>
-        <button 
-          onMouseEnter={() => setHoveredItem("capture")}
-          onMouseLeave={() => setHoveredItem(null)}
-          onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
-          className={cn(
-            "relative flex items-center justify-center shrink-0 transition-all overflow-hidden",
-            isSidebarCollapsed 
-              ? "w-10 h-10 rounded-full bg-[var(--accent)] text-[var(--text-on-accent)] mx-auto shadow-[var(--shadow-button-primary)] hover:scale-105" 
-              : "btn-capture w-full"
-          )}
-        >
-          <Plus size={isSidebarCollapsed ? 18 : 14} strokeWidth={1.5} className={cn("shrink-0", !isSidebarCollapsed && "mr-2")} />
-          {!isSidebarCollapsed && <span className="whitespace-nowrap overflow-hidden text-ellipsis">Quick Capture</span>}
-          {isSidebarCollapsed && (
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="absolute inset-0" />
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                Quick Capture <span className="text-[10px] opacity-70">Cmd+K</span>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </button>
+        {isSidebarCollapsed ? (
+          <Tooltip>
+            <TooltipTrigger
+              onMouseEnter={() => setHoveredItem("capture")}
+              onMouseLeave={() => setHoveredItem(null)}
+              onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+              className="relative flex items-center justify-center shrink-0 transition-all overflow-hidden w-10 h-10 rounded-full bg-[var(--accent)] text-[var(--text-on-accent)] mx-auto shadow-[var(--shadow-button-primary)] hover:scale-105"
+            >
+              <Plus size={18} strokeWidth={1.5} className="shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              Quick Capture <span className="text-[10px] opacity-70">Cmd+K</span>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <button 
+            onMouseEnter={() => setHoveredItem("capture")}
+            onMouseLeave={() => setHoveredItem(null)}
+            onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+            className="relative flex items-center justify-center shrink-0 transition-all overflow-hidden btn-capture w-full"
+          >
+            <Plus size={14} strokeWidth={1.5} className="shrink-0 mr-2" />
+            <span className="whitespace-nowrap overflow-hidden text-ellipsis">Quick Capture</span>
+          </button>
+        )}
       </div>
 
       {/* Nav Items - 12px gap below capture implies mt-3 or just gap-1 in the nav */}
