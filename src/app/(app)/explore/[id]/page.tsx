@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { m, AnimatePresence } from "framer-motion";
 
 const PRESET_TYPES = ["link", "quote", "concept", "book", "movie", "article", "course", "podcast", "other"];
@@ -37,6 +38,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
   
   const [threads, setThreads] = useState<any[]>([]);
   const [isThreadDropdownOpen, setIsThreadDropdownOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const fetchItem = useCallback(async () => {
     const { data: item } = await supabase.from("explores").select("*").eq("id", id).single();
@@ -128,7 +130,6 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this? It will be permanently removed in 30 days.")) return;
     try {
       const { error } = await supabase.from("explores").update({ status: "deleted" }).eq("id", id);
       if (error) throw error;
@@ -158,7 +159,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
           <button onClick={handleArchive} className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
             <Archive className="w-4 h-4" />
           </button>
-          <button onClick={handleDelete} className="p-2 rounded-lg bg-[rgba(248,113,113,0.1)] text-[#F87171] hover:bg-[rgba(248,113,113,0.2)] transition-colors">
+          <button onClick={() => setIsDeleteModalOpen(true)} className="p-2 rounded-lg bg-[rgba(248,113,113,0.1)] text-[#F87171] hover:bg-[rgba(248,113,113,0.2)] transition-colors">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -320,6 +321,16 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
           </button>
         </form>
       </GlassCard>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Delete Explore"
+        description="Are you sure you want to delete this? It will be permanently removed in 30 days."
+        confirmLabel="Delete"
+        confirmDestructive
+        onConfirm={handleDelete}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 }

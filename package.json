@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "script:clean": "node scripts/clean-threads.js",
     "script:snooze": "node scripts/check_snooze.js",
     "install-deps": "npm install"
