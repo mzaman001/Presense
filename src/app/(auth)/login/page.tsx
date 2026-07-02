@@ -24,27 +24,37 @@ export default function LoginPage() {
   }, [supabase]);
 
   const handleGoogle = async () => {
-    if (!supabase) return setError("Supabase not initialized");
+    if (!supabase) return setError("Supabase not initialized. Check environment variables.");
     setLoading("google"); setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) { setError(error.message); setLoading(null); }
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) { setError(error.message); setLoading(null); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start Google sign-in");
+      setLoading(null);
+    }
   };
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) return setError("Supabase not initialized");
+    if (!supabase) return setError("Supabase not initialized. Check environment variables.");
     if (!email.trim()) return;
     setLoading("email"); setError(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) setError(error.message);
-    else setEmailSent(true);
-    setLoading(null);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) setError(error.message);
+      else setEmailSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send magic link");
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (

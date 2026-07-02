@@ -241,7 +241,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         entries: updatedEntries,
         last_updated: new Date().toISOString(),
         stale_prompt: null, // Clear stale prompt if they revisit
-        linked_people: linkedPeople
+        linked_people_ids: linkedPeople
       }).eq("id", thread.id);
 
       if (error) throw error;
@@ -272,7 +272,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       const linkedPeople = getLinkedPeople(updatedEntries);
       const { error } = await supabase.from("threads").update({ 
         entries: updatedEntries,
-        linked_people: linkedPeople
+        linked_people_ids: linkedPeople
       }).eq("id", thread.id);
       if (error) throw error;
       setThread({ ...thread, entries: updatedEntries });

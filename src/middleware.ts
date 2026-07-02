@@ -12,12 +12,13 @@ export async function middleware(request: NextRequest) {
     default-src 'self';
     script-src ${scriptSrc};
     style-src 'self' 'unsafe-inline';
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co;
-    img-src 'self' blob: data:;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://www.googleapis.com;
+    img-src 'self' blob: data: https://*.supabase.co;
     font-src 'self' data:;
     object-src 'none';
     base-uri 'self';
-    form-action 'self';
+    form-action 'self' https://accounts.google.com https://*.supabase.co;
+    frame-src 'self' https://accounts.google.com;
   `.replace(/\s{2,}/g, ' ').trim();
 
   const requestHeaders = new Headers(request.headers);
