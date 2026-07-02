@@ -121,8 +121,8 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Nav Items - 12px gap below capture implies mt-3 or just gap-1 in the nav */}
-      <nav className={cn("flex-1 flex flex-col gap-1 w-full", isCollapsed ? "px-3" : "px-3")}>
+      {/* Nav Items */}
+      <nav className={cn("flex flex-col gap-1 w-full", isCollapsed ? "px-2 items-center" : "px-3 flex-1")}>
         {/* Plan my day Button */}
         <div 
           className="relative w-full"
@@ -259,7 +259,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom Section */}
-      <div className={cn("flex flex-col gap-1 pb-[52px]", isCollapsed ? "px-3" : "px-3")}>
+      <div className={cn("flex flex-col gap-1 pb-[52px]", isCollapsed ? "px-2 items-center" : "px-3")}>
         {/* Search */}
         <div 
           className="relative w-full"
