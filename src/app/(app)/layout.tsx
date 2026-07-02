@@ -28,10 +28,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .from("user_settings")
     .select("*")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!settings || settings.onboarding_complete === false) {
-    redirect("/onboarding");
+    // If the user already has items/data, they've used the app before —
+    // auto-complete onboarding so they aren't stuck in a redirect loop.
+    const { count } = await supabase
+      .from("items")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if (count && count > 0) {
+      await supabase
+        .from("user_settings")
+        .upsert({ user_id: user.id, onboarding_complete: true }, { onConflict: "user_id" });
+    } else {
+      redirect("/onboarding");
+    }
   }
 
   return (

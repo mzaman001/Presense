@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Geist } from "next/font/google";
-import Script from "next/script";
+
 import "./globals.css";
 import { headers } from "next/headers";
 
@@ -66,10 +66,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             Presense requires JavaScript to run. Please enable it in your browser settings.
           </div>
         </noscript>
-        <Script
+        <script
           id="theme-init"
-          strategy="beforeInteractive"
           nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `
               try {

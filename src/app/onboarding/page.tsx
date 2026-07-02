@@ -4,7 +4,7 @@ import { OnboardingWizard } from "./OnboardingWizard";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
@@ -15,7 +15,7 @@ export default async function OnboardingPage() {
     .from("user_settings")
     .select("display_name, onboarding_complete")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (settings?.onboarding_complete) {
     redirect("/");

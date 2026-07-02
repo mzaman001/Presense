@@ -7,7 +7,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { ArrowRight, Loader2, Brain, Users, Lightbulb, Bookmark, CheckCircle2, Zap, Compass, Check } from "lucide-react";
 import { toast } from "sonner";
-import { routeCapture, RoutedItem } from "@/lib/capture-router";
+import { routeCapture, type RoutedItem } from "@/lib/capture-router";
 
 interface OnboardingWizardProps {
   initialName: string;
@@ -206,9 +206,10 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from("user_settings").update({
+        await supabase.from("user_settings").upsert({
+          user_id: user.id,
           onboarding_complete: true
-        }).eq("user_id", user.id);
+        }, { onConflict: "user_id" });
       }
       router.push("/");
     } catch (e) {
@@ -227,7 +228,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans" style={{zIndex: 1}}>
       <AnimatePresence mode="wait">
         {step === 1 && (
           <m.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-md space-y-6">
@@ -400,6 +401,12 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
           </m.div>
         )}
       </AnimatePresence>
+      <button
+        onClick={handleFinish}
+        className="mt-8 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors"
+      >
+        Skip setup →
+      </button>
     </div>
   );
 }
