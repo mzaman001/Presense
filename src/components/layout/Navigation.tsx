@@ -45,6 +45,17 @@ export function Sidebar() {
   const now = useMemo(() => new Date(), []);
 
   return (
+    <>
+    {/* Expand button - visible only when sidebar is collapsed */}
+    {isSidebarCollapsed && (
+      <button
+        onClick={toggleSidebar}
+        aria-label="Expand sidebar"
+        className="hidden md:flex fixed top-3 left-3 z-50 items-center justify-center w-8 h-8 rounded-lg bg-[var(--color-surface)] border border-[var(--border-subtle)] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] transition-colors shadow-md"
+      >
+        <ChevronRight size={16} strokeWidth={1.5} />
+      </button>
+    )}
     <aside 
       className={cn(
         "sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40 group/sidebar border-r border-[var(--border-subtle)] bg-[var(--color-background)] w-[220px]",
@@ -341,6 +352,7 @@ export function Sidebar() {
         )}
       </button>
     </aside>
+    </>
   );
 }
 
