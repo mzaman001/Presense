@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 export function AppContentWrapper({ children }: { children: React.ReactNode }) {
   const {
-    isSidebarCollapsed,
+    sidebarState,
     setCaptureModalOpen,
     setSearchModalOpen,
     setSettingsModalOpen

@@ -37,8 +37,9 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const isSidebarCollapsed = useAppStore(s => s.isSidebarCollapsed);
+  const sidebarState = useAppStore(s => s.sidebarState);
   const toggleSidebar = useAppStore(s => s.toggleSidebar);
+  const isCollapsed = sidebarState !== "full";
   const userSettings = useAppStore(s => s.userSettings);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const isTouch = useIsTouch();
@@ -46,8 +47,8 @@ export function Sidebar() {
 
   return (
     <>
-    {/* Expand button - visible only when sidebar is collapsed */}
-    {isSidebarCollapsed && (
+    {/* Expand button - visible only when sidebar is hidden */}
+    {sidebarState === "hidden" && (
       <button
         onClick={toggleSidebar}
         aria-label="Expand sidebar"
@@ -58,14 +59,16 @@ export function Sidebar() {
     )}
     <aside 
       className={cn(
-        "sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40 group/sidebar border-r border-[var(--border-subtle)] bg-[var(--color-background)] w-[220px]",
-        "transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
-        isSidebarCollapsed && "-translate-x-full"
+        "sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40 group/sidebar border-r border-[var(--border-subtle)] bg-[var(--color-background)]",
+        "transition-[width] duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+        sidebarState === "full" && "w-[220px]",
+        sidebarState === "rail" && "w-[64px]",
+        sidebarState === "hidden" && "w-0 border-r-0 overflow-hidden"
       )}
     >
       {/* Header section: 60px tall */}
-      <div className={cn("relative h-[60px] flex items-center border-b border-[var(--border-subtle)] shrink-0", isSidebarCollapsed ? "px-2" : "px-4")}>
-        <div className={cn("flex items-center w-full", isSidebarCollapsed ? "justify-start pl-1.5" : "gap-3")}>
+      <div className={cn("relative h-[60px] flex items-center border-b border-[var(--border-subtle)] shrink-0", isCollapsed ? "px-2" : "px-4")}>
+        <div className={cn("flex items-center w-full", isCollapsed ? "justify-start pl-1.5" : "gap-3")}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="url(#brand-gradient)" className="shrink-0">
             <defs>
               <linearGradient id="brand-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -75,23 +78,23 @@ export function Sidebar() {
             </defs>
             <circle cx="12" cy="12" r="12" />
           </svg>
-          {!isSidebarCollapsed && <span className="text-[15px] font-semibold tracking-tight text-[var(--color-text-1)] whitespace-nowrap overflow-hidden overflow-ellipsis">Presense</span>}
+          {!isCollapsed && <span className="text-[15px] font-semibold tracking-tight text-[var(--color-text-1)] whitespace-nowrap overflow-hidden overflow-ellipsis">Presense</span>}
         </div>
         
         <button 
           onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
             "absolute top-1/2 -translate-y-1/2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors p-2 flex items-center justify-center right-0"
           )}
         >
-          {isSidebarCollapsed ? <ChevronRight size={16} strokeWidth={1.5} /> : <ChevronLeft size={16} strokeWidth={1.5} />}
+          {isCollapsed ? <ChevronRight size={16} strokeWidth={1.5} /> : <ChevronLeft size={16} strokeWidth={1.5} />}
         </button>
       </div>
 
       {/* Quick Capture Button */}
-      <div className={cn("shrink-0", isSidebarCollapsed ? "p-3 pt-4" : "p-3")}>
-        {isSidebarCollapsed ? (
+      <div className={cn("shrink-0", isCollapsed ? "p-3 pt-4" : "p-3")}>
+        {isCollapsed ? (
           <Tooltip>
             <TooltipTrigger
               onMouseEnter={() => setHoveredItem("capture")}
@@ -119,7 +122,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav Items - 12px gap below capture implies mt-3 or just gap-1 in the nav */}
-      <nav className={cn("flex-1 flex flex-col gap-1 w-full", isSidebarCollapsed ? "px-3" : "px-3")}>
+      <nav className={cn("flex-1 flex flex-col gap-1 w-full", isCollapsed ? "px-3" : "px-3")}>
         {/* Plan my day Button */}
         <div 
           className="relative w-full"
@@ -157,7 +160,7 @@ export function Sidebar() {
                 }}
                 className={cn(
                   "flex items-center h-[36px] transition-all relative group w-full mb-2",
-                  isSidebarCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "rounded-[var(--radius-sm)] px-3 gap-3",
+                  isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "rounded-[var(--radius-sm)] px-3 gap-3",
                   (state === "all_done" || state === "done") 
                     ? "text-[var(--text-4)] hover:text-[var(--text-1)] bg-transparent hover:bg-[rgba(255,255,255,0.02)]" 
                     : "text-[var(--accent)] bg-[var(--accent-dim)]/10 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)] border border-[var(--accent)]/15"
@@ -166,7 +169,7 @@ export function Sidebar() {
                 <div className="flex items-center justify-center shrink-0">
                   <Icon size={18} strokeWidth={1.5} className={(state === "all_done" || state === "done") ? "" : "text-[var(--accent)]"} />
                 </div>
-                {!isSidebarCollapsed && (
+                {!isCollapsed && (
                   <span className="text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">
                     {hoveredItem === "plan-day" && state === "done" ? "Review your day" : 
                      hoveredItem === "plan-day" && state === "all_done" ? "Already done" : label}
@@ -175,7 +178,7 @@ export function Sidebar() {
               </button>
             );
           }          )()}
-          {isSidebarCollapsed && (
+          {isCollapsed && (
             <Tooltip>
               <TooltipTrigger>
                 <div className="absolute inset-0" />
@@ -202,14 +205,14 @@ export function Sidebar() {
                 prefetch={true}
                 className={cn(
                   "flex items-center h-[36px] transition-all relative group",
-                  isSidebarCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "w-full rounded-[var(--radius-sm)] px-3 gap-3",
+                  isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "w-full rounded-[var(--radius-sm)] px-3 gap-3",
                   isActive 
                     ? "bg-[var(--accent-dim)] text-[var(--accent)]" 
                     : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
                 )}
               >
                 {/* Active left indicator */}
-                {!isSidebarCollapsed && (
+                {!isCollapsed && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-[20px]">
                     {isActive && (
                       <m.div
@@ -233,14 +236,14 @@ export function Sidebar() {
                   />
                 </div>
                 
-                {!isSidebarCollapsed && (
+                {!isCollapsed && (
                   <span className="text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">
                     {item.label}
                   </span>
                 )}
               </Link>
               
-              {isSidebarCollapsed && (
+              {isCollapsed && (
                 <Tooltip>
                   <TooltipTrigger>
                     <div className="absolute inset-0" />
@@ -256,7 +259,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom Section */}
-      <div className={cn("flex flex-col gap-1 pb-[52px]", isSidebarCollapsed ? "px-3" : "px-3")}>
+      <div className={cn("flex flex-col gap-1 pb-[52px]", isCollapsed ? "px-3" : "px-3")}>
         {/* Search */}
         <div 
           className="relative w-full"
@@ -267,21 +270,21 @@ export function Sidebar() {
             onClick={() => useAppStore.getState().setSearchModalOpen(true)}
             className={cn(
               "flex items-center h-[36px] transition-all relative group",
-              isSidebarCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "w-full rounded-[var(--radius-sm)] px-3 gap-3",
+              isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "w-full rounded-[var(--radius-sm)] px-3 gap-3",
               "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
             )}
           >
             <div className="flex items-center justify-center shrink-0">
               <Search size={18} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
             </div>
-            {!isSidebarCollapsed && (
+            {!isCollapsed && (
               <div className="flex items-center justify-between flex-1 min-w-0 overflow-hidden">
                 <span className="text-[13px] font-medium leading-none text-[var(--text-3)] whitespace-nowrap">Search</span>
                 <span className="text-[10px] font-mono text-[var(--text-3)] whitespace-nowrap shrink-0 ml-2">Cmd+K</span>
               </div>
             )}
           </button>
-          {isSidebarCollapsed && (
+          {isCollapsed && (
             <Tooltip>
               <TooltipTrigger>
                 <div className="absolute inset-0" />
@@ -303,18 +306,18 @@ export function Sidebar() {
             onClick={() => useAppStore.getState().setSettingsModalOpen(true)}
             className={cn(
               "flex items-center h-[36px] transition-all relative group",
-              isSidebarCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "w-full rounded-[var(--radius-sm)] px-3 gap-3",
+              isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "w-full rounded-[var(--radius-sm)] px-3 gap-3",
               "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
             )}
           >
             <div className="flex items-center justify-center shrink-0">
               <Settings size={18} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
             </div>
-            {!isSidebarCollapsed && (
+            {!isCollapsed && (
               <span className="text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis">Settings</span>
             )}
           </button>
-          {isSidebarCollapsed && (
+          {isCollapsed && (
             <Tooltip>
               <TooltipTrigger>
                 <div className="absolute inset-0" />
@@ -333,17 +336,17 @@ export function Sidebar() {
         className={cn(
           "absolute bottom-0 left-0 w-full h-[52px] border-t border-[var(--border-subtle)] flex items-center transition-colors text-left",
           "hover:bg-[var(--surface-hover)] cursor-pointer group/user",
-          isSidebarCollapsed ? "justify-center" : "px-4"
+          isCollapsed ? "justify-center" : "px-4"
         )}
       >
         {userSettings?.display_name && (
-          <div className={cn("flex items-center gap-3", !isSidebarCollapsed && "w-full")}>
+          <div className={cn("flex items-center gap-3", !isCollapsed && "w-full")}>
             <Avatar 
               name={userSettings.display_name} 
               color={userSettings.avatar_color || "#7692FF"} 
               size="sm"
             />
-            {!isSidebarCollapsed && (
+            {!isCollapsed && (
               <div className="flex flex-col min-w-0 overflow-hidden">
                 <span className="text-[13px] font-medium text-[var(--color-text-1)] truncate leading-tight whitespace-nowrap">{userSettings.display_name}</span>
               </div>
