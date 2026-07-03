@@ -52,6 +52,7 @@ interface AppState {
   setSearchModalOpen: (open: boolean) => void;
   sidebarState: "full" | "rail" | "hidden";
   toggleSidebar: () => void;
+  setSidebarState: (state: "full" | "rail" | "hidden") => void;
   isMobileDrawerOpen: boolean;
   setIsMobileDrawerOpen: (open: boolean) => void;
   isSettingsModalOpen: boolean;
@@ -81,8 +82,9 @@ export const useAppStore = create<AppState>((set) => ({
   setSearchModalOpen: (open) => set({ isSearchModalOpen: open }),
   sidebarState: "full" as const,
   toggleSidebar: () => set((state) => ({
-    sidebarState: state.sidebarState === "full" ? "rail" : state.sidebarState === "rail" ? "hidden" : "full"
+    sidebarState: state.sidebarState === "full" ? "rail" : "full"
   })),
+  setSidebarState: (newState) => set({ sidebarState: newState }),
   isMobileDrawerOpen: false,
   setIsMobileDrawerOpen: (open) => set({ isMobileDrawerOpen: open }),
   isSettingsModalOpen: false,

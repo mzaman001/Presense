@@ -39,6 +39,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const sidebarState = useAppStore(s => s.sidebarState);
   const toggleSidebar = useAppStore(s => s.toggleSidebar);
+  const setSidebarState = useAppStore(s => s.setSidebarState);
   const isCollapsed = sidebarState !== "full";
   const userSettings = useAppStore(s => s.userSettings);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export function Sidebar() {
     {/* Expand button - visible only when sidebar is hidden */}
     {sidebarState === "hidden" && (
       <button
-        onClick={toggleSidebar}
+        onClick={() => setSidebarState("full")}
         aria-label="Expand sidebar"
         className="hidden md:flex fixed top-3 left-3 z-50 items-center justify-center w-8 h-8 rounded-lg bg-[var(--color-surface)] border border-[var(--border-subtle)] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] transition-colors shadow-md"
       >
@@ -122,7 +123,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav Items */}
-      <nav className={cn("flex flex-col gap-1 w-full", isCollapsed ? "px-2 items-center" : "px-3 flex-1")}>
+      <nav className={cn("flex flex-col w-full", isCollapsed ? "gap-0.5 px-2 items-center" : "gap-1 px-3 flex-1")}>
         {/* Plan my day Button */}
         <div 
           className="relative w-full"
@@ -259,7 +260,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom Section */}
-      <div className={cn("flex flex-col gap-1 pb-[52px]", isCollapsed ? "px-2 items-center" : "px-3")}>
+      <div className={cn("flex flex-col pb-[52px]", isCollapsed ? "gap-0.5 px-2 items-center mt-auto" : "gap-1 px-3")}>
         {/* Search */}
         <div 
           className="relative w-full"
