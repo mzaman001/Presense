@@ -756,6 +756,54 @@ h1, h2, h3, h4, h5, h6 {
     border-right: 0.5px solid var(--border-subtle);
   }
 
+  /* ========================================
+     Sidebar Hover-to-Expand (Desktop Only)
+     ======================================== */
+  
+  /* Rail mode: hover to expand */
+  @media (hover: hover) and (pointer: fine) and (min-width: 768px) {
+    .sidebar:hover {
+      width: 220px !important;
+    }
+    
+    /* Labels fade in on hover */
+    .sidebar:hover .nav-label {
+      opacity: 1;
+    }
+    
+    /* Header title fade in */
+    .sidebar:hover .sidebar-title {
+      opacity: 1;
+      width: auto;
+    }
+    
+    /* Quick Capture label fade in */
+    .sidebar:hover .capture-label {
+      opacity: 1;
+      width: auto;
+    }
+  }
+  
+  /* Touch devices: always full width */
+  @media (hover: none) and (pointer: coarse) and (min-width: 768px) {
+    .sidebar {
+      width: 220px !important;
+    }
+  }
+  
+  /* Reduced motion: disable animations */
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar {
+      transition: none !important;
+    }
+    
+    .nav-label,
+    .sidebar-title,
+    .capture-label {
+      transition: none !important;
+    }
+  }
+
   .modal {
     background: var(--surface-modal);
     backdrop-filter: var(--glass-blur-heavy);
