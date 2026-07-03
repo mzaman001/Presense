@@ -757,32 +757,28 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   /* ========================================
-     Sidebar Hover-to-Expand (Desktop Only)
+     Sidebar Hover-to-Expand (DISABLED)
+     Uncomment to enable hover-to-expand
      ======================================== */
   
-  /* Rail mode: hover to expand */
+  /*
   @media (hover: hover) and (pointer: fine) and (min-width: 768px) {
     .sidebar:hover {
       width: 220px !important;
     }
-    
-    /* Labels fade in on hover */
     .sidebar:hover .nav-label {
       opacity: 1;
     }
-    
-    /* Header title fade in */
     .sidebar:hover .sidebar-title {
       opacity: 1;
       width: auto;
     }
-    
-    /* Quick Capture label fade in */
     .sidebar:hover .capture-label {
       opacity: 1;
       width: auto;
     }
   }
+  */
   
   /* Touch devices: always full width */
   @media (hover: none) and (pointer: coarse) and (min-width: 768px) {
@@ -802,6 +798,14 @@ h1, h2, h3, h4, h5, h6 {
     .capture-label {
       transition: none !important;
     }
+  }
+
+  /* Focus-visible styles for sidebar */
+  .sidebar button:focus-visible,
+  .sidebar a:focus-visible {
+    outline: 2px solid var(--border-focus, var(--accent));
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
   }
 
   .modal {

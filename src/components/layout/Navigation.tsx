@@ -47,11 +47,12 @@ export function Sidebar() {
 
   return (
     <aside 
+      aria-label="Main navigation"
       className={cn(
         "sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40",
         "border-r border-[var(--border-subtle)] bg-[var(--color-background)]",
         "transition-[width] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)]",
-        isCollapsed ? "w-[64px]" : "w-[220px]"
+        isCollapsed ? "w-[56px]" : "w-[220px]"
       )}
     >
       {/* Header section: 60px tall */}
@@ -74,6 +75,7 @@ export function Sidebar() {
         
         <button 
           onClick={toggleSidebar}
+          aria-expanded={!isCollapsed}
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
             "absolute top-1/2 -translate-y-1/2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors p-2 flex items-center justify-center right-0"
@@ -93,7 +95,7 @@ export function Sidebar() {
               onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
               className="relative flex items-center justify-center shrink-0 transition-all overflow-hidden w-10 h-10 rounded-full bg-[var(--accent)] text-[var(--text-on-accent)] mx-auto shadow-[var(--shadow-button-primary)] hover:scale-105"
             >
-              <Plus size={18} strokeWidth={1.5} className="shrink-0" />
+              <Plus size={20} strokeWidth={1.5} className="shrink-0" />
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>
               Quick Capture <span className="text-[10px] opacity-70">Cmd+K</span>
@@ -104,16 +106,16 @@ export function Sidebar() {
             onMouseEnter={() => setHoveredItem("capture")}
             onMouseLeave={() => setHoveredItem(null)}
             onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
-            className="relative flex items-center justify-center shrink-0 transition-all overflow-hidden btn-capture w-full"
+            className="relative flex items-center gap-2.5 h-10 shrink-0 transition-all overflow-hidden btn-capture w-full rounded-md px-3"
           >
-            <Plus size={14} strokeWidth={1.5} className="shrink-0 mr-2" />
-            <span className="capture-label whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200">Quick Capture</span>
+            <Plus size={20} strokeWidth={1.5} className="shrink-0" />
+            <span className="capture-label whitespace-nowrap overflow-hidden text-ellipsis text-[14px] font-medium transition-opacity duration-200">Quick Capture</span>
           </button>
         )}
       </div>
 
       {/* Nav Items */}
-      <nav className={cn("flex flex-col w-full", isCollapsed ? "gap-1 px-2 items-center" : "gap-1 px-3 flex-1")}>
+      <nav id="sidebar-content" className={cn("flex flex-col w-full", isCollapsed ? "gap-1 px-2 items-center" : "gap-1 px-3 flex-1")}>
         {/* Plan my day Button */}
         <div 
           className="relative w-full"
@@ -151,17 +153,17 @@ export function Sidebar() {
                 }}
                 className={cn(
                   "flex items-center transition-all relative group w-full",
-                  isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-9 rounded-[var(--radius-sm)] px-3 gap-3",
+                  isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-10 rounded-md px-3 gap-2.5",
                   (state === "all_done" || state === "done") 
                     ? "text-[var(--text-4)] hover:text-[var(--text-1)] bg-transparent hover:bg-[rgba(255,255,255,0.02)]" 
                     : "text-[var(--accent)] bg-[var(--accent-dim)]/10 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)] border border-[var(--accent)]/15"
                 )}
               >
                 <div className="flex items-center justify-center shrink-0">
-                  <Icon size={18} strokeWidth={1.5} className={(state === "all_done" || state === "done") ? "" : "text-[var(--accent)]"} />
+                  <Icon size={20} strokeWidth={1.5} className={(state === "all_done" || state === "done") ? "" : "text-[var(--accent)]"} />
                 </div>
                 <span className={cn(
-                  "nav-label text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
+                  "nav-label text-[14px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
                   isCollapsed ? "opacity-0 w-0" : "opacity-100"
                 )}>
                   {hoveredItem === "plan-day" && state === "done" ? "Review your day" : 
@@ -195,11 +197,12 @@ export function Sidebar() {
               <Link
                 href={item.href}
                 prefetch={true}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex items-center transition-all relative group",
-                  isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-9 w-full rounded-[var(--radius-sm)] px-3 gap-3",
+                  isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-10 w-full rounded-md px-3 gap-2.5",
                   isActive 
-                    ? "bg-[var(--accent-dim)] text-[var(--accent)]" 
+                    ? "bg-[var(--accent-dim)] text-[var(--accent)] font-medium" 
                     : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
                 )}
               >
@@ -218,7 +221,7 @@ export function Sidebar() {
                 
                 <div className="flex items-center justify-center shrink-0">
                   <Icon 
-                    size={18} 
+                    size={20} 
                     strokeWidth={1.5}
                     className={cn(
                       "transition-all",
@@ -229,7 +232,7 @@ export function Sidebar() {
                 </div>
                 
                 <span className={cn(
-                  "nav-label text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
+                  "nav-label text-[14px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
                   isCollapsed ? "opacity-0 w-0" : "opacity-100"
                 )}>
                   {item.label}
@@ -263,18 +266,18 @@ export function Sidebar() {
             onClick={() => useAppStore.getState().setSearchModalOpen(true)}
             className={cn(
               "flex items-center transition-all relative group",
-              isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-9 w-full rounded-[var(--radius-sm)] px-3 gap-3",
+              isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-10 w-full rounded-md px-3 gap-2.5",
               "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
             )}
           >
             <div className="flex items-center justify-center shrink-0">
-              <Search size={18} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
+              <Search size={20} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
             </div>
             <div className={cn(
               "nav-label flex items-center justify-between flex-1 min-w-0 overflow-hidden transition-opacity duration-200",
               isCollapsed ? "opacity-0 w-0" : "opacity-100"
             )}>
-              <span className="text-[13px] font-medium leading-none text-[var(--text-3)] whitespace-nowrap">Search</span>
+              <span className="text-[14px] font-medium leading-none text-[var(--text-3)] whitespace-nowrap">Search</span>
               <span className="text-[10px] font-mono text-[var(--text-3)] whitespace-nowrap shrink-0 ml-2">Cmd+K</span>
             </div>
           </button>
@@ -300,15 +303,15 @@ export function Sidebar() {
             onClick={() => useAppStore.getState().setSettingsModalOpen(true)}
             className={cn(
               "flex items-center transition-all relative group",
-              isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-9 w-full rounded-[var(--radius-sm)] px-3 gap-3",
+              isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-10 w-full rounded-md px-3 gap-2.5",
               "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
             )}
           >
             <div className="flex items-center justify-center shrink-0">
-              <Settings size={18} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
+              <Settings size={20} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
             </div>
             <span className={cn(
-              "nav-label text-[13px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
+              "nav-label text-[14px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
               isCollapsed ? "opacity-0 w-0" : "opacity-100"
             )}>Settings</span>
           </button>
