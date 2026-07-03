@@ -36,13 +36,23 @@ describe("ritual decisions", () => {
     expect(decision.reason).toBe("morning_window_missed");
   });
 
-  test("auto-shows evening at shutdown time", () => {
+  test("auto-shows evening at shutdown time when morning is done", () => {
     const decision = getRitualDecision({
       ...base,
+      lastMorningDate: "2026-07-03",
       now: new Date("2026-07-03T17:05:00"),
     });
     expect(decision.kind).toBe("evening");
     expect(decision.targetDate).toBe("2026-07-03");
+  });
+
+  test("does not auto-show evening at shutdown time when morning is not done", () => {
+    const decision = getRitualDecision({
+      ...base,
+      now: new Date("2026-07-03T17:05:00"),
+    });
+    expect(decision.kind).toBe("none");
+    expect(decision.reason).toBe("morning_window_missed");
   });
 
   test("planning after 15:00 targets tomorrow when manually opened", () => {

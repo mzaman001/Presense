@@ -78,7 +78,7 @@ export function getRitualDecision(input: RitualDecisionInput): RitualDecision {
     return { kind: "morning", targetDate: today, reason: "manual_planning", nextEligibleAt: null };
   }
 
-  if (currentMinutes >= shutdownMinutes && !eveningDone) {
+  if (currentMinutes >= shutdownMinutes && !eveningDone && morningDone) {
     return { kind: "evening", targetDate: today, reason: "evening_due", nextEligibleAt: null };
   }
 

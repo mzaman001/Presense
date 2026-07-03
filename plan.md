@@ -1,1436 +1,952 @@
-# Presense — Master Plan v4 (Independent Audit)
+# Presense — Master Plan v5
 
-**Author:** Independent audit against the July 2 codebase drop.
-**Method:** Every claim below was verified by reading the actual file. Where Claude's v3 plan made a claim, I checked it. Some of Claude's claims are correct, some are wrong, some are understated. I note which is which inline.
-**Sources consulted (industry-standard references):**
-- Next.js 16 official docs (App Router, Middleware, Route Handlers, `next/script`, Metadata, `viewport` export)
-- Supabase official docs (RLS, `SECURITY DEFINER`, `search_path`, Realtime channels, Auth Server-Side helpers)
-- OWASP Top 10 2021 + OWASP ASVS L2 (input validation, auth, secrets)
-- MDN Web Docs (CSP, `Content-Security-Policy`, Service Worker, `visualViewport`, `overscroll-behavior`)
-- web.dev / Chrome team (Core Web Vitals, `content-visibility`, `overscroll-behavior`, iOS input zoom)
-- Postgres official docs (`SECURITY DEFINER`, `search_path` injection, partial indexes, `ON DELETE CASCADE`)
-- React 19 release notes (strict mode, `use()` hook, hydration mismatch behavior)
-- Framer Motion / Motion docs (`LazyMotion`, `MotionConfig`, `m.*` vs `motion.*`)
-- Vercel docs (Edge Runtime limitations, `optimizePackageImports`, headers)
-- WCAG 2.1 / 2.2 (focus management, target size 2.5.5, reduced motion 2.3.3)
-- Serwist docs (precache, `skipWaiting` trade-offs, update flow)
-- Zod docs (runtime validation in Route Handlers)
-- Apple Web Content Guide (iOS Safari `100vh` / `100dvh`, input zoom, safe-area insets)
+**Audience:** The next AI coding agent (or you) who will execute this plan.
+**Method:** Every item was verified against the actual July 3 codebase (`Presense-main (4).zip`). No item is based on assumption — each cites the exact file and the exact bug.
+**Sources:** 13 Lovable audit docs (`presense-audit.zip`), full codebase read, 6 prior audits in this conversation, industry-standard references (Next.js 16 docs, Supabase docs, OWASP ASVS, WCAG 2.2, MDN, web.dev, Framer Motion docs, Serwist docs, React 19 docs, Vercel docs, Postgres docs).
 
 ---
 
 ## How to read this plan
 
-Every item is tagged:
-- **[VERIFIED]** — I read the file and confirmed the issue exists.
-- **[CLAUDE-RIGHT]** — Claude's v3 plan flagged this; I confirmed it.
-- **[CLAUDE-WRONG]** — Claude's v3 plan flagged this but the claim is incorrect or overstated.
-- **[CLAUDE-UNDERSTATED]** — Claude flagged this but the real impact is bigger.
-- **[NEW]** — Claude's v3 plan missed this; I found it independently.
+Every item is a **ticket** with:
+- **File(s):** exact path(s) to edit
+- **Bug:** what's wrong, verified against code
+- **Fix:** what to change (specific enough to execute without ambiguity)
+- **Verify:** how to confirm the fix works
+- **Risk:** 🟢 safe / 🟡 careful / 🔴 refactor
+- **Source:** where this item came from (user report, audit doc, infrastructure rec, prior audit)
 
-Every fix is rated:
-- **🟢 SAFE** — zero risk of breaking anything; can ship today.
-- **🟡 CAREFUL** — real fix but touches data/schema/state; test on staging first.
-- **🔴 REFACTOR** — architectural change; do incrementally, one page at a time.
+**Execution rule:** Do tiers in order. Within a tier, items are independent. Never skip Tier 0.
 
----
-
-## Tier 0 — Emergency: App-breaking bugs (fix FIRST, today)
-
-These will crash the app in normal user flows. None of them appeared in Claude's v3 plan.
-
-### T0-1 · [NEW] · 🔴 · Migration creates a trigger that references a column dropped by a later migration
-
-**Files:**
-- `supabase/migrations/20260629081541_add_linked_people_cleanup_trigger.sql:6–13`
-- `supabase/migrations/20260701000000_migrate_linked_people_to_ids.sql:20–21`
-- `supabase/migrations/20260702000000_fix_db_issues.sql:6–21`
-
-**The bug:** Migration `20260629081541` creates `remove_linked_person()` which references BOTH `linked_people` and `linked_people_ids` columns. Migration `20260701000000` (which runs LATER — note the timestamp) DROPS `linked_people`. Migration `20260702000000` then re-creates `remove_linked_person()` referencing only `linked_people_ids`.
-
-**Why this matters:** If all three migrations ran in order on a fresh DB, the final state is correct (the third migration fixes the trigger). BUT:
-1. If your **production DB** ran `20260629081541` before `20260701000000` was deployed, then between those two deploys, **every person deletion threw `column "linked_people" does not exist`** and the delete either failed or left orphaned references.
-2. If any migration failed mid-run and was marked applied, the trigger is in the broken state.
-3. The migration history is fragile — anyone reading the migrations in order will be confused.
-
-**Fix (🟡 CAREFUL):** Verify the current state of the trigger on your production DB:
-```sql
-SELECT pg_get_functiondef('remove_linked_person()'::regprocedure);
-```
-If the function body still references `linked_people`, run a fresh migration to recreate it cleanly:
-```sql
--- supabase/migrations/20260703000000_fix_remove_linked_person_final.sql
-CREATE OR REPLACE FUNCTION remove_linked_person()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = pg_catalog, public
-AS $$
-BEGIN
-  UPDATE items
-    SET linked_people_ids = array_remove(linked_people_ids, OLD.id)
-    WHERE OLD.id = ANY(linked_people_ids);
-  UPDATE threads
-    SET linked_people_ids = array_remove(linked_people_ids, OLD.id)
-    WHERE OLD.id = ANY(linked_people_ids);
-  RETURN OLD;
-END;
-$$;
-```
-Note I added `SECURITY DEFINER SET search_path = pg_catalog, public` — the current trigger function (in `20260629081541` and `20260702000000`) has neither, which is a `search_path` injection risk per Postgres docs §5.3.
+**Do NOT break:** the hover sidebar (`w-[80px] hover:w-[248px]`), the theme rename (`sunset/midnight/meadow`), the `proxy.ts` CSP nonce system, the `MotionProvider` with `LazyMotion strict`, the `RealtimeProvider` shared-channel architecture, the `Sheet` component's drag-to-dismiss. These are correct and must be preserved.
 
 ---
 
-### T0-2 · [NEW] · 🔴 · `useRealtime` standalone fallback still re-subscribes on visibility toggle
+## Tier 0 — Urgent bug fixes (do FIRST, today)
 
-**File:** `src/hooks/useRealtime.ts:100–136`
+These are verified bugs that break core user flows. Each is small and independent.
 
-Claude's v3 plan says "RealtimeProvider architecture complete with TanStack Query integration" — which is true when the provider is mounted. But `useRealtime` has a **standalone fallback path** (lines 100–136) that activates when `useRealtimeContext()` throws (i.e., when a component uses `useRealtime` outside the provider, which happens in `test-realtime/page.tsx` and could happen in any future component).
+### T0-1 · Ritual fires evening for new user who never did morning · 🟢 · Source: user issue #14
 
-That fallback path has `isVisible` in the dependency array (line 136):
-```ts
-}, [table, context, debouncedUpdate, isVisible]);
+**File:** `src/lib/rituals.ts:73-76`
+
+**Bug:** `getRitualDecision()` checks `currentMinutes >= shutdownMinutes && !eveningDone` but does NOT check `morningDone`. A new user at 22:00 (who never planned their morning) gets the evening ritual immediately after onboarding. Sunsama never shows evening review before morning planning is complete.
+
+**Fix:** Add `morningDone` to the evening trigger condition:
+```typescript
+// Line 73-76, change:
+if (currentMinutes >= shutdownMinutes && !eveningDone) {
+// To:
+if (currentMinutes >= shutdownMinutes && !eveningDone && morningDone) {
 ```
+If `morningDone` is false, the flow falls through to the morning logic (which will fire `morning_due` or `morning_window_missed`).
 
-This means: every time the user switches tabs, the fallback tears down and recreates the Supabase channel. This is the EXACT bug Claude's v3 plan claimed was fixed. It IS fixed for the provider path, but NOT for the fallback path.
-
-**Fix (🟢 SAFE):** Move `isVisible` out of the deps and gate inside the callback. Replace the fallback `useEffect` body:
-
-```ts
-useEffect(() => {
-  if (context) return;
-  // Removed: if (!isVisible) return;  — keep the channel open, just skip the refetch
-
-  const supabase = createClient();
-  let channel: ReturnType<typeof supabase.channel> | null = null;
-  try {
-    channel = supabase
-      .channel(`realtime_${table}`)
-      .on("postgres_changes", { event: "*", schema: "public", table }, (payload: any) => {
-        const lastMutations = useAppStore.getState().lastMutations || {};
-        const lastMutationAt = Math.max(lastMutations[table] || 0, lastMutations["_global"] || 0);
-        if (Date.now() - lastMutationAt < 500) return;
-        // Gate visibility INSIDE the callback, not in the effect deps
-        if (document.visibilityState !== "visible") return;
-        debouncedUpdate(payload);
-      })
-      .subscribe();
-  } catch (e) {
-    logger.error(`[Realtime] Error subscribing to channel for ${table}:`, e);
-  }
-
-  return () => { if (channel) supabase.removeChannel(channel); };
-}, [table, context, debouncedUpdate]);
-```
-
-**Why safe:** Pure refactor of effect dependencies. Channel stays open across tab switches. The visibility check moves inside the callback — invisible tabs simply skip the refetch, then catch up via TanStack Query's `refetchOnWindowFocus` (which is on by default).
+**Verify:** Create a new account at night. After onboarding, the ritual should show "Plan my day" (morning), NOT "Evening review."
 
 ---
 
-### T0-3 · [NEW] · 🟡 · `RealtimeProvider` unsubscribes from channels when listener count hits zero — causes channel churn during navigation
+### T0-2 · Ritual completion doesn't update sidebar/Home · 🟡 · Source: user issue #14
 
-**File:** `src/components/providers/RealtimeProvider.tsx:113–144`
+**File:** `src/components/features/RitualOverlay.tsx` (the "Shut down for today" handler)
 
-When `subscribe`'s returned cleanup runs and the listener count goes from 1 → 0, the provider calls `unsubscribeFromChannel(table)` which removes the channel entirely. The next component that subscribes to the same table re-creates it.
+**Bug:** After pressing "Shut down for today," the sidebar still shows "Plan my day" and Home still shows "you haven't planned your day." The ritual overlay calls `setActiveRitual(null)` but does not call `updateUserSetting({ last_evening_ritual_date: todayStr })` to persist the completion to the DB.
 
-In practice: navigating from `/do` (subscribes to `items`) to `/think` (subscribes to `threads`) and back to `/do` causes the `items` channel to be torn down on `/do` unmount and re-created on `/do` re-mount. This is the same churn the provider was supposed to fix.
+**Fix:** In the evening ritual's completion handler, after the Supabase update succeeds, call:
+```typescript
+useAppStore.getState().updateUserSetting('last_evening_ritual_date', todayStr);
+```
+Same for morning completion — ensure `last_ritual_date` is updated.
 
-**Why this matters:** Each channel teardown + recreation is a websocket round-trip. On slow connections, this is a 200–800ms window where realtime updates are missed. Combined with `template.tsx` re-mounting the page on every navigation, every page transition loses realtime coverage briefly.
+**Verify:** Complete the evening ritual. The sidebar should update to "All done ✓" without a page refresh.
 
-**Fix (🟡 CAREFUL):** Add a debounced teardown — keep the channel alive for 5 seconds after the last listener leaves, in case the user navigates back:
-```ts
-const teardownTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+---
 
-const subscribe = useCallback((table: string, callback) => {
-  // ... existing add-listener logic ...
+### T0-3 · Light mode dropdown doesn't work (stale closure) · 🟢 · Source: user issue #18
 
-  // Cancel any pending teardown
-  if (teardownTimers.current[table]) {
-    clearTimeout(teardownTimers.current[table]);
-    delete teardownTimers.current[table];
-  }
+**File:** `src/components/features/SettingsModal.tsx:330-334`
 
-  return () => {
-    tableListeners.delete(callback);
-    if (tableListeners.size === 0) {
-      // Delay teardown — user might navigate back
-      teardownTimers.current[table] = setTimeout(() => {
-        unsubscribeFromChannel(table);
-        delete listenersRef.current[table];
-        delete teardownTimers.current[table];
-      }, 5000);
+**Bug:** `updateSetting('color_mode', 'light')` calls `applyDocumentTheme(normalizeThemeId(settings.theme), ...)` but `settings.theme` is from the CLOSURE (stale state), not the updated state. The theme doesn't change visually when you select "Light."
+
+**Fix:** Read from `prev` inside `setSettings`:
+```typescript
+const updateSetting = (key: string, value: unknown) => {
+  setSettings((prev) => {
+    const next = { ...prev, [key]: value };
+    if (key === 'color_mode') {
+      const mode = normalizeColorMode(value);
+      localStorage.setItem('presense_color_mode', mode);
+      applyDocumentTheme(normalizeThemeId(next.theme), mode, Boolean(next.reduce_motion));
     }
-  };
-}, [subscribeToChannel, unsubscribeFromChannel]);
-```
-**Why careful:** Adds a 5-second lag to channel cleanup. Memory usage is slightly higher (channels stay open 5s longer). Acceptable trade-off for a personal app.
-
----
-
-### T0-4 · [NEW] · 🟡 · `useRealtimeStatus` lies — it tracks browser online/offline, not realtime connection state
-
-**Files:**
-- `src/hooks/useRealtimeStatus.ts:1–23`
-- `src/components/ui/ConnectionStatus.tsx:8–10`
-
-`useRealtimeStatus` only listens to `window.online` / `window.offline` events. These fire when the **entire network** goes down — NOT when the Supabase Realtime websocket disconnects (which can happen on a flaky connection even when the browser thinks it's online).
-
-The `ConnectionStatus` component is mounted globally in `layout.tsx:91` and shows "Reconnecting..." / "Disconnected" based on this hook. Users will see "Connected" (green) while the realtime websocket is actually dead, and updates silently stop flowing.
-
-**Fix (🟡 CAREFUL):** Wire the hook to the actual Supabase channel state. The `RealtimeProvider` already has the channels in `channelsRef`. Add a status callback:
-
-```ts
-// In RealtimeProvider.tsx, inside subscribeToChannel:
-const channel = supabase
-  .channel(`realtime_${table}`, {
-    config: { broadcast: { self: false } }
-  })
-  .on("postgres_changes", { event: "*", schema: "public", table }, callback)
-  .subscribe((status, err) => {
-    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-      setStatus('disconnected');
-    } else if (status === 'CLOSED') {
-      setStatus('reconnecting');
-    } else if (status === 'SUBSCRIBED') {
-      setStatus('connected');
+    if (key === 'theme') {
+      const theme = normalizeThemeId(value);
+      localStorage.setItem('presense_theme', theme);
+      applyDocumentTheme(theme, normalizeColorMode(next.color_mode), Boolean(next.reduce_motion));
     }
+    if (key === 'reduce_motion') {
+      localStorage.setItem('presense_reduce_motion', value ? 'true' : 'false');
+      applyDocumentTheme(normalizeThemeId(next.theme), normalizeColorMode(next.color_mode), Boolean(value));
+    }
+    return next;
   });
-```
-Then expose `status` via a separate context or a Zustand slice. `useRealtimeStatus` reads from that store instead of `window.online/offline`.
-
-**Why careful:** Changes the provider's API. Test that the indicator correctly shows "Reconnecting" when you kill the network tab in DevTools → Network → Offline.
-
----
-
-## Tier 1 — Security (do this week)
-
-### T1-1 · [CLAUDE-RIGHT] · 🟡 · `typescript.ignoreBuildErrors: true` in `next.config.ts`
-
-**Verified:** `next.config.ts:11–13`:
-```ts
-typescript: {
-  ignoreBuildErrors: true,
-},
-```
-
-**Why it matters:** Per Next.js official docs, this is "not recommended" and was designed as a temporary migration aid. With it on, `npm run build` succeeds even if there are 77 `: any` annotations and 28 `catch (error: any)` blocks that would otherwise fail strict-mode compilation. Real bugs hide behind this flag.
-
-**Fix (🟡 CAREFUL):** Remove the flag. Run `npx tsc --noEmit` first to see the error count. Fix the errors in waves:
-1. Catch blocks: replace `catch (error: any)` → `catch (error: unknown)` + `error instanceof Error ? error.message : 'Unknown'`. **28 instances.**
-2. Supabase responses: generate typed client with `npx supabase gen types typescript --project-id <id> > src/types/database.ts` and pass to `createBrowserClient<Database>()`. This eliminates most `: any` in component code automatically.
-3. Remaining `: any` (77 total, non-test): review case-by-case.
-
-**Why careful:** Removing the flag will surface every type error at once. Don't do this mid-feature. Do it on a dedicated branch, fix the errors in waves, merge when green.
-
----
-
-### T1-2 · [CLAUDE-RIGHT] · 🟡 · No Content-Security-Policy header
-
-**Verified:** `next.config.ts:18–32` sets X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS. **No CSP.** Per OWASP and MDN, missing CSP is the most commonly exploited header gap — any injected script runs unrestricted.
-
-**Fix (🟡 CAREFUL):** Add a nonce-based CSP in `middleware.ts`. The Next.js official pattern (per their docs §"Middleware"):
-
-```ts
-// At the top of middleware():
-import { randomUUID } from 'crypto';
-
-const nonce = Buffer.from(randomUUID()).toString('base64');
-const cspHeader = [
-  "default-src 'self'",
-  `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-  // 'unsafe-inline' for style-src is required by Next.js inline styles + Tailwind
-  "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' blob: data: ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}`,
-  "font-src 'self' data:",
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co`,
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "upgrade-insecure-requests",
-].join('; ');
-
-const requestHeaders = new Headers(request.headers);
-requestHeaders.set('x-nonce', nonce);
-requestHeaders.set('Content-Security-Policy', cspHeader);
-
-// Pass to the response:
-const response = NextResponse.next({ request: { headers: requestHeaders } });
-response.headers.set('Content-Security-Policy', cspHeader);
-```
-
-Then in `src/app/layout.tsx`, read the nonce and apply to the theme-init `<Script>`:
-```ts
-import { headers } from 'next/headers';
-// ...
-const headersList = await headers();
-const nonce = headersList.get('x-nonce') ?? undefined;
-// ...
-<Script id="theme-init" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{ __html: ... }} />
-```
-
-**Why careful:** Nonce-based CSP forces dynamic rendering on all routes (per Next.js docs). This disables static optimization. Acceptable for an authenticated app (you weren't benefiting from static rendering anyway), but verify the build still works.
-
-Also: the theme-init script currently uses `localStorage.getItem('presense_theme')` — this is fine under CSP because the script is nonce-tagged.
-
----
-
-### T1-3 · [CLAUDE-RIGHT] · 🟢 · `test-realtime` route accessible in production
-
-**Verified:** `src/app/test-realtime/page.tsx` exists. `src/middleware.ts:33` has `const isTestRoute = request.nextUrl.pathname.toLowerCase().startsWith('/test-');` and line 36 excludes it from the auth check.
-
-**Fix (🟢 SAFE):** Two options:
-1. **Delete the route entirely** (recommended — it's a debug harness). Remove `src/app/test-realtime/`. Remove the `isTestRoute` variable and the `&& !isTestRoute` clause from `middleware.ts:36`.
-2. **Gate behind NODE_ENV** (less clean). Add at the top of `test-realtime/page.tsx`:
-   ```ts
-   if (process.env.NODE_ENV === 'production') notFound();
-   ```
-   But this still ships the code. Option 1 is better.
-
-**Why safe:** Pure deletion of debug code. No user-facing flow uses this route.
-
----
-
-### T1-4 · [CLAUDE-RIGHT] · 🟡 · No Zod / runtime input validation on API routes
-
-**Verified:** All three API routes (`/api/capture`, `/api/account`, `/api/people/reorder`) call `await request.json()` and use the result directly. `zod` is NOT in `package.json` (verified).
-
-**Fix (🟡 CAREFUL):**
-1. `npm install zod`
-2. Create `src/lib/schemas.ts`:
-   ```ts
-   import { z } from 'zod';
-   export const captureSchema = z.object({
-     text: z.string().min(1).max(10_000),
-     settings: z.record(z.unknown()).optional(),
-   });
-   export const reorderSchema = z.object({
-     items: z.array(z.object({
-       id: z.string().uuid(),
-       sort_order: z.number().int().min(0).max(100_000),
-     })).min(1).max(200),
-   });
-   ```
-3. Apply at the top of each handler:
-   ```ts
-   const parsed = captureSchema.safeParse(await request.json());
-   if (!parsed.success) {
-     return NextResponse.json(
-       { error: 'Invalid input', details: parsed.error.flatten().fieldErrors },
-       { status: 400 }
-     );
-   }
-   const { text, settings } = parsed.data;
-   ```
-
-**Why careful:** Existing callers (CaptureModal, People page) send well-formed payloads, so they'll pass. But verify each call site still works — especially `CaptureModal.tsx` which sends `settings: userSettings` (a Zustand object, may have extra keys — `z.record(z.unknown()).optional()` allows this).
-
----
-
-### T1-5 · [CLAUDE-RIGHT] · 🟡 · No `TO authenticated` on RLS policies
-
-**Verified:** Grepped `supabase/migrations/` for `TO authenticated` — **zero matches**. All 9 policies use `FOR ALL USING (auth.uid() = user_id)` with no role restriction.
-
-**Why it matters:** Per Supabase official docs §"RLS policies" and the "Always use the Role of" guideline, policies without `TO authenticated` are evaluated for the `anon` role too. `auth.uid()` returns NULL for anon, so the policy correctly denies — but the database still executes the policy function on every anon request. More importantly, if you ever add a `public` role or service-role bypass, the policy semantics change silently.
-
-**Fix (🟡 CAREFUL):** New migration:
-```sql
--- supabase/migrations/20260703000000_rls_to_authenticated.sql
-DO $$
-DECLARE
-  t text;
-  policy_name text;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['items','people','threads','explores','locations','push_subscriptions','user_settings','categories','session_logs','ritual_logs'] LOOP
-    policy_name := 'users_own_' || t;
-    IF EXISTS (SELECT 1 FROM pg_policies WHERE tablename = t AND policyname = policy_name) THEN
-      EXECUTE format('DROP POLICY %I ON %I', policy_name, t);
-      EXECUTE format(
-        'CREATE POLICY %I ON %I FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)',
-        policy_name, t
-      );
-    END IF;
-  END LOOP;
-END $$;
-```
-**Why careful:** Test that authenticated users can still CRUD their own data and that anon users get 401/empty. Run on staging first.
-
----
-
-### T1-6 · [CLAUDE-RIGHT] · 🟢 · In-memory rate-limit fallback is meaningless in serverless
-
-**Verified:** `src/lib/rate-limit.ts:25–51`. The in-memory `Map` is per-process. On Vercel Edge, each invocation is a fresh isolate. The "fallback" provides zero protection when Redis isn't configured.
-
-**Fix (🟢 SAFE):** Two changes:
-1. Add a loud dev-mode warning:
-   ```ts
-   if (!ratelimit && process.env.NODE_ENV === 'development') {
-     console.warn('[rate-limit] Upstash Redis not configured — rate limiting is DISABLED in dev. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for production.');
-   }
-   ```
-2. In production without Redis, **fail closed** for write routes (capture, account-delete) — return 503 instead of allowing unlimited requests:
-   ```ts
-   if (!ratelimit && process.env.NODE_ENV === 'production') {
-     logger.error('[rate-limit] Redis not configured in production — rejecting request');
-     return false;  // caller returns 429/503
-   }
-   ```
-   Add this to the `checkRateLimit` function: if `!ratelimit && NODE_ENV === 'production'`, return `false`.
-
-**Why safe:** Only affects the no-Redis path. If you have Redis configured (you should in prod), nothing changes.
-
----
-
-### T1-7 · [CLAUDE-RIGHT] · 🟢 · No `.env.example`
-
-**Verified:** `ls .env*` returns nothing.
-
-**Fix (🟢 SAFE):** Create `.env.example`:
-```bash
-# Supabase (required — get these from your Supabase project settings)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# Supabase service role (SERVER-ONLY — never expose to client)
-# Only used in /api/account for auth.admin.deleteUser
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Upstash Redis (required for production rate limiting)
-# Get these from your Upstash console
-UPSTASH_REDIS_REST_URL=https://your-instance.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your-token
-
-# Vercel KV (alternative to Upstash — Vercel's managed Redis)
-# Uncomment if using Vercel KV instead of Upstash
-# KV_REST_API_URL=https://your-vercel-kv.kv.vercel-inc.com
-# KV_REST_API_TOKEN=your-token
-```
-
-Also add to `.gitignore` (already there: `.env*` — good). **Why safe:** Documentation-only file.
-
----
-
-### T1-8 · [CLAUDE-RIGHT] · 🟢 · Bang assertions on env vars without startup validation
-
-**Verified:** `process.env.NEXT_PUBLIC_SUPABASE_URL!` appears in `src/lib/supabase.ts:8`, `src/lib/supabase-server.ts:8`, `src/middleware.ts:10`. `process.env.SUPABASE_SERVICE_ROLE_KEY!` in `src/app/api/account/route.ts:17`. No validation anywhere.
-
-**Fix (🟢 SAFE):** Add a `src/lib/env.ts`:
-```ts
-function required(name: string): string {
-  const v = process.env[name];
-  if (!v) {
-    throw new Error(
-      `[env] Missing required environment variable: ${name}. ` +
-      `Copy .env.example to .env.local and fill in the values.`
-    );
-  }
-  return v;
-}
-
-export const env = {
-  NEXT_PUBLIC_SUPABASE_URL: required('NEXT_PUBLIC_SUPABASE_URL'),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: required('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY, // server-only, optional at module load
-  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
-  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
 };
 ```
-Then replace `process.env.NEXT_PUBLIC_SUPABASE_URL!` with `env.NEXT_PUBLIC_SUPABASE_URL` everywhere. The `required()` call throws at module load with a clear message instead of a confusing "Cannot read property of undefined" deep in Supabase init.
 
-**Why safe:** Pure refactor. Behavior is identical when env vars are set; only the error message improves when they're missing.
+**Verify:** Open Settings → Appearance → Color Mode → click "Light." The page should immediately switch to light mode.
 
 ---
 
-### T1-9 · [NEW] · 🟡 · `/api/account` DELETE route leaks Postgres error messages to client
+### T0-4 · Onboarding capture doesn't save to inbox · 🟢 · Source: user issue #16
 
-**File:** `src/app/api/account/route.ts:24–26`
-```ts
-if (error) {
-  return NextResponse.json({ error: error.message }, { status: 500 });
+**File:** `src/app/onboarding/OnboardingWizard.tsx:152-158`
+
+**Bug:** When `item.destination === "Inbox"`, the insert sets `list_id: null` but does NOT set `status: 'inbox'`. The `items` table default is `status: 'active'`. So the captured item goes to Do, not Inbox.
+
+**Fix:** Add `status: 'inbox'` to the insert payload:
+```typescript
+if (item.destination === "Do" || item.destination === "Inbox") {
+  await supabase.from("items").insert({
+    user_id: user.id,
+    title: item.title,
+    status: item.destination === "Inbox" ? "inbox" : "active",
+    deadline: item.deadline || null
+  });
 }
 ```
+Also remove the `list_id: null` line — `list_id` doesn't exist in the schema.
 
-Per OWASP ASVS V7.1.1, error responses must not reveal implementation details. Supabase `error.message` can include things like `permission denied for table auth.users` or stack traces that expose your schema.
+**Verify:** Complete onboarding, type a thought, confirm it routes to Inbox. Check `/inbox` — the item should be there.
 
-**Fix (🟡 CAREFUL):**
-```ts
-if (error) {
-  logger.error('[account] deleteUser failed:', error);
-  return NextResponse.json(
-    { error: 'Failed to delete account. Please contact support.' },
-    { status: 500 }
+---
+
+### T0-5 · Inbox routing dropdown hidden behind other elements · 🟢 · Source: user issue #4
+
+**File:** `src/app/(app)/inbox/page.tsx:97`
+
+**Bug:** The routing dropdown uses `className="dropdown-panel ... z-50"` but the Sheet component uses `z-[100]` and the modal overlay uses `z-[200]`. `z-50` is too low — the dropdown renders behind other elements.
+
+**Fix:** Change `z-50` to `z-[220]`:
+```tsx
+<div className="dropdown-panel absolute top-full mt-2 right-0 w-48 p-1 z-[220] animate-in fade-in zoom-in-95 duration-100">
+```
+
+**Verify:** Open the inbox, click "Route it" on any item. The dropdown should appear ON TOP of all other elements.
+
+---
+
+### T0-6 · Settings scroll broken in Think/Explore (Lenis conflict) · 🟡 · Source: user issue #5
+
+**File:** `src/components/features/SettingsModal.tsx` + `src/components/layout/LenisProvider.tsx`
+
+**Bug:** `useBodyScrollLock` sets `body.overflow = hidden` but Lenis (smooth scroll) on Think/Explore pages intercepts wheel events at a higher level. The modal's inner `overflow-y-auto` container doesn't receive scroll events.
+
+**Fix:** Pause Lenis when any modal opens. In `LenisProvider.tsx`, expose a `lenis.stop()` / `lenis.start()` method via context. Then in `SettingsModal` (and all modals):
+```typescript
+const lenis = useLenis();
+useEffect(() => {
+  if (isSettingsModalOpen) lenis?.stop();
+  else lenis?.start();
+  return () => lenis?.start();
+}, [isSettingsModalOpen, lenis]);
+```
+Alternative (simpler): render the modal content via React Portal to `document.body`, outside the Lenis-managed container.
+
+**Verify:** Go to `/think`, open Settings, scroll the settings panel. It should scroll smoothly.
+
+---
+
+### T0-7 · Theme glitches from midnight to sunset after login · 🟡 · Source: user issue #3
+
+**Files:** `src/app/layout.tsx` (theme-init script) + `src/components/layout/AppInitializer.tsx`
+
+**Bug:** The theme-init inline script (runs immediately on page load, uses localStorage) and `AppInitializer` (runs after hydration, uses DB settings) can disagree. The user sees a flash from one theme to another.
+
+**Fix:** In `AppInitializer`, only apply the theme if it DIFFERS from what's currently applied:
+```typescript
+// Before calling applyDocumentTheme, check if it would change anything
+const currentClasses = document.documentElement.className;
+const newClasses = getThemeClassNames(theme, mode, prefersLight).join(' ');
+if (currentClasses !== newClasses && !currentClasses.includes('reduce-motion-pending')) {
+  applyDocumentTheme(theme, mode, reduceMotion);
+}
+```
+Also: ensure the theme-init script and `applyDocumentTheme` produce IDENTICAL class strings for the same inputs. Right now the script adds `theme-midnight` / `theme-meadow` but `applyDocumentTheme` also handles `theme-navy` / `theme-forest` in its remove list. They should be consistent.
+
+**Verify:** Log in with a fresh account. There should be NO theme flash — the page should load in sunset and stay sunset.
+
+---
+
+### T0-8 · Login page shows blue with orange background · 🟡 · Source: user issue #2
+
+**File:** `src/components/layout/OnboardingBackground.tsx` + `src/app/(auth)/login/page.tsx`
+
+**Bug:** The theme-init script defaults to sunset, but `OnboardingBackground` may have hardcoded blue/orange gradient colors that don't respect the theme tokens.
+
+**Fix:** Read `OnboardingBackground.tsx`. Replace any hardcoded hex colors (`#7692FF`, `#1B2CC1`, etc.) with CSS variables (`var(--orb-1)`, `var(--orb-2)`, `var(--accent)`, etc.). The login page should use the same ambient orb system as the app.
+
+**Verify:** Open `/login` in an incognito window (no localStorage). The background should be the warm sunset palette (amber/coral/orange), NOT blue.
+
+---
+
+### T0-9 · DB default theme may still be 'wahala' · 🟢 · Source: user issue #6
+
+**File:** `supabase/migrations/001_baseline.sql:110`
+
+**Bug:** The baseline migration creates `user_settings.theme` with `DEFAULT 'wahala'`. New users get `'wahala'` in the DB (normalized to `'sunset'` at runtime, but stored wrong). Migration `20260703000004` changes the default to `'sunset'` but only for new rows AFTER the migration runs.
+
+**Fix:** Add a new migration to update existing rows and ensure the default is `'sunset'`:
+```sql
+-- supabase/migrations/20260704000000_ensure_sunset_default.sql
+ALTER TABLE public.user_settings ALTER COLUMN theme SET DEFAULT 'sunset';
+UPDATE public.user_settings SET theme = 'sunset' WHERE theme NOT IN ('sunset', 'midnight', 'meadow');
+```
+
+**Verify:** Create a new account. Check the DB — `theme` should be `'sunset'`.
+
+---
+
+### T0-10 · Sidebar icon misalignment · 🟢 · Source: user issue #7
+
+**File:** `src/components/layout/Navigation.tsx:55, 223`
+
+**Bug:** The brand icon container uses `px-4` (16px padding), while nav items use `px-3` (12px padding). The profile button uses `px-3`. This causes horizontal misalignment between the brand icon, nav icons, and profile icon.
+
+**Fix:** Change the brand container from `px-4` to `px-3`, and ensure the brand SVG (28px) is centered in the same 40px icon column as nav items (which use `iconClass = "flex h-10 w-10"`):
+```tsx
+// Line 55: change px-4 to px-3
+<div className="h-[80px] flex items-center border-b border-[var(--border-subtle)] shrink-0 px-3">
+```
+Also wrap the brand SVG in the same `iconClass` span:
+```tsx
+<span className={iconClass}>
+  <svg width="28" height="28" ...>...</svg>
+</span>
+```
+
+**Verify:** The brand icon, nav icons, and profile avatar should all be vertically aligned on the same left edge.
+
+---
+
+### T0-11 · Page transitions inconsistent (Home fades, others don't) · 🟡 · Source: user issue #15
+
+**File:** `src/app/(app)/template.tsx` (was deleted) + all page files
+
+**Bug:** `template.tsx` was deleted (which provided consistent page transitions). Home has its own `m` animation wrapper. Other pages don't. Navigation feels inconsistent.
+
+**Fix:** Restore a lightweight `template.tsx` that applies a consistent fade to ALL pages:
+```tsx
+// src/app/(app)/template.tsx
+"use client";
+import { m } from "framer-motion";
+
+export default function AppTemplate({ children }: { children: React.ReactNode }) {
+  return (
+    <m.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="h-full w-full"
+    >
+      {children}
+    </m.div>
   );
 }
 ```
-Same fix in `src/app/api/people/reorder/route.ts:29–30` and anywhere else that returns `error.message` directly to the client.
+This is a LIGHT fade (150ms, opacity-only) — no y-axis movement, no layout shift. It won't cause the `useEffect` re-mount problems of the old template because it doesn't use `pageVariants` with `y: 8`.
+
+**Verify:** Navigate between Home, Do, Think, Explore. Every transition should have the same subtle fade.
 
 ---
 
-### T1-10 · [NEW] · 🟡 · `/api/account` DELETE has no rate limit — denial-of-service vector
+### T0-12 · Empty-state Add buttons inconsistent across spaces · 🟢 · Source: user issue #8
 
-**File:** `src/app/api/account/route.ts:5`
+**Files:** `src/app/(app)/think/page.tsx`, `src/app/(app)/explore/page.tsx`, `src/app/(app)/remember/people/page.tsx`, `src/app/(app)/remember/locations/page.tsx`, `src/app/(app)/inbox/page.tsx`
 
-This route uses the **service-role key** to delete auth users. It has NO rate limit. An attacker who steals a session token can hammer this endpoint — each call hits the Supabase admin API. More importantly, an attacker can DOS the user's account by repeatedly triggering deletion (which fails because the user is already deleted, but still burns service-role quota).
+**Bug:** Only `/do` was fixed (empty-state buttons call `setIsPanelOpen(true)`). Other spaces still call `setCaptureModalOpen(true)` — opening Quick Capture instead of the space's own add panel.
 
-**Fix (🟡 CAREFUL):** Add `checkRateLimit(user.id, 3, 60_000)` — max 3 account-deletion attempts per minute. Also add a confirmation token check: require a `confirmToken` field that the client must echo (e.g., the user's email) to prevent CSRF-driven accidental deletion.
+**Fix:** In each space's empty-state CTA button:
+- Think: change `onClick={() => useAppStore.getState().setCaptureModalOpen(true)}` to `onClick={handleNewThread}`
+- Explore: change to `onClick={() => setIsAddDrawerOpen(true)}`
+- People: change to `onClick={() => setIsPanelOpen(true)}`
+- Locations: change to `onClick={() => setShowAdd(true)}`
+- Inbox: the empty state is "Inbox Zero" — no Add button needed, but if there is one, it should open Capture (since Inbox IS the capture destination)
 
----
-
-### T1-11 · [NEW] · 🟡 · `/api/people/reorder` has no rate limit AND no payload size limit
-
-**File:** `src/app/api/people/reorder/route.ts:18–26`
-
-`Promise.all(items.map(...))` with no upper bound on `items.length`. A malicious client can POST 10,000 items → 10,000 concurrent Supabase UPDATEs → Supabase connection pool exhaustion. This is the same DoS vector Claude flagged in the previous audit but it's still unfixed.
-
-**Fix (🟡 CAREFUL):** Two layers:
-1. Add `checkRateLimit(user.id, 30, 60_000)` — 30 reorders/min is plenty.
-2. The Zod schema in T1-4 already caps `items` at 200.
-3. Replace `Promise.all` with a single bulk upsert (per Claude's v3 plan §2.4):
-   ```ts
-   await supabase.from('people').upsert(
-     items.map(({ id, sort_order }) => ({ id, user_id: user.id, sort_order })),
-     { onConflict: 'id' }
-   );
-   ```
+**Verify:** Go to each space's empty state. Click "Add." The space's own add panel should open, not Quick Capture.
 
 ---
 
-## Tier 2 — Database & Schema (do this week, test on staging)
+### T0-13 · Explore "Save to Explore" Type dropdown is ugly · 🟢 · Source: user issue #9
 
-### T2-1 · [CLAUDE-UNDERSTATED] · 🔴 · `remove_linked_person` trigger function is `SECURITY INVOKER` with no `search_path` lock
+**File:** `src/components/features/ExploreDrawer.tsx:230-240`
 
-**Files:** `supabase/migrations/20260629081541_add_linked_people_cleanup_trigger.sql:1–17` and `supabase/migrations/20260702000000_fix_db_issues.sql:6–21`
+**Bug:** The Type field uses a plain `<input type="text">` with a `<datalist>` — renders as the browser's native datalist, which looks ugly and inconsistent with the rest of the app.
 
-Both versions of the trigger function lack `SECURITY DEFINER` and `SET search_path`. Per Postgres docs §5.3 and the Supabase security guide, any function invoked by a trigger should be `SECURITY DEFINER SET search_path = pg_catalog, public` to prevent search_path hijacking.
-
-The function runs `UPDATE items ... WHERE OLD.id = ANY(linked_people_ids)`. If an attacker can create objects in another schema and influence the search_path, they can hijack the `array_remove` function or the `items` table reference.
-
-**Fix:** Already covered in T0-1's recommended migration. Apply that migration to fix both the column reference AND the search_path in one go.
-
----
-
-### T2-2 · [CLAUDE-WRONG] · 🟢 · `categories` table — Claude said "never used by the app"; actually IS used
-
-**Verified:** `src/components/features/SettingsModal.tsx:448`:
-```ts
-supabase.from("categories").delete().eq("user_id", user.id),
-```
-
-Claude's v3 plan §2.2 says "the application code never reads from or writes to `from("categories")`". **This is wrong.** The SettingsModal deletes from `categories` (likely as part of a "reset categories" flow). The table is not dead schema.
-
-**Fix:** Do NOT drop the `categories` table. Instead, audit SettingsModal around line 448 — if the delete is part of a "reset" flow, document it. If it's dead code in SettingsModal, remove that line, then the table can be dropped.
-
-**Action:** Read `SettingsModal.tsx` around line 448 and decide. Either way, do not blindly drop the table based on Claude's claim.
-
----
-
-### T2-3 · [CLAUDE-RIGHT] · 🟡 · `explores.note` column is `NOT NULL DEFAULT ''`
-
-**File:** `supabase/migrations/001_baseline.sql:70`:
-```sql
-note text NOT NULL DEFAULT '',
-```
-
-**Why it matters:** Empty string `''` is semantically different from `NULL`. The UI in `ExploreDrawer.tsx:337` checks `!note.trim()` to disable the save button — but the DB stores `''`. If you ever want to query "explores with no note," you have to use `WHERE note = '' OR note IS NULL` instead of just `WHERE note IS NULL`. Confusing.
-
-**Fix (🟡 CAREFUL):**
-```sql
-ALTER TABLE explores ALTER COLUMN note DROP NOT NULL;
-ALTER TABLE explores ALTER COLUMN note SET DEFAULT NULL;
-UPDATE explores SET note = NULL WHERE note = '';
-```
-Then audit client code for `note === null` vs `note === ''` checks. The ExploreDrawer save button (`disabled={saving || !title.trim() || !note.trim()}`) needs to become `!note?.trim()`.
-
----
-
-### T2-4 · [CLAUDE-RIGHT] · 🟡 · `people/reorder` does N individual UPDATEs instead of one upsert
-
-Already covered in T1-11. The fix is the bulk upsert.
-
----
-
-### T2-5 · [NEW] · 🟡 · `handle_new_user` baseline lacks `SECURITY DEFINER` and `search_path`
-
-**File:** `supabase/migrations/001_baseline.sql:175–188`
-
-The baseline creates `handle_new_user()` as `LANGUAGE plpgsql SECURITY DEFINER` (line 183) — good — but **without `SET search_path`**. The `20260702100000_audit_fixes.sql` migration later adds `SET search_path = pg_catalog, public` (lines 10–20), but only via a DO block that checks if the function exists. On a fresh DB, this works. On an existing DB that ran the baseline before the audit-fix migration, the function is in the hardened state. Fine.
-
-**However:** The baseline itself should be the authoritative source. Anyone reading `001_baseline.sql` sees the un-hardened version. Per Postgres security best practice, the baseline should bake in the hardening.
-
-**Fix (🟢 SAFE — no runtime effect):** Update `001_baseline.sql:183` from:
-```sql
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-to:
-```sql
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
-```
-This only affects fresh installs (existing DBs already have the audit-fix migration applied). No runtime risk.
-
-Also: the function reads `NEW.raw_user_meta_data->>'full_name'` with no length check. Add a `left(..., 100)` guard per Claude's v3 plan §2.1.
-
----
-
-### T2-6 · [NEW] · 🟡 · `increment_time_spent` trigger also lacks `SECURITY DEFINER` + `search_path`
-
-**File:** `supabase/migrations/007_time_spent.sql:5–18`
-
-Same issue as T2-5. The `20260702100000_audit_fixes.sql` migration hardens it, but the baseline migration `007_time_spent.sql` creates it without hardening. Fix the source migration for future fresh installs.
-
----
-
-### T2-7 · [NEW] · 🟡 · `rename_category` RPC accepts arbitrary column names — SQL injection-adjacent
-
-**File:** `supabase/migrations/009_rename_category_rpc.sql:24–55`
-
-The function takes `p_categories_key text` and uses it in `IF p_categories_key = 'do_categories' THEN ... ELSIF p_categories_key = 'people_categories' THEN ...`. The values are hard-coded in `IF` branches, so this is NOT direct SQL injection. **But:** the function does not `RAISE EXCEPTION` for invalid keys until the very end (line 53), and the `ILIKE` patterns on line 41 (`WHERE category ILIKE p_old_category`) allow the caller to pass `%` as `p_old_category` and rename ALL categories to one name.
-
-**Fix (🟡 CAREFUL):** Tighten the ILIKE to a strict equality:
-```sql
-WHERE user_id = v_user_id AND category = p_old_category
-```
-And validate that `p_old_category` and `p_new_category` are non-empty and reasonable length (e.g., `length(p_new_category) BETWEEN 1 AND 50`).
-
----
-
-## Tier 3 — Architecture & Coding (do over 2–3 weeks)
-
-### T3-1 · [CLAUDE-RIGHT] · 🟡 · Sidebar `transition-[width]` causes layout thrash
-
-**Verified:** `src/components/layout/Navigation.tsx:51`:
-```ts
-"transition-[width] duration-250 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
-```
-
-**Why it matters:** Animating `width` forces the browser to recalculate layout for every sibling on every frame. Per web.dev and Chrome DevTools team guidance, only `transform` and `opacity` should be animated. The sidebar width animation reflows the entire `AppContentWrapper` (which has `md:pl-[220px]` / `md:pl-[64px]`) on every frame.
-
-**Fix (🟡 CAREFUL):** Convert to a fixed-width sidebar that stays at 220px and slides off-screen via `transform`. The content area's padding stays at `md:pl-[220px]` always; the sidebar slides out via `translateX(-100%)` when collapsed:
-
+**Fix:** Replace the `<input>` + `<datalist>` with the `Dropdown` component:
 ```tsx
-// Navigation.tsx — Sidebar
-<aside
-  className={cn(
-    "sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40 w-[220px]",
-    "transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
-    isSidebarCollapsed && "-translate-x-full"
-  )}
->
+<Dropdown
+  value={type}
+  onChange={setType}
+  options={PRESET_TYPES.map(t => ({ value: t, label: t }))}
+  variant="select"
+  className="w-full"
+/>
 ```
+Add a "Custom" option that, when selected, reveals a text input for custom type entry.
 
-Then in `AppContentWrapper.tsx`, change `md:pl-[64px]` to `md:pl-[220px]` (always reserve the full sidebar width — when collapsed, the sidebar slides off but the content stays put, OR use a separate "peek" rail at 64px). The cleanest approach is a 3-state design: full (220px), rail (64px), hidden (0). Each state has a fixed width — no animation on `width`, only on `transform`.
-
-**Why careful:** This is a layout change. Test on all breakpoints. The collapse button needs to still work. The mobile drawer is unaffected (it's a separate component).
-
----
-
-### T3-2 · [CLAUDE-RIGHT] · 🟢 · Duplicate `useReducedMotion` — one SSR-unsafe
-
-**Verified:**
-- `src/lib/animations.ts:6–9` — uses `window.matchMedia` directly, NOT a hook, SSR-unsafe (would crash if imported by a Server Component because `window` is undefined).
-- `src/hooks/useReducedMotion.ts:1–5` — wraps `useMediaQuery` (which uses `useEffect`), SSR-safe.
-
-Plus `MotionProvider` uses `MotionConfig reducedMotion="user"` which is the Motion library's built-in handling.
-
-**Fix (🟢 SAFE):** Delete `useReducedMotion` from `src/lib/animations.ts`. Keep `src/hooks/useReducedMotion.ts`. Audit imports — if anything imported from `animations.ts`, repoint to `hooks/useReducedMotion`. The `MotionConfig reducedMotion="user"` in `MotionProvider` already handles the global case, so most code doesn't need either hook.
+**Verify:** Open the Explore drawer. The Type dropdown should match the app's design system, not the browser default.
 
 ---
 
-### T3-3 · [CLAUDE-RIGHT] · 🟢 · `LenisProvider` has RAF leak + unstable options dep
+## Tier 1 — High-impact infrastructure (do this week)
 
-**Verified:** `src/components/layout/LenisProvider.tsx:31–42`:
+These are the 80/20 items — small effort, permanent quality improvement.
+
+### T1-1 · Sentry error monitoring · 🟡 · Source: infrastructure rec #1
+
+**Why:** You're flying blind in production. `logger.ts` is a stub.
+
+**Install:**
+```bash
+npx @sentry/wizard@latest -i nextjs
+```
+This sets up `@sentry/nextjs`, `sentry.client.config.ts`, `sentry.server.config.ts`, and source map upload. Get a DSN from sentry.io (free tier: 5k errors/month).
+
+**Add to `next.config.ts`:**
 ```ts
-function raf(time: number) {
-  lenisInstance.raf(time);
-  requestAnimationFrame(raf);  // ← never stored, never cancelled
-}
-requestAnimationFrame(raf);
-
-return () => {
-  lenisInstance.destroy();
-  setLenis(null);
-  // ← no cancelAnimationFrame
-};
+productionBrowserSourceMaps: true,  // for readable Sentry stack traces
 ```
 
-The RAF ID is never stored, so it can never be cancelled. On unmount, `lenisInstance.destroy()` is called, but the RAF loop continues calling `lenisInstance.raf(time)` on a destroyed instance. This either silently no-ops or throws, depending on Lenis internals. Either way, the RAF loop runs forever in a detached state, consuming CPU.
-
-Also: `options` is in the dep array (line 42). If the parent passes a new object literal each render (common pattern), the effect re-runs on every render, destroying and recreating Lenis.
-
-**Fix (🟢 SAFE):**
-```ts
-useEffect(() => {
-  const lenisInstance = new Lenis({
-    duration: 1.2,
-    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-    touchMultiplier: 2,
-  });
-  setLenis(lenisInstance);
-
-  let rafId: number;
-  function raf(time: number) {
-    lenisInstance.raf(time);
-    rafId = requestAnimationFrame(raf);
-  }
-  rafId = requestAnimationFrame(raf);
-
-  return () => {
-    cancelAnimationFrame(rafId);
-    lenisInstance.destroy();
-    setLenis(null);
-  };
-}, []);  // ← remove options from deps; bake config in
-```
-If you need configurable options, accept them as a serialized string and compare via `useMemo`/`JSON.stringify` to stabilize the reference.
+**Verify:** Throw a test error in a component. Check Sentry dashboard — it should appear with full stack trace and source maps.
 
 ---
 
-### T3-4 · [CLAUDE-RIGHT] · 🟡 · Serwist `skipWaiting: true` + `clientsClaim: true` with no update prompt
+### T1-2 · Supabase typed client · 🟢 · Source: infrastructure rec #2
 
-**Verified:** `src/app/sw.ts:15–16`. Per Serwist docs §"Skipping the waiting phase", this pattern means a new SW takes control of all open tabs immediately on deploy. If the precache manifest changed (new chunk hashes), open tabs may serve a mix of old cached assets and new network assets → JS errors from chunk hash mismatches.
+**Why:** Eliminates 40+ `: any` annotations. TypeScript catches column-name typos at compile time.
 
-**Fix (🟡 CAREFUL):**
-1. Remove `skipWaiting: true` and `clientsClaim: true` from `sw.ts`. Keep `navigationPreload: true`.
-2. Create `src/components/ui/UpdatePrompt.tsx`:
-   ```tsx
-   'use client';
-   import { useEffect, useState } from 'react';
-   import { toast } from 'sonner';
-
-   export function UpdatePrompt() {
-     useEffect(() => {
-       if (!('serviceWorker' in navigator)) return;
-       const handleControllerChange = () => {
-         toast.info('Update available', {
-           description: 'A new version is ready.',
-           action: { label: 'Reload', onClick: () => window.location.reload() },
-           duration: Infinity,
-         });
-       };
-       navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-       return () => navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-     }, []);
-     return null;
-   }
-   ```
-3. Mount `<UpdatePrompt />` in `src/app/layout.tsx` (next to `<ConnectionStatus />`).
-4. Add a manual "Check for update" action somewhere (Settings) that calls `registration.update()`.
-
-**Why careful:** The first deploy after this change will leave existing users on the old SW until they manually reload. Plan for a one-time "stale SW" cleanup. After that, updates flow through the prompt correctly.
-
----
-
-### T3-5 · [CLAUDE-UNDERSTATED] · 🔴 · 77 `: any` annotations + 28 `catch (error: any)` — Claude said 5 catch instances, actually 28
-
-**Verified:** `grep -rn 'catch (error: any)\|catch (err: any)\|catch (e: any)' src/` (excluding tests) = **28 instances**. Claude's v3 plan §6.1 said "5 confirmed instances" — understated by 5x.
-
-Concentrated in:
-- `src/app/(app)/think/[id]/page.tsx` — 6 instances
-- `src/app/(app)/explore/[id]/page.tsx` — 3
-- `src/app/(app)/remember/people/[id]/page.tsx` — 5
-- `src/components/features/RitualOverlay.tsx` — 2
-- `src/components/features/ExploreDrawer.tsx` — 3
-- `src/app/api/people/reorder/route.ts` — 1
-- etc.
-
-**Fix (🟡 CAREFUL — gated behind T1-1):** Once `ignoreBuildErrors` is removed (T1-1), these become compile errors. Fix in waves:
-1. Mechanical replacement: `catch (error: any)` → `catch (error: unknown)`, then `error.message` → `error instanceof Error ? error.message : 'Unknown error'`.
-2. For Supabase errors specifically, use `PostgrestError` type: `import { PostgrestError } from '@supabase/supabase-js'` and `error instanceof PostgrestError ? error.message : ...`.
-3. For the 77 `: any` annotations on variables/props, generate the typed Supabase client (T1-1 step 2) and replace `any` with the generated types.
-
----
-
-### T3-6 · [CLAUDE-RIGHT] · 🟢 · `animations.ts` parallel system alongside `MotionProvider`
-
-Already covered in T3-2. Annotate `animations.ts` as "static config only — use with `m.*`" and split spring/easing tokens into a `src/lib/motion-tokens.ts` file. Low priority.
-
----
-
-### T3-7 · [NEW] · 🔴 · `Sheet` component has a focus-trap race + missing `aria-label` on close button
-
-**File:** `src/components/ui/Sheet.tsx`
-
-**Issue 1:** `useDialogFocus(isOpen)` is called at line 19, but the `AnimatePresence` at line 51 means the sheet DOM doesn't exist until after the enter animation. The 50ms `setTimeout` in `useDialogFocus` (line 22 of `useDialogFocus.ts`) is a guess — if the enter animation takes longer than 50ms (it's 300ms per line 78), focus is set on a non-existent element. Screen readers cannot find the sheet.
-
-**Issue 2:** The close button at line 100–105 has no `aria-label`:
-```tsx
-<button onClick={onClose} className="...">
-  <X size={20} strokeWidth={2} />
-</button>
-```
-Per WCAG 2.1 §4.1.2, icon-only buttons must have an accessible name.
-
-**Fix (🟢 SAFE):**
-1. Add `aria-label="Close"` to the close button.
-2. Increase the `useDialogFocus` timeout from 50ms to 350ms (longer than the 300ms enter animation), OR better: use `onAnimationComplete` on the `m.div` to trigger focus after the animation finishes.
-
----
-
-### T3-8 · [NEW] · 🟡 · `MobileTopBar` uses `backdrop-blur-2xl` (40px) — perf killer on Android
-
-**File:** `src/components/layout/MobileTopBar.tsx:13`
-
-```tsx
-className="md:hidden fixed top-0 left-0 w-full h-[52px] ... backdrop-blur-2xl z-40"
+**Install:**
+```bash
+npx supabase gen types typescript --project-id YOUR_PROJECT_REF > src/types/database.types.ts
 ```
 
-`backdrop-blur-2xl` is 40px blur. Per web.dev performance guidance and the Chrome team's "An Introduction to Web Animations" research, backdrop-filter is one of the most expensive CSS properties — it forces the browser to re-rasterize the blurred region on every scroll frame. On mid-range Android, a 40px blur on a full-width bar causes 10–15fps scroll.
-
-The bottom-nav in `Navigation.tsx` was already fixed to `backdrop-blur-md` (per Claude's v3 plan "Done" list). The MobileTopBar was missed.
-
-**Fix (🟢 SAFE):** Change `backdrop-blur-2xl` to `backdrop-blur-md` (12px). Combined with `bg-[var(--color-background)]/95`, the visual effect is nearly identical.
-
----
-
-### T3-9 · [NEW] · 🟡 · `MobileTopBar` uses `pt-safe-top` class that does not exist in CSS
-
-**File:** `src/components/layout/MobileTopBar.tsx:13`
-
-The class `pt-safe-top` is referenced but a grep of `globals.css` for `.pt-safe-top` returns nothing. This is a Tailwind class that doesn't exist (Tailwind's safe-area utilities are `pt-[env(safe-area-inset-top)]` or similar). The class silently does nothing, meaning the MobileTopBar renders UNDER the iPhone notch.
-
-**Fix (🟢 SAFE):** Replace `pt-safe-top` with the inline style:
-```tsx
-style={{ paddingTop: 'env(safe-area-inset-top)' }}
-```
-Or add the utility to `globals.css`:
-```css
-.pt-safe-top { padding-top: env(safe-area-inset-top); }
-.pb-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-```
-
----
-
-### T3-10 · [NEW] · 🟡 · `test.js` at repo root is a dead debug script that loads env vars
-
-**File:** `test.js` (root)
-
-```js
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '.env.local' });
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-async function test() {
-  const { data } = await supabase.from('user_settings').select('last_ritual_date').limit(1);
-  console.log(data);
-}
-test();
-```
-
-This is a one-off debug script. It's at the repo root (clutter), it loads `.env.local` directly, and it queries `user_settings` — which under RLS returns nothing for an unauthenticated client, so it always prints `null`. It's dead code that confuses new contributors.
-
-**Fix (🟢 SAFE):** Delete `test.js`. If you need a similar debug script, put it in `scripts/` and document it in `CONTRIBUTING.md`.
-
----
-
-### T3-11 · [NEW] · 🟢 · `.gitignore` has UTF-16 null-byte corruption in the last section
-
-**Verified:** `od -c` of the last 200 bytes of `.gitignore` shows:
-```
-\n  \n  \0   #  \0      \0   T  \0   e  \0   m  \0   p  \0   ...
-```
-
-The "Temp/Output files" section was appended with UTF-16 encoding (each character followed by a null byte `\0`). Git's gitignore parser reads UTF-8 — the null bytes cause unpredictable parsing. The `output.txt` and `supabase/.temp/` entries may or may not be honored depending on the Git client.
-
-**Fix (🟢 SAFE):** Open `.gitignore`, delete the corrupted section, re-type it cleanly in UTF-8:
-```
-# Temp/Output files
-output.txt
-supabase/.temp/
-```
-Save. Verify with `od -c .gitignore | tail -5` — no `\0` bytes should remain.
-
----
-
-### T3-12 · [NEW] · 🟡 · 57/91 tsx files (63%) are `"use client"` — App Router misuse
-
-**Verified:** `grep -rl '"use client"' src/ --include='*.tsx' | wc -l` = 57. Total tsx = 91.
-
-Per Next.js 16 official docs §"App Router", the default should be Server Components. Client Components are for interactivity (state, effects, event handlers). The current ratio is inverted — most pages are client components that fetch from Supabase in `useEffect` / `useQuery`.
-
-**Why it matters:**
-1. Larger JS bundle (everything ships to the client).
-2. No streaming / Suspense benefits.
-3. Loading flashes (client fetches after hydration).
-4. SEO is irrelevant for an auth app, but the bundle size and TTFB matter.
-
-**Fix (🔴 REFACTOR — incremental):** Convert one page at a time, starting with the smallest. Pattern:
-```tsx
-// src/app/(app)/inbox/page.tsx — Server Component
-import { createClient } from '@/lib/supabase-server';
-import { InboxClient } from './InboxClient';
-
-export default async function InboxPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-  const { data: items } = await supabase.from('items').select('...').eq('status', 'inbox');
-  return <InboxClient initialItems={items ?? []} />;
-}
-```
-Then `InboxClient.tsx` is the `"use client"` component with `useQuery({ initialData })`.
-
-**Don't do this in bulk.** One page per PR. Start with `/inbox` (smallest), then `/explore/trash`, then `/remember/locations`. Leave the complex pages (`/do`, `/` dashboard) for last.
-
----
-
-### T3-13 · [NEW] · 🟡 · `template.tsx` re-mounts the entire page on every navigation
-
-**File:** `src/app/(app)/template.tsx`
-
-Per Next.js docs §"Templates", `template.tsx` re-mounts on every navigation (unlike `layout.tsx` which persists). Combined with T0-3 (channel churn), every page transition:
-1. Unmounts the old page → tears down `useRealtime` subscriptions → channels go to zero → (after 5s) channels are removed.
-2. Mounts the new page → `useQuery` refetches from Supabase → new `useRealtime` subscriptions → channels re-created.
-
-Net effect: 500–800ms of "no realtime coverage" on every navigation, plus a network refetch that could have been served from cache.
-
-**Fix (🟡 CAREFUL):** Two options:
-1. **Delete `template.tsx`** entirely. You lose the page-transition animation. The app becomes snappier. Recommended.
-2. **Move the animation to per-page wrappers.** Each page wraps its own content in a `<PageTransition>` component. More code but preserves the animation.
-
-Option 1 is the right call for a productivity app where snappiness > animation.
-
----
-
-## Tier 4 — Performance (do over 2 weeks)
-
-### T4-1 · [CLAUDE-RIGHT] · 🟢 · `optimizePackageImports` missing `compromise` and `lenis`
-
-**Verified:** `next.config.ts:14` lists `lucide-react, framer-motion, date-fns, @dnd-kit/core, @dnd-kit/sortable`. Missing: `compromise` (~140KB, the heaviest dep), `lenis` (~30KB), `@base-ui/react` (new shadcn dep).
-
-**Fix (🟢 SAFE):**
-```ts
-experimental: {
-  optimizePackageImports: [
-    'lucide-react', 'framer-motion', 'date-fns',
-    '@dnd-kit/core', '@dnd-kit/sortable',
-    'compromise', 'lenis', '@base-ui/react',
-  ],
-},
-```
-Per Next.js docs §"optimizePackageImports", this enables tree-shaking for these packages. No behavior change, just smaller bundles.
-
----
-
-### T4-2 · [CLAUDE-RIGHT] · 🟡 · `chrono-node` imported in client components
-
-**Verified:**
-- `src/lib/chrono-custom.ts:1` — `import * as chrono from "chrono-node"`
-- `src/lib/capture-router.ts:1` — imports chrono
-- `src/components/features/TaskAddPanel.tsx:9` — `import "@/lib/chrono-custom"`
-- `src/components/features/TaskAddPanel.tsx:13` — `import * as chrono from "chrono-node"`
-
-So `chrono-node` (~50KB) is in the TaskAddPanel client bundle. The `/api/capture` route already runs `routeCapture` (which uses chrono) server-side. The client uses chrono to parse dates as the user types in the TaskAddPanel.
-
-**Fix (🟡 CAREFUL):** Move the live-parse-on-type feature to a server action or API call:
-1. Create `/api/parse-date` POST route that accepts `text` and returns `{ date, cleanText }`.
-2. In `TaskAddPanel`, replace the local `chrono.parse(text)` call with a debounced fetch to `/api/parse-date`.
-3. Remove `chrono-node` and `chrono-custom` imports from `TaskAddPanel.tsx`.
-
-Trade-off: the live-parse now has a 200ms network round-trip. Acceptable for a debounced input. If you want zero-latency parsing, keep chrono client-side but accept the 50KB bundle cost.
-
----
-
-### T4-3 · [CLAUDE-RIGHT] · 🟢 · No `content-visibility: auto` on long list items
-
-**Verified:** No `content-visibility` in `globals.css`. TaskCard, ExploreItemCard, and thread rows render unconditionally.
-
-**Fix (🟢 SAFE):** Add to `globals.css`:
-```css
-@media (min-width: 768px) {
-  .task-card-wrapper,
-  .explore-item-wrapper,
-  .thread-row-wrapper {
-    content-visibility: auto;
-    contain-intrinsic-size: 0 88px;
-  }
-}
-```
-Then add the wrapper class to the motion.div that wraps each list item. Per web.dev §"content-visibility", this lets the browser skip rendering off-screen items — measurably improves scroll performance on long lists.
-
-**Only apply on `md:` and up** — on mobile, `content-visibility: auto` can cause scroll-jank if the items have dynamic height.
-
----
-
-### T4-4 · [NEW] · 🟡 · CaptureModal fetches all people on every open — N+1 candidate
-
-**File:** `src/components/features/CaptureModal.tsx:74–86`
-
-```ts
-useEffect(() => {
-  async function fetchPeople() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id);
-    if (data) setPeople(data);
-  }
-  if (isCaptureModalOpen) fetchPeople();
-}, [isCaptureModalOpen, supabase]);
-```
-
-Every time the user opens CaptureModal (Cmd+K), this fires a `supabase.from("people").select(...)` query. For a user with 200 contacts, that's 200 rows fetched on every modal open. The query is also unnecessary if the user doesn't type `@`.
-
-**Fix (🟡 CAREFUL):** Lazy-load — only fetch people when the user types `@`:
-```ts
-useEffect(() => {
-  if (!isCaptureModalOpen || !showPopover) return;  // only fetch when popover opens
-  let cancelled = false;
-  (async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || cancelled) return;
-    const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id).limit(50);
-    if (!cancelled) setPeople(data ?? []);
-  })();
-  return () => { cancelled = true; };
-}, [isCaptureModalOpen, showPopover, supabase]);
-```
-Also add `.limit(50)` — you don't need all 200 contacts in the mention dropdown.
-
-Better: use TanStack Query with a `["people-for-mentions"]` key so it's cached across modal opens.
-
----
-
-### T4-5 · [NEW] · 🟡 · 37 `select("*")` calls across all pages
-
-**Verified:** `grep -rn 'select("\*")' src/` = 37 matches. Every page fetches all columns including `subtasks jsonb[]`, `notes jsonb[]`, `entries jsonb[]`. For a user with 200 tasks, the `items` table payload can be 2+ MB.
-
-**Fix (🟡 CAREFUL — incremental):** For each page, replace `select("*")` with an explicit column list matching what the UI renders. Example for `/do`:
-```ts
-.select("id, title, deadline, status, category, priority, first_step, snoozed_until, time_spent_minutes, linked_people_ids, recurrence, start_date, completed_at")
-```
-Skip: `notes`, `ifthen_trigger`, `notification_sent_*` (6 columns), `subtasks` (only needed in TaskAddPanel).
-
-Do this page-by-page. The TaskAddPanel still needs `select("*")` because it edits every field.
-
----
-
-## Tier 5 — Mobile / Shell (do over 2 weeks)
-
-### T5-1 · [CLAUDE-RIGHT] · 🟢 · `useIsTouch`, `useMediaQuery`, `useVisualViewport` built but zero call sites
-
-**Verified:**
-- `useIsTouch` — used in `Navigation.tsx:26, 44` (Claude's claim of "zero callers" is wrong — Sidebar uses it). But it's not used in TaskCard, ExploreDrawer, or any hover-affordance component.
-- `useMediaQuery` — let me verify... `grep -rn 'useMediaQuery' src/ --include='*.tsx'` shows it's only used by `useReducedMotion`. No direct callers.
-- `useVisualViewport` — used in `Sheet.tsx:8, 20`. Claude's claim of "zero callers" is wrong here too.
-
-**Fix (🟢 SAFE):**
-1. `useIsTouch` — wire into TaskCard's `whileHover` to disable hover effects on touch devices. Spread `...(!isTouch && hoverScaleProps)` instead of `...hoverScaleProps`.
-2. `useMediaQuery` — keep for `useReducedMotion`. Document as internal.
-3. `useVisualViewport` — already wired in Sheet. Verify the keyboard offset actually works on iOS Safari (open a Sheet with a text input, focus the input, verify the sheet slides up above the keyboard).
-
----
-
-### T5-2 · [CLAUDE-RIGHT] · 🟢 · `useHaptics` has only one call site
-
-**Verified:** `useHaptics` is imported in `CaptureModal.tsx:15` and `do/page.tsx:16`. Claude's claim of "one call site" is understated. But it's still under-used. Missing on:
-- Task complete (the most satisfying moment for a haptic)
-- Task delete (swipe-to-delete commit)
-- Sheet swipe-dismiss commit
-- Ritual step advance
-- Pomodoro phase change
-
-**Fix (🟢 SAFE):** Wire `useHaptics().light()` into:
-- `TaskCard.tsx` complete handler (line 219 area)
-- `TaskCard.tsx` swipe-delete commit (line 80 area, already has `navigator.vibrate([10])` — replace with `haptics.light()`)
-- `Sheet.tsx` onDragEnd dismiss (line 71)
-- `RitualOverlay.tsx` step advance
-- `PomodoroTimer.tsx` phase change
-
-Keep haptics subtle — anything over 30ms feels like an error per Apple HIG.
-
----
-
-### T5-3 · [CLAUDE-RIGHT] · 🟢 · Input `font-size` below 16px triggers iOS Safari zoom
-
-**Verified:** `globals.css` `.input` class uses `font-size: var(--text-md)` = 14px. Per Apple's Web Content Guide and Chrome's input-zoom documentation, iOS Safari auto-zooms on any input with font-size < 16px.
-
-**Fix (🟢 SAFE):** Add to `globals.css`:
-```css
-@media (max-width: 767px) {
-  input.input,
-  textarea.input,
-  select.input,
-  .input-title,
-  .input-search {
-    font-size: max(16px, var(--text-md));
-  }
-}
-```
-Using `max()` preserves the larger size on desktop while forcing 16px floor on mobile.
-
----
-
-### T5-4 · [CLAUDE-RIGHT] · 🟢 · No `inputMode`, `autoComplete`, `autoCapitalize` on most inputs
-
-**Verified:** Only `src/app/(auth)/login/page.tsx:128` has `autoComplete="email"`. CaptureModal, SearchModal, TaskAddPanel, Think thread, AddPersonPanel — all use bare `<input>` with no hints.
-
-**Fix (🟢 SAFE):** Add per-input:
-- CaptureModal input: `inputMode="text"`, `autoComplete="off"`, `autoCapitalize="sentences"`, `autoCorrect="off"`
-- SearchModal input: `inputMode="search"`, `autoComplete="off"`, `autoCapitalize="none"`
-- TaskAddPanel title: `inputMode="text"`, `autoCapitalize="sentences"`
-- Think thread entry: `inputMode="text"`, `autoCapitalize="sentences"`
-- AddPersonPanel name: `inputMode="text"`, `autoCapitalize="words"` (names are title-cased)
-- Login email: already has `autoComplete="email"` — also add `inputMode="email"`, `autoCapitalize="none"`
-
-These are additive attributes. Zero behavior change on desktop. Mobile users get the correct keyboard.
-
----
-
-### T5-5 · [NEW] · 🟢 · No `overscroll-behavior: contain` — iOS scroll chaining on modals
-
-**Verified:** `globals.css` `body` selector (around line 470) does not set `overscroll-behavior`. The `Sheet.tsx` content area at line 110 has `overscroll-contain` (Tailwind class) — good. But:
-- The main `body` has no `overscroll-behavior: contain` — iOS Safari triggers pull-to-refresh on the body when scrolling up at the top.
-- Modal/sheet bodies in CaptureModal, SearchModal (not using Sheet), SettingsModal — no `overscroll-behavior`.
-
-**Fix (🟢 SAFE):** Add to `globals.css`:
-```css
-body {
-  overscroll-behavior-y: contain;
-}
-
-.modal,
-.dropdown-panel,
-[data-sonner-toast] {
-  overscroll-behavior: contain;
-}
-```
-Per MDN §"overscroll-behavior", this prevents scroll chaining — when a modal reaches the end of its scroll, the scroll does NOT transfer to the page behind.
-
----
-
-### T5-6 · [NEW] · 🟡 · No `-webkit-touch-callout: none` on UI chrome — iOS long-press save-image menu on icons
-
-**Verified:** Not set in `globals.css`. On iOS Safari, long-pressing an SVG icon or gradient background brings up the "Save Image" / "Copy" context menu. This is jarring in a PWA — users expect app-like behavior where long-press does nothing (or triggers a custom context menu).
-
-**Fix (🟢 SAFE):** Add to `globals.css`:
-```css
-body {
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Re-enable for content where copy is intentional */
-.thread-entry,
-.thread-title,
-.person-note,
-.task-title {
-  -webkit-touch-callout: default;
-  user-select: text;
+**Update `src/lib/supabase.ts`:**
+```typescript
+import type { Database } from '@/types/database.types';
+import { createBrowserClient } from '@supabase/ssr';
+
+export function createClient() {
+  return createBrowserClient<Database>(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 }
 ```
 
----
+Same for `src/lib/supabase-server.ts`.
 
-### T5-7 · [NEW] · 🟡 · `MobileTopBar` is fixed at top but content doesn't account for it — content hidden behind bar
-
-**File:** `src/components/layout/AppContentWrapper.tsx`
-
-The MobileTopBar is `fixed top-0 h-[52px]` (52px tall). The AppContentWrapper has `pt-4 md:pt-8` — on mobile, content starts at `pt-4` (16px from top), which means content renders UNDER the 52px MobileTopBar.
-
-**Fix (🟢 SAFE):** Update AppContentWrapper:
-```tsx
-className={cn(
-  "flex-1 flex flex-col pb-24 md:pb-0 relative z-10",
-  "pt-[calc(52px+1rem)] md:pt-8",  // account for MobileTopBar on mobile, normal padding on desktop
-  isSidebarCollapsed ? "md:pl-[64px]" : "md:pl-[220px]"
-)}
-```
-Or better: use `env(safe-area-inset-top)`:
-```tsx
-"pt-[calc(env(safe-area-inset-top)+52px+0.5rem)] md:pt-8"
-```
-
----
-
-## Tier 6 — Code Quality & Standards (ongoing)
-
-### T6-1 · [CLAUDE-RIGHT] · 🟡 · Vitest lacks coverage configuration
-
-**Verified:** `vitest.config.ts` has no `coverage` block. No `test:coverage` script in `package.json`.
-
-**Fix (🟡 CAREFUL):** Add to `vitest.config.ts`:
-```ts
-test: {
-  environment: "jsdom",
-  globals: true,
-  setupFiles: ["src/lib/__tests__/setup.ts"],
-  coverage: {
-    provider: "v8",
-    reporter: ["text", "html", "lcov"],
-    exclude: [
-      "src/app/**/page.tsx",
-      "src/app/**/layout.tsx",
-      "src/app/**/loading.tsx",
-      "src/app/**/error.tsx",
-      "src/app/layout.tsx",
-      "src/app/icon.tsx",
-      "src/app/sw.ts",
-      "src/types/**",
-      "src/lib/__tests__/**",
-      "**/*.spec.*",
-    ],
-    thresholds: {
-      lines: 50,
-      functions: 50,
-      branches: 40,
-      statements: 50,
-    },
-  },
-},
-```
-Add to `package.json`:
+**Add to `package.json`:**
 ```json
-"test:coverage": "vitest run --coverage"
+"scripts": {
+  "gen:types": "supabase gen types typescript --project-id YOUR_PROJECT_REF > src/types/database.types.ts"
+}
 ```
-Start with low thresholds (50%) — you can raise them as you add tests. Don't set 80% on day one — it'll block every PR.
+
+**Verify:** `npx tsc --noEmit` should pass with fewer `: any` errors. Try renaming a column in the types file — TypeScript should flag every usage.
 
 ---
 
-### T6-2 · [CLAUDE-RIGHT] · 🟢 · No CI/CD pipeline
+### T1-3 · Fix CI workflow YAML · 🟢 · Source: infrastructure rec #3
 
-**Verified:** No `.github/workflows/` directory.
+**File:** `.github/workflows/ci.yml:4,6`
 
-**Fix (🟢 SAFE):** Create `.github/workflows/ci.yml`:
+**Bug:** `branches: ain, master]` — missing `[`. The workflow never triggers.
+
+**Fix:**
 ```yaml
-name: CI
 on:
   push:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-
-jobs:
-  ci:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Type check
-        run: npx tsc --noEmit
-      - name: Tests
-        run: npm test -- --reporter=verbose
-      - name: Build
-        run: npm run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-key
 ```
 
-Note: `npx tsc --noEmit` will fail until T1-1 (remove `ignoreBuildErrors`) is done and the resulting type errors are fixed. You can comment out the "Type check" step initially, then enable it once T1-1 is complete.
+**Verify:** Push a commit. The CI workflow should trigger and run lint + type-check + test + build.
 
 ---
 
-### T6-3 · [CLAUDE-RIGHT] · 🟢 · `package.json` scripts include debug scripts
+### T1-4 · Upstash Redis setup · 🟢 · Source: infrastructure rec #4
 
-**Verified:** `"script:clean": "node scripts/clean-threads.js"` and `"script:snooze": "node scripts/check_snooze.js"` are in `package.json:12-13`.
+**Why:** Your rate limiter falls back to in-memory (does nothing in serverless). `/api/capture` and `/api/account` are unprotected.
 
-**Fix (🟢 SAFE):** Remove both lines from `package.json`. Document them in `CONTRIBUTING.md`:
-```markdown
-## Debug Scripts
+**Steps:**
+1. Go to upstash.com, create a free Redis database
+2. Add to `.env.local`:
+   ```
+   UPSTASH_REDIS_REST_URL=https://your-instance.upstash.io
+   UPSTASH_REDIS_REST_TOKEN=your-token
+   ```
+3. Your existing `src/lib/rate-limit.ts` code automatically picks these up — no code changes needed
 
-These scripts require a `.env.local` with `SUPABASE_SERVICE_ROLE_KEY`. Run them directly:
+**Verify:** Check server logs — the `[rate-limit] Redis not configured` warning should disappear. Hit `/api/capture` 101 times in a minute — the 101st should return 429.
 
-- `node scripts/clean-threads.js` — clean up orphaned threads
-- `node scripts/check_snooze.js` — check snooze state of tasks
+---
+
+### T1-5 · `@t3-oss/env-nextjs` (replace hand-rolled env.ts) · 🟢 · Source: infrastructure rec #5
+
+**Why:** Your current `env.ts` returns empty strings on missing vars — app runs in broken state silently. `@t3-oss/env` validates at startup with Zod.
+
+**Install:**
+```bash
+npm install @t3-oss/env-nextjs
 ```
 
----
+**Replace `src/lib/env.ts`:**
+```typescript
+import { createEnv } from "@t3-oss/env-nextjs";
+import { z } from "zod";
 
-### T6-4 · [NEW] · 🟡 · `useAppStore` is a 16-field god-store with no slices
-
-**File:** `src/store/useAppStore.ts`
-
-The store mixes: UI modal state (`isCaptureModalOpen`, `isSearchModalOpen`, `isSettingsModalOpen`, `isMobileDrawerOpen`), user settings (`userSettings`), timer state (`activeTimer`), ritual state (`activeRitual`), realtime mutation tracking (`lastMutations`), and a prefetched-thread cache (`prefetchedThreads`).
-
-Per Zustand docs §"Slice Pattern", stores should be split by domain. The current monolith means every component that subscribes to ANY field re-renders when ANY other field changes (unless using selectors).
-
-**Fix (🔴 REFACTOR — incremental):** Split into:
-- `useUIStore` — modal open/close states, sidebar collapse, mobile drawer
-- `useUserStore` — userSettings, updateUserSetting
-- `useTimerStore` — activeTimer, setActiveTimer
-- `useRitualStore` — activeRitual, setActiveRitual
-- Move `prefetchedThreads` to TanStack Query (it's server state).
-- Move `lastMutations` to the RealtimeProvider (already done — `useAppStore.markMutation` calls `markProviderMutation`).
-
-Do this one slice at a time. Start with `useTimerStore` (smallest, least coupled).
-
----
-
-### T6-5 · [NEW] · 🟡 · `AppContentWrapper` destructures the entire store
-
-**File:** `src/components/layout/AppContentWrapper.tsx` (per Claude's v3 plan, this was flagged but I should verify — the file wasn't shown to me in this audit pass, but the pattern is risky).
-
-Per Zustand docs §"Use selectors for partial renders", destructuring `useAppStore()` without a selector causes the component to re-render on EVERY store change. The fix is to use individual selectors:
-```tsx
-const isSidebarCollapsed = useAppStore(s => s.isSidebarCollapsed);
-const setCaptureModalOpen = useAppStore(s => s.setCaptureModalOpen);
-// etc.
-```
-
-**Fix (🟢 SAFE):** Audit all `useAppStore()` calls without selectors and add selectors. Mechanical refactor.
-
----
-
-### T6-6 · [NEW] · 🟢 · `prefetchedThreads` cache is never invalidated — memory leak
-
-**File:** `src/store/useAppStore.ts:71, 107`
-
-`setPrefetchedThread(id, thread)` adds entries but nothing ever deletes them. After 100 thread navigations, 100 full thread objects sit in memory.
-
-**Fix (🟢 SAFE):** Move to TanStack Query with `gcTime` (formerly `cacheTime`):
-```ts
-const { data: thread } = useQuery({
-  queryKey: ['thread', id],
-  queryFn: () => fetchThread(id),
-  initialData: () => queryClient.getQueryData(['threads'])?.find(t => t.id === id),
-  staleTime: 60_000,  // 1 minute
-  gcTime: 5 * 60_000,  // 5 minutes
+export const env = createEnv({
+  client: {
+    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  },
+  server: {
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
+  },
+  runtimeEnv: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  },
 });
 ```
-Then delete `prefetchedThreads` and `setPrefetchedThread` from the store.
+
+**Verify:** Delete `NEXT_PUBLIC_SUPABASE_URL` from `.env.local`, start the dev server. You should get a clear Zod validation error at startup, not a silent 500.
 
 ---
 
-## Tier 7 — Beauty / Interaction (additive, do last)
+### T1-6 · React Query DevTools · 🟢 · Source: infrastructure rec #6
 
-From Claude's v3 plan §7, these are all still open and valid:
-- Linear-style reconnect indicator (wire `useRealtimeStatus` — but fix T0-4 first)
-- Sidebar icon hover micro-animation (2px translateX, gated behind `useIsTouch`)
-- Campsite-style 3D card tilt on Home space-tiles and Explore tiles
-- Luma cursor-follow glow on `.btn-primary`
-- Airbnb-style range slider for Pomodoro duration and `daily_capacity_minutes`
-- Linear eased progress fill on `WorkloadBar.tsx` and Pomodoro SVG ring (use `pathLength` springs)
-
-These are all additive — no risk of breaking anything. Do them in any order after Tiers 0–6 are stable.
-
----
-
-## Execution Order
-
-This is the **safe** order. Each tier's items are independent within the tier — you can do them in any order. But do NOT skip ahead.
-
-### Week 1 — Emergency + Security foundation
-1. **T0-1** — Verify and fix `remove_linked_person` trigger (migration)
-2. **T0-2** — Fix `useRealtime` fallback visibility churn (one-line dep change)
-3. **T0-3** — Add debounced channel teardown in RealtimeProvider (5s grace period)
-4. **T1-3** — Delete `test-realtime` route (pure deletion)
-5. **T1-7** — Create `.env.example` (documentation)
-6. **T1-8** — Add `src/lib/env.ts` with startup validation (pure refactor)
-7. **T3-10** — Delete `test.js` (pure deletion)
-8. **T3-11** — Fix `.gitignore` UTF-16 corruption (re-type the section)
-
-### Week 2 — Type safety + API hardening
-1. **T1-4** — Install Zod, add schemas to all 3 API routes
-2. **T1-9** — Stop leaking Postgres errors to client
-3. **T1-10** — Rate-limit `/api/account`
-4. **T1-11** — Rate-limit + bulk upsert `/api/people/reorder`
-5. **T1-6** — Fail-closed rate limiter in prod without Redis
-6. **T6-2** — Add CI workflow (lint + test + build; skip type-check for now)
-
-### Week 3 — CSP + DB hardening
-1. **T1-2** — Add nonce-based CSP in middleware (test thoroughly — breakages likely)
-2. **T1-5** — Add `TO authenticated` to all RLS policies (migration, test on staging)
-3. **T2-3** — Migrate `explores.note` to nullable
-4. **T2-5** — Harden `handle_new_user` in baseline migration
-5. **T2-6** — Harden `increment_time_spent` in baseline migration
-6. **T2-7** — Tighten `rename_category` ILIKE to strict equality
-
-### Week 4 — Remove `ignoreBuildErrors` + fix the type errors it was hiding
-1. **T1-1** — Remove `ignoreBuildErrors: true` from `next.config.ts`
-2. **T3-5** — Fix 28 `catch (error: any)` → `catch (error: unknown)`
-3. Generate typed Supabase client, fix remaining `: any` annotations
-4. Enable the "Type check" step in CI (T6-2)
-
-### Week 5 — Architecture (incremental)
-1. **T3-1** — Fix sidebar `transition-[width]` → `transform`
-2. **T3-3** — Fix LenisProvider RAF leak
-3. **T3-4** — Add Serwist update prompt
-4. **T3-7** — Fix Sheet focus-trap race + aria-label
-5. **T3-8** — Reduce MobileTopBar blur
-6. **T3-9** — Fix `pt-safe-top` missing class
-7. **T3-13** — Delete `template.tsx` (or move animation to per-page)
-8. **T0-4** — Fix `useRealtimeStatus` to track actual channel state
-
-### Week 6 — Performance + mobile polish
-1. **T4-1** — Add `compromise`, `lenis`, `@base-ui/react` to `optimizePackageImports`
-2. **T4-2** — Move chrono-node to server
-3. **T4-3** — Add `content-visibility: auto` on desktop lists
-4. **T4-4** — Lazy-load people in CaptureModal
-5. **T4-5** — Replace `select("*")` with explicit column lists (page by page)
-6. **T5-3** — Fix iOS input zoom (16px floor on mobile)
-7. **T5-4** — Add `inputMode` / `autoComplete` / `autoCapitalize`
-8. **T5-5** — Add `overscroll-behavior: contain`
-9. **T5-6** — Add `-webkit-touch-callout: none`
-10. **T5-7** — Fix content hidden behind MobileTopBar
-
-### Week 7+ — Beauty (additive)
-- All items in Tier 7, in any order.
-
-### Ongoing (never finishes)
-- **T3-12** — Convert client-component pages to Server Components (one per PR)
-- **T6-1** — Add tests, raise coverage thresholds quarterly
-- **T6-4** — Split `useAppStore` into slices (one slice per PR)
-
----
-
-## What I disagree with in Claude's v3 plan
-
-| Claude's claim | My finding | Verdict |
-|---|---|---|
-| `categories` table "never used by the app" | `SettingsModal.tsx:448` calls `.from("categories").delete()` | **WRONG** — do not drop the table |
-| 5 `catch (error: any)` instances | 28 instances (5.6x understated) | **UNDERSTATED** |
-| `useIsTouch`, `useMediaQuery`, `useVisualViewport` have "zero callers" | `useIsTouch` is used in Navigation.tsx; `useVisualViewport` is used in Sheet.tsx | **WRONG** — they have callers, just under-used |
-| "RealtimeProvider architecture complete" | The fallback path in `useRealtime` still has the visibility-churn bug (T0-2) | **UNDERSTATED** — provider is fine, fallback is broken |
-| `ConnectionStatus` is wired | `useRealtimeStatus` tracks browser online/offline, NOT actual realtime channel state (T0-4) | **MISLEADING** — the indicator lies |
-| Do CSP via middleware nonce | Correct approach, but Claude didn't note that nonce-based CSP forces dynamic rendering | **INCOMPLETE** — flag the trade-off |
-| Drop `categories` table | SettingsModal uses it | **WRONG** — see above |
-
-## What Claude got right
-
-Most of it. The security items (T1-1 through T1-8), the DB items (T2-1 through T2-7), the architecture items (T3-1 through T3-6), and the performance items (T4-1 through T4-4) are all legitimate. The mobile items (T5-1 through T5-5) are correct in spirit even if the "zero callers" claim was wrong. The beauty items (Tier 7) are all valid.
-
-## What Claude missed (my NEW findings)
-
-- **T0-1**: Migration conflict between `remove_linked_person` trigger and the `linked_people` column drop
-- **T0-2**: `useRealtime` fallback path still has the visibility-churn bug
-- **T0-3**: RealtimeProvider unsubscribes channels immediately on listener-count-zero (navigation churn)
-- **T0-4**: `useRealtimeStatus` tracks browser online/offline, not realtime channel state — the indicator lies
-- **T1-9**: `/api/account` leaks Postgres error messages
-- **T1-10**: `/api/account` has no rate limit
-- **T1-11**: `/api/people/reorder` has no rate limit AND no payload size limit (Claude flagged the N+1 but not the DoS)
-- **T2-5, T2-6**: Baseline migrations lack `SECURITY DEFINER` + `search_path` (Claude flagged handle_new_user but missed increment_time_spent and the baseline-vs-patch inconsistency)
-- **T2-7**: `rename_category` RPC allows `%` wildcard in `p_old_category` → mass rename
-- **T3-7**: Sheet focus-trap race + missing aria-label on close button
-- **T3-8**: MobileTopBar uses `backdrop-blur-2xl` (40px) — Claude fixed the bottom nav but missed the top bar
-- **T3-9**: `pt-safe-top` class referenced but not defined in CSS
-- **T3-10**: `test.js` at repo root
-- **T3-11**: `.gitignore` UTF-16 corruption (Claude caught this — credit where due)
-- **T3-12**: 63% client-component ratio (Claude didn't quantify)
-- **T3-13**: `template.tsx` re-mounts pages on navigation (Claude didn't flag)
-- **T4-4**: CaptureModal fetches all people on every open
-- **T4-5**: 37 `select("*")` calls (Claude didn't quantify)
-- **T5-5**: No `overscroll-behavior: contain`
-- **T5-6**: No `-webkit-touch-callout: none`
-- **T5-7**: Content hidden behind MobileTopBar
-- **T6-4**: `useAppStore` god-store (Claude didn't flag)
-- **T6-5**: `AppContentWrapper` destructures store without selectors
-- **T6-6**: `prefetchedThreads` memory leak (Claude didn't flag)
-
----
-
-## Final note on safety
-
-Every fix in this plan is marked 🟢 / 🟡 / 🔴. The 🟢 items are zero-risk and can be shipped today. The 🟡 items need testing on staging (especially anything that touches the database or middleware). The 🔴 items are architectural refactors — do them incrementally, one PR at a time, behind feature flags if needed.
-
-**Do NOT do all of Tier 0 in one PR.** Each T0 item is independent — ship them as separate PRs so a rollback is surgical.
-
-**Do NOT remove `ignoreBuildErrors` (T1-1) until you've fixed the 28 catch-block type errors (T3-5).** Otherwise the build breaks and you can't deploy anything.
-
-**Test the CSP change (T1-2) on staging with the actual app.** CSP is notorious for breaking inline scripts, eval, and dynamic imports. The theme-init script, the Supabase client, and Framer Motion all need to work under CSP. Use the `report-uri` directive (or `report-to`) initially to collect violations without blocking:
-```ts
-"report-uri /api/csp-report",
+**Install:**
+```bash
+npm install -D @tanstack/react-query-devtools
 ```
-Then once you've fixed all violations, switch from `Content-Security-Policy-Report-Only` to `Content-Security-Policy`.
+
+**Update `src/components/layout/QueryProvider.tsx`:**
+```tsx
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+export function QueryProvider({ children }) {
+  const [client] = useState(() => new QueryClient());
+  return (
+    <QueryClientProvider client={client}>
+      {children}
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+      )}
+    </QueryClientProvider>
+  );
+}
+```
+
+**Verify:** A small button appears bottom-left in dev. Click it to see all queries, their status, and cache state.
+
+---
+
+### T1-7 · Prettier + tailwind class sorting · 🟢 · Source: infrastructure rec #7
+
+**Install:**
+```bash
+npm install -D prettier prettier-plugin-tailwindcss
+```
+
+**Create `.prettierrc`:**
+```json
+{
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "es5",
+  "plugins": ["prettier-plugin-tailwindcss"]
+}
+```
+
+**Add to `package.json`:**
+```json
+"format": "prettier --write ."
+```
+
+**Run:** `npm run format` once to format the entire codebase.
+
+**Verify:** Open any component. Tailwind classes should be in canonical order (layout → sizing → typography → effects).
+
+---
+
+### T1-8 · Husky + lint-staged (pre-commit hooks) · 🟢 · Source: infrastructure rec #8
+
+**Install:**
+```bash
+npm install -D husky lint-staged
+npx husky init
+echo "npx lint-staged" > .husky/pre-commit
+```
+
+**Add to `package.json`:**
+```json
+"lint-staged": {
+  "*.{ts,tsx}": ["eslint --fix", "tsc --noEmit"],
+  "*.{ts,tsx,css,json,md}": ["prettier --write"]
+}
+```
+
+**Verify:** Try to commit a file with a type error. The commit should be blocked.
+
+---
+
+## Tier 2 — Design system consistency (from 13 audit docs)
+
+These are from the Lovable audit docs. Only adopt items that fit a personal productivity app.
+
+### T2-1 · Quick Wins Q1–Q9 (audit roadmap) · 🟢 · Source: audit doc 20-roadmap.md
+
+| ID | What | File | Time |
+|---|---|---|---|
+| Q1 | Bump `--text-4` from 35% → 55% alpha | `globals.css:115` | 5 min |
+| Q2 | Change `<aside>` to `<nav aria-label="Primary">` | `Navigation.tsx:46` | 5 min |
+| Q3 | Add `min-h-11 min-w-11` to all icon-only buttons | `button.tsx`, `.btn-icon` | 15 min |
+| Q4 | Restore per-space colors in warm-dark | `globals.css:158-170` | 15 min |
+| Q5 | Wrap hover transforms in `@media (prefers-reduced-motion: no-preference)` | `globals.css` | 20 min |
+| Q6 | Add `aria-live="polite"` region for realtime announcements | `(app)/layout.tsx` | 30 min |
+| Q7 | `useCallback` on Do page handlers | `do/page.tsx` | 30 min |
+| Q8 | Bump `.dropdown-item` focus ring | `globals.css` | 10 min |
+| Q9 | Per-column empty-state copy (replace "Nothing here") | `do/page.tsx:74` | 45 min |
+
+**Total: ~3 hours.** These are the highest-ROI changes in the entire audit.
+
+---
+
+### T2-2 · Button system consolidation · 🔴 · Source: audit doc 02-ui-audit.md, 10-design-system-spec.md
+
+**Bug:** You have TWO button systems: `Button.tsx` (Base UI, uses OKLCH neutrals) AND `.btn-primary/.btn-secondary/.btn-capture/.btn-icon/.btn-preset/.btn-danger` (CSS classes in globals.css). They look different, behave differently, and developers don't know which to use.
+
+**Fix:**
+1. Rewrite `src/components/ui/button.tsx` to use warm tokens (`var(--accent)`, `var(--text-1)`, etc.) instead of OKLCH neutrals
+2. Add variants: `primary | secondary | ghost | destructive | accent`
+3. Add sizes: `sm | md | lg | icon` with `min-h-11 min-w-11` on icon
+4. Delete `.btn-primary`, `.btn-secondary`, `.btn-capture`, `.btn-icon`, `.btn-preset`, `.btn-danger` from `globals.css`
+5. Codemod all call sites: replace `className="btn-primary"` with `<Button variant="primary">`, etc.
+
+**Verify:** Grep for `btn-primary` in `src/` — should return 0 results. All buttons should look consistent.
+
+---
+
+### T2-3 · `<Surface>` primitive (replace GlassCard) · 🔴 · Source: audit doc 13-component-inventory.md
+
+**Bug:** You have `GlassCard` + `.glass-card` + `.glass-card-elevated` + `.glass-card-hero` + `.glass-panel` — 5 glass systems.
+
+**Fix:**
+1. Create `src/components/ui/Surface.tsx`:
+   ```tsx
+   interface SurfaceProps {
+     elevation?: "flat" | "raised" | "floating" | "overlay";
+     tone?: "default" | "accent";
+     padding?: "none" | "sm" | "md" | "lg";
+     interactive?: boolean;
+   }
+   ```
+2. Map each elevation to a bundle of `background + backdrop-filter + border + box-shadow`
+3. Replace all `<GlassCard>` usages with `<Surface elevation="raised">`
+4. Delete `GlassCard.tsx` and `.glass-card*` CSS classes
+
+**Verify:** Grep for `GlassCard` — should return 0 results. All surfaces should use consistent elevation.
+
+---
+
+### T2-4 · `<EmptyState>` primitive · 🟢 · Source: audit doc 12-interaction-patterns.md
+
+**Fix:** Create `src/components/ui/EmptyState.tsx`:
+```tsx
+interface EmptyStateProps {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  action?: { label: string; onClick: () => void };
+}
+```
+Replace all bare "Nothing here" / "No threads yet" / "Your network is empty" with `<EmptyState>`.
+
+**Verify:** Every space's empty state should have: icon + title + description + action button.
+
+---
+
+### T2-5 · A11y fixes C1–C5 · 🟢 · Source: audit doc 03-accessibility-audit.md
+
+| ID | What | File |
+|---|---|---|
+| C1 | Bump `--text-4` 35% → 55% (done in T2-1 Q1) | `globals.css:115` |
+| C2 | Add leading icon + space color for space identity | All space headers |
+| C3 | `min-h-11 min-w-11` on all icon-only buttons (done in T2-1 Q3) | `button.tsx` |
+| C4 | `aria-label` on all icon-only buttons (PomodoroTimer, TaskCard, calendar arrows) | Multiple files |
+| C5 | Verify all dialogs use `useDialogFocus` + `aria-modal="true"` + `aria-labelledby` | `Sheet.tsx`, `ConfirmModal.tsx` |
+
+---
+
+### T2-6 · Dynamic-import `compromise` + `chrono-node` · 🟡 · Source: audit doc 05-performance.md
+
+**Bug:** `compromise` (~140KB) and `chrono-node` (~50KB) are bundled into the client via `TaskAddPanel.tsx` imports.
+
+**Fix:** Move NLP parsing to the server. The `/api/capture` route already runs `routeCapture` server-side. In `TaskAddPanel.tsx`, remove `import * as chrono from "chrono-node"` and `import "@/lib/chrono-custom"`. Replace the local `chrono.parse(text)` call with a debounced fetch to `/api/capture` (or a new `/api/parse-date` endpoint).
+
+**Verify:** Check bundle size before and after. The client bundle should drop by ~190KB.
+
+---
+
+### T2-7 · Asymmetric swipe thresholds · 🟢 · Source: audit doc 04-mobile-responsive-audit.md
+
+**File:** `src/components/features/TaskCard.tsx`
+
+**Fix:** Replace the single `SWIPE_DELETE_THRESHOLD = -80` with asymmetric thresholds:
+```typescript
+const SWIPE_COMPLETE_THRESHOLD = -60;  // easier to complete
+const SWIPE_DELETE_THRESHOLD = -100;   // harder to delete
+const SWIPE_VELOCITY_THRESHOLD = 400;  // px/s
+
+const handleDragEnd = (_, info) => {
+  if (info.offset.x < SWIPE_DELETE_THRESHOLD && info.velocity.x < -SWIPE_VELOCITY_THRESHOLD) {
+    // delete
+  } else if (info.offset.x < SWIPE_COMPLETE_THRESHOLD) {
+    // complete
+  } else {
+    // snap back
+  }
+};
+```
+
+**Verify:** Swipe a task card left 60px — it should complete. Swipe 100px — it should delete. Quick flick — should respect velocity.
+
+---
+
+### T2-8 · Undo on task complete · 🟡 · Source: audit doc 01-ux-audit.md
+
+**Bug:** Only delete has undo. Task complete is permanent.
+
+**Fix:** In `do/page.tsx` `completeTask()`, add an undo action to the success toast (matching the delete pattern):
+```typescript
+toast.success("Task completed", {
+  action: {
+    label: "Undo",
+    onClick: async () => {
+      await supabase.from("items").update({ status: "active", completed_at: null }).eq("id", id);
+      fetchTasks();
+    }
+  },
+  duration: 5000
+});
+```
+
+---
+
+### T2-9 · React Hook Form + Zod for all forms · 🔴 · Source: infrastructure rec #9
+
+**Why:** `TaskAddPanel`, `AddPersonPanel`, `SettingsModal` all use manual `useState` form state. RHF + Zod cuts form code by ~60% and adds proper validation.
+
+**Install:**
+```bash
+npm install react-hook-form @hookform/resolvers
+```
+
+**Migrate one form at a time, starting with `TaskAddPanel`** (it's the most complex). Use `zodResolver` to connect Zod schemas to RHF.
+
+**Verify:** Form validation errors should appear inline on blur, not just as toasts.
+
+---
+
+### T2-10 · `nuqs` for URL state · 🟡 · Source: infrastructure rec #10
+
+**Why:** Your Do page's `viewMode` (board/today) and category filter live in local state. Moving to URL params makes them shareable, bookmarkable, and back-button-friendly.
+
+**Install:**
+```bash
+npm install nuqs
+```
+
+**Migrate `do/page.tsx`:**
+```typescript
+import { useQueryState } from 'nuqs';
+
+const [viewMode, setViewMode] = useQueryState('view', { defaultValue: 'board' });
+const [categoryFilter, setCategoryFilter] = useQueryState('category', { defaultValue: 'all' });
+```
+
+**Verify:** Navigate to `/do?view=today&category=work`. The page should load with those filters applied. Back button should work.
+
+---
+
+### T2-11 · Floating UI (fix dropdown positioning) · 🟡 · Source: infrastructure rec #11
+
+**Why:** Your custom `Dropdown` and `Popover` handle positioning manually. The "behind something" z-index bug you reported is a positioning issue.
+
+**Install:**
+```bash
+npm install @floating-ui/react
+```
+
+**Migrate `Dropdown.tsx` and `Popover.tsx`** to use `useFloating` with `autoUpdate`, `flip`, `shift`, and `size` middleware. This handles edge-collision, flip, and shift automatically.
+
+**Verify:** Open a dropdown near the bottom of the viewport. It should flip upward. Open near the right edge — it should shift left.
+
+---
+
+## Tier 3 — Calendar rewrite (needs dedicated effort)
+
+### T3-1 · Calendar complete rewrite · 🔴 · Source: user issue #1
+
+**Bug:** Calendar has bad layout, broken drag-and-drop, bad sizing, misaligned lines, no keyboard integration, bad mobile view, broken click-to-add.
+
+**Approach:** Study top calendar apps before rewriting:
+- **Cron** (now Notion Calendar) — best keyboard navigation, clean week view
+- **Sunsama** — daily planning integration, time-blocking
+- **Fantastical** — natural language input, mobile-first
+- **Google Calendar** — the standard, best mobile month view
+- **Notion Calendar** — drag-to-reschedule, minimal UI
+
+**Requirements for the rewrite:**
+1. **Three views:** Day (mobile default), Week (desktop default), Month (overview)
+2. **Keyboard:** Arrow keys to navigate, Enter to create, Delete to remove, `t` for today
+3. **Drag-and-drop:** Click empty slot to create task. Drag task to reschedule. Drag task edge to change duration (if time-based).
+4. **Mobile:** Day view default. Pinch-to-zoom on week view. Swipe left/right to navigate.
+5. **Sizing:** `h-[calc(100dvh-160px)]` with `min-h-[420px]` on mobile, `min-h-[600px]` on desktop
+6. **Alignment:** Grid lines must align. Use CSS Grid, not flexbox. Time labels in a fixed left column.
+7. **Z-index:** Calendar elements must be `z-10` (below modals at `z-100`/`z-200`)
+
+**This is a 2-3 day dedicated effort.** Do NOT attempt to patch the existing calendar — rewrite it from scratch.
+
+---
+
+## Tier 4 — Quality of life (do when time permits)
+
+### T4-1 · Plausible/PostHog analytics · 🟡
+```bash
+npm install plausible-tracker  # or @posthog/next
+```
+Add to `layout.tsx`. For a personal app, Plausible ($9/mo) is enough.
+
+### T4-2 · OKLCH color for new themes · 🟡
+When adding new theme tokens, use OKLCH: `--accent: oklch(0.75 0.15 75);` instead of hex. Don't migrate existing tokens — just use OKLCH for new ones.
+
+### T4-3 · `text-wrap: balance` on headings · 🟢
+Add to `globals.css`:
+```css
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+```
+
+### T4-4 · `light-dark()` CSS function · 🟡
+Replace `:root` + `html.light` duplicate blocks with `light-dark()`:
+```css
+--text-1: light-dark(#1A0E00, #FFFFFF);
+```
+Requires `color-scheme: light dark;` on `:root`.
+
+### T4-5 · Speculation Rules API · 🟢
+Add to `layout.tsx` head:
+```html
+<script type="speculationrules">
+{ "prerender": [{ "where": { "href_matches": "/do" } }] }
+</script>
+```
+
+### T4-6 · React Compiler · 🟢
+Add to `next.config.ts`:
+```ts
+experimental: {
+  reactCompiler: true,
+}
+```
+Then remove manual `React.memo`, `useMemo`, `useCallback` where the compiler handles it.
+
+### T4-7 · `field-sizing: content` · 🟢
+Add to `globals.css`:
+```css
+textarea.input { field-sizing: content; }
+```
+Keep `react-textarea-autosize` as polyfill for older browsers.
+
+### T4-8 · Vaul (replace Sheet) · 🟡
+```bash
+npm install vaul
+```
+Replace `Sheet.tsx` with Vaul's `Drawer`. Better drag-to-dismiss, snap points, keyboard avoidance. Only do this if you're already touching Sheet for T0-6.
+
+### T4-9 · cmdk (replace SearchModal) · 🟡
+```bash
+npm install cmdk
+```
+Replace `SearchModal.tsx` with cmdk. Better keyboard nav, fuzzy search, grouping. Only do this if you're adding a command palette per audit doc 12.
+
+### T4-10 · Supabase database backups · 🟡
+Add a GitHub Action that runs `pg_dump` nightly to Cloudflare R2 or a private S3 bucket. Costs ~$0.03/month. Retains 30 days.
+
+### T4-11 · RLS test suite · 🟡
+Write Vitest tests that verify: User A can read/write their own data, User B cannot access User A's data, anon gets nothing. Use a separate Supabase test project.
+
+### T4-12 · Bundle analyzer · 🟢
+```bash
+npm install -D @next/bundle-analyzer
+```
+Add to `next.config.ts`. Run `ANALYZE=true npm run build` monthly.
+
+### T4-13 · `eslint-plugin-security` · 🟢
+```bash
+npm install -D eslint-plugin-security eslint-plugin-no-secrets
+```
+Add security rules to ESLint config.
+
+### T4-14 · `depcheck` + `npm-check-updates` · 🟢
+```bash
+npm install -D depcheck npm-check-updates
+```
+Add `check:deps` and `check:updates` scripts. Run monthly.
+
+### T4-15 · `knip` (dead code finder) · 🟢
+```bash
+npm install -D knip
+```
+Run `npx knip` monthly to find unused exports, files, and dependencies.
+
+### T4-16 · `prettier-plugin-tailwindcss` · 🟢
+Already in T1-7. Included here for completeness.
+
+### T4-17 · `pnpm` instead of `npm` · 🟡
+```bash
+npm install -g pnpm
+rm -rf node_modules package-lock.json
+pnpm install
+```
+Update CI to use pnpm. Faster installs, less disk space, stricter dependency resolution.
+
+### T4-18 · `@vercel/speed-insights` · 🟢
+```bash
+npm install @vercel/speed-insights
+```
+Add `<SpeedInsights />` to `layout.tsx`. Free if on Vercel.
+
+---
+
+## Tier 5 — DO NOT DO (skip list)
+
+These items from the audit docs or infrastructure lists are NOT worth doing for Presense:
+
+1. **Global `/trash` route** — over-engineered for a personal app. Per-space trash is fine.
+2. **`g i/d/r/t/e` Vim mnemonics** — too geeky for the audience. Linear can ship this; Presense shouldn't.
+3. **`⌘Z`/`⌘⇧Z` global undo stack** — scope creep. Per-action undo toasts are sufficient.
+4. **Routed `/settings`** — modal is fine for a personal app. Things3/Sunsama use modals.
+5. **Density modes (`data-density`)** — Linear needs this; Presense doesn't.
+6. **`<Combobox>` for @-mentions** — defer until Think has proven usage.
+7. **Long-press action sheet on cards** — over-engineered. Swipe + tap covers it.
+8. **Three.js / WebGL / GSAP / ScrollSmoother** — award-site toys, not productivity-app tools.
+9. **Atropos.js (3D parallax hover)** — gimmick for marketing cards.
+10. **Splitting.js / SplitText** — no hero text animations to justify it.
+11. **Rive / Lottie** — overkill for check-off animations. Use CSS/Framer Motion.
+12. **CMS (Sanity/Payload/Storyblok)** — no editorial content. Data is in Supabase.
+13. **i18n (next-intl/Paraglide)** — English-only. Skip unless going multilingual.
+14. **Style Dictionary / Tokens Studio** — enterprise token pipeline. CSS custom properties are sufficient.
+15. **`data-theme`/`data-mode` migration** — bigger than it sounds. Defer unless themes multiply.
+16. **Storybook** — overkill for solo project unless building a design system.
+17. **MSW (Mock Service Worker)** — useful but not urgent.
+18. **`@base-ui/react` AND shadcn simultaneously** — pick one. You have both. Consolidate to shadcn (which uses Base UI internally).
+19. **Million.js** — incompatible with React Compiler. Pick one (React Compiler).
+20. **Partytown** — you have no third-party scripts. Skip until you add analytics.
+
+---
+
+## Execution order
+
+### Week 1: Tier 0 (urgent fixes) + Tier 1 (infrastructure)
+- Day 1: T0-1 through T0-13 (all urgent bug fixes)
+- Day 2: T1-1 (Sentry), T1-2 (typed client), T1-3 (CI YAML), T1-4 (Upstash)
+- Day 3: T1-5 (t3-env), T1-6 (React Query DevTools), T1-7 (Prettier), T1-8 (Husky)
+
+### Week 2: Tier 2 (design system)
+- Day 1: T2-1 (Quick Wins Q1-Q9)
+- Day 2: T2-5 (A11y C1-C5), T2-7 (asymmetric swipe), T2-8 (undo on complete)
+- Day 3: T2-4 (EmptyState primitive), T2-6 (dynamic-import NLP)
+- Day 4-5: T2-2 (Button consolidation) + T2-3 (Surface primitive) — these are the biggest refactors
+
+### Week 3: Tier 2 continued + Tier 4
+- T2-9 (React Hook Form) — migrate one form per day
+- T2-10 (nuqs) — migrate Do page filters
+- T2-11 (Floating UI) — migrate Dropdown/Popover
+- T4-1 through T4-7 (quick wins)
+
+### Week 4: Tier 3 (calendar rewrite)
+- Study Cron, Sunsama, Fantastical, Google Calendar, Notion Calendar
+- Rewrite `CalendarView`, `WeekView`, `MonthView`, `DayView` from scratch
+- Keyboard navigation, mobile-first, proper drag-and-drop
+
+### Ongoing
+- T4-8 through T4-18 (quality of life items, one per week)
+- Monthly: run `depcheck`, `knip`, `ncu`, bundle analyzer
+- Monthly: review Sentry errors, fix top 5
+
+---
+
+## What NOT to break
+
+These are correct in the current codebase and must be preserved:
+
+1. **Hover sidebar** (`w-[80px] hover:w-[248px] focus-within:w-[248px]`) — do NOT revert to toggle-collapse
+2. **Theme rename** (`sunset/midnight/meadow`) — do NOT revert to `wahala/orange/blue/forest`
+3. **`proxy.ts` CSP nonce system** — correctly handles nonce + cookie propagation
+4. **`MotionProvider` with `LazyMotion features={domMax} strict`** — correctly tree-shakes motion
+5. **`RealtimeProvider` shared-channel architecture** — correctly multiplexes subscriptions
+6. **`Sheet` component drag-to-dismiss** — correctly handles mobile sheet pattern
+7. **`useBodyScrollLock` ref-counted lock** — correctly handles multiple overlays
+8. **`rituals.ts` pure-function approach** — the logic is correct except for the `morningDone` check in T0-1
+9. **`theme.ts` normalizer** — correctly maps all legacy values
+10. **`item-lifecycle.ts` status standardization** — correct foundation
+
+---
+
+## Verification checklist
+
+Before marking any tier as "done":
+
+- [ ] `npm run build` passes with zero errors
+- [ ] `npx tsc --noEmit` passes
+- [ ] `npm test` passes (fix the 5 currently-failing tests first)
+- [ ] `npm run lint` passes
+- [ ] No new `: any` annotations added
+- [ ] No new `catch (error: any)` added
+- [ ] Test on mobile viewport (375px) — no horizontal scroll, no clipped content
+- [ ] Test on desktop (1440px) — no layout issues
+- [ ] Test in Safari (if possible) — no `100vh` issues
+- [ ] Verify all 4 themes render correctly (sunset, midnight, meadow × dark/light)
+- [ ] Verify Lighthouse a11y score >= 95
+- [ ] Verify no console errors in production build
+
+---
+
+## Summary
+
+This plan has **62 items** across 5 tiers:
+- **Tier 0:** 13 urgent bug fixes (do today)
+- **Tier 1:** 8 infrastructure items (do this week)
+- **Tier 2:** 11 design-system items (do over 2 weeks)
+- **Tier 3:** 1 calendar rewrite (dedicated week)
+- **Tier 4:** 18 quality-of-life items (ongoing)
+- **Tier 5:** 20 items to SKIP (do NOT do)
+
+The highest-leverage items are:
+1. T0-1 (ritual logic fix) — 1 line, fixes a core flow
+2. T0-3 (light mode stale closure) — 10 lines, fixes a core setting
+3. T0-4 (onboarding inbox) — 1 line, fixes first-run experience
+4. T1-2 (Supabase typed client) — 5 minutes, eliminates 40+ `: any`
+5. T1-3 (CI YAML fix) — 1 character, enables automated QA
+6. T2-1 (Quick Wins) — 3 hours, disproportionate impact
+7. T2-2 (Button consolidation) — biggest consistency win
+
+Do these first. Everything else is improvement, not emergency.
