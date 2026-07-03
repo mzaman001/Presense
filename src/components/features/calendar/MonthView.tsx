@@ -15,7 +15,6 @@ import {
   parseISO,
 } from "date-fns";
 import { CalendarTaskChip } from "./CalendarTaskChip";
-import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
@@ -25,6 +24,7 @@ interface MonthViewProps {
   currentMonth: Date;
   tasks: Task[];
   onEditTask: (task: Task) => void;
+  onCreateTaskAt?: (deadline: Date) => void;
 }
 
 const MAX_VISIBLE = 3;
@@ -101,8 +101,7 @@ function DayPopover({
   );
 }
 
-export function MonthView({ currentMonth, tasks, onEditTask }: MonthViewProps) {
-  const { setCaptureModalOpen, setCaptureModalPrefill } = useAppStore();
+export function MonthView({ currentMonth, tasks, onEditTask, onCreateTaskAt }: MonthViewProps) {
   const [popoverDay, setPopoverDay] = useState<Date | null>(null);
 
   const monthStart = startOfMonth(currentMonth);
@@ -136,9 +135,9 @@ export function MonthView({ currentMonth, tasks, onEditTask }: MonthViewProps) {
 
   function handleDayClick(day: Date, e: React.MouseEvent) {
     e.stopPropagation();
-    const dayStr = format(day, "EEEE, MMMM d, yyyy");
-    setCaptureModalPrefill(`on ${dayStr}`);
-    setCaptureModalOpen(true);
+    const deadline = new Date(day);
+    deadline.setHours(0, 0, 0, 0);
+    onCreateTaskAt?.(deadline);
   }
 
   return (

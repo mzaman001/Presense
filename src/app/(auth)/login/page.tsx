@@ -1,35 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { OnboardingBackground, PresenseLogo } from "@/components/layout/OnboardingBackground";
+import { getAuthCallbackUrl } from "@/lib/auth-redirect";
 
 export default function LoginPage() {
-  const [supabase] = useState(() => {
-    try { return createClient(); } catch { return null as any; }
+  const [supabase] = useState<ReturnType<typeof createClient> | null>(() => {
+    try { return createClient(); } catch { return null; }
   });
 
-  const router = useRouter();
   const [email, setEmail]         = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading]     = useState<"google" | "email" | null>(null);
   const [error, setError]         = useState<string | null>(null);
-  const [initError, setInitError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!supabase) setInitError("Supabase failed to initialize. Restart the dev server after adding .env.local.");
-  }, [supabase]);
+  const [initError] = useState<string | null>(() =>
+    supabase ? null : "Supabase failed to initialize. Restart the dev server after adding .env.local."
+  );
 
   const handleGoogle = async () => {
     if (!supabase) return setError("Supabase not initialized. Check environment variables.");
     setLoading("google"); setError(null);
     try {
+      const redirectTo = getAuthCallbackUrl(window.location.href);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: { redirectTo },
       });
       if (error) { setError(error.message); setLoading(null); }
     } catch (err) {
@@ -44,9 +41,10 @@ export default function LoginPage() {
     if (!email.trim()) return;
     setLoading("email"); setError(null);
     try {
+      const emailRedirectTo = getAuthCallbackUrl(window.location.href);
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo },
       });
       if (error) setError(error.message);
       else setEmailSent(true);
@@ -128,6 +126,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 inputMode="email"
                 autoCapitalize="none"
+                suppressHydrationWarning
                 className="input w-full"
               />
               <div className="flex justify-end">

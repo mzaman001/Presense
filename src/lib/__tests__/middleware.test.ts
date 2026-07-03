@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { middleware } from "@/middleware";
+import { proxy } from "@/proxy";
 
 // Set required environment variables for the middleware
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
@@ -59,8 +60,13 @@ const mockSupabaseClient = {
   },
 };
 
+let mockCreateServerClientConfig: any = null;
+
 vi.mock("@supabase/ssr", () => ({
-  createServerClient: vi.fn(() => mockSupabaseClient),
+  createServerClient: vi.fn((_url, _key, config) => {
+    mockCreateServerClientConfig = config;
+    return mockSupabaseClient;
+  }),
 }));
 
 // Helper function to build a mock NextRequest
@@ -91,13 +97,14 @@ function createMockRequest(pathname: string) {
 describe("Edge Auth Middleware Routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateServerClientConfig = null;
   });
 
   describe("Unauthenticated requests", () => {
     it("redirects unauthenticated requests to / to /login with 307 redirect", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -107,39 +114,29 @@ describe("Edge Auth Middleware Routing", () => {
     it("redirects unauthenticated requests to protected paths (e.g., /do) to /login with 307 redirect", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/do");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
       expect(res.url).toContain("/login");
     });
 
-    it("copies cookies from supabaseResponse to the redirect response", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
-      
-      const mockCookies = [
-        { name: "sb-access-token", value: "token123", path: "/" },
-        { name: "sb-refresh-token", value: "refresh123", path: "/" }
-      ];
-      
-      const mockSet = vi.fn();
-      mockNext.mockReturnValue({
-        status: 200,
-        headers: {
-          set: vi.fn(),
-        },
-        cookies: {
-          getAll: vi.fn((): { name: string; value: string; path: string }[] => mockCookies),
-          set: mockSet,
-        },
-      } as any);
+    it("copies cookies set by Supabase to the redirect response", async () => {
+      mockGetUser.mockImplementation(async () => {
+        mockCreateServerClientConfig.cookies.setAll([
+          { name: "sb-access-token", value: "token123", options: { path: "/" } },
+          { name: "sb-refresh-token", value: "refresh123", options: { path: "/" } },
+        ]);
+        return { data: { user: null } };
+      });
 
       const req = createMockRequest("/");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
-      expect(mockSet).toHaveBeenCalled();
+      expect(res.cookies.set).toHaveBeenCalledWith("sb-access-token", "token123", { path: "/" });
+      expect(res.cookies.set).toHaveBeenCalledWith("sb-refresh-token", "refresh123", { path: "/" });
     });
   });
 
@@ -147,7 +144,7 @@ describe("Edge Auth Middleware Routing", () => {
     it("redirects authenticated requests to /login to / with 307 redirect", async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
       const req = createMockRequest("/login");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -157,7 +154,7 @@ describe("Edge Auth Middleware Routing", () => {
     it("allows authenticated requests to protected paths (e.g., /do) without redirecting", async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
       const req = createMockRequest("/do");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockNext).toHaveBeenCalled();
       expect(res.status).toBe(200);
@@ -170,7 +167,7 @@ describe("Edge Auth Middleware Routing", () => {
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       mockGetUser.mockRejectedValue(new Error("Supabase connection failed"));
       const req = createMockRequest("/do");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -183,7 +180,7 @@ describe("Edge Auth Middleware Routing", () => {
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       mockGetUser.mockRejectedValue(new Error("Supabase connection failed"));
       const req = createMockRequest("/login");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockNext).toHaveBeenCalled();
       expect(res.status).toBe(200);

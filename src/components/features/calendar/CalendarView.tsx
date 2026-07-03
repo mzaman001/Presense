@@ -9,6 +9,7 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
+  KeyboardSensor,
   closestCenter,
 } from "@dnd-kit/core";
 import {
@@ -36,10 +37,11 @@ import { Task } from "@/types/calendar";
 interface CalendarViewProps {
   tasks: Task[];
   onEditTask: (task: Task) => void;
+  onCreateTaskAt?: (deadline: Date) => void;
   categoryFilter?: string;
 }
 
-type CalendarSubView = "week" | "month";
+type CalendarSubView = "day" | "week" | "month";
 
 /** Parse the slot ID format `slot-YYYY-MM-DD-HH-MM` → Date */
 function parseSlotId(id: string): Date | null {
@@ -76,13 +78,14 @@ function parseDateId(id: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-export function CalendarView({ tasks, onEditTask, categoryFilter }: CalendarViewProps) {
+export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter }: CalendarViewProps) {
   const supabase = React.useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   const [subView, setSubView] = useState<CalendarSubView>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("presense_calendar_view");
-      if (saved === "week" || saved === "month") return saved;
+      if (saved === "day" || saved === "week" || saved === "month") return saved;
+      if (window.matchMedia("(max-width: 767px)").matches) return "day";
     }
     return "week";
   });
@@ -99,24 +102,28 @@ export function CalendarView({ tasks, onEditTask, categoryFilter }: CalendarView
       activationConstraint: {
         distance: 8, // require 8px movement before drag starts (prevents accidental drag on click)
       },
-    })
+    }),
+    useSensor(KeyboardSensor)
   );
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
 
   const navigatePrev = () => {
-    if (subView === "week") setCurrentDate(subWeeks(currentDate, 1));
+    if (subView === "day") setCurrentDate(addDays(currentDate, -1));
+    else if (subView === "week") setCurrentDate(subWeeks(currentDate, 1));
     else setCurrentDate(subMonths(currentDate, 1));
   };
 
   const navigateNext = () => {
-    if (subView === "week") setCurrentDate(addWeeks(currentDate, 1));
+    if (subView === "day") setCurrentDate(addDays(currentDate, 1));
+    else if (subView === "week") setCurrentDate(addWeeks(currentDate, 1));
     else setCurrentDate(addMonths(currentDate, 1));
   };
 
   const navigateToday = () => setCurrentDate(new Date());
 
   const getHeaderLabel = () => {
+    if (subView === "day") return format(currentDate, "EEEE, MMMM d, yyyy");
     if (subView === "week") {
       const weekEnd = addDays(weekStart, 6);
       if (format(weekStart, "MMM") === format(weekEnd, "MMM")) {
@@ -223,7 +230,22 @@ export function CalendarView({ tasks, onEditTask, categoryFilter }: CalendarView
   );
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-180px)] min-h-[600px]">
+    <div
+      className="flex flex-col h-[calc(100dvh-160px)] min-h-[420px] md:min-h-[600px]"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "t") {
+          event.preventDefault();
+          navigateToday();
+        } else if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          navigatePrev();
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault();
+          navigateNext();
+        }
+      }}
+    >
       {/* Calendar toolbar */}
       <div className="flex items-center justify-between mb-4 shrink-0">
         {/* Navigation */}
@@ -255,7 +277,7 @@ export function CalendarView({ tasks, onEditTask, categoryFilter }: CalendarView
 
         {/* Week / Month toggle */}
         <div className="flex bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full p-0.5">
-          {(["week", "month"] as CalendarSubView[]).map((v) => (
+          {(["day", "week", "month"] as CalendarSubView[]).map((v) => (
             <button
               key={v}
               onClick={() => {
@@ -283,17 +305,27 @@ export function CalendarView({ tasks, onEditTask, categoryFilter }: CalendarView
         onDragEnd={handleDragEnd}
       >
         <div className="flex-1 overflow-hidden">
-          {subView === "week" ? (
+          {subView === "day" ? (
+            <WeekView
+              weekStart={currentDate}
+              tasks={filteredTasks}
+              onEditTask={onEditTask}
+              days={1}
+              onCreateTaskAt={onCreateTaskAt}
+            />
+          ) : subView === "week" ? (
             <WeekView
               weekStart={weekStart}
               tasks={filteredTasks}
               onEditTask={onEditTask}
+              onCreateTaskAt={onCreateTaskAt}
             />
           ) : (
             <MonthView
               currentMonth={currentDate}
               tasks={filteredTasks}
               onEditTask={onEditTask}
+              onCreateTaskAt={onCreateTaskAt}
             />
           )}
         </div>

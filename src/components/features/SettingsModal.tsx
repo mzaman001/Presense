@@ -15,6 +15,8 @@ import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
 import { useQueryClient } from "@tanstack/react-query";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { applyDocumentTheme, normalizeColorMode, normalizeThemeId } from "@/lib/theme";
 const TABS = [
   { id: "account", label: "Account", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -257,15 +259,7 @@ export function SettingsModal() {
 
   const [debouncedSettings] = useDebounce(settings, 1000);
   const dialogRef = useDialogFocus(isSettingsModalOpen);
-
-  useEffect(() => {
-    if (isSettingsModalOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [isSettingsModalOpen]);
+  useBodyScrollLock(isSettingsModalOpen);
 
   useEffect(() => {
     if (!isSettingsModalOpen) return;
@@ -327,27 +321,21 @@ export function SettingsModal() {
     
     // Immediately apply theme/mode changes
     if (key === 'theme') {
-      localStorage.setItem('presense_theme', String(value));
-      document.documentElement.classList.remove('theme-navy', 'theme-forest');
-      
-      if (value === 'blue') document.documentElement.classList.add('theme-navy');
-      if (value === 'forest') document.documentElement.classList.add('theme-forest');
+      const theme = normalizeThemeId(value);
+      const mode = normalizeColorMode(settings.color_mode || localStorage.getItem('presense_color_mode'));
+      localStorage.setItem('presense_theme', theme);
+      applyDocumentTheme(theme, mode, Boolean(settings.reduce_motion));
     }
     
     if (key === 'color_mode') {
-      localStorage.setItem('presense_color_mode', String(value));
-      document.documentElement.classList.remove('light');
-      
-      if (value === 'light') document.documentElement.classList.add('light');
-      if (value === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches) {
-        document.documentElement.classList.add('light');
-      }
+      const mode = normalizeColorMode(value);
+      localStorage.setItem('presense_color_mode', mode);
+      applyDocumentTheme(normalizeThemeId(settings.theme), mode, Boolean(settings.reduce_motion));
     }
 
     if (key === 'reduce_motion') {
       localStorage.setItem('presense_reduce_motion', value ? 'true' : 'false');
-      if (value) document.documentElement.classList.add('reduce-motion');
-      else document.documentElement.classList.remove('reduce-motion');
+      applyDocumentTheme(normalizeThemeId(settings.theme), normalizeColorMode(settings.color_mode), Boolean(value));
     }
   };
 
@@ -475,20 +463,20 @@ export function SettingsModal() {
         {isSettingsModalOpen && (
           <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm"
             onClick={() => setSettingsModalOpen(false)}
           >
             <m.div 
               ref={dialogRef}
               initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
               transition={{ type: "spring", stiffness: 300, damping: 28 }}
-              className="modal relative w-full max-w-4xl h-[100dvh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden md:rounded-2xl"
+              className="modal relative w-full max-w-4xl h-[100dvh] md:h-[80vh] min-h-0 flex flex-col md:flex-row overflow-hidden md:rounded-2xl"
               onClick={e => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-label="Settings"
             >
-              <div className="w-full h-full flex flex-col md:flex-row">
+              <div className="w-full h-full min-h-0 flex flex-col md:flex-row">
                 {/* Sidebar Tabs */}
                 <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-[var(--color-border)] bg-[var(--color-surface)] flex md:flex-col p-4 overflow-x-auto md:overflow-x-visible shrink-0 pb-0 md:pb-4">
                   <h2 className="hidden md:block text-xl font-bold text-[var(--color-text-1)] mb-8 px-2">Settings</h2>
@@ -531,7 +519,7 @@ export function SettingsModal() {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 relative overflow-y-auto overscroll-contain no-scrollbar">
+                <div className="flex-1 min-h-0 relative overflow-y-auto overscroll-contain">
                   <button 
                     onClick={() => setSettingsModalOpen(false)}
                     aria-label="Close settings"
@@ -614,9 +602,9 @@ export function SettingsModal() {
                               <div className="text-sm text-[var(--color-text-3)]">Select your primary colour palette</div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button onClick={() => updateSetting("theme", "orange")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${settings.theme === 'orange' || !settings.theme ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Wahala (Orange)" />
-                              <button onClick={() => updateSetting("theme", "blue")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${settings.theme === 'blue' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Deep Navy" />
-                              <button onClick={() => updateSetting("theme", "forest")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${settings.theme === 'forest' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Forest" />
+                              <button onClick={() => updateSetting("theme", "sunset")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${normalizeThemeId(settings.theme) === 'sunset' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Sunset" />
+                              <button onClick={() => updateSetting("theme", "midnight")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${normalizeThemeId(settings.theme) === 'midnight' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Midnight" />
+                              <button onClick={() => updateSetting("theme", "meadow")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${normalizeThemeId(settings.theme) === 'meadow' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Meadow" />
                             </div>
                           </div>
 

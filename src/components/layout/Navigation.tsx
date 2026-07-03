@@ -12,8 +12,6 @@ import {
   Settings,
   Search,
   Plus,
-  ChevronLeft,
-  ChevronRight,
   Inbox,
   Sparkles,
   CheckCircle2,
@@ -24,7 +22,6 @@ import { useAppStore } from "@/store/useAppStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { m } from "framer-motion";
 import { useIsTouch } from "@/hooks/useIsTouch";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -37,28 +34,27 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const sidebarState = useAppStore(s => s.sidebarState);
-  const toggleSidebar = useAppStore(s => s.toggleSidebar);
-  const isCollapsed = sidebarState !== "full";
   const userSettings = useAppStore(s => s.userSettings);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const isTouch = useIsTouch();
   const now = useMemo(() => new Date(), []);
+  const labelClass = "ml-0 min-w-0 max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-ellipsis transition-[opacity,max-width,margin] duration-200 group-hover/sidebar:ml-3 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:ml-3 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100";
+  const rowClass = "flex h-11 w-full items-center rounded-xl px-2 transition-colors";
+  const iconClass = "flex h-10 w-10 shrink-0 items-center justify-center";
 
   return (
     <aside 
       aria-label="Main navigation"
       className={cn(
-        "sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40",
+        "sidebar group/sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40 overflow-hidden",
         "border-r border-[var(--border-subtle)] bg-[var(--color-background)]",
+        "w-[80px] hover:w-[248px] focus-within:w-[248px]",
         "transition-[width] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)]",
-        isCollapsed ? "w-[56px]" : "w-[220px]"
       )}
     >
-      {/* Header section: 60px tall */}
-      <div className={cn("relative h-[60px] flex items-center border-b border-[var(--border-subtle)] shrink-0", isCollapsed ? "px-2" : "px-4")}>
-        <div className={cn("flex items-center w-full", isCollapsed ? "justify-start pl-1.5" : "gap-3")}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="url(#brand-gradient)" className="shrink-0">
+      <div className="h-[80px] flex items-center border-b border-[var(--border-subtle)] shrink-0 px-4">
+        <div className="flex items-center w-full">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="url(#brand-gradient)" className="shrink-0">
             <defs>
               <linearGradient id="brand-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="var(--accent)" />
@@ -67,61 +63,25 @@ export function Sidebar() {
             </defs>
             <circle cx="12" cy="12" r="12" />
           </svg>
-          <span className={cn(
-            "sidebar-title text-[15px] font-semibold tracking-tight text-[var(--color-text-1)] whitespace-nowrap overflow-hidden overflow-ellipsis transition-opacity duration-200",
-            isCollapsed ? "opacity-0 w-0" : "opacity-100"
-          )}>Presense</span>
+          <span className={cn("sidebar-title text-[17px] font-semibold tracking-tight text-[var(--color-text-1)]", labelClass)}>Presense</span>
         </div>
-        
+      </div>
+
+      <div className="shrink-0 px-3 py-4">
         <button 
-          onClick={toggleSidebar}
-          aria-expanded={!isCollapsed}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={cn(
-            "absolute top-1/2 -translate-y-1/2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors p-2 flex items-center justify-center right-0"
-          )}
+          onMouseEnter={() => setHoveredItem("capture")}
+          onMouseLeave={() => setHoveredItem(null)}
+          onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+          title="Quick Capture"
+          className={cn(rowClass, "bg-[var(--accent)] text-[var(--text-on-accent)] shadow-[var(--shadow-button-primary)] hover:brightness-105")}
         >
-          {isCollapsed ? <ChevronRight size={16} strokeWidth={1.5} /> : <ChevronLeft size={16} strokeWidth={1.5} />}
+          <span className={iconClass}><Plus size={22} strokeWidth={1.7} /></span>
+          <span className={cn("text-[14px] font-semibold", labelClass)}>Quick Capture</span>
         </button>
       </div>
 
-      {/* Quick Capture Button */}
-      <div className={cn("shrink-0", isCollapsed ? "px-2 pt-3" : "p-3")}>
-        {isCollapsed ? (
-          <Tooltip>
-            <TooltipTrigger
-              onMouseEnter={() => setHoveredItem("capture")}
-              onMouseLeave={() => setHoveredItem(null)}
-              onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
-              className="relative flex items-center justify-center shrink-0 transition-all overflow-hidden w-10 h-10 rounded-full bg-[var(--accent)] text-[var(--text-on-accent)] mx-auto shadow-[var(--shadow-button-primary)] hover:scale-105"
-            >
-              <Plus size={20} strokeWidth={1.5} className="shrink-0" />
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8}>
-              Quick Capture <span className="text-[10px] opacity-70">Cmd+K</span>
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <button 
-            onMouseEnter={() => setHoveredItem("capture")}
-            onMouseLeave={() => setHoveredItem(null)}
-            onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
-            className="relative flex items-center gap-2.5 h-10 shrink-0 transition-all overflow-hidden btn-capture w-full rounded-md px-3"
-          >
-            <Plus size={20} strokeWidth={1.5} className="shrink-0" />
-            <span className="capture-label whitespace-nowrap overflow-hidden text-ellipsis text-[14px] font-medium transition-opacity duration-200">Quick Capture</span>
-          </button>
-        )}
-      </div>
-
-      {/* Nav Items */}
-      <nav id="sidebar-content" className={cn("flex flex-col w-full", isCollapsed ? "gap-1 px-2 items-center" : "gap-1 px-3 flex-1")}>
-        {/* Plan my day Button */}
-        <div 
-          className="relative w-full"
-          onMouseEnter={() => setHoveredItem("plan-day")}
-          onMouseLeave={() => setHoveredItem(null)}
-        >
+      <nav id="sidebar-content" className="flex flex-col w-full gap-2 px-3 flex-1">
+        <div className="relative w-full" onMouseEnter={() => setHoveredItem("plan-day")} onMouseLeave={() => setHoveredItem(null)}>
           {(() => {
             const currentHours = now.getHours();
             const todayStr = now.toLocaleDateString("en-CA");
@@ -146,42 +106,26 @@ export function Sidebar() {
               <button
                 onClick={() => {
                   if (useAppStore.getState().activeRitual) return;
-                  if (state === "all_done" || state === "done") {
-                    return; // Prevent reopening if completed
-                  }
                   useAppStore.getState().setActiveRitual(state === "evening" ? "evening" : "morning");
                 }}
+                title={label.replace("âœ“", "")}
                 className={cn(
-                  "flex items-center transition-all relative group w-full",
-                  isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-10 rounded-md px-3 gap-2.5",
+                  rowClass,
                   (state === "all_done" || state === "done") 
                     ? "text-[var(--text-4)] hover:text-[var(--text-1)] bg-transparent hover:bg-[rgba(255,255,255,0.02)]" 
                     : "text-[var(--accent)] bg-[var(--accent-dim)]/10 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)] border border-[var(--accent)]/15"
                 )}
               >
-                <div className="flex items-center justify-center shrink-0">
+                <span className={iconClass}>
                   <Icon size={20} strokeWidth={1.5} className={(state === "all_done" || state === "done") ? "" : "text-[var(--accent)]"} />
-                </div>
-                <span className={cn(
-                  "nav-label text-[14px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
-                  isCollapsed ? "opacity-0 w-0" : "opacity-100"
-                )}>
+                </span>
+                <span className={cn("nav-label text-[14px] font-medium leading-none", labelClass)}>
                   {hoveredItem === "plan-day" && state === "done" ? "Review your day" : 
                    hoveredItem === "plan-day" && state === "all_done" ? "Already done" : label}
                 </span>
               </button>
             );
           }          )()}
-          {isCollapsed && (
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="absolute inset-0" />
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                Plan my day
-              </TooltipContent>
-            </Tooltip>
-          )}
         </div>
 
         {navItems.map((item) => {
@@ -198,28 +142,15 @@ export function Sidebar() {
                 href={item.href}
                 prefetch={true}
                 aria-current={isActive ? "page" : undefined}
+                title={item.label}
                 className={cn(
-                  "flex items-center transition-all relative group",
-                  isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-10 w-full rounded-md px-3 gap-2.5",
+                  rowClass,
                   isActive 
                     ? "bg-[var(--accent-dim)] text-[var(--accent)] font-medium" 
                     : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
                 )}
               >
-                {/* Active left indicator */}
-                {!isCollapsed && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-[20px]">
-                    {isActive && (
-                      <m.div
-                        layoutId="sidebar-active"
-                        className="absolute inset-0 bg-[var(--accent)] rounded-r-full"
-                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                      />
-                    )}
-                  </div>
-                )}
-                
-                <div className="flex items-center justify-center shrink-0">
+                <span className={iconClass}>
                   <Icon 
                     size={20} 
                     strokeWidth={1.5}
@@ -229,34 +160,18 @@ export function Sidebar() {
                       !isTouch && !isActive && "group-hover:translate-x-0.5"
                     )} 
                   />
-                </div>
+                </span>
                 
-                <span className={cn(
-                  "nav-label text-[14px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
-                  isCollapsed ? "opacity-0 w-0" : "opacity-100"
-                )}>
+                <span className={cn("nav-label text-[14px] font-medium leading-none", labelClass)}>
                   {item.label}
                 </span>
               </Link>
-              
-              {isCollapsed && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <div className="absolute inset-0" />
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8}>
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-              )}
             </div>
           );
         })}
       </nav>
 
-      {/* Bottom Section */}
-      <div className={cn("flex flex-col pb-[52px]", isCollapsed ? "gap-1 px-2 items-center mt-auto" : "gap-1 px-3")}>
-        {/* Search */}
+      <div className="flex flex-col pb-[64px] gap-2 px-3 mt-auto">
         <div 
           className="relative w-full"
           onMouseEnter={() => setHoveredItem("search")}
@@ -264,36 +179,22 @@ export function Sidebar() {
         >
           <button
             onClick={() => useAppStore.getState().setSearchModalOpen(true)}
+            title="Search"
             className={cn(
-              "flex items-center transition-all relative group",
-              isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-10 w-full rounded-md px-3 gap-2.5",
+              rowClass,
               "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
             )}
           >
-            <div className="flex items-center justify-center shrink-0">
+            <span className={iconClass}>
               <Search size={20} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
-            </div>
-            <div className={cn(
-              "nav-label flex items-center justify-between flex-1 min-w-0 overflow-hidden transition-opacity duration-200",
-              isCollapsed ? "opacity-0 w-0" : "opacity-100"
-            )}>
+            </span>
+            <span className={cn("nav-label flex items-center justify-between flex-1 text-[14px] font-medium leading-none text-[var(--text-3)]", labelClass)}>
               <span className="text-[14px] font-medium leading-none text-[var(--text-3)] whitespace-nowrap">Search</span>
               <span className="text-[10px] font-mono text-[var(--text-3)] whitespace-nowrap shrink-0 ml-2">Cmd+K</span>
-            </div>
+            </span>
           </button>
-          {isCollapsed && (
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="absolute inset-0" />
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                Search <span className="text-[10px] opacity-70">Cmd+K</span>
-              </TooltipContent>
-            </Tooltip>
-          )}
         </div>
 
-        {/* Settings */}
         <div 
           className="relative w-full"
           onMouseEnter={() => setHoveredItem("settings")}
@@ -301,56 +202,46 @@ export function Sidebar() {
         >
           <button
             onClick={() => useAppStore.getState().setSettingsModalOpen(true)}
+            title="Settings"
             className={cn(
-              "flex items-center transition-all relative group",
-              isCollapsed ? "w-10 h-10 mx-auto justify-center rounded-full" : "h-10 w-full rounded-md px-3 gap-2.5",
+              rowClass,
               "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
             )}
           >
-            <div className="flex items-center justify-center shrink-0">
+            <span className={iconClass}>
               <Settings size={20} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
-            </div>
-            <span className={cn(
-              "nav-label text-[14px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200",
-              isCollapsed ? "opacity-0 w-0" : "opacity-100"
-            )}>Settings</span>
+            </span>
+            <span className={cn("nav-label text-[14px] font-medium leading-none", labelClass)}>Settings</span>
           </button>
-          {isCollapsed && (
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="absolute inset-0" />
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                Settings
-              </TooltipContent>
-            </Tooltip>
-          )}
         </div>
       </div>
 
-      {/* User Row - absolute positioned at the bottom 52px */}
       <button 
         onClick={() => useAppStore.getState().setSettingsModalOpen(true, "account")}
+        title="Account"
         className={cn(
-          "absolute bottom-0 left-0 w-full h-[52px] border-t border-[var(--border-subtle)] flex items-center transition-colors text-left",
-          "hover:bg-[var(--surface-hover)] cursor-pointer group/user",
-          isCollapsed ? "justify-center" : "px-4"
+          "absolute bottom-0 left-0 w-full h-[60px] border-t border-[var(--border-subtle)] flex items-center transition-colors text-left px-3",
+          "hover:bg-[var(--surface-hover)] cursor-pointer"
         )}
       >
-        {userSettings?.display_name && (
-          <div className={cn("flex items-center gap-3", !isCollapsed && "w-full")}>
+        {(() => {
+          const email = typeof userSettings?.email === "string" ? userSettings.email : "";
+          const displayName = userSettings?.display_name || email || "Presense User";
+          const subtitle = userSettings?.display_name && email ? email : "Account";
+          return (
+          <div className="flex items-center w-full min-w-0">
             <Avatar 
-              name={userSettings.display_name} 
+              name={displayName} 
               color={userSettings.avatar_color || "#7692FF"} 
               size="sm"
             />
-            {!isCollapsed && (
-              <div className="flex flex-col min-w-0 overflow-hidden">
-                <span className="text-[13px] font-medium text-[var(--color-text-1)] truncate leading-tight whitespace-nowrap">{userSettings.display_name}</span>
+              <div className={cn("flex flex-col min-w-0", labelClass)}>
+                <span className="text-[13px] font-medium text-[var(--color-text-1)] truncate leading-tight whitespace-nowrap">{displayName}</span>
+                <span className="text-[11px] text-[var(--text-4)] truncate leading-tight whitespace-nowrap">{subtitle}</span>
               </div>
-            )}
           </div>
-        )}
+          );
+        })()}
       </button>
     </aside>
   );

@@ -11,7 +11,6 @@ import {
   parseISO,
 } from "date-fns";
 import { CalendarTaskChip } from "./CalendarTaskChip";
-import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 
@@ -25,6 +24,8 @@ interface WeekViewProps {
   weekStart: Date;
   tasks: Task[];
   onEditTask: (task: Task) => void;
+  onCreateTaskAt?: (deadline: Date) => void;
+  days?: number;
 }
 
 /** Detects whether a task is "all-day" — deadline with no time (midnight 00:00:00 UTC or local) */
@@ -152,10 +153,8 @@ function DroppableAllDay({ id, children }: { id: string; children: React.ReactNo
   );
 }
 
-export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
+export function WeekView({ weekStart, tasks, onEditTask, onCreateTaskAt, days = DAYS }: WeekViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const setCaptureModalOpen = useAppStore((s) => s.setCaptureModalOpen);
-  const setCaptureModalPrefill = useAppStore((s) => s.setCaptureModalPrefill);
   
   const [now, setNow] = useState(new Date());
   const [currentTimeTop, setCurrentTimeTop] = useState(() => {
@@ -179,7 +178,7 @@ export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
     }
   }, [weekStart]);
 
-  const weekDays = Array.from({ length: DAYS }, (_, i) => addDays(weekStart, i));
+  const weekDays = Array.from({ length: days }, (_, i) => addDays(weekStart, i));
 
   /** Split tasks by week day */
   function getTasksForDay(day: Date) {
@@ -190,16 +189,15 @@ export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
   }
 
   function handleSlotClick(day: Date, hour: number) {
-    const dayName = format(day, "yyyy-MM-dd");
-    const timeStr = format(new Date().setHours(hour, 0, 0, 0), "HH:mm");
-    setCaptureModalPrefill(`on ${dayName} at ${timeStr}`);
-    setCaptureModalOpen(true);
+    const deadline = new Date(day);
+    deadline.setHours(hour, 0, 0, 0);
+    onCreateTaskAt?.(deadline);
   }
 
   function handleAllDayClick(day: Date) {
-    const dayStr = format(day, "yyyy-MM-dd");
-    setCaptureModalPrefill(`on ${dayStr}`);
-    setCaptureModalOpen(true);
+    const deadline = new Date(day);
+    deadline.setHours(0, 0, 0, 0);
+    onCreateTaskAt?.(deadline);
   }
 
   return (
@@ -271,7 +269,7 @@ export function WeekView({ weekStart, tasks, onEditTask }: WeekViewProps) {
 
       {/* Scrollable grid */}
       <div ref={scrollRef} className="flex-1 overflow-auto relative">
-        <div className="flex min-w-[800px]" style={{ height: HOUR_HEIGHT * 24 }}>
+        <div className={cn("flex", days === 1 ? "min-w-0" : "min-w-[800px]")} style={{ height: HOUR_HEIGHT * 24 }}>
           {/* Time labels */}
           <div className="w-14 shrink-0 relative">
             {HOURS.map((hour) => (

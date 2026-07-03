@@ -7,27 +7,12 @@ import { useRouter } from "next/navigation";
 
 export function AppContentWrapper({ children }: { children: React.ReactNode }) {
   const {
-    sidebarState,
-    toggleSidebar,
     setCaptureModalOpen,
     setSearchModalOpen,
     setSettingsModalOpen
   } = useAppStore();
   
   const router = useRouter();
-
-  // Restore sidebar state from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('presense-sidebar');
-    if (saved === 'rail' || saved === 'full') {
-      useAppStore.setState({ sidebarState: saved });
-    }
-  }, []);
-
-  // Persist sidebar state to localStorage on change
-  useEffect(() => {
-    localStorage.setItem('presense-sidebar', sidebarState);
-  }, [sidebarState]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -43,10 +28,9 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Cmd/Ctrl + B to toggle sidebar
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        toggleSidebar();
+        setSearchModalOpen(true);
         return;
       }
 
@@ -80,7 +64,7 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [router, toggleSidebar, setCaptureModalOpen, setSearchModalOpen, setSettingsModalOpen]);
+  }, [router, setCaptureModalOpen, setSearchModalOpen, setSettingsModalOpen]);
 
   return (
     <main 
@@ -88,7 +72,7 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
         "flex-1 flex flex-col pb-24 md:pb-0 relative z-10",
         "pt-[calc(env(safe-area-inset-top)+52px+0.5rem)] md:pt-8",
         "transition-[margin-left] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)]",
-        sidebarState === "full" ? "md:ml-[220px]" : "md:ml-[56px]"
+        "md:ml-[80px]"
       )}
     >
       <div className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 pt-0">

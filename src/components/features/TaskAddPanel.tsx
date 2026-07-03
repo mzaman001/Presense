@@ -17,6 +17,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 
 interface TaskEditData {
   id: string;
@@ -38,9 +39,10 @@ interface TaskAddPanelProps {
   onClose: () => void;
   onTaskAdded?: () => void;
   taskToEdit?: TaskEditData | null;
+  initialDeadline?: Date | null;
 }
 
-export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskAddPanelProps) {
+export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initialDeadline }: TaskAddPanelProps) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
@@ -127,10 +129,10 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
     try {
       useAppStore.getState().markMutation();
       const supabase = createClient();
-      const { error } = await supabase.from("items").delete().eq("id", taskToEdit.id);
+      const { error } = await supabase.from("items").update(moveItemToTrashPatch()).eq("id", taskToEdit.id);
       if (error) throw error;
       
-      toast.success("Task deleted");
+      toast.success("Task moved to trash");
       if (onTaskAdded) onTaskAdded();
       onClose();
     } catch (err: unknown) {
@@ -138,8 +140,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       queryClient.setQueryData(["tasks"], previousTasks);
       queryClient.setQueryData(["dashboard"], previousDashboard);
 
-      const message = err instanceof Error ? err.message : "Failed to delete task";
-      toast.error("Failed to delete task", { description: message });
+      const message = err instanceof Error ? err.message : "Failed to move task to trash";
+      toast.error("Failed to move task to trash", { description: message });
     } finally {
       setDeleteTaskConfirm(false);
     }
@@ -214,8 +216,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         }
       } else {
         setTitle("");
-        setDeadline("");
-        setParsedDeadline(null);
+        setDeadline(initialDeadline ? format(initialDeadline, "yyyy-MM-dd'T'HH:mm") : "");
+        setParsedDeadline(initialDeadline ?? null);
         setStartDate("");
         setParsedStartDate(null);
         setFreq("Does not repeat");
@@ -231,7 +233,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
         setLinkedPeopleIds([]);
       }
     }
-  }, [isOpen, taskToEdit]);
+  }, [isOpen, taskToEdit, initialDeadline]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -739,9 +741,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit }: TaskA
       isOpen={deleteTaskConfirm}
       onClose={() => setDeleteTaskConfirm(false)}
       onConfirm={confirmDelete}
-      title="Delete Task?"
-      description="This task will be permanently deleted. This action cannot be undone."
-      confirmLabel="Delete"
+      title="Move Task to Trash?"
+      description="This task will leave active views and can be restored from Trash."
+      confirmLabel="Move to Trash"
       confirmDestructive
     />
     </>

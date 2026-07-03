@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,23 @@ export function Dropdown({
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [position, setPosition] = useState<React.CSSProperties>({});
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setPosition({
+      position: "fixed",
+      top: rect.bottom + 8,
+      left: rect.left,
+      minWidth: rect.width,
+      zIndex: 220,
+      transformOrigin: "top",
+    });
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -81,15 +99,16 @@ export function Dropdown({
           </m.div>
         </button>
 
-        <AnimatePresence>
-          {isOpen && (
+        {mounted && createPortal(
+          <AnimatePresence>
+            {isOpen && (
             <m.div
               initial={{ opacity: 0, scaleY: 0.9 }}
               animate={{ opacity: 1, scaleY: 1 }}
               exit={{ opacity: 0, scaleY: 0.9 }}
               transition={{ duration: 0.18 }}
-              style={{ transformOrigin: "top" }}
-              className="dropdown-panel absolute top-full left-0 right-0 mt-2 z-50"
+              style={position}
+              className="dropdown-panel"
             >
               {options.map((opt) => {
                 const optValue = typeof opt === "string" ? opt : opt.value;
@@ -113,8 +132,10 @@ export function Dropdown({
                 );
               })}
             </m.div>
-          )}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
       </div>
     );
   }
@@ -136,15 +157,16 @@ export function Dropdown({
         {isPlaceholder ? placeholder : selectedOption.label} ▼
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
+      {mounted && createPortal(
+        <AnimatePresence>
+          {isOpen && (
           <m.div
             initial={{ opacity: 0, scaleY: 0.9 }}
             animate={{ opacity: 1, scaleY: 1 }}
             exit={{ opacity: 0, scaleY: 0.9 }}
             transition={{ duration: 0.18 }}
-            style={{ transformOrigin: "top" }}
-            className="dropdown-panel absolute top-full left-0 mt-2 z-50"
+            style={position}
+            className="dropdown-panel"
           >
             {options.map((opt) => {
               const optValue = typeof opt === "string" ? opt : opt.value;
@@ -172,8 +194,10 @@ export function Dropdown({
               );
             })}
           </m.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

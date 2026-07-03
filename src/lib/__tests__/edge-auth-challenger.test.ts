@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { middleware } from "@/middleware";
+import { proxy } from "@/proxy";
 
 // Set required environment variables for the middleware
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
@@ -144,7 +145,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("handles missing auth cookies entirely (redirects unauthenticated to /login)", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/do");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -156,7 +157,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
       const headers = new Map();
       headers.set("authorization", "Bearer mock-jwt-token");
       const req = createMockRequest("/do", "", [], headers);
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -167,7 +168,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
       mockGetUser.mockResolvedValue({ data: { user: null }, error: new Error("Invalid token format") });
       const cookies = [{ name: "sb-access-token", value: "malformed-junk-token" }];
       const req = createMockRequest("/do", "", cookies);
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -178,7 +179,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       mockGetUser.mockRejectedValue(new Error("Database connection timeout"));
       const req = createMockRequest("/do");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -193,7 +194,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("unauthenticated request to protected path with trailing slash (/do/) redirects to /login", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/do/");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -203,7 +204,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("authenticated request to protected path with trailing slash (/do/) is allowed (no redirect)", async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
       const req = createMockRequest("/do/");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockNext).toHaveBeenCalled();
       expect(res.status).toBe(200);
@@ -212,7 +213,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("unauthenticated request to capital letters protected path (/DO) redirects to /login", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/DO");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -222,7 +223,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("authenticated request to capital letters protected path (/DO) is allowed (no redirect)", async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
       const req = createMockRequest("/DO");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockNext).toHaveBeenCalled();
       expect(res.status).toBe(200);
@@ -231,7 +232,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("allows unauthenticated request to capital letters auth path (/LOGIN) without redirect", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/LOGIN");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).not.toHaveBeenCalled();
       expect(mockNext).toHaveBeenCalled();
@@ -241,7 +242,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("redirects authenticated request on capital letters auth path (/LOGIN) to /", async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
       const req = createMockRequest("/LOGIN");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -251,7 +252,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("unauthenticated request to protected path with parameters (/do?param=1) redirects to /login preserving the parameters", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/do", "?param=1");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -262,7 +263,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("authenticated request to login with parameters (/login?param=1) redirects to / preserving the parameters", async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
       const req = createMockRequest("/login", "?param=1");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -288,7 +289,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
 
       // Authenticated user requests /login -> should redirect to / and forward the new cookies
       const req = createMockRequest("/login");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
@@ -303,7 +304,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("prevents redirect loops for unauthenticated users accessing /login", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/login");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       // Should not redirect (should call Next.next())
       expect(mockRedirect).not.toHaveBeenCalled();
@@ -314,7 +315,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("prevents redirect loops for authenticated users accessing /", async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
       const req = createMockRequest("/");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       // Should not redirect (should call Next.next())
       expect(mockRedirect).not.toHaveBeenCalled();
@@ -325,7 +326,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     it("prevents redirect loops for unauthenticated users accessing /auth/callback", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
       const req = createMockRequest("/auth/callback");
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       // Should not redirect (should call Next.next())
       expect(mockRedirect).not.toHaveBeenCalled();

@@ -109,6 +109,7 @@ export default function DoPage() {
   const prevTaskIdsRef = useRef<Set<string>>(new Set());
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [initialDeadline, setInitialDeadline] = useState<Date | null>(null);
 
   const userSettings = useAppStore(s => s.userSettings);
   const setActiveTimer = useAppStore(s => s.setActiveTimer);
@@ -244,12 +245,22 @@ export default function DoPage() {
 
   const openEditPanel = (task: Task) => {
     setTaskToEdit(task);
+    setInitialDeadline(null);
+    setIsPanelOpen(true);
+  };
+
+  const openCreatePanelAt = (deadline: Date) => {
+    setTaskToEdit(null);
+    setInitialDeadline(deadline);
     setIsPanelOpen(true);
   };
 
   const handleClosePanel = () => {
     setIsPanelOpen(false);
-    setTimeout(() => setTaskToEdit(null), 300);
+    setTimeout(() => {
+      setTaskToEdit(null);
+      setInitialDeadline(null);
+    }, 300);
   };
 
   const now = new Date();
@@ -327,7 +338,7 @@ export default function DoPage() {
             </button>
           </div>
         </div>
-        <button onClick={() => { setTaskToEdit(null); setIsPanelOpen(true); }} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
+        <button onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
           <Plus className="w-4 h-4" /> Add task
         </button>
       </div>
@@ -396,7 +407,7 @@ export default function DoPage() {
           )}
         </div>
       ) : viewMode === "calendar" ? (
-        <CalendarView tasks={tasks} onEditTask={openEditPanel} categoryFilter={categoryFilter} />
+        <CalendarView tasks={tasks} onEditTask={openEditPanel} onCreateTaskAt={openCreatePanelAt} categoryFilter={categoryFilter} />
       ) : viewMode === "today" ? (
         <div className={cn(
           "gap-6",
@@ -412,7 +423,7 @@ export default function DoPage() {
               <h3 className="text-[var(--color-text-1)] font-medium mb-2">You're all caught up</h3>
               <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">No tasks due today. Take a well-deserved break, or plan ahead for tomorrow.</p>
               <button 
-                onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+                onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }}
                 className="btn-primary gap-2"
               >
                 <Plus size={16} /> Add Task
@@ -437,7 +448,7 @@ export default function DoPage() {
                <h3 className="text-[var(--color-text-1)] font-medium mb-2">You're all caught up</h3>
                <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">No tasks in this view. Take a well-deserved break, or plan ahead.</p>
                <button 
-                 onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+                 onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }}
                  className="btn-primary gap-2 mx-auto"
                >
                  <Plus size={16} /> Add Task
@@ -447,7 +458,7 @@ export default function DoPage() {
         </div>
       )}
 
-      <TaskAddPanel isOpen={isPanelOpen} onClose={handleClosePanel} onTaskAdded={fetchTasks} taskToEdit={taskToEdit} />
+      <TaskAddPanel isOpen={isPanelOpen} onClose={handleClosePanel} onTaskAdded={fetchTasks} taskToEdit={taskToEdit} initialDeadline={initialDeadline} />
     </div>
   );
 

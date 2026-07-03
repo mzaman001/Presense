@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useVisualViewport } from "@/hooks/useVisualViewport";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 interface SheetProps {
   isOpen: boolean;
@@ -18,23 +19,12 @@ interface SheetProps {
 export function Sheet({ isOpen, onClose, title, children, className }: SheetProps) {
   const dialogRef = useDialogFocus(isOpen);
   const vp = useVisualViewport();
+  useBodyScrollLock(isOpen);
 
   // Calculate keyboard offset for mobile
   const keyboardOffset = typeof window !== "undefined" && window.visualViewport
     ? Math.max(0, (window.innerHeight || 0) - (vp.height || 0) - (window.visualViewport.offsetTop || 0))
     : 0;
-
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
 
   // Handle escape key
   useEffect(() => {

@@ -461,6 +461,7 @@ html.light {
   color-scheme: light;
 }
 
+html.theme-midnight,
 html.theme-navy {
   --bg-base: #04091A;
   --bg-elevated: #070D22;
@@ -490,6 +491,7 @@ html.theme-navy {
   --surface-toast: rgba(7, 13, 34, 0.95);
 }
 
+html.theme-midnight.light,
 html.theme-navy.light {
   --bg-base: #EEF3FF;
   --bg-elevated: #E4ECFF;
@@ -518,6 +520,7 @@ html.theme-navy.light {
   --surface-toast: rgba(228, 236, 255, 0.85);
 }
 
+html.theme-meadow,
 html.theme-forest {
   --bg-base: #080D06;
   --bg-elevated: #0D120A;
@@ -547,6 +550,7 @@ html.theme-forest {
   --surface-toast: rgba(13, 18, 10, 0.95);
 }
 
+html.theme-meadow.light,
 html.theme-forest.light {
   --bg-base: #F5F9F0;
   --bg-elevated: #ECFAE3;
@@ -779,13 +783,6 @@ h1, h2, h3, h4, h5, h6 {
     }
   }
   */
-  
-  /* Touch devices: always full width */
-  @media (hover: none) and (pointer: coarse) and (min-width: 768px) {
-    .sidebar {
-      width: 220px !important;
-    }
-  }
   
   /* Reduced motion: disable animations */
   @media (prefers-reduced-motion: reduce) {

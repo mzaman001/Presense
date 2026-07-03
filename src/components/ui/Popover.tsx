@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,32 @@ export function Popover({ trigger, content, placement = "bottom-start", classNam
   };
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<React.CSSProperties>({});
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const gap = 8;
+    const next: React.CSSProperties = {
+      position: "fixed",
+      zIndex: 220,
+      minWidth: Math.max(rect.width, 200),
+    };
+
+    if (placement.startsWith("top")) next.bottom = window.innerHeight - rect.top + gap;
+    else next.top = rect.bottom + gap;
+
+    if (placement.endsWith("end")) next.right = window.innerWidth - rect.right;
+    else if (placement.endsWith("center")) {
+      next.left = rect.left + rect.width / 2;
+      next.transform = "translateX(-50%)";
+    } else next.left = rect.left;
+
+    setPosition(next);
+  }, [isOpen, placement]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -52,24 +79,27 @@ export function Popover({ trigger, content, placement = "bottom-start", classNam
         {trigger}
       </div>
 
-      <AnimatePresence>
-        {isOpen && (
+      {mounted && createPortal(
+        <AnimatePresence>
+          {isOpen && (
           <m.div
             initial={{ opacity: 0, y: 5, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 5, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
             className={cn(
-              "absolute z-[100] min-w-[200px] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl",
-              placementClasses[placement],
+              "min-w-[200px] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl",
               className
             )}
+            style={position}
             onClick={(e) => e.stopPropagation()} // Prevent clicks inside popover from bubbling and closing it
           >
             {content}
           </m.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

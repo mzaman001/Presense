@@ -39,6 +39,7 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
+import { WebVitalsReporter } from "@/components/layout/WebVitalsReporter";
 import { cn } from "@/lib/utils";
 import { env } from "@/lib/env";
 
@@ -74,12 +75,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `
               try {
                 var html = document.documentElement;
-                var theme = localStorage.getItem('presense_theme') || 'orange';
+                var rawTheme = localStorage.getItem('presense_theme') || 'sunset';
+                var theme = rawTheme === 'orange' || rawTheme === 'wahala' || rawTheme === 'blue' || rawTheme === 'navy' ? 'sunset' : rawTheme === 'forest' ? 'meadow' : rawTheme;
                 var mode = localStorage.getItem('presense_color_mode') || 'dark';
                 var reduceMotion = localStorage.getItem('presense_reduce_motion') === 'true';
-                html.classList.remove('theme-blue', 'theme-forest', 'theme-navy', 'light', 'reduce-motion');
-                if (theme === 'blue') html.classList.add('theme-navy');
-                else if (theme === 'forest') html.classList.add('theme-forest');
+                html.classList.remove('theme-blue', 'theme-forest', 'theme-navy', 'theme-midnight', 'theme-meadow', 'light', 'reduce-motion');
+                if (theme === 'midnight') html.classList.add('theme-midnight');
+                else if (theme === 'meadow') html.classList.add('theme-meadow');
                 var isLight = mode === 'light' || (mode === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches);
                 if (isLight) html.classList.add('light');
                 if (reduceMotion) html.classList.add('reduce-motion');
@@ -95,6 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="min-h-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-500">
         <TooltipProvider>
+          <WebVitalsReporter />
           <ConnectionStatus />
           <UpdatePrompt />
           {children}

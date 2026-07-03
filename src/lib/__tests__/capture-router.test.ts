@@ -5,6 +5,14 @@ describe("routeCapture", () => {
   const defaults = { nlp_date_parsing: true, smart_routing_enabled: true };
 
   describe("task routing", () => {
+    it("returns stable destination ids alongside display labels", () => {
+      const result = routeCapture("Remind me to submit report tomorrow", [], defaults);
+      expect(result[0].destinationId).toBe("do");
+      expect(result[0].destination).toBe("Do");
+      expect(result[0].confidence).toBeGreaterThan(0);
+      expect(result[0].reason).toContain("task");
+    });
+
     it("routes task keywords to Do", () => {
       const result = routeCapture("buy milk", [], defaults);
       expect(result[0].type).toBe("task");

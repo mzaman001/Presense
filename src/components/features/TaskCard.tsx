@@ -9,6 +9,7 @@ import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHaptics } from "@/hooks/useHaptics";
+import { archiveItemPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -106,7 +107,7 @@ export const TaskCard = React.memo(({
       });
 
       try {
-        const { error } = await supabase.from("items").update({ status: "archived" }).eq("id", task.id);
+        const { error } = await supabase.from("items").update(archiveItemPatch()).eq("id", task.id);
         if (error) throw error;
 
         markMutation();
@@ -130,7 +131,7 @@ export const TaskCard = React.memo(({
               });
 
               try {
-                const { error: undoError } = await supabase.from("items").update({ status: "active" }).eq("id", task.id);
+                const { error: undoError } = await supabase.from("items").update(restoreItemPatch("active")).eq("id", task.id);
                 if (undoError) throw undoError;
                 fetchTasks();
               } catch {
@@ -149,7 +150,7 @@ export const TaskCard = React.memo(({
         
         animate(dragX, 0, { duration: 0.3 });
         setDeleted(false);
-        toast.error("Failed to delete task");
+        toast.error("Failed to archive task");
       }
     } else {
       animate(dragX, 0, { type: "spring", stiffness: 400, damping: 30 });

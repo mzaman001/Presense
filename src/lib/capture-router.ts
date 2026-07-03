@@ -48,11 +48,48 @@ export interface RoutedItem {
   type: RoutedItemType;
   title: string;
   destination: string;
+  destinationId: "do" | "inbox" | "people" | "locations" | "think" | "explore";
+  confidence: number;
+  reason: string;
   person?: string;
   deadline?: string | null;
   url?: string;
   item_name?: string;
   recurrence?: string | null;
+}
+
+export function destinationToId(destination: string): RoutedItem["destinationId"] {
+  if (destination === "Do") return "do";
+  if (destination === "Inbox" || destination === "Choose space...") return "inbox";
+  if (destination.includes("People")) return "people";
+  if (destination.includes("Locations")) return "locations";
+  if (destination === "Think") return "think";
+  if (destination === "Explore") return "explore";
+  return "inbox";
+}
+
+export function destinationIdToLabel(destinationId: RoutedItem["destinationId"]): string {
+  const labels: Record<RoutedItem["destinationId"], string> = {
+    do: "Do",
+    inbox: "Inbox",
+    people: "People",
+    locations: "Locations",
+    think: "Think",
+    explore: "Explore",
+  };
+  return labels[destinationId];
+}
+
+function routedItem(
+  item: Omit<RoutedItem, "destinationId" | "confidence" | "reason"> &
+    Partial<Pick<RoutedItem, "destinationId" | "confidence" | "reason">>,
+): RoutedItem {
+  return {
+    ...item,
+    destinationId: item.destinationId ?? destinationToId(item.destination),
+    confidence: item.confidence ?? 0.72,
+    reason: item.reason ?? `${item.type}_rule`,
+  };
 }
 
 // ─── Main router ────────────────────────────────────────────────────────────
@@ -68,7 +105,7 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
 
   // If smart routing is disabled, just return as Unknown (Inbox)
   if (userSettings?.smart_routing_enabled === false) {
-    results.push({ type: 'unknown', title: text, destination: 'Inbox' });
+    results.push(routedItem({ type: 'unknown', title: text, destination: 'Inbox', destinationId: "inbox", confidence: 1, reason: "smart_routing_disabled" }));
     return results;
   }
 
@@ -86,12 +123,15 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
   // 1. URL → Explore
   const urlMatch = text.match(URL_RE);
   if (urlMatch) {
-    results.push({
+    results.push(routedItem({
       type: 'explore',
       title: text.replace(URL_RE, '').trim() || 'Saved link',
       destination: 'Explore',
+      destinationId: "explore",
       url: urlMatch[0],
-    });
+      confidence: 0.98,
+      reason: "url_detected_explore",
+    }));
     return results;
   }
 
@@ -104,12 +144,15 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
   }
 
   if (matchedName && PERSON_KW.some((k) => lower.includes(k))) {
-    results.push({
+    results.push(routedItem({
       type: 'person_note',
       title: text,
       destination: 'Remember → People',
+      destinationId: "people",
       person: matchedName,
-    });
+      confidence: 0.88,
+      reason: "known_person_and_person_keyword",
+    }));
     return results;
   }
 
@@ -137,12 +180,15 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
       }
     }
     
-    results.push({
+    results.push(routedItem({
       type: 'location',
       title: locationText,
       destination: 'Remember → Locations',
+      destinationId: "locations",
       item_name: itemName,
-    });
+      confidence: 0.86,
+      reason: "location_keyword",
+    }));
     return results;
   }
 
@@ -232,29 +278,32 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
     // Capitalize first letter
     if (cleanTitle.length > 0) cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
     
-    results.push({
+    results.push(routedItem({
       type: 'task',
       title: cleanTitle || text,
       destination: 'Do',
+      destinationId: "do",
       deadline,
       recurrence: detectedRRule,
-    });
+      confidence: parsedDate || detectedRRule ? 0.9 : 0.82,
+      reason: parsedDate ? "task_keyword_with_date" : detectedRRule ? "task_recurrence_rule" : "task_keyword",
+    }));
     return results;
   }
 
   // 5. Thought → Think
   if (THOUGHT_KW.some((k) => lower.includes(k))) {
-    results.push({ type: 'thought', title: text, destination: 'Think' });
+    results.push(routedItem({ type: 'thought', title: text, destination: 'Think', destinationId: "think", confidence: 0.78, reason: "thought_keyword" }));
     return results;
   }
 
   // 6. Explore keywords
   if (EXPLORE_KW.some((k) => lower.includes(k))) {
-    results.push({ type: 'explore', title: text, destination: 'Explore' });
+    results.push(routedItem({ type: 'explore', title: text, destination: 'Explore', destinationId: "explore", confidence: 0.78, reason: "explore_keyword" }));
     return results;
   }
 
   // 7. Unknown — routes to Inbox
-  results.push({ type: 'unknown', title: text, destination: 'Inbox' });
+  results.push(routedItem({ type: 'unknown', title: text, destination: 'Inbox', destinationId: "inbox", confidence: 0.45, reason: "fallback_inbox" }));
   return results;
 }

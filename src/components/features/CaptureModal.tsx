@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase";
 import { formatRRule, cn, extractMentions } from "@/lib/utils";
 import { Sparkles, Loader2, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
-import type { RoutedItem } from "@/lib/capture-router";
+import { destinationIdToLabel, destinationToId, type RoutedItem } from "@/lib/capture-router";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
@@ -50,6 +50,24 @@ const SPACE_OPTIONS = [
   { value: "Remember → Locations", label: "Locations" },
   { value: "Explore", label: "Explore" },
   { value: "Inbox", label: "Inbox" }
+];
+
+const ROUTE_SPACE_COLORS: Record<string, string> = {
+  do: "var(--color-do)",
+  people: "var(--color-people)",
+  think: "var(--color-think)",
+  explore: "var(--color-explore)",
+  locations: "#4ADE80",
+  inbox: "#FBBF24",
+};
+
+const ROUTE_SPACE_OPTIONS = [
+  { value: "do", label: "Do" },
+  { value: "think", label: "Think" },
+  { value: "people", label: "People" },
+  { value: "locations", label: "Locations" },
+  { value: "explore", label: "Explore" },
+  { value: "inbox", label: "Inbox" },
 ];
 
 const toLocalISOString = (date: Date) => {
@@ -168,11 +186,6 @@ export function CaptureModal() {
     const down = (e: KeyboardEvent) => {
       const isInput = (e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA" || (e.target as HTMLElement).isContentEditable;
       
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setCaptureModalOpen(true);
-      }
-      
       if (!isInput && !e.metaKey && !e.ctrlKey) {
         if (e.key === "c" || e.key === "n") {
           e.preventDefault();
@@ -217,9 +230,18 @@ export function CaptureModal() {
         body: JSON.stringify({ text: input, settings: userSettings }),
       });
       const data = await res.json();
-      setRoutedItems(data.items ?? []);
+      setRoutedItems((data.items ?? []).map((item: RoutedItem) => {
+        const destinationId = item.destinationId ?? destinationToId(item.destination);
+        return {
+          ...item,
+          destinationId,
+          destination: item.destination || destinationIdToLabel(destinationId),
+          confidence: item.confidence ?? 0.72,
+          reason: item.reason ?? "legacy_route_payload",
+        };
+      }));
     } catch {
-      setRoutedItems([{ type: "unknown", title: input, destination: "Choose space..." }]);
+      setRoutedItems([{ type: "unknown", title: input, destination: "Inbox", destinationId: "inbox", confidence: 0.1, reason: "route_request_failed" }]);
       toast.error("Routing failed", { description: "Falling back to manual routing." });
     } finally {
       setIsRouting(false);
@@ -228,9 +250,13 @@ export function CaptureModal() {
 
   // Auto-routing removed. Routing now only happens on Enter key press.
 
-  const changeDestination = (idx: number, destination: string) => {
+  const changeDestination = (idx: number, destinationId: string) => {
     setRoutedItems((prev) =>
-      prev ? prev.map((item, i) => (i === idx ? { ...item, destination } : item)) : prev
+      prev ? prev.map((item, i) => (i === idx ? {
+        ...item,
+        destinationId: destinationId as RoutedItem["destinationId"],
+        destination: destinationIdToLabel(destinationId as RoutedItem["destinationId"]),
+      } : item)) : prev
     );
   };
 
@@ -250,7 +276,7 @@ export function CaptureModal() {
       await Promise.all(
         routedItems.map(async (item, idx) => {
           const extras = taskExtras[idx] ?? {};
-          if (item.destination === "Do" || item.destination === "Inbox") {
+          if (item.destinationId === "do" || item.destinationId === "inbox") {
             const mentions = extractMentions(item.title);
             const { error } = await supabase.from("items").insert({
               user_id: user.id,
@@ -261,11 +287,11 @@ export function CaptureModal() {
                 : null,
               deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
               recurrence: (item as RoutedItem & { recurrence?: string }).recurrence ?? null,
-              status: item.destination === "Inbox" ? "inbox" : "active",
+              status: item.destinationId === "inbox" ? "inbox" : "active",
               linked_people_ids: mentions,
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
-          } else if (item.destination === "Remember → People") {
+          } else if (item.destinationId === "people") {
             const { data: person } = await supabase
               .from("people")
               .select("id, notes")
@@ -284,7 +310,7 @@ export function CaptureModal() {
               });
               if (error) throw new Error(`People: ${error.message}`);
             }
-          } else if (item.destination === "Think") {
+          } else if (item.destinationId === "think") {
             const mentions = extractMentions(item.title);
             const { error } = await supabase.from("threads").insert({
               user_id: user.id,
@@ -293,7 +319,7 @@ export function CaptureModal() {
               linked_people_ids: mentions,
             });
             if (error) throw new Error(`Think: ${error.message}`);
-          } else if (item.destination === "Explore") {
+          } else if (item.destinationId === "explore") {
             const { error } = await supabase.from("explores").insert({
               user_id: user.id,
               title: item.title.slice(0, 100),
@@ -302,7 +328,7 @@ export function CaptureModal() {
               note: item.title,
             });
             if (error) throw new Error(`Explore: ${error.message}`);
-          } else if (item.destination === "Remember → Locations") {
+          } else if (item.destinationId === "locations") {
             const { error } = await supabase.from("locations").insert({
               user_id: user.id,
               item_name: item.item_name || item.title.split(" ")[0] || "Item",
@@ -407,14 +433,14 @@ export function CaptureModal() {
                     <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
                       <span className="font-semibold">Space:</span>
                       <Dropdown
-                        value={item.destination}
+                        value={item.destinationId}
                         onChange={(val) => changeDestination(idx, val)}
-                        options={SPACE_OPTIONS}
-                        colors={SPACE_COLORS}
+                        options={ROUTE_SPACE_OPTIONS}
+                        colors={ROUTE_SPACE_COLORS}
                         placeholder="Choose space..."
                       />
                       
-                      {item.destination === "Do" && (
+                      {item.destinationId === "do" && (
                         <>
                           {item.recurrence && (
                             <>
@@ -441,7 +467,7 @@ export function CaptureModal() {
                         </>
                       )}
                       
-                      {item.destination === "Remember → People" && (
+                      {item.destinationId === "people" && (
                         <>
                           <span className="text-[var(--color-text-3)]">·</span>
                           <span className="font-semibold">Person:</span>
@@ -454,7 +480,7 @@ export function CaptureModal() {
                         </>
                       )}
                       
-                      {item.destination === "Remember → Locations" && (
+                      {item.destinationId === "locations" && (
                         <>
                           <span className="text-[var(--color-text-3)]">·</span>
                           <span className="font-semibold">Item:</span>
@@ -506,7 +532,7 @@ export function CaptureModal() {
                   </button>
                   <button
                     onClick={handleConfirm}
-                    disabled={isSaving || routedItems.some((i) => i.destination === "Choose space...")}
+                    disabled={isSaving || routedItems.some((i) => !i.destinationId)}
                     className="btn-primary disabled:opacity-50"
                   >
                     {isSaving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Check size={14} strokeWidth={1.5} className="shrink-0" />}

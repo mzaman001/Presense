@@ -31,10 +31,18 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Confirmation token does not match account email' }, { status: 400 });
     }
 
+    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+      logger.error('[account] SUPABASE_SERVICE_ROLE_KEY is not configured');
+      return NextResponse.json(
+        { error: 'Account deletion is not configured. Please contact support.' },
+        { status: 500 }
+      );
+    }
+
     // Create a service-role client for admin operations
     const serviceClient = createClient(
       env.NEXT_PUBLIC_SUPABASE_URL,
-      env.SUPABASE_SERVICE_ROLE_KEY || '',
+      env.SUPABASE_SERVICE_ROLE_KEY,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 

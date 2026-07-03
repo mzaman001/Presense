@@ -29,7 +29,12 @@ export function LenisProvider({ children, root = false, options }: LenisProvider
 
     let rafId: number;
     function raf(time: number) {
-      lenisInstance.raf(time);
+      if (document.documentElement.dataset.overlayOpen === "true") {
+        lenisInstance.stop();
+      } else {
+        lenisInstance.start();
+        lenisInstance.raf(time);
+      }
       rafId = requestAnimationFrame(raf);
     }
     rafId = requestAnimationFrame(raf);
