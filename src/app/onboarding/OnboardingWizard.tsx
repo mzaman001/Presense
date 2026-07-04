@@ -153,7 +153,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
           await supabase.from("items").insert({
             user_id: user.id,
             title: item.title,
-            list_id: item.destination === "Inbox" ? null : undefined, // Assuming null list_id is Inbox
+            status: item.destination === "Inbox" ? "inbox" : "active",
             deadline: item.deadline || null
           });
         } else if (item.destination.startsWith("Remember")) {
