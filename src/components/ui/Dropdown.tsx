@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
@@ -17,7 +17,6 @@ interface DropdownProps {
   placeholder?: string;
   colors?: Record<string, string>;
   className?: string;
-  /** "chip" = compact pill trigger (default), "select" = full-width box trigger */
   variant?: "chip" | "select";
 }
 
@@ -34,54 +33,102 @@ export function Dropdown({
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [position, setPosition] = useState<React.CSSProperties>({});
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   useEffect(() => setMounted(true), []);
 
-  useEffect(() => {
+  const updatePosition = useCallback(() => {
     if (!isOpen || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     setPosition({
       position: "fixed",
       top: rect.bottom + 8,
       left: rect.left,
-      minWidth: rect.width,
+      minWidth: Math.max(rect.width, 160),
       zIndex: 220,
       transformOrigin: "top",
     });
   }, [isOpen]);
 
   useEffect(() => {
+    updatePosition();
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onResize = () => updatePosition();
+    const onScroll = () => updatePosition();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
-
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  const selectedOption = Array.isArray(options)
-    ? typeof options[0] === "string"
-      ? { value, label: value, color: colors[value] }
-      : (options as DropdownOption[]).find((o) => o.value === value) || {
-          value,
-          label: value,
-          color: colors[value],
-        }
-    : { value, label: value, color: colors[value] };
+  const handleSelect = useCallback((optValue: string) => {
+    onChangeRef.current(optValue);
+    setIsOpen(false);
+  }, []);
 
-  const currentColor =
-    selectedOption.color || colors[selectedOption.value] || "rgba(255,255,255,0.5)";
+  const selectedOption = (() => {
+    if (!Array.isArray(options)) return { value, label: value };
+    if (typeof options[0] === "string") return { value, label: value, color: colors[value] };
+    return (options as DropdownOption[]).find((o) => o.value === value) || { value, label: value, color: colors[value] };
+  })();
 
+  const currentColor = selectedOption.color || colors[selectedOption.value] || "rgba(255,255,255,0.5)";
   const isPlaceholder = !value || value === placeholder;
+
+  const renderMenu = () => (
+    <AnimatePresence>
+      {isOpen && (
+        <m.div
+          initial={{ opacity: 0, scaleY: 0.9 }}
+          animate={{ opacity: 1, scaleY: 1 }}
+          exit={{ opacity: 0, scaleY: 0.9 }}
+          transition={{ duration: 0.18 }}
+          style={position}
+          className="dropdown-panel"
+        >
+          {options.map((opt) => {
+            const optValue = typeof opt === "string" ? opt : opt.value;
+            const optLabel = typeof opt === "string" ? opt : opt.label;
+            const optColor = (typeof opt !== "string" ? opt.color : undefined) || colors[optValue] || "currentColor";
+
+            return (
+              <button
+                key={optValue}
+                type="button"
+                onClick={() => handleSelect(optValue)}
+                className={cn("dropdown-item w-full text-left", value === optValue && "selected")}
+                style={variant === "chip" && value === optValue && optColor !== "currentColor" ? { borderColor: optColor, color: optColor } : {}}
+              >
+                <div
+                  className={cn("w-2 h-2 rounded-full border border-current shrink-0", value === optValue ? "bg-current" : "bg-transparent")}
+                  style={variant === "chip" ? { borderColor: optColor, backgroundColor: value === optValue ? optColor : "transparent" } : {}}
+                />
+                {optLabel}
+              </button>
+            );
+          })}
+        </m.div>
+      )}
+    </AnimatePresence>
+  );
 
   if (variant === "select") {
     return (
@@ -98,55 +145,16 @@ export function Dropdown({
             <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
           </m.div>
         </button>
-
-        {mounted && createPortal(
-          <AnimatePresence>
-            {isOpen && (
-            <m.div
-              initial={{ opacity: 0, scaleY: 0.9 }}
-              animate={{ opacity: 1, scaleY: 1 }}
-              exit={{ opacity: 0, scaleY: 0.9 }}
-              transition={{ duration: 0.18 }}
-              style={position}
-              className="dropdown-panel"
-            >
-              {options.map((opt) => {
-                const optValue = typeof opt === "string" ? opt : opt.value;
-                const optLabel = typeof opt === "string" ? opt : opt.label;
-                return (
-                  <button
-                    key={optValue}
-                    type="button"
-                    onClick={() => {
-                      onChange(optValue);
-                      setIsOpen(false);
-                    }}
-                    className={cn(
-                      "dropdown-item w-full text-left",
-                      value === optValue && "selected"
-                    )}
-                  >
-                    <div className={cn("w-2 h-2 rounded-full border border-current shrink-0", value === optValue ? "bg-current" : "bg-transparent")} />
-                    {optLabel}
-                  </button>
-                );
-              })}
-            </m.div>
-            )}
-          </AnimatePresence>,
-          document.body
-        )}
+        {mounted && createPortal(renderMenu(), document.body)}
       </div>
     );
   }
 
-  // Default: chip variant
   return (
     <div className={cn("relative", className)} ref={containerRef}>
       <button
-        onClick={() => {
-          setIsOpen(!isOpen);
-        }}
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
         className="px-3 py-1 rounded-full border text-xs font-semibold transition-colors flex items-center gap-1"
         style={{
           borderColor: isPlaceholder ? "rgba(255,255,255,0.2)" : currentColor,
@@ -156,48 +164,7 @@ export function Dropdown({
       >
         {isPlaceholder ? placeholder : selectedOption.label} ▼
       </button>
-
-      {mounted && createPortal(
-        <AnimatePresence>
-          {isOpen && (
-          <m.div
-            initial={{ opacity: 0, scaleY: 0.9 }}
-            animate={{ opacity: 1, scaleY: 1 }}
-            exit={{ opacity: 0, scaleY: 0.9 }}
-            transition={{ duration: 0.18 }}
-            style={position}
-            className="dropdown-panel"
-          >
-            {options.map((opt) => {
-              const optValue = typeof opt === "string" ? opt : opt.value;
-              const optLabel = typeof opt === "string" ? opt : opt.label;
-              const optColor =
-                (typeof opt !== "string" ? opt.color : undefined) ||
-                colors[optValue] ||
-                "currentColor";
-
-              return (
-                <button
-                  key={optValue}
-                  onClick={() => {
-                    onChange(optValue);
-                    setIsOpen(false);
-                  }}
-                  className={`dropdown-item w-full text-left ${value === optValue ? "selected" : ""}`}
-                  style={{
-                    ...(value === optValue && optColor !== "currentColor" ? { borderColor: optColor, color: optColor } : {})
-                  }}
-                >
-                  <div className={`w-2 h-2 rounded-full border border-current shrink-0 ${value === optValue ? "bg-current" : "bg-transparent"}`} style={{ borderColor: optColor, backgroundColor: value === optValue ? optColor : "transparent" }} />
-                  {optLabel}
-                </button>
-              );
-            })}
-          </m.div>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+      {mounted && createPortal(renderMenu(), document.body)}
     </div>
   );
 }

@@ -603,19 +603,17 @@ export function SettingsModal() {
                               <div className="font-medium text-[var(--color-text-1)]">Color Mode</div>
                               <div className="text-sm text-[var(--color-text-3)]">Dark, Light, or System match</div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{background:'rgba(255,255,255,0.06)',color:'var(--text-4)',fontFamily:'monospace'}}>
-                                {settings.color_mode || "undefined"}
-                              </span>
-                              <select
+                            <div className="w-40">
+                              <Dropdown variant="select"
                                 value={settings.color_mode || "dark"}
-                                onChange={e => updateSetting("color_mode", e.target.value)}
-                                className="w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] text-sm"
-                              >
-                                <option value="dark">Dark</option>
-                                <option value="light">Light</option>
-                                <option value="system">System Default</option>
-                              </select>
+                                onChange={val => updateSetting("color_mode", val)}
+                                className="w-full"
+                                options={[
+                                  { value: "dark", label: "Dark" },
+                                  { value: "light", label: "Light" },
+                                  { value: "system", label: "System Default" }
+                                ]}
+                              />
                             </div>
                           </div>
                           <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
