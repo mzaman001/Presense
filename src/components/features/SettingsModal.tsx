@@ -317,26 +317,24 @@ export function SettingsModal() {
   }, [debouncedSettings, supabase, initialLoaded, setUserSettings]);
 
   const updateSetting = (key: string, value: unknown) => {
-    setSettings((prev: SettingsState) => ({ ...prev, [key]: value }));
-    
-    // Immediately apply theme/mode changes
-    if (key === 'theme') {
-      const theme = normalizeThemeId(value);
-      const mode = normalizeColorMode(settings.color_mode || localStorage.getItem('presense_color_mode'));
-      localStorage.setItem('presense_theme', theme);
-      applyDocumentTheme(theme, mode, Boolean(settings.reduce_motion));
-    }
-    
-    if (key === 'color_mode') {
-      const mode = normalizeColorMode(value);
-      localStorage.setItem('presense_color_mode', mode);
-      applyDocumentTheme(normalizeThemeId(settings.theme), mode, Boolean(settings.reduce_motion));
-    }
-
-    if (key === 'reduce_motion') {
-      localStorage.setItem('presense_reduce_motion', value ? 'true' : 'false');
-      applyDocumentTheme(normalizeThemeId(settings.theme), normalizeColorMode(settings.color_mode), Boolean(value));
-    }
+    setSettings((prev: SettingsState) => {
+      const next = { ...prev, [key]: value };
+      if (key === 'color_mode') {
+        const mode = normalizeColorMode(value);
+        localStorage.setItem('presense_color_mode', mode);
+        applyDocumentTheme(normalizeThemeId(next.theme), mode, Boolean(next.reduce_motion));
+      }
+      if (key === 'theme') {
+        const theme = normalizeThemeId(value);
+        localStorage.setItem('presense_theme', theme);
+        applyDocumentTheme(theme, normalizeColorMode(next.color_mode), Boolean(next.reduce_motion));
+      }
+      if (key === 'reduce_motion') {
+        localStorage.setItem('presense_reduce_motion', value ? 'true' : 'false');
+        applyDocumentTheme(normalizeThemeId(next.theme), normalizeColorMode(next.color_mode), Boolean(value));
+      }
+      return next;
+    });
   };
 
   const handleSignOut = async () => {
