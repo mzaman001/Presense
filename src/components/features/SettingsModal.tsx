@@ -325,7 +325,8 @@ export function SettingsModal() {
   }, [settings.theme, settings.color_mode, settings.reduce_motion, initialLoaded]);
 
   const updateSetting = (key: string, value: unknown) => {
-    setSettings((prev: SettingsState) => ({ ...prev, [key]: value }));
+    const next = { ...settings, [key]: value };
+    setSettings(next);
   };
 
   const handleSignOut = async () => {
@@ -606,18 +607,15 @@ export function SettingsModal() {
                               <span className="text-[10px] px-1.5 py-0.5 rounded" style={{background:'rgba(255,255,255,0.06)',color:'var(--text-4)',fontFamily:'monospace'}}>
                                 {settings.color_mode || "undefined"}
                               </span>
-                              <div className="w-40">
-                                <Dropdown variant="select"
-                                  value={settings.color_mode || "dark"}
-                                  onChange={val => updateSetting("color_mode", val)}
-                                  className="w-full"
-                                  options={[
-                                    { value: "dark", label: "Dark" },
-                                    { value: "light", label: "Light" },
-                                    { value: "system", label: "System Default" }
-                                  ]}
-                                />
-                              </div>
+                              <select
+                                value={settings.color_mode || "dark"}
+                                onChange={e => updateSetting("color_mode", e.target.value)}
+                                className="w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] text-sm"
+                              >
+                                <option value="dark">Dark</option>
+                                <option value="light">Light</option>
+                                <option value="system">System Default</option>
+                              </select>
                             </div>
                           </div>
                           <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
