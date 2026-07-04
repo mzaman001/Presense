@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { X, Loader2, LogOut, Download, CheckCircle2, User, Palette, Bell, Timer, CheckSquare, Brain, Database, Users, Plus, Trash2, Sparkles, Moon } from "lucide-react";
@@ -252,6 +252,8 @@ export function SettingsModal() {
   
   // Settings State
   const [settings, setSettings] = useState<SettingsState>({});
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const [clearTasksConfirm, setClearTasksConfirm] = useState(false);
   const [clearLocationsConfirm, setClearLocationsConfirm] = useState(false);
@@ -324,10 +326,9 @@ export function SettingsModal() {
     applyDocumentTheme(settings.theme, settings.color_mode, Boolean(settings.reduce_motion));
   }, [settings.theme, settings.color_mode, settings.reduce_motion, initialLoaded]);
 
-  const updateSetting = (key: string, value: unknown) => {
-    const next = { ...settings, [key]: value };
-    setSettings(next);
-  };
+  const updateSetting = useCallback((key: string, value: unknown) => {
+    setSettings({ ...settingsRef.current, [key]: value });
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
