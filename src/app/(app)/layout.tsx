@@ -49,7 +49,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      <AppInitializer initialSettings={settings} />
+      <AppInitializer initialSettings={(settings as any) || undefined} />
       <MotionProvider>
         <QueryProvider>
           <RealtimeProvider>

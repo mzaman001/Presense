@@ -331,7 +331,7 @@ describe("Phase 3 - Integration Test Suite", () => {
         is_pinned: false,
       }));
 
-      let container: HTMLElement;
+      let container: HTMLElement = document.body;
       await act(async () => {
         const result = render(
           <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,

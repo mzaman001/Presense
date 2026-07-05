@@ -159,7 +159,7 @@ export function PomodoroTimer() {
           label: "Mark Done",
           onClick: async () => {
             markMutation();
-            await supabase.from("items").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", activeTimer.taskId);
+            await supabase.from("items").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", activeTimer.taskId as string);
             queryClient.invalidateQueries({ queryKey: ["dashboard"] });
             setActiveTimer(null);
           }

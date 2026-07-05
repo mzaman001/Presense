@@ -167,7 +167,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
       const { data } = await supabase.from('people').select('id, name, initials, color').eq('user_id', userData.user.id).order('name');
-      if (data) setPeopleList(data);
+      if (data) setPeopleList(data as any);
     }
     if (isOpen) {
       fetchPeople();
@@ -383,10 +383,10 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
         let error;
         useAppStore.getState().markMutation();
         if (taskToEdit) {
-          const res = await supabase.from("items").update(payload).eq("id", taskToEdit.id);
+          const res = await supabase.from("items").update(payload as any).eq("id", taskToEdit.id);
           error = res.error;
         } else {
-          const res = await supabase.from("items").insert(payload);
+          const res = await supabase.from("items").insert(payload as any);
           error = res.error;
         }
         

@@ -51,7 +51,7 @@ export default function LocationsPage() {
       query = query.or(`item_name.ilike.%${search}%,location_text.ilike.%${search}%`);
     }
     const { data } = await query;
-    setItems(data ?? []);
+    setItems((data as LocationItem[]) ?? []);
     setLoading(false);
   }, [supabase, search]);
 

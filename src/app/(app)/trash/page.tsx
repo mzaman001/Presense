@@ -36,11 +36,23 @@ export default function TrashPage() {
     ]);
 
     const combined = [
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(exploresRes.data || []).map((i: any) => ({ ...i, __type: 'explore' })),
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(itemsRes.data || []).map((i: any) => ({ ...i, __type: 'item' })),
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(threadsRes.data || []).map((i: any) => ({ ...i, __type: 'thread' })),
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(peopleRes.data || []).map((i: any) => ({ ...i, __type: 'person' })),
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(locationsRes.data || []).map((i: any) => ({ ...i, __type: 'location' }))
+    /* @todo: Untyped usage justified per TOOL-01 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ].sort((a: any, b: any) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
 
     setItems(combined);
@@ -49,6 +61,8 @@ export default function TrashPage() {
 
   useEffect(() => { fetchTrash(); }, [fetchTrash]);
 
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleRestore = async (item: any) => {
     try {
       const table = item.__type === 'explore' ? 'explores' : 

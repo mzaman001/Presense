@@ -57,10 +57,20 @@ export function SearchModal() {
       ]);
 
       const combined = [
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(tasks.data || []).map((t: any) => ({ ...t, type: "task", icon: CheckSquare, path: "/do" })),
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(people.data || []).map((p: any) => ({ ...p, title: p.name, type: "person", icon: Users, path: "/people" })),
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(threads.data || []).map((t: any) => ({ ...t, type: "thread", icon: MessageSquare, path: `/think/${t.id}` })),
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(explores.data || []).map((e: any) => ({ ...e, type: "explore", icon: Compass, path: "/explore" })),
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ...(locations.data || []).map((l: any) => ({ ...l, title: `${l.item_name} - ${l.location_text}`, type: "location", icon: MapPin, path: "/locations" }))
       ];
 

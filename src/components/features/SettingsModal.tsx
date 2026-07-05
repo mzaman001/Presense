@@ -278,8 +278,8 @@ export function SettingsModal() {
       
       const { data } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single();
       if (data) {
-        setSettings(data);
-        setUserSettings(data);
+        setSettings(data as any);
+        setUserSettings(data as any);
       }
       setLoading(false);
       setTimeout(() => setInitialLoaded(true), 100);
@@ -308,7 +308,7 @@ export function SettingsModal() {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { user_id: _, created_at: __, ...updateData } = debouncedSettings;
       
-      const { error } = await supabase.from("user_settings").update(updateData).eq("user_id", user.id);
+      const { error } = await supabase.from("user_settings").update(updateData as any).eq("user_id", user.id);
       
       if (error) {
         toast.error("Failed to save settings", { description: error.message });

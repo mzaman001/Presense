@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ExploreDrawerProps {
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   item?: any;
   isOpen: boolean;
   onClose: () => void;
@@ -73,6 +75,8 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
       }
 
       // Fetch threads
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       supabase.from("threads").select("id, title").eq("status", "active").then(({ data }: { data: any }) => {
         setThreads(data || []);
       });

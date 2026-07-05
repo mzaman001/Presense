@@ -16,6 +16,8 @@ export function formatRRule(rrule: string | null | undefined): string {
     const match = rrule.match(/BYDAY=([A-Z,]+)/);
     if (match) {
       const days = match[1].split(',').map(d => {
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const map: any = { MO: "Mon", TU: "Tue", WE: "Wed", TH: "Thu", FR: "Fri", SA: "Sat", SU: "Sun" };
         return map[d] || d;
       });

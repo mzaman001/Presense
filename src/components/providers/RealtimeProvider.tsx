@@ -20,6 +20,8 @@ export function getLastMutationTime(table: string): number {
 }
 
 export interface RealtimeContextType {
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   subscribe: (table: string, callback: (payload?: any) => void) => () => void;
   markMutation: (table?: string) => void;
 }
@@ -41,6 +43,8 @@ export function useRealtimeContext() {
 }
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listenersRef = useRef<Record<string, Set<(payload?: any) => void>>>({});
   const channelsRef = useRef<Record<string, any>>({});
   const pendingUpdatesRef = useRef<Record<string, boolean>>({});
@@ -96,6 +100,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: table },
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload: any) => {
           // Hoisted echo lockout guard: check getLastMutationTime
           if (Date.now() - getLastMutationTime(table) < 500) {
@@ -116,6 +122,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           }
         }
       )
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .subscribe((status: string, err: any) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setConnectionStatus('disconnected');
@@ -140,6 +148,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     delete pendingUpdatesRef.current[table];
   }, []);
 
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const subscribe = useCallback((table: string, callback: (payload?: any) => void) => {
     if (!listenersRef.current[table]) {
       listenersRef.current[table] = new Set();

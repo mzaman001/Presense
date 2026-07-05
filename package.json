@@ -12,7 +12,10 @@
     "test:coverage": "vitest run --coverage",
     "script:clean": "node scripts/clean-threads.js",
     "script:snooze": "node scripts/check_snooze.js",
-    "install-deps": "npm install"
+    "install-deps": "npm install",
+    "types:generate": "npx supabase gen types typescript --project-id mhfzmgrrtruxuiscvbhm > src/types/database.types.ts",
+    "types:check": "npm run types:generate && git diff --exit-code src/types/database.types.ts",
+    "prebuild": "npm run types:check"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

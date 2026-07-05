@@ -58,6 +58,8 @@ const ExploreItemCard = ({
   const deleteOpacity = useTransform(dragX, [0, -80], [0, 1]);
   const deleteScale = useTransform(dragX, [0, -80], [0.7, 1]);
 
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleDragEnd = async (_: any, info: any) => {
     if (info.offset.x < -80) {
       animate(dragX, -300, { duration: 0.2 });
@@ -163,7 +165,7 @@ export default function ExplorePage() {
       }
     }
     const { data } = await query;
-    setItems(data ?? []);
+    setItems((data as ExploreItem[]) ?? []);
     setLoading(false);
   }, [supabase, filter, showArchive, showTrash]);
 

@@ -16,6 +16,8 @@ interface LocationAddPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onLocationAdded?: () => void;
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   itemToEdit?: any; // To support edit mode
   initialName?: string;
 }

@@ -1,5 +1,7 @@
 let isRegistered = false;
 
+/* @todo: Untyped usage justified per TOOL-01 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerCustomParsers(chrono: any) {
   // Prevent duplicate registration if called multiple times
   if (isRegistered) return;

@@ -47,13 +47,13 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
       setTitle(item.title);
       setUrl(item.url || "");
       
-      if (PRESET_TYPES.includes(item.type)) {
+      if (item.type && PRESET_TYPES.includes(item.type)) {
         setType(item.type);
         setIsCustomType(false);
       } else {
         setType("custom");
         setIsCustomType(true);
-        setCustomTypeInput(item.type);
+        setCustomTypeInput(item.type || "");
       }
 
       setTags(item.tags || []);

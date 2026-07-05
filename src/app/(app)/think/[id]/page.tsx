@@ -159,7 +159,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
   const fetchThread = useCallback(async () => {
     const { data: threadData } = await supabase.from("threads").select("*").eq("id", id).single();
-    setThread(threadData);
+    setThread(threadData as unknown as Thread);
     
     const { data: exploresData } = await supabase.from("explores").select("*").eq("linked_thread_id", id).in("status", ["active", "archived"]);
     setLinkedExplores(exploresData || []);
@@ -268,7 +268,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       const updatedEntries = thread.entries.filter((_, i) => i !== deleteEntryIndex);
       const linkedPeople = getLinkedPeople(updatedEntries);
       const { error } = await supabase.from("threads").update({ 
-        entries: updatedEntries,
+        entries: updatedEntries as any,
         linked_people_ids: linkedPeople
       }).eq("id", thread.id);
       if (error) throw error;

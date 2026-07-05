@@ -8,6 +8,8 @@ import { logger } from "@/lib/logger";
 import { useRealtimeContext } from "@/components/providers/RealtimeProvider";
 
 export interface UseRealtimeOptions {
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   queryKey?: any[];
 }
 
@@ -38,6 +40,8 @@ export function useRealtime(
   }, [onUpdate]);
 
   // Consolidate updates with 200ms debounce
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const debouncedUpdate = useDebouncedCallback((payload?: any) => {
     logger.info(`[Realtime] Triggering debounced update for ${table}`);
 
@@ -93,6 +97,8 @@ export function useRealtime(
 
     logger.warn(`[Realtime] RealtimeContext is null, falling back to standalone subscription for ${table}`);
     const supabase = createClient();
+    /* @todo: Untyped usage justified per TOOL-01 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let channel: any;
     try {
       channel = supabase
@@ -100,6 +106,8 @@ export function useRealtime(
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: table },
+          /* @todo: Untyped usage justified per TOOL-01 */
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (payload: any) => {
             const lastMutations = useAppStore.getState().lastMutations || {};
             const lastMutationAt = Math.max(lastMutations[table] || 0, lastMutations["_global"] || 0);

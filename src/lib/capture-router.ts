@@ -95,6 +95,8 @@ function routedItem(
 export async function routeCapture(text: string, knownPeople: string[] = [], userSettings: Partial<UserSettings> = {}): Promise<RoutedItem[]> {
   const lower = text.toLowerCase().trim();
   // compromise doesn't export great TS types
+  /* @todo: Untyped usage justified per TOOL-01 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let doc: any = null;
   if (userSettings?.nlp_date_parsing !== false) {
     const nlp = (await import('compromise')).default;

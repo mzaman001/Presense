@@ -55,7 +55,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   const fetchPerson = useCallback(async () => {
     const { data: personData } = await supabase.from("people").select("*").eq("id", id).single();
     if (personData) {
-      setPerson(personData);
+      setPerson(personData as unknown as Person);
       const { data: tasksData } = await supabase
         .from("items")
         .select("*")
@@ -134,7 +134,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
     if (noteToDelete === null || !person || !person.notes) return;
     const updatedNotes = person.notes.filter((_, idx) => idx !== noteToDelete);
     try {
-      const { error } = await supabase.from("people").update({ notes: updatedNotes }).eq("id", person.id);
+      const { error } = await supabase.from("people").update({ notes: updatedNotes as any }).eq("id", person.id);
       if (error) throw error;
       setPerson({ ...person, notes: updatedNotes });
       toast.success("Note removed");

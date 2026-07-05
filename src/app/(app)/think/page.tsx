@@ -58,7 +58,7 @@ export default function ThinkPage() {
     else query = query.eq("status", "active");
 
     const { data } = await query;
-    setThreads(data ?? []);
+    setThreads((data as unknown as Thread[]) ?? []);
     setLoading(false);
   }, [supabase, showArchive, showTrash]);
 

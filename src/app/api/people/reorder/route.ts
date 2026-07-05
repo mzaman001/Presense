@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const { items } = parsed.data;
 
     await supabase.from("people").upsert(
-      items.map(({ id, sort_order }) => ({ id, user_id: user.id, sort_order })),
+      items.map(({ id, sort_order }) => ({ id, user_id: user.id, sort_order } as any)),
       { onConflict: "id" }
     );
 

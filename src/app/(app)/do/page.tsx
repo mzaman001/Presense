@@ -60,7 +60,7 @@ const Column = React.memo(({
   openEditPanel: (task: Task) => void;
   fetchTasks: () => void;
   newTaskIds: Set<string>;
-  peopleMap?: Record<string, { initials: string, color: string, name: string }>;
+  peopleMap?: Record<string, { initials: string | null, color: string | null, name: string }>;
 }) => (
   <div className="flex-1 min-w-0">
     <div className="flex items-center gap-2 mb-4">
@@ -146,7 +146,7 @@ export default function DoPage() {
   });
 
   const peopleMap = useMemo(() => {
-    const map: Record<string, { initials: string, color: string, name: string }> = {};
+    const map: Record<string, { initials: string | null, color: string | null, name: string }> = {};
     for (const p of peopleList) {
       map[p.id] = p;
     }
@@ -191,7 +191,7 @@ export default function DoPage() {
       .select("*")
       .eq("status", "done")
       .order("completed_at", { ascending: false });
-    setArchivedTasks(data ?? []);
+    setArchivedTasks((data as Task[]) ?? []);
   }, [supabase]);
 
   useEffect(() => {
