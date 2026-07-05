@@ -416,6 +416,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
               <Input
   label={<>Task Name <span className="text-red-400">*</span></>}
                   autoFocus
+                  data-autofocus="true"
                   inputMode="text"
                   autoCapitalize="sentences"
                   placeholder="What needs to be done?"

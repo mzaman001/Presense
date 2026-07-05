@@ -21,6 +21,15 @@ export function useDialogFocus(isOpen: boolean) {
       // Focus first focusable element inside the modal after animation
       const timer = setTimeout(() => {
         if (!containerRef.current) return;
+        
+        // 1. Try to find an explicit autofocus target
+        const autoFocusTarget = containerRef.current.querySelector<HTMLElement>('[autofocus], [data-autofocus]');
+        if (autoFocusTarget) {
+          autoFocusTarget.focus();
+          return;
+        }
+
+        // 2. Fall back to the first focusable element
         const focusable = containerRef.current.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
