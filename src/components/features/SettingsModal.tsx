@@ -14,6 +14,12 @@ import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { settingsSchema } from "@/lib/schemas";
+import { z } from "zod";
+
+type SettingsFormValues = z.infer<typeof settingsSchema>;
 import { useQueryClient } from "@tanstack/react-query";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { applyDocumentTheme, normalizeColorMode, normalizeThemeId } from "@/lib/theme";
@@ -254,10 +260,13 @@ export function SettingsModal() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [initialLoaded, setInitialLoaded] = useState(false);
   
-  // Settings State
-  const [settings, setSettings] = useState<SettingsState>({});
-  const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  const { register, watch, setValue, reset, getValues } = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {}
+  });
+
+  const settings = watch();
+  
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const [clearTasksConfirm, setClearTasksConfirm] = useState(false);
   const [clearLocationsConfirm, setClearLocationsConfirm] = useState(false);
@@ -278,14 +287,14 @@ export function SettingsModal() {
       
       const { data } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single();
       if (data) {
-        setSettings(data as any);
+        reset(data as any);
         setUserSettings(data as any);
       }
       setLoading(false);
       setTimeout(() => setInitialLoaded(true), 100);
     }
     loadSettings();
-  }, [isSettingsModalOpen, supabase, setUserSettings]);
+  }, [isSettingsModalOpen, supabase, setUserSettings, reset]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -306,7 +315,7 @@ export function SettingsModal() {
       if (!user) return;
       
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { user_id: _, created_at: __, ...updateData } = debouncedSettings;
+      const { user_id: _, created_at: __, ...updateData } = debouncedSettings as any;
       
       const { error } = await supabase.from("user_settings").update(updateData as any).eq("user_id", user.id);
       
@@ -314,7 +323,7 @@ export function SettingsModal() {
         toast.error("Failed to save settings", { description: error.message });
         setSaveStatus("idle");
       } else {
-        setUserSettings(debouncedSettings);
+        setUserSettings(debouncedSettings as any);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       }
@@ -331,8 +340,16 @@ export function SettingsModal() {
   }, [settings.theme, settings.color_mode, settings.reduce_motion, initialLoaded]);
 
   const updateSetting = useCallback((key: string, value: unknown) => {
-    setSettings({ ...settingsRef.current, [key]: value });
-  }, []);
+    setValue(key as any, value, { shouldValidate: true, shouldDirty: true });
+  }, [setValue]);
+
+  const setSettings = useCallback((action: any) => {
+    if (typeof action === 'function') {
+      reset(action(getValues()));
+    } else {
+      reset(action);
+    }
+  }, [reset, getValues]);
 
   const handleSignOut = async () => {
     localStorage.removeItem("presense_theme");
@@ -549,12 +566,13 @@ export function SettingsModal() {
                               className="input opacity-60 cursor-not-allowed"
                             />
                           </div>
-                          <div>
-                            <label className="text-label text-[var(--text-3)] block mb-2">Display Name</label>
-                            <input
-                              value={settings.display_name || ""}
-                              onChange={e => updateSetting("display_name", e.target.value)}
-                              className="input"
+                          <div className="space-y-1">
+                            <label className="text-label text-[var(--text-3)]">Display Name</label>
+                            <input 
+                              type="text" 
+                              {...register("display_name")}
+                              placeholder="How should we call you?"
+                              className="input w-full"
                             />
                           </div>
                           <div>
@@ -836,68 +854,78 @@ export function SettingsModal() {
                       )}
 
                       {activeTab === "tasks" && (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                           <div>
-                            <label className="text-label text-[var(--text-3)] block mb-3">Default View</label>
-                            <div className="flex gap-2">
-                              <Button variant="preset"
-                                onClick={() => updateSetting("default_view", "list")}
-                                className={cn("", (settings.default_view === "list" || !settings.default_view) && "active")}
-                              >
-                                List View
-                              </Button>
-                              <Button variant="preset"
-                                onClick={() => updateSetting("default_view", "board")}
-                                className={cn("", settings.default_view === "board" && "active")}
-                              >
-                                Board View
-                              </Button>
+                            <h3 className="text-lg font-bold text-[var(--color-text-1)] mb-4 flex items-center gap-2">
+                              <UiIcon icon={CheckSquare} size={20} className="text-[var(--color-accent)]" />
+                              Task Management
+                            </h3>
+                            <div className="space-y-6">
+                              <CategoryManager 
+                                title="Task Categories" 
+                                categoriesKey="do_categories" 
+                                colorsKey="do_category_colors" 
+                                defaultCategories={["work", "study", "personal", "errand", "health"]}
+                                settings={settings as SettingsState}
+                                updateSetting={updateSetting}
+                                setSettings={setSettings}
+                                supabase={supabase}
+                              />
+                              
+                              <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-[var(--color-text-1)]">Auto-Archive Completed</p>
+                                    <p className="text-xs text-[var(--text-3)]">Move done tasks to archive automatically</p>
+                                  </div>
+                                  <select 
+                                    className="input !w-auto !py-1 !px-2 !text-xs bg-[var(--color-background)]"
+                                    {...register("auto_archive_days", { valueAsNumber: true })}
+                                  >
+                                    <option value={0}>Immediately</option>
+                                    <option value={1}>After 1 day</option>
+                                    <option value={3}>After 3 days</option>
+                                    <option value={7}>After 1 week</option>
+                                    <option value={-1}>Never</option>
+                                  </select>
+                                </div>
+                                <div className="h-[1px] bg-[var(--color-border)]" />
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-[var(--color-text-1)]">NLP Date Parsing</p>
+                                    <p className="text-xs text-[var(--text-3)]">Extract dates from task text</p>
+                                  </div>
+                                  <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" className="sr-only peer" checked={settings.nlp_date_parsing !== false} onChange={e => updateSetting("nlp_date_parsing", e.target.checked)} />
+                                    <div className="w-11 h-6 bg-[var(--color-surface-hover)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-[var(--color-text-1)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]"></div>
+                                  </label>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div>
-                            <label className="text-label text-[var(--text-3)] block mb-2">Auto-archive completed tasks after (days)</label>
-                            <input
-                              type="number"
-                              min={1} max={30}
-                              value={settings.auto_archive_days || 7}
-                              onChange={e => updateSetting("auto_archive_days", parseInt(e.target.value))}
-                              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
-                            />
-                          </div>
-                          <CategoryManager 
-                            title="Task Categories" 
-                            categoriesKey="do_categories" 
-                            colorsKey="do_category_colors" 
-                            defaultCategories={["work", "study", "personal", "errand", "health"]} 
-                            settings={settings}
-                            updateSetting={updateSetting}
-                            setSettings={setSettings}
-                            supabase={supabase}
-                          />
-                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] mt-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">Auto-snooze Overdue</div>
-                              <div className="text-sm text-[var(--color-text-3)]">Automatically push overdue tasks to today</div>
-                            </div>
-                            <button onClick={() => updateSetting("auto_snooze", !settings.auto_snooze)} className={`toggle-track ${settings.auto_snooze ? 'on' : ''}`}>
-                              <div className="toggle-thumb" />
-                            </button>
                           </div>
                         </div>
                       )}
 
                       {activeTab === "people" && (
-                        <div className="space-y-6">
-                          <CategoryManager 
-                            title="Relationship Categories" 
-                            categoriesKey="people_categories" 
-                            colorsKey="relationship_colors" 
-                            defaultCategories={["friend", "family", "professor", "colleague", "teammate", "other"]} 
-                            settings={settings}
-                            updateSetting={updateSetting}
-                            setSettings={setSettings}
-                            supabase={supabase}
-                          />
+                        <div className="space-y-8">
+                          <div>
+                            <h3 className="text-lg font-bold text-[var(--color-text-1)] mb-4 flex items-center gap-2">
+                              <UiIcon icon={Users} size={20} className="text-[var(--color-accent)]" />
+                              People & Relationships
+                            </h3>
+                            <div className="space-y-6">
+                              <CategoryManager 
+                                title="Relationship Types" 
+                                categoriesKey="people_categories" 
+                                colorsKey="relationship_colors" 
+                                defaultCategories={["family", "friend", "colleague", "client", "acquaintance"]}
+                                settings={settings as SettingsState}
+                                updateSetting={updateSetting}
+                                setSettings={setSettings}
+                                supabase={supabase}
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -928,10 +956,11 @@ export function SettingsModal() {
                             <m.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
                               <label className="text-label text-[var(--text-3)] block mb-2 mt-4">Ollama URL</label>
                               <div className="flex gap-2">
-                                <input
-                                  value={settings.ollama_url || "http://localhost:11434"}
-                                  onChange={e => updateSetting("ollama_url", e.target.value)}
-                                  className="flex-1 bg-[var(--surface-input)] border border-[var(--border-input)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--border-input-focus)] focus:outline-none transition-colors"
+                                <input 
+                                  type="text" 
+                                  {...register("ollama_url")}
+                                  placeholder="http://localhost:11434"
+                                  className="input !w-[200px] !py-1 !px-2 !text-xs bg-[var(--color-background)]"
                                 />
                                 <button 
                                   onClick={async () => { 
