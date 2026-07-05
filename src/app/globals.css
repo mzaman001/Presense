@@ -1090,7 +1090,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* === REDUCED TRANSPARENCY OVERRIDES === */
 @media (prefers-reduced-transparency: reduce) {
-  :root {
+  body {
     --glass-blur: none !important;
     --glass-blur-heavy: none !important;
     --glass-blur-light: none !important;
@@ -1112,7 +1112,7 @@ h1, h2, h3, h4, h5, h6 {
     --surface-card-hover: color-mix(in srgb, white 9%, var(--bg-elevated)) !important;
   }
 
-  :root[data-mode="light"] {
+  :root[data-mode="light"] body {
     --surface-1: color-mix(in srgb, black 3%, var(--bg-elevated)) !important;
     --surface-2: color-mix(in srgb, black 5%, var(--bg-elevated)) !important;
     --surface-3: color-mix(in srgb, black 8%, var(--bg-elevated)) !important;
