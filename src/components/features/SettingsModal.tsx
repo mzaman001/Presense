@@ -68,6 +68,7 @@ interface SettingsState {
   shutdown_time?: string;
   pomodoro_long_break_interval?: number;
   daily_capacity_minutes?: number;
+  density?: "comfortable" | "compact";
 }
 
 function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKey, updateSetting, setSettings, supabase }: {
@@ -622,6 +623,24 @@ export function SettingsModal() {
                                   { value: "dark", label: "Dark" },
                                   { value: "light", label: "Light" },
                                   { value: "system", label: "System Default" }
+                                ]}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                            <div>
+                              <div className="font-medium text-[var(--color-text-1)]">Density</div>
+                              <div className="text-sm text-[var(--color-text-3)]">Adjust row height and spacing</div>
+                            </div>
+                            <div className="w-40">
+                              <Dropdown variant="select"
+                                value={settings.density || "compact"}
+                                onChange={val => updateSetting("density", val)}
+                                className="w-full"
+                                options={[
+                                  { value: "compact", label: "Compact" },
+                                  { value: "comfortable", label: "Comfortable" }
                                 ]}
                               />
                             </div>

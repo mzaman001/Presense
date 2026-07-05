@@ -1229,3 +1229,19 @@ body {
   -webkit-touch-callout: default;
   user-select: text;
 }
+
+/* DS-13: Density Mode Overrides */
+html[data-density="compact"] .task-card-wrapper .glass-card,
+html[data-density="compact"] .explore-item-wrapper .glass-card,
+html[data-density="compact"] .thread-row-wrapper .glass-card {
+  padding: 0.75rem !important;
+}
+
+html[data-density="compact"] .task-card-wrapper p.text-body-lg {
+  font-size: 0.85rem !important;
+}
+
+html[data-density="compact"] .explore-item-wrapper p.text-sm,
+html[data-density="compact"] .thread-row-wrapper p.text-sm {
+  font-size: 0.8125rem !important;
+}

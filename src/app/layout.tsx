@@ -84,10 +84,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 var reduceMotion = localStorage.getItem('presense_reduce_motion') === 'true';
                 var isLight = mode === 'light' || (mode === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches);
                 var resolvedMode = isLight ? 'light' : 'dark';
+                var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                var defaultDensity = isTouch ? 'comfortable' : 'compact';
+                var density = localStorage.getItem('presense_density') || defaultDensity;
                 
                 html.classList.remove('theme-blue', 'theme-forest', 'theme-navy', 'theme-midnight', 'theme-meadow', 'light');
                 html.setAttribute('data-theme', theme);
                 html.setAttribute('data-mode', resolvedMode);
+                html.setAttribute('data-density', density);
                 
                 if (reduceMotion) {
                   html.classList.add('reduce-motion');

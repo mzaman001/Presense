@@ -40,6 +40,7 @@ export interface UserSettings {
   ritual_streak?: number;
   shutdown_time?: string;
   daily_capacity_minutes?: number;
+  density?: "comfortable" | "compact";
   [key: string]: unknown;
 }
 

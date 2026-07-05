@@ -74,10 +74,13 @@ export function AppInitializer({ initialSettings }: { initialSettings?: UserSett
       isPublicRoute ? "dark" : userSettings?.color_mode
     );
 
-    applyDocumentTheme(theme, mode, Boolean(userSettings?.reduce_motion));
+    applyDocumentTheme(theme, mode, Boolean(userSettings?.reduce_motion), userSettings?.density);
     localStorage.setItem("presense_theme", theme);
     localStorage.setItem("presense_color_mode", mode);
-  }, [userSettings?.theme, userSettings?.color_mode, userSettings?.reduce_motion, pathname]);
+    if (userSettings?.density) {
+      localStorage.setItem("presense_density", userSettings.density as string);
+    }
+  }, [userSettings?.theme, userSettings?.color_mode, userSettings?.reduce_motion, userSettings?.density, pathname]);
 
   return null;
 }

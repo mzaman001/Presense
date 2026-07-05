@@ -28,7 +28,7 @@ export function normalizeColorMode(value: unknown): ColorMode {
   return value === "light" || value === "system" || value === "dark" ? value : DEFAULT_COLOR_MODE;
 }
 
-export function applyDocumentTheme(themeValue: unknown, modeValue: unknown, reduceMotion = false) {
+export function applyDocumentTheme(themeValue: unknown, modeValue: unknown, reduceMotion = false, densityValue?: unknown) {
   if (typeof document === "undefined") return;
   const prefersLight = typeof window !== "undefined"
     ? window.matchMedia("(prefers-color-scheme: light)").matches
@@ -60,5 +60,12 @@ export function applyDocumentTheme(themeValue: unknown, modeValue: unknown, redu
     html.classList.add("reduce-motion");
   } else {
     html.classList.remove("reduce-motion");
+  }
+
+  if (densityValue === "comfortable" || densityValue === "compact") {
+    html.setAttribute("data-density", densityValue as string);
+  } else {
+    const isTouch = typeof window !== "undefined" && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+    html.setAttribute("data-density", isTouch ? "comfortable" : "compact");
   }
 }
