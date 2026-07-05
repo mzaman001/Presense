@@ -38,18 +38,6 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const userSettings = useAppStore(s => s.userSettings);
-  const sidebarState = useAppStore(s => s.sidebarState);
-  const isPinned = sidebarState === "full";
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('presense_sidebar');
-      if (saved === 'full' || saved === 'rail') {
-        useAppStore.setState({ sidebarState: saved });
-      }
-    } catch (e) {}
-  }, []);
-
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const isTouch = useIsTouch();
   const [now, setNow] = useState(() => new Date());
@@ -70,9 +58,7 @@ export function Sidebar() {
   
   const labelClass = cn(
     "ml-0 min-w-0 max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-ellipsis transition-[opacity,max-width,margin] duration-200",
-    isPinned 
-      ? "ml-3 max-w-[160px] opacity-100" 
-      : "group-hover/sidebar:ml-3 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:ml-3 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100"
+    "group-hover/sidebar:ml-3 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:ml-3 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100"
   );
   const rowClass = "flex h-11 w-full items-center rounded-xl px-2 transition-colors";
   const iconClass = "flex h-10 w-10 shrink-0 items-center justify-center";
@@ -83,7 +69,7 @@ export function Sidebar() {
       className={cn(
         "sidebar group/sidebar hidden md:flex flex-col fixed top-0 left-0 h-screen z-40 overflow-hidden",
         "border-r border-[var(--border-subtle)] bg-[var(--color-background)]",
-        isPinned ? "w-[248px]" : "w-[80px] hover:w-[248px] focus-within:w-[248px]",
+        "w-[80px] hover:w-[248px] focus-within:w-[248px]",
         "transition-[width] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)]",
       )}
     >
@@ -102,19 +88,6 @@ export function Sidebar() {
           </div>
           <span className={cn("sidebar-title text-title-lg font-semibold tracking-tight text-[var(--color-text-1)]", labelClass)}>Presense</span>
         </div>
-        <button 
-          onClick={(e) => {
-            e.preventDefault();
-            useAppStore.getState().toggleSidebar();
-          }}
-          className={cn(
-            "text-[var(--text-3)] hover:text-[var(--text-1)] transition-opacity shrink-0 ml-2",
-            isPinned ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100 pointer-events-none group-hover/sidebar:pointer-events-auto group-focus-within/sidebar:pointer-events-auto"
-          )}
-          title={isPinned ? "Collapse sidebar" : "Pin sidebar"}
-        >
-          {isPinned ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />}
-        </button>
       </div>
 
       <div className="shrink-0 px-3 pb-2 pt-3">

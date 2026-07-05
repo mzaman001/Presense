@@ -50,8 +50,6 @@ interface AppState {
   setCaptureModalPrefill: (text: string | null) => void;
   isSearchModalOpen: boolean;
   setSearchModalOpen: (open: boolean) => void;
-  sidebarState: "full" | "rail";
-  toggleSidebar: () => void;
   isMobileDrawerOpen: boolean;
   setIsMobileDrawerOpen: (open: boolean) => void;
   isSettingsModalOpen: boolean;
@@ -79,14 +77,6 @@ export const useAppStore = create<AppState>((set) => ({
   setCaptureModalPrefill: (text) => set({ captureModalPrefill: text }),
   isSearchModalOpen: false,
   setSearchModalOpen: (open) => set({ isSearchModalOpen: open }),
-  sidebarState: "full" as const,
-  toggleSidebar: () => set((state) => {
-    const next = state.sidebarState === "full" ? "rail" : "full";
-    if (typeof window !== 'undefined') {
-      try { localStorage.setItem('presense_sidebar', next); } catch (e) {}
-    }
-    return { sidebarState: next };
-  }),
   isMobileDrawerOpen: false,
   setIsMobileDrawerOpen: (open) => set({ isMobileDrawerOpen: open }),
   isSettingsModalOpen: false,
