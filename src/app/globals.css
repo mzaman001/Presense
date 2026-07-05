@@ -122,7 +122,7 @@
   --surface-hover: rgba(255, 255, 255, 0.095);
   --surface-active: rgba(255, 255, 255, 0.140);
   --surface-sidebar: rgba(10, 6, 0, 0.70);
-  --surface-modal: rgba(20, 13, 0, 0.60);
+  --surface-modal: rgba(20, 13, 0, 0.75);
   --surface-dropdown: rgba(22, 14, 0, 0.96);
   --surface-toast: rgba(26, 16, 0, 0.95);
   --surface-input: rgba(255, 255, 255, 0.065);
@@ -197,6 +197,7 @@
   --glass-blur: blur(12px);
   --glass-blur-heavy: blur(16px);
   --glass-blur-light: blur(8px);
+  --blur-modal: blur(48px);
   --glass-noise: url("data:image/svg+xml,..."); /* noise SVG inline */
 
 
@@ -379,7 +380,8 @@
   --accent-text: var(--accent);
 }
 
-/* === DROPDOWN SYSTEM === */
+/* === DROPDOWN SYSTEM === */
+
 
 .dropdown-item {
   display: flex;
@@ -484,7 +486,7 @@
   --border-input-focus: rgba(118, 146, 255, 0.50);
   --toggle-track-on: var(--accent);
   --surface-sidebar: rgba(2, 5, 15, 0.70);
-  --surface-modal: rgba(5, 11, 29, 0.60);
+  --surface-modal: rgba(5, 11, 29, 0.75);
   --surface-dropdown: rgba(6, 12, 31, 0.96);
   --surface-toast: rgba(7, 13, 34, 0.95);
 }
@@ -542,7 +544,7 @@
   --border-input-focus: rgba(239, 221, 141, 0.45);
   --toggle-track-on: var(--accent-hot);
   --surface-sidebar: rgba(5, 8, 4, 0.70);
-  --surface-modal: rgba(10, 15, 8, 0.60);
+  --surface-modal: rgba(10, 15, 8, 0.75);
   --surface-dropdown: rgba(11, 16, 9, 0.96);
   --surface-toast: rgba(13, 18, 10, 0.95);
 }
@@ -729,7 +731,8 @@ h1, h2, h3, h4, h5, h6 {
   .card-upcoming {
     background: var(--status-upcoming-dim);
     border-color: var(--status-upcoming-border);
-  }
+  }
+
 
   .sidebar {
     background: var(--surface-sidebar);
@@ -785,8 +788,8 @@ h1, h2, h3, h4, h5, h6 {
 
   .modal {
     background: var(--surface-modal);
-    backdrop-filter: var(--glass-blur-heavy);
-    -webkit-backdrop-filter: var(--glass-blur-heavy);
+    backdrop-filter: var(--blur-modal);
+    -webkit-backdrop-filter: var(--blur-modal);
     border: 0.5px solid var(--border-default);
     border-top: 0.5px solid var(--border-strong);
     border-radius: var(--radius-xl);
@@ -804,7 +807,8 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: var(--shadow-toast);
   }
 
-  /* === BUTTON SYSTEM === */
+  /* === BUTTON SYSTEM === */
+
 
   /* === INPUT SYSTEM (Part 7) === */
   .input {
