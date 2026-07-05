@@ -30,6 +30,7 @@ This file lists what exists today (`src/components/ui/`) with its status. Entrie
 | AnimatedNumber | `AnimatedNumber.tsx` | NEEDS SPEC | |
 | AppErrorFallback / ModalErrorBoundary | `AppErrorFallback.tsx`, `ModalErrorBoundary.tsx` | STABLE | The one error-boundary pattern at app level and modal level respectively. |
 | UpdatePrompt | `UpdatePrompt.tsx` | NEEDS SPEC | |
+| UiIcon | `Icon.tsx` | STABLE | Standardized Lucide icon wrapper with default strokeWidth={1.5}. Use this instead of importing directly from `lucide-react`. |
 
 ## Colors, spacing, typography
 

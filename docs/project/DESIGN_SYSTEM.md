@@ -248,6 +248,18 @@ import { Button } from "@/components/ui/button";
 **Variants:** `primary` | `secondary` | `ghost` | `destructive` | `outline` | `link`
 **Sizes:** `xs` | `sm` | `md` | `lg` | `icon` (44×44px) | `icon-sm` | `icon-lg`
 
+### UiIcon
+
+```tsx
+import { Icon as UiIcon } from "@/components/ui/Icon";
+import { Plus } from "lucide-react";
+
+<UiIcon icon={Plus} size={20} />
+<UiIcon icon={Plus} size={20} variant="solid" />
+```
+
+**Usage:** Always use `UiIcon` when you need an icon from `lucide-react`. Do not import and render the icon directly. `UiIcon` enforces `strokeWidth={1.5}` for default, and `strokeWidth={2}` for the `solid` variant (intended for filled circular buttons and primary CTAs).
+
 **Rules:**
 - NEVER use raw `<button>` with custom classes in feature components
 - NEVER use `.btn-primary`, `.btn-secondary` etc. (deleted)
