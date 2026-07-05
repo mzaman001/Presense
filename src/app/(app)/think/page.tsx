@@ -252,7 +252,7 @@ export default function ThinkPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredThreads.filter(t => t.stale_prompt).map((thread, i) => (
-                  <m.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                  <m.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="thread-row-wrapper">
                     <Link href={`/think/${thread.id}`} onClick={() => setPrefetchedThread(thread.id, thread)}>
                       <GlassCard className="p-4 bg-[var(--surface-input)] border-[var(--accent-dim-hover)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer h-full">
                         <div className="flex items-start gap-3">
@@ -289,7 +289,7 @@ export default function ThinkPage() {
               <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-3 mt-6">All Threads</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredThreads.map((thread, i) => (
-            <m.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <m.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="thread-row-wrapper">
               <Link href={`/think/${thread.id}`} onClick={() => setPrefetchedThread(thread.id, thread)}>
                 <GlassCard className="p-5 hover:scale-[1.01] transition-transform cursor-pointer h-full group relative">
                   {!showArchive && !showTrash && (

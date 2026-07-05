@@ -194,9 +194,9 @@
   --status-danger-border: rgba(248, 113, 113, 0.25);
 
   /* === GLASS RECIPE === */
-  --glass-blur: blur(20px);
-  --glass-blur-heavy: blur(32px);
-  --glass-blur-light: blur(12px);
+  --glass-blur: blur(12px);
+  --glass-blur-heavy: blur(16px);
+  --glass-blur-light: blur(8px);
   --glass-noise: url("data:image/svg+xml,..."); /* noise SVG inline */
 
 

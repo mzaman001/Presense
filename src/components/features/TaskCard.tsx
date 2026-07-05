@@ -179,7 +179,7 @@ export const TaskCard = React.memo(({
       }}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="group relative rounded-2xl"
+      className="task-card-wrapper group relative rounded-2xl"
     >
       {/* Swipe-to-complete reveal layer */}
       <m.div

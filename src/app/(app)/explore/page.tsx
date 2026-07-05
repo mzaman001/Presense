@@ -78,7 +78,7 @@ const ExploreItemCard = ({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="group relative rounded-2xl overflow-hidden"
+      className="explore-item-wrapper group relative rounded-2xl overflow-hidden"
     >
       {/* Swipe-to-delete reveal layer */}
       <m.div
