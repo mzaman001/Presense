@@ -1044,6 +1044,23 @@ h1, h2, h3, h4, h5, h6 {
   .orb {
     animation: none !important;
   }
+
+  /* DS-14: Strip hover transforms to prevent instant jumping */
+  [class*="hover:scale"]:hover,
+  [class*="hover:-translate"]:hover,
+  [class*="hover:translate"]:hover,
+  [class*="active:scale"]:active,
+  .glass-panel:hover,
+  .glass-card:hover,
+  .glass-card-elevated:hover,
+  .sidebar:hover,
+  .dropdown-item:hover,
+  .nav-item:hover,
+  .group:hover [class*="group-hover:scale"],
+  .group:hover [class*="group-hover:-translate"],
+  .group:hover [class*="group-hover:translate"] {
+    transform: none !important;
+  }
 }
 
 :root.reduce-motion *, :root.reduce-motion *::before, :root.reduce-motion *::after {
@@ -1053,6 +1070,73 @@ h1, h2, h3, h4, h5, h6 {
 
 :root.reduce-motion .orb {
   animation: none !important;
+}
+
+:root.reduce-motion [class*="hover:scale"]:hover,
+:root.reduce-motion [class*="hover:-translate"]:hover,
+:root.reduce-motion [class*="hover:translate"]:hover,
+:root.reduce-motion [class*="active:scale"]:active,
+:root.reduce-motion .glass-panel:hover,
+:root.reduce-motion .glass-card:hover,
+:root.reduce-motion .glass-card-elevated:hover,
+:root.reduce-motion .sidebar:hover,
+:root.reduce-motion .dropdown-item:hover,
+:root.reduce-motion .nav-item:hover,
+:root.reduce-motion .group:hover [class*="group-hover:scale"],
+:root.reduce-motion .group:hover [class*="group-hover:-translate"],
+:root.reduce-motion .group:hover [class*="group-hover:translate"] {
+  transform: none !important;
+}
+
+/* === REDUCED TRANSPARENCY OVERRIDES === */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-blur: none !important;
+    --glass-blur-heavy: none !important;
+    --glass-blur-light: none !important;
+    --blur-elevated: none !important;
+
+    /* Make the surfaces fully opaque by blending them with bg-elevated */
+    --surface-1: color-mix(in srgb, white 5.5%, var(--bg-elevated)) !important;
+    --surface-2: color-mix(in srgb, white 8.5%, var(--bg-elevated)) !important;
+    --surface-3: color-mix(in srgb, white 12%, var(--bg-elevated)) !important;
+    --surface-hover: color-mix(in srgb, white 9.5%, var(--bg-elevated)) !important;
+    --surface-active: color-mix(in srgb, white 14%, var(--bg-elevated)) !important;
+    --surface-sidebar: var(--bg-elevated) !important;
+    --surface-modal: color-mix(in srgb, white 5%, var(--bg-elevated)) !important;
+    --surface-dropdown: color-mix(in srgb, white 8%, var(--bg-elevated)) !important;
+    --surface-toast: color-mix(in srgb, white 6%, var(--bg-elevated)) !important;
+    --surface-input: color-mix(in srgb, white 6.5%, var(--bg-elevated)) !important;
+    --surface-input-focus: color-mix(in srgb, white 9.5%, var(--bg-elevated)) !important;
+    --surface-card: color-mix(in srgb, white 5.5%, var(--bg-elevated)) !important;
+    --surface-card-hover: color-mix(in srgb, white 9%, var(--bg-elevated)) !important;
+  }
+
+  :root[data-mode="light"] {
+    --surface-1: color-mix(in srgb, black 3%, var(--bg-elevated)) !important;
+    --surface-2: color-mix(in srgb, black 5%, var(--bg-elevated)) !important;
+    --surface-3: color-mix(in srgb, black 8%, var(--bg-elevated)) !important;
+    --surface-hover: color-mix(in srgb, black 6%, var(--bg-elevated)) !important;
+    --surface-active: color-mix(in srgb, black 10%, var(--bg-elevated)) !important;
+    --surface-sidebar: var(--bg-elevated) !important;
+    --surface-modal: color-mix(in srgb, black 2%, var(--bg-elevated)) !important;
+    --surface-dropdown: color-mix(in srgb, black 4%, var(--bg-elevated)) !important;
+    --surface-toast: color-mix(in srgb, black 3%, var(--bg-elevated)) !important;
+    --surface-input: color-mix(in srgb, black 4%, var(--bg-elevated)) !important;
+    --surface-input-focus: color-mix(in srgb, black 6.5%, var(--bg-elevated)) !important;
+    --surface-card: color-mix(in srgb, black 50%, var(--bg-elevated)) !important;
+  }
+
+  .glass-card, .glass-card-elevated, .glass-panel, 
+  .sidebar, .modal, [data-sonner-toast], .dropdown-panel,
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  
+  .orb {
+    display: none !important;
+  }
 }
 
 /* ============================================================ */
