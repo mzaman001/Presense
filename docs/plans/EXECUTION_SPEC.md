@@ -420,6 +420,7 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `DS-01`.
 
 ### DS-11 — Document the canonical create/edit/delete interaction contract
+**Status:** DONE
 
 - **Priority:** High
 - **Files:** `DESIGN_SYSTEM.md` or a new `INTERACTION_PATTERNS.md`

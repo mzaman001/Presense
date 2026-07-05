@@ -786,3 +786,35 @@ This design system was informed by:
 - Kevin Powell — responsive design, fluid typography
 - Una Kravets / Adam Argyle (nerdy.dev) — CSS custom properties, `@property`, color-mix
 - Reddit r/webdev, r/reactjs, r/FigmaDesign — community patterns, pain points
+
+
+## 9. Canonical Interaction Patterns
+
+To prevent fragmentation, all interactions must follow these single, approved patterns. Do not introduce alternatives.
+
+### 9.1 Object Creation Entry Points
+- **Pattern:** Creation always happens via a dedicated Side Panel or Sheet (e.g., TaskAddPanel.tsx), never inline content-editable text blocks.
+- **Trigger:** Initiated by a top-level Header action button or an Empty State action button (Empty states must always provide an action matching the header).
+- **Focus:** The primary input (e.g., 	itle) **must immediately receive autofocus** upon the panel opening (via utoFocus prop + bypassing any delayed focus-lock hijacking).
+
+### 9.2 Inline vs. Sheet Editing
+- **Pattern:** Editing an existing object uses the exact same Side Panel or Sheet as creation, populated with the object's existing data.
+- **Rule:** No inline field editing (e.g., clicking a text element to turn it into an input). Click the card/row -> opens the edit panel.
+
+### 9.3 Delete / Undo / Confirm
+- **Pattern:** Soft-delete with Toast-based Undo.
+- **Rule:** Never show a confirmation modal for deleting standard entities.
+- **Implementation:** 
+  1. Call moveItemToTrashPatch() from item-lifecycle.ts (sets status: 'deleted', deleted_at: <now>).
+  2. Fire 	oast.success('Moved to trash', { action: { label: 'Undo', onClick: ... } }) using sonner.
+  3. The undo action calls estoreItemPatch().
+  4. Hard-deletion is exclusively handled asynchronously by the cron_cleanup 30-day retention job.
+
+### 9.4 Toast Conventions
+- **Pattern:** System feedback is provided via bottom-right sonner toasts.
+- **Rule:** Use 	oast.success, 	oast.error, or 	oast.promise exclusively. Do not build custom snackbars. Keep messages extremely brief (e.g., 'Task moved to trash', not 'Your task has been successfully deleted.').
+
+### 9.5 Keyboard Shortcuts
+- **Pattern:** Global shortcuts (e.g., Cmd+K, Cmd+Enter) are implemented via global useEffect keydown listeners.
+- **Rule:** Any visual indication of a keyboard shortcut in the UI **must** use the <Kbd> component (e.g., \<Kbd>Cmd+Enter</Kbd>\). Do not use raw spans or inline styles for shortcut hints.
+

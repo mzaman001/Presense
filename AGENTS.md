@@ -33,7 +33,7 @@ Violating any of these has previously broken this project in production. Changin
 | Topic | File | Notes |
 |---|---|---|
 | Active backlog, bugs, conflicts | `docs/plans/EXECUTION_SPEC.md` | The only backlog. Ticket IDs: `BUG-*`, `DS-*`, `A11Y-*`, `MOB-*`, `PERF-*`, `INFRA-*`, `CONF-*`. |
-| Design tokens, component specs, visual rules | `docs/project/DESIGN_SYSTEM.md` | The authoritative design spec. Every component pattern, every token, every state. |
+| Design tokens, component specs, visual rules, interaction patterns | `docs/project/DESIGN_SYSTEM.md` | The authoritative design spec. Every component pattern, every token, every state, and all interaction contracts (creation, editing, deletion). |
 | Component inventory (what exists, what's stable) | `docs/project/COMPONENT_MANIFEST.md` | Machine-checkable list of approved UI primitives. |
 | System architecture, data model | `docs/project/ARCHITECTURE.md` | Reference only. |
 | What the app is (stack, spaces, philosophy) | `docs/project/CONTEXT.md` | Read for project context. Not instructions — reference. |
