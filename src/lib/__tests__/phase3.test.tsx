@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ExploreDrawer } from "@/components/features/ExploreDrawer";
 import { SearchModal } from "@/components/features/SearchModal";
@@ -106,7 +106,7 @@ describe("Phase 3 - Integration Test Suite", () => {
       const onClose = vi.fn();
       const onSaved = vi.fn();
 
-      render(
+      const { container } = render(
         <ExploreDrawer
           isOpen={true}
           onClose={onClose}
@@ -116,21 +116,18 @@ describe("Phase 3 - Integration Test Suite", () => {
         { wrapper }
       );
 
-      // Verify preset types dropdown button is present
-      const typeButton = screen.getByRole("button", { name: /link/i });
-      expect(typeButton).toBeInTheDocument();
+      // Verify preset types input is present
 
-      // Open the dropdown
-      fireEvent.click(typeButton);
-
-      // Verify only system types (link, note, book) are present in the dropdown list
-      const linkOption = screen.getByRole("button", { name: /^link$/i });
-      const noteOption = screen.getByRole("button", { name: /^note$/i });
-      const bookOption = screen.getByRole("button", { name: /^book$/i });
-
-      expect(linkOption).toBeInTheDocument();
-      expect(noteOption).toBeInTheDocument();
-      expect(bookOption).toBeInTheDocument();
+      // Verify the type input has preset options (link, note, book) in the datalist
+      const typeInput = screen.getByPlaceholderText("e.g. link, note, book");
+      expect(typeInput).toBeInTheDocument();
+      expect(typeInput).toHaveAttribute("list", "preset-explore-types");
+      
+      const dataList = container.querySelector("#preset-explore-types");
+      expect(dataList).toBeInTheDocument();
+      expect(dataList!.innerHTML).toMatch(/value="link"/i);
+      expect(dataList!.innerHTML).toMatch(/value="note"/i);
+      expect(dataList!.innerHTML).toMatch(/value="book"/i);
 
       // Verify that no input field or button to create/add a custom type is rendered
       const allInputs = screen.getAllByRole("textbox");
@@ -226,7 +223,7 @@ describe("Phase 3 - Integration Test Suite", () => {
         fireEvent.click(focusTab);
       });
 
-      const timerDurationsCard = screen.getByText("Timer Durations").closest("div");
+      const timerDurationsCard = screen.getByText("Timer Durations").closest(".p-5, .space-y-5, .rounded-xl");
       expect(timerDurationsCard).toBeInTheDocument();
 
       const autoStartToggle = screen.getByText("Auto-start Breaks");
@@ -300,16 +297,21 @@ describe("Phase 3 - Integration Test Suite", () => {
         status: "active",
         is_pinned: false,
       };
+
+      mockSupabase.from.mockReturnValue(mockSupabaseQuery(prefetchedThread));
       
       useAppStore.setState({ prefetchedThreads: { [prefetchedThread.id]: prefetchedThread } });
 
-      render(
-        <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
-        { wrapper }
-      );
+      await act(async () => {
+        render(
+          <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
+          { wrapper }
+        );
+      });
 
       expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-      expect(screen.getByDisplayValue("Prefetched Thread Title")).toBeInTheDocument();
+      const titleInput = await screen.findByDisplayValue("Prefetched Thread Title");
+      expect(titleInput).toBeInTheDocument();
 
       const entryElements = screen.getAllByText("Initial entry");
       expect(entryElements.length).toBeGreaterThan(0);
@@ -329,10 +331,14 @@ describe("Phase 3 - Integration Test Suite", () => {
         is_pinned: false,
       }));
 
-      const { container } = render(
-        <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
-        { wrapper }
-      );
+      let container: HTMLElement;
+      await act(async () => {
+        const result = render(
+          <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
+          { wrapper }
+        );
+        container = result.container;
+      });
 
       await screen.findByDisplayValue("Mobile Thread");
 
