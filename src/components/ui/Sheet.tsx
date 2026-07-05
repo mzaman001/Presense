@@ -68,7 +68,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               exit={{ y: "100%", opacity: 0 }}
               transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               className={cn(
-                "glass-card-elevated pointer-events-auto w-full max-h-[90vh] flex flex-col",
+                "modal pointer-events-auto w-full max-h-[90vh] flex flex-col",
                 "rounded-t-[24px] md:rounded-[20px] overflow-hidden",
                 "md:max-w-xl md:max-h-[85vh]",
                 className

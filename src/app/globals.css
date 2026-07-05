@@ -122,7 +122,7 @@
   --surface-hover: rgba(255, 255, 255, 0.095);
   --surface-active: rgba(255, 255, 255, 0.140);
   --surface-sidebar: rgba(10, 6, 0, 0.70);
-  --surface-modal: rgba(20, 13, 0, 0.92);
+  --surface-modal: rgba(20, 13, 0, 0.60);
   --surface-dropdown: rgba(22, 14, 0, 0.96);
   --surface-toast: rgba(26, 16, 0, 0.95);
   --surface-input: rgba(255, 255, 255, 0.065);
@@ -484,7 +484,7 @@
   --border-input-focus: rgba(118, 146, 255, 0.50);
   --toggle-track-on: var(--accent);
   --surface-sidebar: rgba(2, 5, 15, 0.70);
-  --surface-modal: rgba(5, 11, 29, 0.92);
+  --surface-modal: rgba(5, 11, 29, 0.60);
   --surface-dropdown: rgba(6, 12, 31, 0.96);
   --surface-toast: rgba(7, 13, 34, 0.95);
 }
@@ -542,7 +542,7 @@
   --border-input-focus: rgba(239, 221, 141, 0.45);
   --toggle-track-on: var(--accent-hot);
   --surface-sidebar: rgba(5, 8, 4, 0.70);
-  --surface-modal: rgba(10, 15, 8, 0.92);
+  --surface-modal: rgba(10, 15, 8, 0.60);
   --surface-dropdown: rgba(11, 16, 9, 0.96);
   --surface-toast: rgba(13, 18, 10, 0.95);
 }
@@ -788,9 +788,12 @@ h1, h2, h3, h4, h5, h6 {
     backdrop-filter: var(--glass-blur-heavy);
     -webkit-backdrop-filter: var(--glass-blur-heavy);
     border: 0.5px solid var(--border-default);
+    border-top: 0.5px solid var(--border-strong);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-modal);
-  }
+    position: relative;
+    overflow: hidden;
+  }
 
   .toast {
     background: var(--surface-toast);
