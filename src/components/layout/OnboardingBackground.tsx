@@ -150,7 +150,7 @@ export function OnboardingSplit({
         {/* Logo */}
         <div className="flex items-center gap-3">
           <PresenseLogo />
-          <span className="text-[18px] font-semibold text-[var(--text-1)] tracking-tight">Presense</span>
+          <span className="text-title-xl font-semibold text-[var(--text-1)] tracking-tight">Presense</span>
         </div>
 
         {/* Quote */}

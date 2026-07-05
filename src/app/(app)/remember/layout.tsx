@@ -1,4 +1,6 @@
 "use client";
+import { PageHeader } from "@/components/ui/PageHeader";
+
 
 import React from "react";
 import Link from "next/link";
@@ -12,12 +14,7 @@ export default function RememberLayout({ children }: { children: React.ReactNode
   
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
-          <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Remember</h1>
-        </div>
-      </div>
+      <PageHeader title="Remember" />
 
       <ContextualTip 
         id="remember_space" 

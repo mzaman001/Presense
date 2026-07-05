@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const knownPeople = people?.map((p) => p.name) ?? [];
 
     // Run the rule-based NLP router
-    const items = routeCapture(text, knownPeople, settings || {});
+    const items = await routeCapture(text, knownPeople, settings || {});
 
     return NextResponse.json({ items });
   } catch (error) {

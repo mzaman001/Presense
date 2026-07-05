@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { OnboardingBackground, PresenseLogo } from "@/components/layout/OnboardingBackground";
 import { getAuthCallbackUrl } from "@/lib/auth-redirect";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   const [supabase] = useState<ReturnType<typeof createClient> | null>(() => {
@@ -81,7 +82,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-8">
           <PresenseLogo size={28} />
-          <span className="text-[17px] font-semibold tracking-tight" style={{ color: "var(--text-1)" }}>Presense</span>
+          <span className="text-title-lg font-semibold tracking-tight" style={{ color: "var(--text-1)" }}>Presense</span>
         </div>
 
         {emailSent ? (
@@ -93,13 +94,13 @@ export default function LoginPage() {
             >
               <Mail size={22} strokeWidth={1.5} className="text-[#2DD4BF]" />
             </div>
-            <p className="text-[16px] font-semibold mb-2" style={{ color: "var(--text-1)" }}>Check your inbox</p>
-            <p className="text-[13px]" style={{ color: "var(--text-3)" }}>
+            <p className="text-title-md font-semibold mb-2" style={{ color: "var(--text-1)" }}>Check your inbox</p>
+            <p className="text-body" style={{ color: "var(--text-3)" }}>
               We sent a magic link to <span style={{ color: "var(--text-2)" }}>{email}</span>
             </p>
             <button
               onClick={() => setEmailSent(false)}
-              className="mt-6 text-[12px] underline underline-offset-2"
+              className="mt-6 text-ui underline underline-offset-2"
               style={{ color: "var(--accent-text)" }}
             >
               Use a different email
@@ -110,7 +111,7 @@ export default function LoginPage() {
             {/* Heading */}
             <div className="mb-7">
               <h1 className="text-[22px] font-semibold tracking-tight mb-1" style={{ color: "var(--text-1)" }}>Sign in</h1>
-              <p className="text-[13px]" style={{ color: "var(--text-3)" }}>Welcome back, second brain.</p>
+              <p className="text-body" style={{ color: "var(--text-3)" }}>Welcome back, second brain.</p>
             </div>
 
             {/* Email form */}
@@ -130,12 +131,12 @@ export default function LoginPage() {
                 className="input w-full"
               />
               <div className="flex justify-end">
-                <span className="text-[12px]" style={{ color: "var(--accent-text)" }}>Magic link &#x2014; no password needed</span>
+                <span className="text-ui" style={{ color: "var(--accent-text)" }}>Magic link &#x2014; no password needed</span>
               </div>
-              <button
+              <Button variant="primary"
                 type="submit"
                 disabled={!!loading || !email.trim()}
-                className="btn-primary w-full flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-2"
               >
                 {loading === "email"
                   ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
@@ -143,32 +144,32 @@ export default function LoginPage() {
                 }
                 Send sign-in link
                 <ArrowRight size={14} strokeWidth={1.5} className="ml-auto" />
-              </button>
+              </Button>
             </form>
 
             {/* Divider */}
             <div className="flex items-center gap-3 my-5">
               <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
-              <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "var(--text-4)" }}>or</span>
+              <span className="text-caption uppercase tracking-widest font-semibold" style={{ color: "var(--text-muted)" }}>or</span>
               <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
             </div>
 
             {/* Google */}
-            <button
+            <Button variant="secondary"
               onClick={handleGoogle}
               disabled={!!loading}
-              className="btn-secondary w-full flex items-center justify-center gap-2.5"
+              className="w-full flex items-center justify-center gap-2.5"
             >
               {loading === "google"
                 ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
                 : <Globe2 size={14} strokeWidth={1.5} />
               }
               Continue with Google
-            </button>
+            </Button>
 
             {/* Error */}
             {error && (
-              <p className="mt-4 text-[13px] text-center p-3 rounded-[var(--radius-md)]"
+              <p className="mt-4 text-body text-center p-3 rounded-[var(--radius-md)]"
                 style={{ background: "var(--status-danger-dim)", border: "0.5px solid var(--status-danger-border)", color: "var(--status-danger)" }}>
                 {error}
               </p>

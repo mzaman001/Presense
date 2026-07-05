@@ -1,4 +1,6 @@
 "use client";
+import { EmptyState } from "@/components/ui/EmptyState";
+
 import React, { useEffect, useState, useCallback } from "react";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
@@ -14,6 +16,7 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
 import { RELATIONSHIP_COLORS } from "@/lib/constants";
 import { useAppStore } from "@/store/useAppStore";
+import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 
 import {
   DndContext,
@@ -32,6 +35,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Button } from "@/components/ui/button";
 
 interface Person {
   id: string;
@@ -113,7 +117,7 @@ const TodayPersonCard = ({
                   </p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent-dim)] border border-[var(--accent-border)] px-2 py-1 rounded-full">Briefing Ready</span>
+              <span className="text-caption font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent-dim)] border border-[var(--accent-border)] px-2 py-1 rounded-full">Briefing Ready</span>
             </div>
             {person.notes?.slice(-3).reverse().map((note, ni) => (
               <p key={ni} className="text-xs text-[var(--color-text-3)] flex items-start gap-1.5 mt-1">
@@ -208,15 +212,15 @@ function SortablePersonRow({
               <div className="flex-1 min-w-0">
                 <p className="text-card-title text-[var(--text-1)]">{person.name}</p>
                 {person.notes?.length > 0 && (
-                  <p className="text-[11px] text-[var(--color-text-3)] truncate">{person.notes[person.notes.length - 1]?.text}</p>
+                  <p className="text-meta text-[var(--color-text-3)] truncate">{person.notes[person.notes.length - 1]?.text}</p>
                 )}
               </div>
               <div className="text-right shrink-0 flex flex-col items-end gap-1">
-                <p className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full border bg-opacity-10" style={{ color: relColor, borderColor: `${relColor}40`, backgroundColor: `${relColor}15` }}>
+                <p className="text-caption font-bold tracking-widest uppercase px-2 py-0.5 rounded-full border bg-opacity-10" style={{ color: relColor, borderColor: `${relColor}40`, backgroundColor: `${relColor}15` }}>
                   {person.relationship}
                 </p>
                 {person.next_meeting && (
-                  <p className="text-[10px] text-[var(--color-text-3)]">{formatMeeting(person.next_meeting)}</p>
+                  <p className="text-caption text-[var(--color-text-3)]">{formatMeeting(person.next_meeting)}</p>
                 )}
               </div>
             </div>
@@ -263,26 +267,17 @@ export default function PeoplePage() {
     setPeople(prev => prev.filter(p => p.id !== person.id));
 
     try {
-      const { error } = await supabase.from("people").delete().eq("id", person.id);
+      const { error } = await supabase.from("people").update(moveItemToTrashPatch()).eq("id", person.id);
       if (error) throw error;
       
-      toast.success("Person deleted", {
+      toast.success("Person moved to trash", {
         action: {
           label: "Undo",
           onClick: async () => {
             try {
               const { data: { user } } = await supabase.auth.getUser();
               if (user) {
-                await supabase.from("people").insert({
-                  id: person.id,
-                  user_id: user.id,
-                  name: person.name,
-                  relationship: person.relationship,
-                  color: person.color,
-                  notes: person.notes,
-                  next_meeting: person.next_meeting,
-                  sort_order: person.sort_order
-                });
+                await supabase.from("people").update(restoreItemPatch("active")).eq("id", person.id);
                 fetchPeople();
               }
             } catch {
@@ -372,25 +367,22 @@ export default function PeoplePage() {
               )}
             </div>
             {others.length === 0 && today.length === 0 ? (
-              <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
-                {fetchError ? (
-                  <p className="text-sm text-red-400">Error loading people: {fetchError}</p>
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                      <Users className="w-6 h-6 text-[var(--color-text-3)]" />
-                    </div>
-                    <h3 className="text-[var(--color-text-1)] font-medium mb-2">Your network is empty</h3>
-                    <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Add someone manually, or capture &ldquo;Meeting with Alex&rdquo; to automatically create a profile.</p>
-                    <button 
-                      onClick={() => setIsPanelOpen(true)}
-                      className="btn-primary gap-2 mx-auto"
-                    >
-                      <Plus size={16} /> Add Person
-                    </button>
-                  </>
-                )}
-              </GlassCard>
+              fetchError ? (
+      <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[var(--border-default)]">
+        <p className="text-sm text-red-400">Error loading people: {fetchError}</p>
+      </GlassCard>
+    ) : (
+      <EmptyState
+        icon={Users}
+        title="Your network is empty"
+        description="Add someone manually, or capture &ldquo;Meeting with Alex&rdquo; to automatically create a profile."
+        action={
+          <Button variant="primary" onClick={() => setIsPanelOpen(true)} className="gap-2 mx-auto">
+            <Plus size={16} /> Add Person
+          </Button>
+        }
+      />
+    )
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={others.map(o => o.id)} strategy={verticalListSortingStrategy}>

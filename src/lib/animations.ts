@@ -3,6 +3,21 @@
  * Respects prefers-reduced-motion for accessibility.
  */
 
+// Motion Tokens
+export const motionTokens = {
+  dur: {
+    fast: 0.12,
+    base: 0.2,
+    slow: 0.3,
+    verySlow: 0.5,
+  },
+  ease: {
+    spring: [0.34, 1.56, 0.64, 1] as const,
+    smooth: [0.25, 0.46, 0.45, 0.94] as const,
+    inOut: [0.4, 0, 0.2, 1] as const,
+  }
+};
+
 export function useReducedMotion() {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -16,8 +31,8 @@ export const pageVariants = {
 };
 
 export const pageTransition = {
-  duration: 0.22,
-  ease: [0.25, 0.46, 0.45, 0.94] as const,
+  duration: motionTokens.dur.base,
+  ease: motionTokens.ease.smooth,
 };
 
 // Modal enter/exit
@@ -70,24 +85,24 @@ export const listItemVariants = {
 
 // Task card swipe delete
 export const swipeDeleteVariants = {
-  exit: { x: -100, opacity: 0, transition: { duration: 0.2 } },
+  exit: { x: -100, opacity: 0, transition: { duration: motionTokens.dur.base } },
 };
 
 // Standard transition
 export const standardTransition = {
-  duration: 0.2,
-  ease: [0.25, 0.46, 0.45, 0.94] as const,
+  duration: motionTokens.dur.base,
+  ease: motionTokens.ease.smooth,
 };
 
 // Hover scale (use with motion.div or motion.button)
 export const hoverScaleProps = {
   whileHover: { scale: 1.03 },
   whileTap: { scale: 0.97 },
-  transition: { duration: 0.15 },
+  transition: { duration: motionTokens.dur.fast },
 };
 
 export const hoverScaleSmallProps = {
   whileHover: { scale: 1.05 },
   whileTap: { scale: 0.95 },
-  transition: { duration: 0.12 },
+  transition: { duration: motionTokens.dur.fast },
 };

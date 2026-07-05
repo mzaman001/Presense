@@ -1,16 +1,16 @@
-import * as chrono from "chrono-node";
+let isRegistered = false;
 
-/**
- * Custom chrono parsers that fill gaps in chrono-node v2.9.1.
- * These are registered on chrono.casual.parsers at import time.
- */
+export function registerCustomParsers(chrono: any) {
+  // Prevent duplicate registration if called multiple times
+  if (isRegistered) return;
+  isRegistered = true;
 
-function addParser(parser: { pattern: () => RegExp; extract: (context: never, match: never) => unknown }) {
-  // Prepend so custom parsers run before built-in ones
-  chrono.casual.parsers.unshift(parser as never);
-}
+  function addParser(parser: { pattern: () => RegExp; extract: (context: never, match: never) => unknown }) {
+    // Prepend so custom parsers run before built-in ones
+    chrono.casual.parsers.unshift(parser as never);
+  }
 
-// ── Multi-word relative phrases ──────────────────────────────────────────────
+  // ── Multi-word relative phrases ──────────────────────────────────────────────
 
 addParser({
   pattern: () => /day after tomorrow/i,
@@ -126,3 +126,4 @@ addParser({
     return component;
   },
 });
+}

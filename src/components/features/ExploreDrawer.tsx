@@ -8,7 +8,10 @@ import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Sheet } from "@/components/ui/Sheet";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { m, AnimatePresence } from "framer-motion";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+import { Button } from "@/components/ui/button";
 
 interface ExploreDrawerProps {
   item?: any;
@@ -161,20 +164,9 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
   const confirmDelete = async () => {
     if (!item) return;
     try {
-      if (item.status === "deleted") {
-        // Hard delete
-        const { error } = await supabase.from("explores").delete().eq("id", item.id);
-        if (error) throw error;
-        toast.success("Item permanently deleted");
-      } else {
-        // Move to trash (deleted status)
-        const { error } = await supabase.from("explores").update({ 
-          status: "deleted",
-          deleted_at: new Date().toISOString()
-        }).eq("id", item.id);
-        if (error) throw error;
-        toast.success("Moved to trash");
-      }
+      const { error } = await supabase.from("explores").update(moveItemToTrashPatch()).eq("id", item.id);
+      if (error) throw error;
+      toast.success("Moved to trash");
       onSaved();
       onClose();
     } catch (err: unknown) {
@@ -250,43 +242,16 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
 
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Link to Think Thread (Optional)</label>
-                <div className="relative" ref={threadDropdownRef}>
-                  <button 
-                    type="button"
-                    onClick={() => { setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
-                    className="w-full flex items-center justify-between bg-[var(--surface-card)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
-                  >
-                    <span className="truncate pr-4">
-                      {linkedThreadId ? threads.find(t => t.id === linkedThreadId)?.title || "Unknown Thread" : "-- No Thread Linked --"}
-                    </span>
-                    <ChevronDown className="w-4 h-4 text-[var(--color-text-3)] shrink-0" />
-                  </button>
-                  <AnimatePresence>
-                    {isThreadDropdownOpen && (
-                      <m.div 
-                        initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                        className="dropdown-panel absolute left-0 top-full mt-2 w-full p-1 z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
-                      >
-                        <button 
-                          type="button"
-                          onClick={() => { setLinkedThreadId(null); setIsThreadDropdownOpen(false); }}
-                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-3)]"
-                        >
-                          -- No Thread Linked --
-                        </button>
-                        {threads.map(t => (
-                          <button 
-                            key={t.id} type="button"
-                            onClick={() => { setLinkedThreadId(t.id); setIsThreadDropdownOpen(false); }}
-                            className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] truncate"
-                          >
-                            {t.title}
-                          </button>
-                        ))}
-                      </m.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <Dropdown
+                  value={linkedThreadId || ""}
+                  onChange={(val) => setLinkedThreadId(val || null)}
+                  options={[
+                    { value: "", label: "-- No Thread Linked --" },
+                    ...threads.map(t => ({ value: t.id, label: t.title }))
+                  ]}
+                  placeholder="-- No Thread Linked --"
+                  className="w-full"
+                />
               </div>
 
             </div>
@@ -294,30 +259,30 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
             <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3 md:rounded-b-2xl">
               {item && (
                 <>
-                  <button
+                  <Button variant="danger"
                     onClick={() => setDeleteConfirm(true)}
-                    className="btn-danger px-4 flex items-center justify-center"
+                    className="px-4 flex items-center justify-center"
                     title={item.status === "deleted" ? "Delete permanently" : "Move to trash"}
                   >
                     <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="secondary"
                     onClick={handleArchiveToggle}
                     disabled={saving}
-                    className="btn-secondary px-4 flex items-center justify-center disabled:opacity-50"
+                    className="px-4 flex items-center justify-center disabled:opacity-50"
                     title={item.status === "archived" || item.status === "deleted" ? "Restore" : "Archive"}
                   >
                     {item.status === "archived" || item.status === "deleted" ? <RefreshCcw size={14} strokeWidth={1.5} className="shrink-0" /> : <Archive size={14} strokeWidth={1.5} className="shrink-0" />}
-                  </button>
+                  </Button>
                 </>
               )}
-              <button
+              <Button variant="primary"
                 onClick={handleSave}
                 disabled={saving || !title.trim() || !note?.trim()}
-                className="flex-1 btn-primary py-3 w-full disabled:opacity-50"
+                className="flex-1  py-3 w-full disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (item ? "Save Changes" : "Save")}
-              </button>
+              </Button>
             </div>
       </Sheet>
       {item && (

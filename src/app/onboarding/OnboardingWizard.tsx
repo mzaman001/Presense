@@ -54,12 +54,15 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
 
   // Auto-route on capture input
   useEffect(() => {
-    if (captureInput.trim()) {
-      const items = routeCapture(captureInput);
-      setRoutedItem(items[0] || null);
-    } else {
-      setRoutedItem(null);
-    }
+    const routeItem = async () => {
+      if (captureInput.trim()) {
+        const items = await routeCapture(captureInput);
+        setRoutedItem(items[0] || null);
+      } else {
+        setRoutedItem(null);
+      }
+    };
+    routeItem();
   }, [captureInput]);
 
   const handleNext1 = async () => {
@@ -147,7 +150,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
 
-      const item = routedItem || routeCapture(captureInput)[0];
+      const item = routedItem || (await routeCapture(captureInput))[0];
       if (item) {
         if (item.destination === "Do" || item.destination === "Inbox") {
           await supabase.from("items").insert({

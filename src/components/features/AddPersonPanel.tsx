@@ -1,7 +1,10 @@
 "use client";
+import { Input } from "../ui/Input";
+import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
 import React, { useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
+import { Button } from "@/components/ui/button";
 import { m, AnimatePresence } from "framer-motion";
 import { X, UserPlus, Loader2, Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase";
@@ -92,11 +95,8 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
     <Sheet isOpen={isOpen} onClose={onClose} title="Add Person">
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Name */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">
-                  Name <span className="text-red-400">*</span>
-                </label>
-                <input
+              <Input
+  label={<>Name <span className="text-red-400">*</span></>}
                   autoFocus
                   inputMode="text"
                   autoCapitalize="words"
@@ -106,9 +106,8 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSave();
                   }}
-                  className="input"
-                />
-              </div>
+                  variant="default"
+/>
 
               {/* Relationship */}
               <div>
@@ -144,7 +143,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                 <label className="flex items-center justify-between text-label text-[var(--text-3)] mb-3">
                   <span>Avatar Color</span>
                   {color && (
-                    <button onClick={() => setColor(null)} className="text-[10px] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] capitalize transition-colors">
+                    <button onClick={() => setColor(null)} className="text-caption text-[var(--color-text-3)] hover:text-[var(--color-text-1)] capitalize transition-colors">
                       Clear
                     </button>
                   )}
@@ -174,7 +173,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                   type="datetime-local"
                   value={nextMeeting}
                   onChange={(e) => setNextMeeting(e.target.value)}
-                  className="input"
+                  
                 />
               </div>
 
@@ -194,13 +193,13 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
             </div>
 
             <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3 md:rounded-b-2xl">
-              <button
+              <Button variant="primary"
                 onClick={handleSave}
                 disabled={saving || !name.trim()}
-                className="flex-1 btn-primary py-3 w-full disabled:opacity-50"
+                className="flex-1 py-3 w-full disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save Changes"}
-              </button>
+              </Button>
             </div>
     </Sheet>
   );

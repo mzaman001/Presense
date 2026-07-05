@@ -1,4 +1,7 @@
 "use client";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
@@ -18,6 +21,7 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { PageSkeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/button";
 
 interface Task {
   id: string;
@@ -195,7 +199,7 @@ export default function DoPage() {
   useRealtime("items", fetchTasks);
   useRealtime("people", fetchPeopleList);
 
-  const completeTask = async (e: React.MouseEvent, id: string) => {
+  const completeTask = useCallback(async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     
     // Set completing state — TaskCard shows the checkmark animation
@@ -229,7 +233,7 @@ export default function DoPage() {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.error("Failed to complete task", { description: err instanceof Error ? err.message : "Unknown error" });
     }
-  };
+  }, [haptics, queryClient, supabase, fetchTasks, showArchive, fetchArchived]);
 
   const restoreTask = async (id: string) => {
     try {
@@ -243,11 +247,11 @@ export default function DoPage() {
     }
   };
 
-  const openEditPanel = (task: Task) => {
+  const openEditPanel = useCallback((task: Task) => {
     setTaskToEdit(task);
     setInitialDeadline(null);
     setIsPanelOpen(true);
-  };
+  }, []);
 
   const openCreatePanelAt = (deadline: Date) => {
     setTaskToEdit(null);
@@ -304,44 +308,42 @@ export default function DoPage() {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
-          <div className="flex items-center gap-4">
-            <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Do</h1>
-            <div className="flex bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full p-0.5">
-              <button
-                onClick={() => toggleViewMode("board")}
-                className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "board" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
-              >
-                Board
-              </button>
-              <button
-                onClick={() => toggleViewMode("today")}
-                className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "today" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => toggleViewMode("calendar")}
-                className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "calendar" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
-              >
-                Calendar
-              </button>
-            </div>
-            <button 
-              onClick={() => setShowArchive(!showArchive)}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-            >
-              {showArchive ? "Hide Archive" : "Show Archive"}
-            </button>
-          </div>
+    <div className="flex flex-col h-full gap-6">
+      <PageHeader 
+        title="Do" 
+        actions={
+          <Button variant="secondary" onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }} className="!text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
+            <Plus className="w-4 h-4" /> Add task
+          </Button>
+        }
+      >
+        <div className="flex bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full p-0.5">
+          <button
+            onClick={() => toggleViewMode("board")}
+            className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "board" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
+          >
+            Board
+          </button>
+          <button
+            onClick={() => toggleViewMode("today")}
+            className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "today" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => toggleViewMode("calendar")}
+            className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "calendar" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
+          >
+            Calendar
+          </button>
         </div>
-        <button onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
-          <Plus className="w-4 h-4" /> Add task
+        <button 
+          onClick={() => setShowArchive(!showArchive)}
+          className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
+        >
+          {showArchive ? "Hide Archive" : "Show Archive"}
         </button>
-      </div>
+      </PageHeader>
 
       {!showArchive && viewMode !== "calendar" && (
         <ContextualTip 
@@ -375,22 +377,21 @@ export default function DoPage() {
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-4">Archived Tasks</h2>
           {archivedTasks.length === 0 ? (
-            <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] bg-transparent">
-              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-6 h-6 text-[var(--color-text-3)]" />
-              </div>
-              <h3 className="text-[var(--color-text-1)] font-medium mb-2">No completed tasks yet</h3>
-              <p className="text-sm text-[var(--color-text-3)] max-w-sm">When you finish tasks, they will appear here in your archive.</p>
-            </GlassCard>
+            <EmptyState
+              icon={CheckCircle2}
+              title="No completed tasks yet"
+              description="When you finish tasks, they will appear here in your archive."
+              className="bg-transparent border-[rgba(255,255,255,0.08)]"
+            />
           ) : (
             archivedTasks.filter(t => categoryFilter === "all" || t.category === categoryFilter).map(task => (
               <GlassCard key={task.id} className="p-4 opacity-70 hover:opacity-100 transition-opacity flex justify-between items-center">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-semibold text-[rgba(255,255,255,0.35)] capitalize" style={{ color: (userSettings?.do_category_colors?.[task.category] || DEFAULT_DO_COLORS[task.category]) ?? "rgba(255,255,255,0.35)" }}>
+                    <span className="text-caption font-semibold text-[rgba(255,255,255,0.35)] capitalize" style={{ color: (userSettings?.do_category_colors?.[task.category] || DEFAULT_DO_COLORS[task.category]) ?? "rgba(255,255,255,0.35)" }}>
                       {task.category}
                     </span>
-                    <span className="text-[10px] text-[rgba(255,255,255,0.35)]">
+                    <span className="text-caption text-[rgba(255,255,255,0.35)]">
                       • Completed {new Date((task as any).completed_at).toLocaleDateString()}
                     </span>
                   </div>
@@ -413,22 +414,23 @@ export default function DoPage() {
           "gap-6",
           isBoardView ? "grid grid-cols-1 md:grid-cols-2 items-start max-w-3xl mx-auto" : "flex flex-col space-y-8 max-w-2xl mx-auto"
         )}>
-           {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} />}
-           <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} />
+           {overdue.length > 0 && <Column title="Overdue" tasks={overdue} accent="var(--status-overdue)" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} />}
+           <Column title="Today" tasks={today} accent="var(--status-today)" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} />
           {overdue.length === 0 && today.length === 0 && (
-            <GlassCard className="p-12 text-center md:col-span-2 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
-              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                <Wind className="w-6 h-6 text-[var(--color-text-3)]" />
-              </div>
-              <h3 className="text-[var(--color-text-1)] font-medium mb-2">You're all caught up</h3>
-              <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">No tasks due today. Take a well-deserved break, or plan ahead for tomorrow.</p>
-              <button 
-                onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }}
-                className="btn-primary gap-2"
-              >
-                <Plus size={16} /> Add Task
-              </button>
-            </GlassCard>
+            <EmptyState
+              icon={Wind}
+              title="You're all caught up"
+              description="No tasks due today. Take a well-deserved break, or plan ahead for tomorrow."
+              className="md:col-span-2"
+              action={
+                <Button variant="primary" 
+                  onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }}
+                  className="gap-2"
+                >
+                  <Plus size={16} /> Add Task
+                </Button>
+              }
+            />
           )}
         </div>
       ) : (
@@ -436,24 +438,25 @@ export default function DoPage() {
           "gap-6",
           isBoardView ? "grid grid-cols-1 md:grid-cols-3 items-start" : "flex flex-col space-y-8 max-w-2xl mx-auto"
         )}>
-           {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="#F87171" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
-           {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="#FBBF24" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
-           {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="#2DD4BF" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
-           {someday.length > 0 || isBoardView ? <Column title="Someday" tasks={someday} accent="#A78BFA" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
+           {overdue.length > 0 || isBoardView ? <Column title="Overdue" tasks={overdue} accent="var(--status-overdue)" icon={Zap} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
+           {today.length > 0 || isBoardView ? <Column title="Today" tasks={today} accent="var(--status-today)" icon={Clock} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
+           {upcoming.length > 0 || isBoardView ? <Column title="Upcoming" tasks={upcoming} accent="var(--status-upcoming)" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
+           {someday.length > 0 || isBoardView ? <Column title="Someday" tasks={someday} accent="var(--status-someday)" icon={Calendar} completing={completing} completeTask={completeTask} openEditPanel={openEditPanel} fetchTasks={fetchTasks} newTaskIds={newTaskIds} peopleMap={peopleMap} /> : null}
            {overdue.length === 0 && today.length === 0 && upcoming.length === 0 && someday.length === 0 && (
-             <GlassCard className="p-12 text-center md:col-span-3 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
-               <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                 <Wind className="w-6 h-6 text-[var(--color-text-3)]" />
-               </div>
-               <h3 className="text-[var(--color-text-1)] font-medium mb-2">You're all caught up</h3>
-               <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">No tasks in this view. Take a well-deserved break, or plan ahead.</p>
-               <button 
-                 onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }}
-                 className="btn-primary gap-2 mx-auto"
-               >
-                 <Plus size={16} /> Add Task
-               </button>
-             </GlassCard>
+             <EmptyState
+               icon={Wind}
+               title="You're all caught up"
+               description="No tasks in this view. Take a well-deserved break, or plan ahead."
+               className="md:col-span-3"
+               action={
+                 <Button variant="primary" 
+                   onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }}
+                   className="gap-2 mx-auto"
+                 >
+                   <Plus size={16} /> Add Task
+                 </Button>
+               }
+             />
            )}
         </div>
       )}

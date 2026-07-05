@@ -113,12 +113,12 @@ export function SearchModal() {
               {loading && <Loader2 className="w-5 h-5 animate-spin text-[var(--color-text-3)]" />}
               <div className="w-px h-6 bg-[var(--color-border)] mx-1"></div>
               <button onClick={() => setSearchModalOpen(false)} aria-label="Close search modal" className="p-2 ml-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface)] transition-colors">
-                <span className="text-[10px] font-mono mr-1 border border-[rgba(255,255,255,0.2)] rounded px-1 hidden sm:inline-block">ESC</span>
+                <span className="text-caption font-mono mr-1 border border-[rgba(255,255,255,0.2)] rounded px-1 hidden sm:inline-block">ESC</span>
                 <X className="w-5 h-5 hidden" />
               </button>
             </div>
 
-            <div className="max-h-[60vh] overflow-y-auto p-2">
+            <div className="max-h-[60vh] overflow-y-auto p-2" data-lenis-prevent>
               {!query && (
                 <div className="p-12 flex flex-col items-center justify-center text-center">
                   <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">

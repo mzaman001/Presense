@@ -14,6 +14,7 @@ import { cn, extractMentions } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useAppStore } from "@/store/useAppStore";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 
 interface ThreadEntry {
   text: string;
@@ -54,7 +55,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id);
-      if (data) {
+      if (data && Array.isArray(data)) {
         setPeople(data);
       }
     }
@@ -210,15 +211,9 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   const handleDelete = async () => {
     if (!thread) return;
     try {
-      if (thread.status === "deleted") {
-        const { error } = await supabase.from("threads").delete().eq("id", id);
-        if (error) throw error;
-        toast.success("Thread permanently deleted");
-      } else {
-        const { error } = await supabase.from("threads").update({ status: "deleted", deleted_at: new Date().toISOString() }).eq("id", id);
-        if (error) throw error;
-        toast.success("Moved to trash");
-      }
+      const { error } = await supabase.from("threads").update(moveItemToTrashPatch()).eq("id", id);
+      if (error) throw error;
+      toast.success("Moved to trash");
       router.push("/think");
     } catch (err: unknown) {
       toast.error("Failed to delete", { description: err instanceof Error ? err.message : "Unknown error" });
@@ -380,7 +375,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
                 <GlassCard className="px-4 py-2 flex items-center gap-2 hover:bg-[var(--color-surface)] transition-colors">
                   <div className="w-2 h-2 rounded-full bg-[#FBBF24]" />
                   <span className="text-sm text-[var(--color-text-1)] font-medium">{item.title}</span>
-                  <span className="text-[10px] uppercase text-[var(--color-text-3)] ml-2">{item.type}</span>
+                  <span className="text-caption uppercase text-[var(--color-text-3)] ml-2">{item.type}</span>
                 </GlassCard>
               </Link>
             ))}
@@ -400,9 +395,9 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
               transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
             <GlassCard className="p-5 border-l-2 border-l-transparent hover:border-l-[#2DD4BF] transition-all group relative">
-              <p className="text-[15px] text-[var(--color-text-1)] leading-relaxed whitespace-pre-wrap pr-8">{entry.text}</p>
+              <p className="text-title-sm text-[var(--color-text-1)] leading-relaxed whitespace-pre-wrap pr-8">{entry.text}</p>
               <div className="flex items-center justify-between mt-3">
-                <p className="text-[11px] text-[var(--color-text-3)]">
+                <p className="text-meta text-[var(--color-text-3)]">
                   {new Date(entry.created_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                 </p>
               </div>
@@ -454,7 +449,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
               className="input !pr-14 !rounded-2xl !py-4 resize-none"
             />
             <div className="absolute right-3 bottom-3 flex items-center gap-2">
-              <span className="text-[10px] text-[var(--color-text-3)] font-mono hidden md:inline">Cmd+Enter</span>
+              <span className="text-caption text-[var(--color-text-3)] font-mono hidden md:inline">Cmd+Enter</span>
               <button type="submit" disabled={!newEntry.trim() || saving} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[rgba(45,212,191,0.15)] text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.25)] transition-colors disabled:opacity-50">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
               </button>

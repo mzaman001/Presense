@@ -17,6 +17,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { applyDocumentTheme, normalizeColorMode, normalizeThemeId } from "@/lib/theme";
+import { Button } from "@/components/ui/button";
 const TABS = [
   { id: "account", label: "Account", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -331,6 +332,9 @@ export function SettingsModal() {
   }, []);
 
   const handleSignOut = async () => {
+    localStorage.removeItem("presense_theme");
+    localStorage.removeItem("presense_color_mode");
+    localStorage.removeItem("presense_reduce_motion");
     await supabase.auth.signOut();
     setSettingsModalOpen(false);
     router.push("/login");
@@ -438,6 +442,9 @@ export function SettingsModal() {
         throw new Error(error || "Failed to delete auth account");
       }
       // Sign out after successful deletion
+      localStorage.removeItem("presense_theme");
+      localStorage.removeItem("presense_color_mode");
+      localStorage.removeItem("presense_reduce_motion");
       await supabase.auth.signOut();
       toast.success("Account deleted");
       setSettingsModalOpen(false);
@@ -510,14 +517,14 @@ export function SettingsModal() {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 min-h-0 relative overflow-y-auto overscroll-contain">
-                  <button 
+                <div className="flex-1 min-h-0 relative overflow-y-auto overscroll-contain" data-lenis-prevent>
+                  <Button variant="icon" 
                     onClick={() => setSettingsModalOpen(false)}
                     aria-label="Close settings"
-                    className="btn-icon absolute top-4 right-4 z-10"
+                    className="absolute top-4 right-4 z-10"
                   >
                     <X size={16} strokeWidth={1.5} className="shrink-0" />
-                  </button>
+                  </Button>
 
                   {loading ? (
                     <div className="h-full flex items-center justify-center">
@@ -551,7 +558,7 @@ export function SettingsModal() {
                             <label className="text-label text-[var(--text-3)] block mb-3">Avatar Color</label>
                             <div className="flex flex-wrap gap-2">
                               {['#F472B6', '#4ADE80', '#3B82F6', '#FBBF24', '#A855F7', '#EF4444'].map(color => (
-                                <button key={color} onClick={() => updateSetting("avatar_color", color)} className={`w-8 h-8 rounded-full transition-transform ${settings.avatar_color === color ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]' : 'opacity-70 hover:opacity-100'}`} style={{ backgroundColor: color }} />
+                                <Button variant="danger" key={color} onClick={() => updateSetting("avatar_color", color)} className={`w-8 h-8 rounded-full transition-transform ${settings.avatar_color === color ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]' : 'opacity-70 hover:opacity-100'}`} style={{ backgroundColor: color }} />
                               ))}
                             </div>
                           </div>
@@ -578,9 +585,9 @@ export function SettingsModal() {
                           <div className="pt-8 mt-8 border-t border-[var(--status-danger-border)]">
                             <h4 className="text-sm font-semibold text-[var(--status-danger)] mb-2 flex items-center gap-2">Danger Zone</h4>
                             <p className="text-xs text-[var(--color-text-3)] mb-4">Permanently delete your account and all data.</p>
-                            <button onClick={() => setDeleteAccountConfirm(true)} className="w-full btn-danger mt-4">
+                            <Button variant="danger" onClick={() => setDeleteAccountConfirm(true)} className="w-full mt-4">
                               Delete Account
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -593,9 +600,9 @@ export function SettingsModal() {
                               <div className="text-sm text-[var(--color-text-3)]">Select your primary colour palette</div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button onClick={() => updateSetting("theme", "sunset")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${normalizeThemeId(settings.theme) === 'sunset' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Sunset" />
-                              <button onClick={() => updateSetting("theme", "midnight")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${normalizeThemeId(settings.theme) === 'midnight' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Midnight" />
-                              <button onClick={() => updateSetting("theme", "meadow")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${normalizeThemeId(settings.theme) === 'meadow' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Meadow" />
+                              <button onClick={() => updateSetting("theme", "warm")} className={`w-8 h-8 rounded-full bg-[#E5B41E] border-2 transition-all ${normalizeThemeId(settings.theme) === 'warm' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Warm" />
+                              <button onClick={() => updateSetting("theme", "navy")} className={`w-8 h-8 rounded-full bg-[#7692FF] border-2 transition-all ${normalizeThemeId(settings.theme) === 'navy' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Navy" />
+                              <button onClick={() => updateSetting("theme", "forest")} className={`w-8 h-8 rounded-full bg-[#EFDD8D] border-2 transition-all ${normalizeThemeId(settings.theme) === 'forest' ? 'border-[var(--color-text-1)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`} title="Forest" />
                             </div>
                           </div>
 
@@ -710,9 +717,9 @@ export function SettingsModal() {
                               <label className="text-label text-[var(--text-3)] block mb-2">Work Duration (mins)</label>
                               <div className="flex flex-wrap gap-2">
                                 {[15, 20, 25, 30, 45, 60].map(mins => (
-                                  <button key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={cn("btn-preset", settings.pomodoro_duration === mins && "active")}>
+                                  <Button variant="preset" key={mins} onClick={() => updateSetting("pomodoro_duration", mins)} className={cn("", settings.pomodoro_duration === mins && "active")}>
                                     {mins}m
-                                  </button>
+                                  </Button>
                                 ))}
                               </div>
                             </div>
@@ -721,9 +728,9 @@ export function SettingsModal() {
                               <label className="text-label text-[var(--text-3)] block mb-2">Short Break (mins)</label>
                               <div className="flex flex-wrap gap-2">
                                 {[3, 5, 10, 15].map(mins => (
-                                  <button key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={cn("btn-preset", settings.short_break_duration === mins && "active")}>
+                                  <Button variant="preset" key={mins} onClick={() => updateSetting("short_break_duration", mins)} className={cn("", settings.short_break_duration === mins && "active")}>
                                     {mins}m
-                                  </button>
+                                  </Button>
                                 ))}
                               </div>
                             </div>
@@ -732,9 +739,9 @@ export function SettingsModal() {
                               <label className="text-label text-[var(--text-3)] block mb-2">Long Break (mins)</label>
                               <div className="flex flex-wrap gap-2">
                                 {[15, 20, 30].map(mins => (
-                                  <button key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={cn("btn-preset", settings.long_break_duration === mins && "active")}>
+                                  <Button variant="preset" key={mins} onClick={() => updateSetting("long_break_duration", mins)} className={cn("", settings.long_break_duration === mins && "active")}>
                                     {mins}m
-                                  </button>
+                                  </Button>
                                 ))}
                               </div>
                             </div>
@@ -754,9 +761,9 @@ export function SettingsModal() {
                             <label className="text-label text-[var(--text-3)] block mb-3">Long Break After (sessions)</label>
                             <div className="flex flex-wrap gap-2">
                               {[2, 3, 4, 5].map(n => (
-                                <button key={n} onClick={() => updateSetting("pomodoro_long_break_interval", n)} className={cn("btn-preset", (settings.pomodoro_long_break_interval || 4) === n && "active")}>
+                                <Button variant="preset" key={n} onClick={() => updateSetting("pomodoro_long_break_interval", n)} className={cn("", (settings.pomodoro_long_break_interval || 4) === n && "active")}>
                                   {n}
-                                </button>
+                                </Button>
                               ))}
                             </div>
                           </div>
@@ -772,7 +779,7 @@ export function SettingsModal() {
                               </div>
                               <div>
                                 <h4 className="font-semibold text-[var(--text-1)]">Daily Ritual</h4>
-                                <p className="text-xs text-[var(--text-4)]">Configure your morning planning and evening review times.</p>
+                                <p className="text-xs text-[var(--text-muted)]">Configure your morning planning and evening review times.</p>
                               </div>
                             </div>
                             
@@ -780,12 +787,12 @@ export function SettingsModal() {
                               <div>
                                 <label className="text-label text-[var(--text-3)] block mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-orange-400" /> Morning Nudge</label>
                                 <input type="time" value={settings.nudge_time || "10:00"} onChange={e => updateSetting("nudge_time", e.target.value)} className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none" />
-                                <p className="text-[11px] text-[var(--text-4)] mt-2">When should we remind you to plan your day?</p>
+                                <p className="text-meta text-[var(--text-muted)] mt-2">When should we remind you to plan your day?</p>
                               </div>
                               <div>
                                 <label className="text-label text-[var(--text-3)] block mb-2 flex items-center gap-1.5"><Moon className="w-3.5 h-3.5 text-blue-400" /> Evening Shutdown</label>
                                 <input type="time" value={settings.shutdown_time || "17:00"} onChange={e => updateSetting("shutdown_time", e.target.value)} className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none" />
-                                <p className="text-[11px] text-[var(--text-4)] mt-2">When do you usually finish work?</p>
+                                <p className="text-meta text-[var(--text-muted)] mt-2">When do you usually finish work?</p>
                               </div>
                             </div>
 
@@ -801,7 +808,7 @@ export function SettingsModal() {
                                 />
                                 <span className="w-16 text-right font-medium text-[var(--text-1)]">{Math.floor((settings.daily_capacity_minutes || 240) / 60)}h {(settings.daily_capacity_minutes || 240) % 60}m</span>
                               </div>
-                              <p className="text-[11px] text-[var(--text-4)] mt-2">Used for workload visualization during morning planning.</p>
+                              <p className="text-meta text-[var(--text-muted)] mt-2">Used for workload visualization during morning planning.</p>
                             </div>
                           </div>
                         </div>
@@ -812,18 +819,18 @@ export function SettingsModal() {
                           <div>
                             <label className="text-label text-[var(--text-3)] block mb-3">Default View</label>
                             <div className="flex gap-2">
-                              <button
+                              <Button variant="preset"
                                 onClick={() => updateSetting("default_view", "list")}
-                                className={cn("btn-preset", (settings.default_view === "list" || !settings.default_view) && "active")}
+                                className={cn("", (settings.default_view === "list" || !settings.default_view) && "active")}
                               >
                                 List View
-                              </button>
-                              <button
+                              </Button>
+                              <Button variant="preset"
                                 onClick={() => updateSetting("default_view", "board")}
-                                className={cn("btn-preset", settings.default_view === "board" && "active")}
+                                className={cn("", settings.default_view === "board" && "active")}
                               >
                                 Board View
-                              </button>
+                              </Button>
                             </div>
                           </div>
                           <div>
@@ -944,28 +951,28 @@ export function SettingsModal() {
                       {activeTab === "data" && (
                         <div className="space-y-6">
                           <p className="text-sm text-[var(--color-text-3)]">Manage your data and account. All data stays synced across devices.</p>
-                          <button
+                          <Button variant="secondary"
                             type="button"
                             onClick={handleExportData}
-                            className="w-full btn-secondary"
+                            className="w-full"
                           >
                             <Download size={14} strokeWidth={1.5} className="shrink-0" /> Export All Data
-                          </button>
+                          </Button>
                           <div className="grid grid-cols-2 gap-4 mt-4">
-                            <button
+                            <Button variant="danger"
                               type="button"
                               onClick={() => setClearTasksConfirm(true)}
-                              className="w-full btn-danger"
+                              className="w-full"
                             >
                               Clear Completed Tasks
-                            </button>
-                            <button
+                            </Button>
+                            <Button variant="danger"
                               type="button"
                               onClick={() => setClearLocationsConfirm(true)}
-                              className="w-full btn-danger"
+                              className="w-full"
                             >
                               Clear Stale Locations
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}

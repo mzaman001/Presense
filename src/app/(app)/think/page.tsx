@@ -1,9 +1,12 @@
 "use client";
 
+
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { m } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Plus, Loader2, Sparkles, Pin, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,6 +17,7 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { LenisProvider } from "@/components/layout/LenisProvider";
+import { Button } from "@/components/ui/button";
 
 interface Thread {
   id: string;
@@ -170,7 +174,7 @@ export default function ThinkPage() {
       <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
+          <p className="text-caption uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
             <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Think</h1>
             <div className="flex items-center gap-2">
@@ -206,12 +210,12 @@ export default function ThinkPage() {
               className="input-search hidden md:block !w-48"
             />
           </div>
-          <button onClick={handleDailyNote} className="btn-secondary !text-[#FBBF24] !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] hover:!bg-[rgba(251,191,36,0.2)] hidden sm:flex">
+          <Button variant="secondary" onClick={handleDailyNote} className="!text-[#FBBF24] !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] hover:!bg-[rgba(251,191,36,0.2)] hidden sm:flex">
             <Sparkles className="w-4 h-4" /> Daily Note
-          </button>
-          <button onClick={handleNewThread} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
+          </Button>
+          <Button variant="secondary" onClick={handleNewThread} className="!text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
             <Plus className="w-4 h-4" /> New thread
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -273,12 +277,12 @@ export default function ThinkPage() {
               </div>
               <h3 className="text-[var(--color-text-1)] font-medium mb-2">No threads yet</h3>
               <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo; to start expanding your ideas.</p>
-              <button 
+              <Button variant="primary" 
                 onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
-                className="btn-primary gap-2"
+                className="gap-2"
               >
                 <Plus size={16} /> New Thought
-              </button>
+              </Button>
             </GlassCard>
           ) : (
             <div>
@@ -295,7 +299,7 @@ export default function ThinkPage() {
                         "absolute right-3 top-3 p-1.5 rounded-lg transition-all",
                         thread.is_pinned 
                           ? "opacity-100 text-[var(--accent)] hover:bg-[var(--surface-hover)]" 
-                          : "opacity-0 group-hover:opacity-100 text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--color-surface)]"
+                          : "opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-2)] hover:bg-[var(--color-surface)]"
                       )}
                     >
                       <Pin size={14} strokeWidth={1.5} className={cn(thread.is_pinned && "fill-current")} />
@@ -314,11 +318,11 @@ export default function ThinkPage() {
                         </p>
                       )}
                       <div className="flex items-center justify-between mt-3">
-                        <span className="text-[11px] text-[var(--color-text-3)]">
+                        <span className="text-meta text-[var(--color-text-3)]">
                           {thread.entries?.length ?? 0} entries · Updated {timeAgo(thread.last_updated)}
                         </span>
                         {thread.stale_prompt && (
-                          <span className="flex items-center gap-1 text-[10px] text-[var(--accent)]">
+                          <span className="flex items-center gap-1 text-caption text-[var(--accent)]">
                             <Sparkles className="w-3 h-3" /> Revisit
                           </span>
                         )}

@@ -15,6 +15,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { RELATIONSHIP_COLORS } from "@/lib/constants";
 import { useAppStore } from "@/store/useAppStore";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 
 interface PersonNote {
   text: string;
@@ -147,9 +148,9 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
     if (!person) return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase.from("people").delete().eq("id", person.id);
+      const { error } = await supabase.from("people").update(moveItemToTrashPatch()).eq("id", person.id);
       if (error) throw error;
-      toast.success(`${person.name} deleted`);
+      toast.success(`${person.name} moved to trash`);
       router.push("/remember/people");
     } catch (err: unknown) {
       toast.error("Failed to delete person", { description: err instanceof Error ? err.message : "Unknown error" });
@@ -295,7 +296,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                       <X className="w-3.5 h-3.5" />
                     </button>
                     <p className="text-sm text-[var(--color-text-1)] leading-relaxed mb-2 pr-6">{note.text}</p>
-                    <p className="text-[11px] text-[var(--color-text-3)]">
+                    <p className="text-meta text-[var(--color-text-3)]">
                       {new Date(note.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     </p>
                   </GlassCard>

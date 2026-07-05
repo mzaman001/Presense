@@ -21,14 +21,14 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
   return (
     <div className="space-y-3" data-testid="workload-bar">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
+        <span className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
           Daily Workload
         </span>
         <span
-          className="text-[12px] font-bold tabular-nums"
+          className="text-ui font-bold tabular-nums"
           style={{ color: isOver ? "var(--status-overdue)" : "var(--status-done)" }}
         >
-          {total}m <span style={{ color: "var(--text-4)", fontWeight: 400 }}>/ {capacity}m</span>
+          {total}m <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>/ {capacity}m</span>
         </span>
       </div>
 
@@ -62,7 +62,7 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
             }}
           >
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: "var(--status-overdue)" }} />
-            <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+            <p className="text-meta leading-relaxed" style={{ color: "var(--text-3)" }}>
               Over capacity — consider snoozing a task or two. Rest is part of the plan.
             </p>
           </m.div>
@@ -111,20 +111,20 @@ function TriageCard({ task, onAction }: {
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--text-1)" }}>
+          <p className="text-body font-semibold leading-snug" style={{ color: "var(--text-1)" }}>
             {task.title}
           </p>
           <div className="flex items-center gap-2 mt-1">
             <span
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: isOverdue ? "var(--status-overdue)" : "var(--text-4)" }}
+              className="text-caption font-bold uppercase tracking-widest"
+              style={{ color: isOverdue ? "var(--status-overdue)" : "var(--text-muted)" }}
             >
               {task.status === "inbox" ? "Inbox" : "Overdue"}
             </span>
             {task.deadline && (
               <>
                 <span style={{ color: "var(--border-default)" }}>·</span>
-                <span className="text-[11px]" style={{ color: "var(--text-4)" }}>
+                <span className="text-meta" style={{ color: "var(--text-muted)" }}>
                   {new Date(task.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </span>
               </>
@@ -136,7 +136,7 @@ function TriageCard({ task, onAction }: {
       <div className="flex items-center gap-2">
         <button
           onClick={() => onAction(task.id, "today")}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all active:scale-[0.97]"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-ui font-semibold transition-all active:scale-[0.97]"
           style={{
             background: "var(--accent)",
             color: "var(--text-on-accent)",
@@ -149,7 +149,7 @@ function TriageCard({ task, onAction }: {
         </button>
         <button
           onClick={() => onAction(task.id, "snooze")}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium transition-all active:scale-[0.97] hover:brightness-110"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-ui font-medium transition-all active:scale-[0.97] hover:brightness-110"
           style={{
             background: "rgba(255,255,255,0.05)",
             border: "0.5px solid var(--border-default)",
@@ -160,11 +160,11 @@ function TriageCard({ task, onAction }: {
         </button>
         <button
           onClick={() => onAction(task.id, "backlog")}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium transition-all active:scale-[0.97] hover:brightness-110"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-ui font-medium transition-all active:scale-[0.97] hover:brightness-110"
           style={{
             background: "rgba(255,255,255,0.05)",
             border: "0.5px solid var(--border-default)",
-            color: "var(--text-4)",
+            color: "var(--text-muted)",
           }}
         >
           <SkipForward className="w-3.5 h-3.5" /> Backlog
@@ -214,7 +214,27 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
   const [saving, setSaving] = useState(false);
 
   const capacity = userSettings?.daily_capacity_minutes ?? 240;
-  const todayString = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
+  
+  const [todayString, setTodayString] = useState(() => new Date().toLocaleDateString("en-CA"));
+  
+  useEffect(() => {
+    const update = () => {
+      setTodayString(prev => {
+        const next = new Date().toLocaleDateString("en-CA");
+        return prev === next ? prev : next;
+      });
+    };
+    const interval = setInterval(update, 60000);
+    window.addEventListener("focus", update);
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") update();
+    });
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", update);
+      window.removeEventListener("visibilitychange", update);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isCurrentlyOpen) return;
@@ -565,12 +585,12 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
 
               <div>
                 <h2
-                  className="text-[15px] font-bold leading-none tracking-tight"
+                  className="text-title-sm font-bold leading-none tracking-tight"
                   style={{ color: "var(--text-1)" }}
                 >
                   {isMorning ? "Morning Planning" : "Evening Review"}
                 </h2>
-                <p className="text-[11px] mt-1" style={{ color: "var(--text-4)" }}>
+                <p className="text-meta mt-1" style={{ color: "var(--text-muted)" }}>
                   {isMorning
                     ? step === 1 ? "Step 1 of 2 — Triage your inbox" : "Step 2 of 2 — Commit your day"
                     : "Shutdown ritual"
@@ -596,8 +616,8 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
               )}
               <button
                 onClick={handleSkip}
-                className="text-[11px] font-medium transition-all hover:text-white"
-                style={{ color: "var(--text-4)" }}
+                className="text-meta font-medium transition-all hover:text-white"
+                style={{ color: "var(--text-muted)" }}
               >
                 Skip today
               </button>
@@ -623,7 +643,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   className="w-9 h-9 rounded-full border-2 border-t-transparent animate-spin"
                   style={{ borderColor: "var(--accent-border)", borderTopColor: "var(--accent)" }}
                 />
-                <p className="text-[12px]" style={{ color: "var(--text-4)" }}>Preparing your ritual…</p>
+                <p className="text-ui" style={{ color: "var(--text-muted)" }}>Preparing your ritual…</p>
               </div>
             ) : isMorning ? (
               <AnimatePresence mode="wait">
@@ -650,21 +670,21 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                           <Smile className="w-7 h-7" style={{ color: "var(--status-done)" }} strokeWidth={1.5} />
                         </div>
                         <div className="text-center">
-                          <p className="text-[15px] font-semibold" style={{ color: "var(--text-1)" }}>Inbox is clear</p>
-                          <p className="text-[12px] mt-1" style={{ color: "var(--text-4)" }}>No inbox or overdue tasks to triage.</p>
+                          <p className="text-title-sm font-semibold" style={{ color: "var(--text-1)" }}>Inbox is clear</p>
+                          <p className="text-ui mt-1" style={{ color: "var(--text-muted)" }}>No inbox or overdue tasks to triage.</p>
                         </div>
                       </div>
                     ) : (
                       <>
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
-                            <Inbox className="w-3.5 h-3.5" style={{ color: "var(--text-4)" }} />
-                            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
+                            <Inbox className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                            <span className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                               To triage
                             </span>
                           </div>
                           <span
-                            className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                            className="text-meta font-bold px-2 py-0.5 rounded-full"
                             style={{
                               background: "var(--accent-dim)",
                               color: "var(--accent)",
@@ -705,15 +725,15 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                           <Sparkles className="w-7 h-7" style={{ color: "var(--accent)" }} strokeWidth={1.5} />
                         </div>
                         <div className="text-center">
-                          <p className="text-[15px] font-semibold" style={{ color: "var(--text-1)" }}>No tasks for today</p>
-                          <p className="text-[12px] mt-1" style={{ color: "var(--text-4)" }}>Go back and mark some tasks as "Do Today".</p>
+                          <p className="text-title-sm font-semibold" style={{ color: "var(--text-1)" }}>No tasks for today</p>
+                          <p className="text-ui mt-1" style={{ color: "var(--text-muted)" }}>Go back and mark some tasks as "Do Today".</p>
                         </div>
                       </div>
                     ) : (
                       <>
                         <div className="flex items-center gap-2 mb-1">
-                          <Clock className="w-3.5 h-3.5" style={{ color: "var(--text-4)" }} />
-                          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
+                          <Clock className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                          <span className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                             Today's tasks
                           </span>
                         </div>
@@ -741,7 +761,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                                 >
                                   <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
                                 </div>
-                                <p className="text-[13px] font-medium truncate" style={{ color: "var(--text-1)" }}>
+                                <p className="text-body font-medium truncate" style={{ color: "var(--text-1)" }}>
                                   {task.title}
                                 </p>
                               </div>
@@ -752,7 +772,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                                   step="5"
                                   value={task.time_estimate || 25}
                                   onChange={e => handleEstimateChange(task.id, parseInt(e.target.value) || 0)}
-                                  className="w-14 text-center text-[13px] font-bold rounded-lg px-2 py-1.5 focus:outline-none transition-all"
+                                  className="w-14 text-center text-body font-bold rounded-lg px-2 py-1.5 focus:outline-none transition-all"
                                   style={{
                                     background: "var(--surface-input)",
                                     border: "0.5px solid var(--border-input)",
@@ -761,7 +781,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                                   onFocus={e => (e.target.style.borderColor = "var(--accent)")}
                                   onBlur={e => (e.target.style.borderColor = "var(--border-input)")}
                                 />
-                                <span className="text-[11px] w-6" style={{ color: "var(--text-4)" }}>min</span>
+                                <span className="text-meta w-6" style={{ color: "var(--text-muted)" }}>min</span>
                               </div>
                             </div>
                           ))}
@@ -789,13 +809,13 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                       className="absolute top-0 left-0 right-0 h-px"
                       style={{ background: "linear-gradient(90deg, transparent, var(--accent-border), transparent)" }}
                     />
-                    <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-4)" }}>
+                    <p className="text-caption font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
                       Completed
                     </p>
                     <p className="text-[32px] font-bold leading-none tracking-tight" style={{ color: "var(--text-1)" }}>
                       {completedTasks.length}
                     </p>
-                    <p className="text-[11px] mt-1.5" style={{ color: "var(--status-done)" }}>
+                    <p className="text-meta mt-1.5" style={{ color: "var(--status-done)" }}>
                       tasks done today
                     </p>
                   </div>
@@ -811,13 +831,13 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                       className="absolute top-0 left-0 right-0 h-px"
                       style={{ background: "var(--border-card-top)" }}
                     />
-                    <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-4)" }}>
+                    <p className="text-caption font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
                       Focus Time
                     </p>
                     <p className="text-[32px] font-bold leading-none tracking-tight" style={{ color: "var(--text-1)" }}>
-                      {focusMinutes}<span className="text-[16px] ml-0.5" style={{ color: "var(--text-3)" }}>m</span>
+                      {focusMinutes}<span className="text-title-md ml-0.5" style={{ color: "var(--text-3)" }}>m</span>
                     </p>
-                    <p className="text-[11px] mt-1.5" style={{ color: "var(--accent)" }}>
+                    <p className="text-meta mt-1.5" style={{ color: "var(--accent)" }}>
                       Pomodoros logged
                     </p>
                   </div>
@@ -826,7 +846,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {/* Completed list */}
                 {completedTasks.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Done today</p>
+                    <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Done today</p>
                     <div
                       className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto overscroll-contain"
                       style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
@@ -843,7 +863,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                           >
                             <Check className="w-2.5 h-2.5" strokeWidth={3} style={{ color: "var(--status-done)" }} />
                           </div>
-                          <p className="text-[12px] line-through truncate" style={{ color: "var(--text-4)" }}>{t.title}</p>
+                          <p className="text-ui line-through truncate" style={{ color: "var(--text-muted)" }}>{t.title}</p>
                         </div>
                       ))}
                     </div>
@@ -854,8 +874,8 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {triageTasks.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Carry over</p>
-                      <span className="text-[11px]" style={{ color: "var(--text-4)" }}>{triageTasks.length} incomplete</span>
+                      <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Carry over</p>
+                      <span className="text-meta" style={{ color: "var(--text-muted)" }}>{triageTasks.length} incomplete</span>
                     </div>
                     <div className="space-y-1.5">
                       <AnimatePresence mode="popLayout">
@@ -867,10 +887,10 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                             className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl"
                             style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
                           >
-                            <p className="text-[12px] truncate flex-1" style={{ color: "var(--text-2)" }}>{t.title}</p>
+                            <p className="text-ui truncate flex-1" style={{ color: "var(--text-2)" }}>{t.title}</p>
                             <button
                               onClick={() => handleCarryOver(t.id)}
-                              className="text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all hover:scale-105 active:scale-95 shrink-0"
+                              className="text-meta font-semibold px-3 py-1.5 rounded-lg transition-all hover:scale-105 active:scale-95 shrink-0"
                               style={{ background: "var(--accent-dim)", color: "var(--accent-text)", border: "0.5px solid var(--accent-border)" }}
                             >
                               → Tomorrow
@@ -885,7 +905,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {/* Tomorrow Preview */}
                 {tomorrowTasks.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Up next tomorrow</p>
+                    <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Up next tomorrow</p>
                     <div
                       className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto overscroll-contain"
                       style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
@@ -902,7 +922,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                           >
                             <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
                           </div>
-                          <p className="text-[12px] truncate" style={{ color: "var(--text-4)" }}>{t.title}</p>
+                          <p className="text-ui truncate" style={{ color: "var(--text-muted)" }}>{t.title}</p>
                         </div>
                       ))}
                     </div>
@@ -912,15 +932,15 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {/* Reflection */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <BookOpen className="w-3.5 h-3.5" style={{ color: "var(--text-4)" }} />
-                    <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Daily Reflection</p>
+                    <BookOpen className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                    <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Daily Reflection</p>
                   </div>
                   <TextareaAutosize
                     value={reflection}
                     onChange={e => setReflection(e.target.value)}
                     placeholder="What went well today? What is your ONE thing for tomorrow?"
                     minRows={3}
-                    className="w-full px-4 py-3 text-[13px] rounded-xl resize-none focus:outline-none transition-all leading-relaxed"
+                    className="w-full px-4 py-3 text-body rounded-xl resize-none focus:outline-none transition-all leading-relaxed"
                     style={{
                       background: "var(--surface-input)",
                       border: "0.5px solid var(--border-input)",
@@ -929,7 +949,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                     onFocus={e => (e.target.style.borderColor = "var(--accent)")}
                     onBlur={e => (e.target.style.borderColor = "var(--border-input)")}
                   />
-                  <p className="text-[10px]" style={{ color: "var(--text-4)" }}>
+                  <p className="text-caption" style={{ color: "var(--text-muted)" }}>
                     Saved to your Daily Note in Think.
                   </p>
                 </div>
@@ -945,7 +965,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
             {isMorning && step === 2 ? (
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-xl transition-all hover:brightness-110 active:scale-95"
+                className="flex items-center gap-1.5 text-body font-medium px-3 py-2 rounded-xl transition-all hover:brightness-110 active:scale-95"
                 style={{ color: "var(--text-3)", background: "rgba(255,255,255,0.04)", border: "0.5px solid var(--border-default)" }}
               >
                 <ChevronLeft className="w-4 h-4" /> Back
@@ -953,8 +973,8 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
             ) : (
               <button
                 onClick={handleSkip}
-                className="text-[13px] font-medium transition-colors hover:text-[var(--text-2)] px-2 py-1"
-                style={{ color: "var(--text-4)" }}
+                className="text-body font-medium transition-colors hover:text-[var(--text-2)] px-2 py-1"
+                style={{ color: "var(--text-muted)" }}
               >
                 Skip today
               </button>
@@ -966,7 +986,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   whileTap={{ scale: 0.97 }}
                   disabled={triageTasks.length > 0}
                   onClick={() => setStep(2)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold transition-all disabled:opacity-35 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-body font-bold transition-all disabled:opacity-35 disabled:cursor-not-allowed"
                   style={{
                     background: triageTasks.length > 0 ? "rgba(255,255,255,0.06)" : "var(--accent)",
                     color: triageTasks.length > 0 ? "var(--text-3)" : "var(--text-on-accent)",
@@ -981,7 +1001,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   whileTap={{ scale: 0.97 }}
                   disabled={saving}
                   onClick={handleFinishMorning}
-                  className="flex items-center gap-2 px-6 py-3 rounded-full text-[14px] font-bold transition-all"
+                  className="flex items-center gap-2 px-6 py-3 rounded-full text-body-lg font-bold transition-all"
                   style={{
                     background: "var(--accent)",
                     color: "var(--text-on-accent)",
@@ -996,7 +1016,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 whileTap={{ scale: 0.97 }}
                 disabled={saving}
                 onClick={handleFinishEvening}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full text-body font-bold transition-all"
                 style={{
                   background: "var(--accent)",
                   color: "var(--text-on-accent)",

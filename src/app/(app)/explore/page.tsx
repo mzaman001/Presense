@@ -1,4 +1,6 @@
 "use client";
+import { PageHeader } from "@/components/ui/PageHeader";
+
 
 import React, { useEffect, useState, useCallback } from "react";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
@@ -14,6 +16,7 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { ExploreDrawer } from "@/components/features/ExploreDrawer";
 import { LenisProvider } from "@/components/layout/LenisProvider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 interface ExploreItem {
   id: string;
@@ -112,7 +115,7 @@ const ExploreItemCard = ({
                 <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{item.title}</p>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />}
-                  <span className="text-[10px] font-bold uppercase text-[var(--color-text-3)]">{mappedType}</span>
+                  <span className="text-caption font-bold uppercase text-[var(--color-text-3)]">{mappedType}</span>
                 </div>
               </div>
               {item.note && item.note !== item.title && (
@@ -120,9 +123,9 @@ const ExploreItemCard = ({
               )}
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 {item.tags?.map((tag) => (
-                  <span key={tag} className="text-[10px] text-[rgba(255,255,255,0.35)] bg-[var(--color-surface)] px-2 py-0.5 rounded-full">#{tag}</span>
+                  <span key={tag} className="text-caption text-[rgba(255,255,255,0.35)] bg-[var(--color-surface)] px-2 py-0.5 rounded-full">#{tag}</span>
                 ))}
-                <span className="text-[11px] text-[rgba(255,255,255,0.25)] ml-auto">{timeAgo(item.saved_at)}</span>
+                <span className="text-meta text-[rgba(255,255,255,0.25)] ml-auto">{timeAgo(item.saved_at)}</span>
               </div>
             </div>
           </div>
@@ -210,27 +213,25 @@ export default function ExplorePage() {
   return (
     <LenisProvider>
       <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
-          <div className="flex items-center gap-4">
-            <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Explore</h1>
-            <Tabs value={showTrash ? "trash" : showArchive ? "archive" : "active"} onValueChange={(v) => {
-              setShowArchive(v === "archive");
-              setShowTrash(v === "trash");
-            }}>
-              <TabsList variant="line" className="border-[var(--color-border)]">
-                <TabsTrigger value="active" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Active</TabsTrigger>
-                <TabsTrigger value="archive" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Archive</TabsTrigger>
-                <TabsTrigger value="trash" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Trash</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </div>
-        <button onClick={() => setIsAddDrawerOpen(true)} className="btn-secondary !text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
-          <Plus className="w-4 h-4" /> Save item
-        </button>
-      </div>
+      <PageHeader
+        title="Explore"
+        actions={
+          <Button variant="secondary" onClick={() => setIsAddDrawerOpen(true)} className="!text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
+            <Plus className="w-4 h-4" /> Save item
+          </Button>
+        }
+      >
+        <Tabs value={showTrash ? "trash" : showArchive ? "archive" : "active"} onValueChange={(v) => {
+          setShowArchive(v === "archive");
+          setShowTrash(v === "trash");
+        }}>
+          <TabsList variant="line" className="border-[var(--color-border)]">
+            <TabsTrigger value="active" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Active</TabsTrigger>
+            <TabsTrigger value="archive" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Archive</TabsTrigger>
+            <TabsTrigger value="trash" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Trash</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </PageHeader>
 
       <div className="flex flex-col gap-6">
         <div className="space-y-6">
@@ -267,12 +268,12 @@ export default function ExplorePage() {
               </div>
               <h3 className="text-[var(--color-text-1)] font-medium mb-2">Nothing saved yet</h3>
               <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Capture &ldquo;interesting...&rdquo; or paste a URL to save articles, tweets, and links.</p>
-              <button 
+              <Button variant="primary" 
                 onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
-                className="btn-primary gap-2"
+                className="gap-2"
               >
                 <Plus size={16} /> Save Link
-              </button>
+              </Button>
             </GlassCard>
           ) : (
             <div className="grid grid-cols-1 gap-4">

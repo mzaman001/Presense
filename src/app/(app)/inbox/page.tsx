@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import { Inbox, Loader2, FolderInput, CheckCircle2, MessageSquare, Compass, Brain, X, MapPin, Trash2 } from "lucide-react";
@@ -8,6 +9,11 @@ import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Popover } from "@/components/ui/Popover";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+import { Button } from "@/components/ui/button";
 
 interface InboxItem {
   id: string;
@@ -53,7 +59,7 @@ const InboxItemCard = ({
       animate={slidingOut === item.id ? { opacity: 0, x: 60, scale: 0.96 } : { opacity: 1, y: 0, x: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="group relative rounded-2xl overflow-hidden"
+      className="group relative rounded-2xl"
     >
       {/* Swipe-to-delete reveal layer */}
       <m.div
@@ -82,44 +88,45 @@ const InboxItemCard = ({
         >
           <p className="text-card-title text-[var(--text-1)] flex-1 text-lg">{item.title}</p>
           <div className="flex items-center gap-2 w-full md:w-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
-            <div 
-              className="relative flex-1 md:flex-none"
-              ref={activeRouteItem === item.id ? activeDropdownRef : null}
-            >
-              <button 
-                onClick={(e) => { e.stopPropagation(); setActiveRouteItem(activeRouteItem === item.id ? null : item.id); }}
-                className="btn-secondary w-full"
-              >
-                <FolderInput className="w-3.5 h-3.5" />
-                Route it
-              </button>
-              {activeRouteItem === item.id && (
-                <div className="dropdown-panel absolute top-full mt-2 right-0 w-48 p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <button onClick={() => routeInboxItem(item.id, 'do')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+            <Popover
+              isOpen={activeRouteItem === item.id}
+              onOpenChange={(open) => setActiveRouteItem(open ? item.id : null)}
+              placement="bottom-end"
+              trigger={
+                <Button variant="secondary" 
+                  className="w-full"
+                >
+                  <FolderInput className="w-3.5 h-3.5" />
+                  Route it
+                </Button>
+              }
+              content={
+                <div className="flex flex-col p-1">
+                  <button onClick={() => { routeInboxItem(item.id, 'do'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-[var(--color-do)]" /> Do (Task)
                   </button>
-                  <button onClick={() => routeInboxItem(item.id, 'think')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                  <button onClick={() => { routeInboxItem(item.id, 'think'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                     <MessageSquare className="w-4 h-4 text-[var(--color-think)]" /> Think (Thread)
                   </button>
-                  <button onClick={() => routeInboxItem(item.id, 'explore')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                  <button onClick={() => { routeInboxItem(item.id, 'explore'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                     <Compass className="w-4 h-4 text-[var(--color-explore)]" /> Explore (Saved)
                   </button>
-                  <button onClick={() => routeInboxItem(item.id, 'remember')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                  <button onClick={() => { routeInboxItem(item.id, 'remember'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                     <Brain className="w-4 h-4 text-[var(--color-people)]" /> Remember (Person)
                   </button>
-                  <button onClick={() => routeInboxItem(item.id, 'location')} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                  <button onClick={() => { routeInboxItem(item.id, 'location'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-[var(--color-people)]" /> Locations
                   </button>
                 </div>
-              )}
-            </div>
-            <button 
+              }
+            />
+            <Button variant="icon" 
               onClick={() => dismissInboxItem(item.id)}
-              className="btn-icon !bg-transparent !border-transparent hover:!bg-red-500/10 hover:!text-red-400 shrink-0"
+              className="!bg-transparent !border-transparent hover:!bg-red-500/10 hover:!text-red-400 shrink-0"
               title="Dismiss"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
       </m.div>
@@ -184,7 +191,7 @@ export default function InboxPage() {
         } else if (space === 'remember') {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+            await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
             const { data: inserted, error: insertError } = await supabase.from('people').insert({
               user_id: user.id,
               name: item.title,
@@ -197,7 +204,7 @@ export default function InboxPage() {
             }
           }
         } else if (space === 'explore') {
-          await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+          await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
           const { data: inserted, error: insertError } = await supabase.from('explores').insert({
             user_id: item.user_id,
             title: item.title,
@@ -210,7 +217,7 @@ export default function InboxPage() {
             routedId = inserted.id;
           }
         } else if (space === 'think') {
-          await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+          await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
           const { data: inserted, error: insertError } = await supabase.from('threads').insert({
             user_id: item.user_id,
             title: item.title,
@@ -225,7 +232,7 @@ export default function InboxPage() {
         } else if (space === 'location') {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+            await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
             const { data: inserted, error: insertError } = await supabase.from('locations').insert({
               user_id: user.id,
               item_name: item.title,
@@ -293,7 +300,7 @@ export default function InboxPage() {
     queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => old?.filter(i => i.id !== id) ?? []);
 
     try {
-      await supabase.from('items').update({ status: 'deleted' }).eq('id', id);
+      await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
       toast.success("Dismissed", {
         duration: 5000,
         action: {
@@ -320,7 +327,7 @@ export default function InboxPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
+          <p className="text-caption uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
             <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight flex items-center gap-2">
               <Inbox size={22} className="text-[var(--accent)]" />

@@ -1,3 +1,4 @@
+"use client";
 import React, { useMemo, useState } from "react";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
@@ -9,7 +10,8 @@ import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHaptics } from "@/hooks/useHaptics";
-import { archiveItemPatch, restoreItemPatch } from "@/lib/item-lifecycle";
+import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
+import { Button } from "@/components/ui/button";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -74,7 +76,7 @@ export const TaskCard = React.memo(({
     priority === 1 ? "#ef4444" : // red
     priority === 2 ? "#eab308" : // yellow
     priority === 3 ? "#22c55e" : // green
-    "var(--text-4)";             // grey
+    "var(--text-muted)";             // grey
 
   const priorityGlow = 
     priority === 1 ? "0 0 6px rgba(239, 68, 68, 0.5)" : 
@@ -107,13 +109,13 @@ export const TaskCard = React.memo(({
       });
 
       try {
-        const { error } = await supabase.from("items").update(archiveItemPatch()).eq("id", task.id);
+        const { error } = await supabase.from("items").update(moveItemToTrashPatch()).eq("id", task.id);
         if (error) throw error;
 
         markMutation();
         fetchTasks();
         
-        toast.success("Task archived", {
+        toast.success("Task moved to trash", {
           action: {
             label: "Undo",
             onClick: async () => {
@@ -250,21 +252,21 @@ export const TaskCard = React.memo(({
           <div className="flex-1 min-w-0 pr-4">
             <div className="flex items-center gap-2 mb-1">
               {isOverdue && (
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--space-do)" }}>Overdue</span>
+                <span className="text-caption font-bold uppercase tracking-widest" style={{ color: "var(--space-do)" }}>Overdue</span>
               )}
               {!isOverdue && label === "Today" && (
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--status-today)" }}>Due Today</span>
+                <span className="text-caption font-bold uppercase tracking-widest" style={{ color: "var(--status-today)" }}>Due Today</span>
               )}
               <span
-                className="text-[10px] font-semibold capitalize"
-                style={{ color: (userSettings?.do_category_colors?.[task.category] || DEFAULT_DO_COLORS[task.category]) ?? "var(--text-4)" }}
+                className="text-caption font-semibold capitalize"
+                style={{ color: (userSettings?.do_category_colors?.[task.category] || DEFAULT_DO_COLORS[task.category]) ?? "var(--text-muted)" }}
               >
                 {task.category}
               </span>
             </div>
 
             <m.p
-              className="text-[14px] font-semibold leading-snug"
+              className="text-body-lg font-semibold leading-snug"
               style={{ color: "var(--text-1)" }}
               animate={isCompleting ? {
                 textDecoration: "line-through",
@@ -277,13 +279,13 @@ export const TaskCard = React.memo(({
             </m.p>
 
             {task.first_step && (
-              <p className="text-[12px] mt-1" style={{ color: isOverdue ? "var(--space-do)" : "var(--space-think)" }}>
+              <p className="text-ui mt-1" style={{ color: isOverdue ? "var(--space-do)" : "var(--space-think)" }}>
                 → {task.first_step}
               </p>
             )}
 
             {task.recurrence && (
-              <p className="text-[12px] mt-1" style={{ color: "var(--text-3)" }}>
+              <p className="text-ui mt-1" style={{ color: "var(--text-3)" }}>
                 ⇆ {formatRRule(task.recurrence)}
               </p>
             )}
@@ -296,7 +298,7 @@ export const TaskCard = React.memo(({
                     style={{ width: `${(completedSubtasks / subtasks.length) * 100}%`, background: "var(--text-3)" }}
                   />
                 </div>
-                <span className="text-[10px] font-medium shrink-0" style={{ color: "var(--text-3)" }}>
+                <span className="text-caption font-medium shrink-0" style={{ color: "var(--text-3)" }}>
                   {completedSubtasks}/{subtasks.length}
                 </span>
               </div>
@@ -306,7 +308,7 @@ export const TaskCard = React.memo(({
 
         <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: "0.5px solid var(--border-subtle)" }}>
           <div className="flex items-center gap-3">
-            <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
+            <span className="text-ui" style={{ color: "var(--text-3)" }}>
               {label && label !== "Overdue" && label !== "Today" ? label : task.deadline ? "" : "No deadline"}
             </span>
 
@@ -334,13 +336,13 @@ export const TaskCard = React.memo(({
             {task.time_spent_minutes > 0 && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ background: "rgba(229,180,30,0.08)" }} title="Time spent on this task">
                 <Timer size={12} strokeWidth={1.5} style={{ color: "var(--accent)" }} />
-                <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>{formatTimeSpent(task.time_spent_minutes)}</span>
+                <span className="text-caption font-bold" style={{ color: "var(--accent)" }}>{formatTimeSpent(task.time_spent_minutes)}</span>
               </div>
             )}
             {(task.snoozed_until && new Date(task.snoozed_until) > new Date()) && (
               <div className="flex items-center gap-1 px-2 py-1 rounded-md" style={{ background: "var(--surface-1)", border: "0.5px solid var(--border-default)" }}>
                 <Clock size={12} strokeWidth={1.5} style={{ color: "var(--text-3)" }} />
-                <span className="text-[10px]" style={{ color: "var(--text-3)" }}>
+                <span className="text-caption" style={{ color: "var(--text-3)" }}>
                   {new Date(task.snoozed_until).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                 </span>
                 <button
@@ -384,9 +386,9 @@ export const TaskCard = React.memo(({
               </div>
             )}
 
-            <button
+            <Button variant="icon"
               onClick={(e) => { e.stopPropagation(); setActiveTimer({ taskId: task.id, taskTitle: task.title }); }}
-              className="btn-icon"
+              className=""
               style={{
                 background: "rgba(229,180,30,0.08)",
                 color: "var(--accent)",
@@ -395,7 +397,7 @@ export const TaskCard = React.memo(({
               title="Start focus session"
             >
               <Play size={14} strokeWidth={0} className="fill-current" />
-            </button>
+            </Button>
           </div>
         </div>
       </GlassCard>

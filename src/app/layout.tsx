@@ -75,16 +75,25 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `
               try {
                 var html = document.documentElement;
-                var rawTheme = localStorage.getItem('presense_theme') || 'sunset';
-                var theme = rawTheme === 'orange' || rawTheme === 'wahala' || rawTheme === 'blue' || rawTheme === 'navy' ? 'sunset' : rawTheme === 'forest' ? 'meadow' : rawTheme;
-                var mode = localStorage.getItem('presense_color_mode') || 'dark';
+                var isLogin = window.location.pathname.startsWith('/login');
+                var rawTheme = isLogin ? 'warm' : (localStorage.getItem('presense_theme') || 'warm');
+                var theme = (rawTheme === 'orange' || rawTheme === 'wahala' || rawTheme === 'sunset') ? 'warm' : 
+                            (rawTheme === 'blue' || rawTheme === 'midnight' || rawTheme === 'navy') ? 'navy' :
+                            (rawTheme === 'forest' || rawTheme === 'meadow') ? 'forest' : rawTheme;
+                var mode = isLogin ? 'dark' : (localStorage.getItem('presense_color_mode') || 'dark');
                 var reduceMotion = localStorage.getItem('presense_reduce_motion') === 'true';
-                html.classList.remove('theme-blue', 'theme-forest', 'theme-navy', 'theme-midnight', 'theme-meadow', 'light', 'reduce-motion');
-                if (theme === 'midnight') html.classList.add('theme-midnight');
-                else if (theme === 'meadow') html.classList.add('theme-meadow');
                 var isLight = mode === 'light' || (mode === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches);
-                if (isLight) html.classList.add('light');
-                if (reduceMotion) html.classList.add('reduce-motion');
+                var resolvedMode = isLight ? 'light' : 'dark';
+                
+                html.classList.remove('theme-blue', 'theme-forest', 'theme-navy', 'theme-midnight', 'theme-meadow', 'light');
+                html.setAttribute('data-theme', theme);
+                html.setAttribute('data-mode', resolvedMode);
+                
+                if (reduceMotion) {
+                  html.classList.add('reduce-motion');
+                } else {
+                  html.classList.remove('reduce-motion');
+                }
                 
                 var metaTheme = document.createElement('meta');
                 metaTheme.name = 'theme-color';

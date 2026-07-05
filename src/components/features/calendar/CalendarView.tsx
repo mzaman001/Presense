@@ -231,7 +231,7 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
 
   return (
     <div
-      className="flex flex-col h-[calc(100dvh-160px)] min-h-[420px] md:min-h-[600px]"
+      className="flex-1 min-h-0 flex flex-col"
       tabIndex={0}
       onKeyDown={(event) => {
         if (event.key === "t") {

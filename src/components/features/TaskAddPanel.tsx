@@ -1,3 +1,6 @@
+"use client";
+import { Input } from "../ui/Input";
+import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -6,11 +9,20 @@ import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
 import { Avatar } from "@/components/ui/Avatar";
-import "@/lib/chrono-custom"; // registers custom parsers on chrono.casual
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { toast } from "sonner";
-import * as chrono from "chrono-node";
+
+let chronoCache: any = null;
+async function getChrono() {
+  if (!chronoCache) {
+    const chrono = await import("chrono-node");
+    const { registerCustomParsers } = await import("@/lib/chrono-custom");
+    registerCustomParsers(chrono);
+    chronoCache = chrono;
+  }
+  return chronoCache;
+}
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
@@ -18,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+import { Button } from "@/components/ui/button";
 
 interface TaskEditData {
   id: string;
@@ -235,10 +248,11 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
     }
   }, [isOpen, taskToEdit, initialDeadline]);
 
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setTitle(val);
     if (!isManualDate && userSettings?.nlp_date_parsing !== false) {
+      const chrono = await getChrono();
       const parsedResults = chrono.parse(val);
       if (parsedResults && parsedResults.length > 0) {
         let d: Date;
@@ -247,12 +261,12 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
         } else {
           // Multiple results: combine their text and re-parse to merge date+time
           // e.g. "tomorrow" + "at 9pm" → "tomorrow at 9pm" → single correct result
-          const combined = parsedResults.map((r) => r.text).join(" ");
+          const combined = parsedResults.map((r: any) => r.text).join(" ");
           const merged = chrono.parse(combined);
           d =
             merged.length > 0 && merged[0].start
               ? merged[0].start.date()
-              : parsedResults.reduce((a, b) =>
+              : parsedResults.reduce((a: any, b: any) =>
                   a.start.date() > b.start.date() ? a : b
                 ).start.date();
         }
@@ -328,9 +342,10 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
 
         let finalTitle = title.trim();
         if (parsedDeadline && !isManualDate) {
+          const chrono = await getChrono();
           const parsedResults = chrono.parse(finalTitle);
           if (parsedResults && parsedResults.length > 0) {
-            parsedResults.forEach(r => {
+            parsedResults.forEach((r: any) => {
               finalTitle = finalTitle.replace(r.text, '');
             });
             finalTitle = finalTitle.replace(/\s+/g, ' ').trim();
@@ -396,13 +411,10 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
   return (
     <>
     <Sheet isOpen={isOpen} onClose={onClose} title={taskToEdit ? "Edit Task" : "Add Task"}>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6" data-lenis-prevent>
               {/* Title */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">
-                  Task Name <span className="text-red-400">*</span>
-                </label>
-                <input
+              <Input
+  label={<>Task Name <span className="text-red-400">*</span></>}
                   autoFocus
                   inputMode="text"
                   autoCapitalize="sentences"
@@ -415,16 +427,15 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                       handleSave();
                     }
                   }}
-                  className="input-title"
-                />
-              </div>
+                  variant="title"
+/>
 
               {/* Subtasks */}
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Subtasks</label>
                 <div className="space-y-1.5">
                   {subtasks.map((st, i) => (
-                    <div key={st.id} className="flex items-center gap-2 group">
+                    <div key={st.id || i} className="flex items-center gap-2 group">
                       <button
                         onClick={() => {
                           setSubtasks(subtasks.map((st, idx) => idx === i ? { ...st, completed: !st.completed } : st));
@@ -439,9 +450,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                           setSubtasks(subtasks.map((st, idx) => idx === i ? { ...st, text: e.target.value } : st));
                         }}
                         placeholder="Subtask..."
-                        className={cn("flex-1 bg-transparent border-none text-sm focus:outline-none placeholder:text-[var(--text-4)]", st.completed && "line-through text-[var(--text-4)]")}
+                        className={cn("flex-1 bg-transparent border-none text-sm focus:outline-none placeholder:text-[var(--text-muted)]", st.completed && "line-through text-[var(--text-muted)]")}
                       />
-                      <button onClick={() => setSubtasks(subtasks.filter((_, idx) => idx !== i))} className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-4)] hover:text-[#F87171] transition-all">
+                      <button onClick={() => setSubtasks(subtasks.filter((_, idx) => idx !== i))} className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-muted)] hover:text-[#F87171] transition-all">
                         <X size={14} />
                       </button>
                     </div>
@@ -454,12 +465,12 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
 
               {/* First Step */}
               <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">First Step <span className="text-[var(--text-4)]">(optional)</span></label>
+                <label className="text-label text-[var(--text-3)] block mb-2">First Step <span className="text-[var(--text-muted)]">(optional)</span></label>
                 <input
                   placeholder="What's the smallest action to start this?"
                   value={firstStep}
                   onChange={(e) => setFirstStep(e.target.value)}
-                  className="input"
+                  
                 />
               </div>
 
@@ -491,7 +502,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                           <button
                             key={btn.id}
                             onClick={() => setQuickDate(btn.id)}
-                            className="px-2 py-1 rounded-md text-[11px] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--text-2)] hover:bg-[var(--color-border)] transition-colors"
+                            className="px-2 py-1 rounded-md text-meta font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--text-2)] hover:bg-[var(--color-border)] transition-colors"
                           >
                             {btn.label}
                           </button>
@@ -499,7 +510,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-4)] block mb-1.5">Due Date/Time</label>
+                          <label className="text-caption uppercase font-bold tracking-widest text-[var(--text-muted)] block mb-1.5">Due Date/Time</label>
                           <input
                             type="datetime-local"
                             value={deadline || ""}
@@ -508,7 +519,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-4)] block mb-1.5">Start Date</label>
+                          <label className="text-caption uppercase font-bold tracking-widest text-[var(--text-muted)] block mb-1.5">Start Date</label>
                           <input
                             type="datetime-local"
                             value={startDate || ""}
@@ -538,7 +549,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                           <button
                             key={f}
                             onClick={() => setFreq(f)}
-                            className={cn("px-2 py-1 rounded-md text-[11px] font-medium transition-colors border", freq === f ? 'bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]' : 'bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]')}
+                            className={cn("px-2 py-1 rounded-md text-meta font-medium transition-colors border", freq === f ? 'bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]' : 'bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]')}
                           >
                             {f}
                           </button>
@@ -553,7 +564,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                             <button
                               key={d.v}
                               onClick={() => setDays(prev => prev.includes(d.v) ? prev.filter(x => x !== d.v) : [...prev, d.v])}
-                              className={cn("px-2 py-1 rounded-md text-[11px] font-bold transition-colors border", days.includes(d.v) ? 'bg-[#FBBF24] text-amber-950 border-[#FBBF24]' : 'bg-transparent text-[var(--text-3)] border-transparent hover:bg-[var(--color-border)]')}
+                              className={cn("px-2 py-1 rounded-md text-meta font-bold transition-colors border", days.includes(d.v) ? 'bg-[#FBBF24] text-amber-950 border-[#FBBF24]' : 'bg-transparent text-[var(--text-3)] border-transparent hover:bg-[var(--color-border)]')}
                             >
                               {d.l}
                             </button>
@@ -562,7 +573,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                       )}
                       {freq === "Custom" && (
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="text-[11px] text-[var(--text-3)] font-medium">Every</span>
+                          <span className="text-meta text-[var(--text-3)] font-medium">Every</span>
                           <input
                             type="number"
                             min="1"
@@ -612,13 +623,13 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
 
               {/* Time Estimate */}
               <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Time Estimate (minutes) <span className="text-[var(--text-4)]">(optional)</span></label>
+                <label className="text-label text-[var(--text-3)] block mb-2">Time Estimate (minutes) <span className="text-[var(--text-muted)]">(optional)</span></label>
                 <input
                   type="number"
                   placeholder="e.g. 30"
                   value={timeEstimate === null ? "" : timeEstimate}
                   onChange={(e) => setTimeEstimate(e.target.value ? parseInt(e.target.value) : null)}
-                  className="input"
+                  
                   min={1}
                 />
               </div>
@@ -721,20 +732,20 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
             {/* Sticky Bottom Bar */}
             <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3 md:rounded-b-2xl">
               {taskToEdit && (
-                <button
+                <Button variant="danger"
                   onClick={() => setDeleteTaskConfirm(true)}
-                  className="btn-danger px-3 flex items-center justify-center"
+                  className="px-3 flex items-center justify-center"
                 >
                   <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
-                </button>
+                </Button>
               )}
-              <button
+              <Button variant="primary"
                 onClick={handleSave}
                 disabled={saving || !title.trim()}
-                className="flex-1 btn-primary py-3 w-full disabled:opacity-50"
+                className="flex-1  py-3 w-full disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (taskToEdit ? "Save Changes" : "Save Task")}
-              </button>
+              </Button>
             </div>
     </Sheet>
     <ConfirmModal

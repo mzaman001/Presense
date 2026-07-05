@@ -1,3 +1,5 @@
+import { Input } from "../ui/Input";
+import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import { m, AnimatePresence } from "framer-motion";
@@ -6,6 +8,8 @@ import { createClient } from "@/lib/supabase";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { Sheet } from "@/components/ui/Sheet";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+import { Button } from "@/components/ui/button";
 
 interface LocationAddPanelProps {
   isOpen: boolean;
@@ -81,9 +85,9 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
     if (!itemToEdit) return;
     try {
       const supabase = createClient();
-      const { error } = await supabase.from("locations").delete().eq("id", itemToEdit.id);
+      const { error } = await supabase.from("locations").update(moveItemToTrashPatch()).eq("id", itemToEdit.id);
       if (error) throw error;
-      toast.success("Location deleted");
+      toast.success("Location moved to trash");
       if (onLocationAdded) onLocationAdded();
       onClose();
     } catch (err: unknown) {
@@ -104,11 +108,8 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
               )}
               
               <div className="space-y-4">
-                <div>
-                  <label className="text-label text-[var(--text-3)] block mb-2">
-                    Item Name <span className="text-red-400">*</span>
-                  </label>
-                  <input
+                <Input
+  label={<>Item Name <span className="text-red-400">*</span></>}
                     type="text"
                     autoFocus
                     value={itemName}
@@ -117,42 +118,37 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
                       if (e.key === "Enter") handleSave();
                     }}
                     placeholder="e.g. Keys, Passport, Charger"
-                    className="input"
-                  />
-                </div>
+                    variant="default"
+/>
 
-                <div>
-                  <label className="text-label text-[var(--text-3)] block mb-2">
-                    Location <span className="text-red-400">*</span>
-                  </label>
-                  <input
+                <Input
+  label={<>Location <span className="text-red-400">*</span></>}
                     type="text"
                     value={locationText}
                     onChange={(e) => setLocationText(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSave()}
                     placeholder="e.g. In the top drawer of my desk"
-                    className="input"
-                  />
-                </div>
+                    variant="default"
+/>
               </div>
             </div>
 
             <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3 md:rounded-b-2xl">
               {itemToEdit && (
-                <button
+                <Button variant="danger"
                   onClick={() => setDeleteConfirm(true)}
-                  className="btn-danger px-3 flex items-center justify-center"
+                  className="px-3 flex items-center justify-center"
                 >
                   <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
-                </button>
+                </Button>
               )}
-              <button
+              <Button variant="primary"
                 onClick={handleSave}
                 disabled={saving || !itemName.trim() || !locationText.trim()}
-                className="flex-1 btn-primary py-3 w-full disabled:opacity-50"
+                className="flex-1  py-3 w-full disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (itemToEdit ? "Save Changes" : "Log Location")}
-              </button>
+              </Button>
             </div>
       </Sheet>
       <ConfirmModal

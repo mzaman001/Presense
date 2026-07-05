@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   format,
-  startOfWeek,
   addDays,
   isSameDay,
   isToday,
@@ -15,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 
 import { Task } from "@/types/calendar";
+import { useAppStore } from "@/store/useAppStore";
 
 const HOUR_HEIGHT = 48; // px per hour
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -28,7 +28,6 @@ interface WeekViewProps {
   days?: number;
 }
 
-/** Detects whether a task is "all-day" — deadline with no time (midnight 00:00:00 UTC or local) */
 function isAllDayTask(deadline: string): boolean {
   const d = new Date(deadline);
   return d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0;
@@ -39,9 +38,7 @@ function getTopOffset(deadline: string): number {
   return (d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT;
 }
 
-/** Calculates overlap layout for side-by-side rendering */
 function calculateOverlap(tasks: Task[]) {
-  // Sort by start time (hour + min)
   const sorted = [...tasks].sort((a, b) => {
     const dA = parseISO(a.deadline!);
     const dB = parseISO(b.deadline!);
@@ -49,7 +46,6 @@ function calculateOverlap(tasks: Task[]) {
   });
 
   const layout: { task: Task; left: number; width: number }[] = [];
-  
   let columns: Task[][] = [];
   let lastEventEnding: number | null = null;
 
@@ -69,7 +65,7 @@ function calculateOverlap(tasks: Task[]) {
   sorted.forEach((task) => {
     const d = parseISO(task.deadline!);
     const start = d.getHours() + d.getMinutes() / 60;
-    const end = start + 1; // standard block assumption for overlapping calculation
+    const end = start + (task.time_estimate ? task.time_estimate / 60 : 0.5);
 
     if (lastEventEnding !== null && start >= lastEventEnding) {
       packColumns();
@@ -83,11 +79,9 @@ function calculateOverlap(tasks: Task[]) {
       const lastStart =
         parseISO(lastInCol.deadline!).getHours() +
         parseISO(lastInCol.deadline!).getMinutes() / 60;
+      const lastDuration = lastInCol.time_estimate ? lastInCol.time_estimate / 60 : 0.5;
       
-      // If start is >= lastStart + 1 hour (assuming 1h duration), we can place it underneath.
-      // But for pure vertical columns, a task can be in this column only if it starts after the previous ends.
-      // To keep it simple, React Big Calendar does this:
-      if (start >= lastStart + (lastInCol.time_estimate ? lastInCol.time_estimate / 60 : 1)) {
+      if (start >= lastStart + lastDuration) {
         col.push(task);
         placed = true;
         break;
@@ -102,33 +96,61 @@ function calculateOverlap(tasks: Task[]) {
   return layout;
 }
 
-/** Droppable slot for individual hour cells */
 function DroppableSlot({
   id,
   hour,
+  dayIndex,
   dayDate,
   onClick,
 }: {
   id: string;
   hour: number;
+  dayIndex: number;
   dayDate: Date;
   onClick: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const nextHour = Math.max(0, hour - 1);
+      (document.querySelector(`[data-slot-day="${dayIndex}"][data-slot-hour="${nextHour}"]`) as HTMLElement)?.focus();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextHour = Math.min(23, hour + 1);
+      (document.querySelector(`[data-slot-day="${dayIndex}"][data-slot-hour="${nextHour}"]`) as HTMLElement)?.focus();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const prevDay = dayIndex - 1;
+      if (prevDay >= 0) {
+        (document.querySelector(`[data-slot-day="${prevDay}"][data-slot-hour="${hour}"]`) as HTMLElement)?.focus();
+      }
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const nextDay = dayIndex + 1;
+      (document.querySelector(`[data-slot-day="${nextDay}"][data-slot-hour="${hour}"]`) as HTMLElement)?.focus();
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      data-slot-day={dayIndex}
+      data-slot-hour={hour}
       className={cn(
-        "border-t border-[rgba(255,255,255,0.04)] relative group cursor-pointer transition-colors",
+        "border-t border-[rgba(255,255,255,0.04)] relative group cursor-pointer transition-colors outline-none focus:bg-[rgba(255,255,255,0.08)]",
         isOver ? "bg-[var(--accent)]/10" : "hover:bg-[rgba(255,255,255,0.04)]"
       )}
       style={{ height: HOUR_HEIGHT }}
     >
-      {/* Half-hour subdivision line */}
-      <div className="absolute top-1/2 left-0 right-0 border-t border-[rgba(255,255,255,0.02)]" />
-      {/* Plus icon appears on hover */}
+      <div className="absolute top-1/2 left-0 right-0 border-t border-[rgba(255,255,255,0.02)] pointer-events-none" />
       <Plus
         size={12}
         className="absolute top-1 right-1 text-[var(--color-text-3)] opacity-0 group-hover:opacity-60 transition-opacity"
@@ -137,7 +159,6 @@ function DroppableSlot({
   );
 }
 
-/** Droppable all-day zone for a specific day */
 function DroppableAllDay({ id, children }: { id: string; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
@@ -156,7 +177,6 @@ function DroppableAllDay({ id, children }: { id: string; children: React.ReactNo
 export function WeekView({ weekStart, tasks, onEditTask, onCreateTaskAt, days = DAYS }: WeekViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  const [now, setNow] = useState(new Date());
   const [currentTimeTop, setCurrentTimeTop] = useState(() => {
     const d = new Date();
     return (d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT;
@@ -165,7 +185,6 @@ export function WeekView({ weekStart, tasks, onEditTask, onCreateTaskAt, days = 
   useEffect(() => {
     const interval = setInterval(() => {
       const d = new Date();
-      setNow(d);
       setCurrentTimeTop((d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT);
     }, 60000);
     return () => clearInterval(interval);
@@ -178,9 +197,8 @@ export function WeekView({ weekStart, tasks, onEditTask, onCreateTaskAt, days = 
     }
   }, [weekStart]);
 
-  const weekDays = Array.from({ length: days }, (_, i) => addDays(weekStart, i));
+  const viewDays = Array.from({ length: days }, (_, i) => addDays(weekStart, i));
 
-  /** Split tasks by week day */
   function getTasksForDay(day: Date) {
     return tasks.filter((t) => {
       if (!t.deadline) return false;
@@ -200,155 +218,147 @@ export function WeekView({ weekStart, tasks, onEditTask, onCreateTaskAt, days = 
     onCreateTaskAt?.(deadline);
   }
 
+  // CSS Grid approach:
+  // Column 1 = 56px
+  // Columns 2 to N+1 = 1fr (minmax)
+  const gridTemplateColumns = `56px repeat(${days}, minmax(${days === 1 ? '0' : '100px'}, 1fr))`;
+
   return (
-    <div className="flex flex-col h-full overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-      {/* Column headers */}
-      <div className="flex border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] shrink-0">
-        <div className="w-14 shrink-0" />
-        {weekDays.map((day) => {
+    <div 
+      ref={scrollRef}
+      className="h-full overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] relative"
+      tabIndex={-1}
+    >
+      <div 
+        className={cn("grid min-h-full", days === 7 ? "min-w-[800px]" : "min-w-[300px]")}
+        style={{ 
+          gridTemplateColumns, 
+          gridTemplateRows: `auto auto repeat(24, ${HOUR_HEIGHT}px)` 
+        }}
+      >
+        {/* TOP-LEFT CORNER (Sticky Z-40) */}
+        <div className="sticky top-0 left-0 z-40 bg-[var(--color-surface)] border-b border-r border-[var(--color-border)]" />
+        
+        {/* DAY HEADERS (Sticky Z-30) */}
+        {viewDays.map((day, i) => {
           const today = isToday(day);
           return (
             <div
-              key={day.toISOString()}
-              className="flex-1 text-center py-3 border-l border-[var(--color-border)] first:border-l-0"
+              key={`header-${day.toISOString()}`}
+              className="sticky top-0 z-30 bg-[var(--color-surface)] border-b border-r border-[var(--color-border)] text-center py-3 last:border-r-0"
+              style={{ gridColumn: i + 2, gridRow: 1 }}
             >
-              <p
-                className={cn(
-                  "text-[10px] uppercase tracking-widest font-semibold",
-                  today ? "text-[var(--accent)]" : "text-[var(--color-text-3)]"
-                )}
-              >
+              <p className={cn("text-caption uppercase tracking-widest font-semibold", today ? "text-[var(--accent)]" : "text-[var(--color-text-3)]")}>
                 {format(day, "EEE")}
               </p>
-              <div
-                className={cn(
-                  "text-lg font-bold mt-0.5 w-9 h-9 rounded-full mx-auto flex items-center justify-center",
-                  today
-                    ? "bg-[var(--accent)] text-white"
-                    : "text-[var(--color-text-1)]"
-                )}
-              >
+              <div className={cn("text-lg font-bold mt-0.5 w-9 h-9 rounded-full mx-auto flex items-center justify-center", today ? "bg-[var(--accent)] text-white" : "text-[var(--color-text-1)]")}>
                 {format(day, "d")}
               </div>
             </div>
           );
         })}
-      </div>
 
-      {/* All-Day row */}
-      <div className="flex border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] shrink-0">
-        <div className="w-14 shrink-0 flex items-center justify-end pr-2">
+        {/* ALL DAY LABEL (Sticky Z-30) */}
+        <div className="sticky left-0 z-30 bg-[var(--color-surface)] border-b border-r border-[var(--color-border)] flex items-center justify-end pr-2 py-2" style={{ gridColumn: 1, gridRow: 2, top: 76 }}>
           <span className="text-[9px] uppercase tracking-widest text-[var(--color-text-3)] font-semibold">
             All day
           </span>
         </div>
-        {weekDays.map((day) => {
-          const dayTasks = getTasksForDay(day).filter(
-            (t) => t.deadline && isAllDayTask(t.deadline)
-          );
+
+        {/* ALL DAY CELLS (Sticky Z-20 vertically, flow horizontally) */}
+        {viewDays.map((day, i) => {
+          const dayTasks = getTasksForDay(day).filter(t => t.deadline && isAllDayTask(t.deadline));
           return (
             <div
-              key={day.toISOString()}
-              className="flex-1 border-l border-[var(--color-border)] first:border-l-0"
+              key={`allday-${day.toISOString()}`}
+              className="sticky z-20 bg-[var(--color-surface)] border-b border-r border-[var(--color-border)] last:border-r-0"
+              style={{ gridColumn: i + 2, gridRow: 2, top: 76 }}
               onClick={() => handleAllDayClick(day)}
             >
               <DroppableAllDay id={`allday-${format(day, "yyyy-MM-dd")}`}>
                 {dayTasks.map((task) => (
-                  <CalendarTaskChip
-                    key={task.id}
-                    task={task}
-                    variant="allday"
-                    onEdit={onEditTask}
-                  />
+                  <CalendarTaskChip key={task.id} task={task} variant="allday" onEdit={onEditTask} />
                 ))}
               </DroppableAllDay>
             </div>
           );
         })}
-      </div>
 
-      {/* Scrollable grid */}
-      <div ref={scrollRef} className="flex-1 overflow-auto relative">
-        <div className={cn("flex", days === 1 ? "min-w-0" : "min-w-[800px]")} style={{ height: HOUR_HEIGHT * 24 }}>
-          {/* Time labels */}
-          <div className="w-14 shrink-0 relative">
-            {HOURS.map((hour) => (
-              <div
-                key={hour}
-                className="absolute right-2 text-[10px] text-[var(--color-text-3)] font-medium leading-none"
-                style={{ top: hour * HOUR_HEIGHT - 6, display: hour === 0 ? "none" : "block" }}
-              >
+        {/* TIME LABELS (Sticky Left Z-20) */}
+        {HOURS.map(hour => (
+          <div
+            key={`time-${hour}`}
+            className="sticky left-0 z-20 bg-[var(--color-surface)] border-r border-[var(--color-border)] relative"
+            style={{ gridColumn: 1, gridRow: hour + 3 }}
+          >
+            {hour > 0 && (
+              <span className="absolute right-2 -top-2.5 text-caption text-[var(--color-text-3)] font-medium leading-none">
                 {format(new Date().setHours(hour, 0, 0, 0), "h a")}
-              </div>
-            ))}
+              </span>
+            )}
           </div>
+        ))}
 
-          {/* Day columns */}
-          {weekDays.map((day) => {
-            const dayTasksForColumn = getTasksForDay(day).filter(
-              (t) => t.deadline && !isAllDayTask(t.deadline)
-            );
-            const isCurrentDay = isToday(day);
+        {/* DAY COLUMNS (Z-10) */}
+        {viewDays.map((day, i) => {
+          const dayTasksForColumn = getTasksForDay(day).filter(t => t.deadline && !isAllDayTask(t.deadline));
+          const isCurrentDay = isToday(day);
 
-            return (
-              <div
-                key={day.toISOString()}
-                className={cn(
-                  "flex-1 border-l border-[var(--color-border)] relative",
-                  isCurrentDay && "bg-[var(--accent)]/[0.02]"
-                )}
-              >
-                {/* Hour slots — droppable targets */}
-                {HOURS.map((hour) => (
-                  <DroppableSlot
-                    key={hour}
-                    id={`slot-${format(day, "yyyy-MM-dd")}-${String(hour).padStart(2, "0")}-00`}
-                    hour={hour}
-                    dayDate={day}
-                    onClick={() => handleSlotClick(day, hour)}
-                  />
-                ))}
+          return (
+            <div
+              key={`col-${day.toISOString()}`}
+              className={cn("relative border-r border-[var(--color-border)] last:border-r-0", isCurrentDay && "bg-[var(--accent)]/[0.02]")}
+              style={{ gridColumn: i + 2, gridRow: "3 / span 24" }}
+            >
+              {/* The 24 droppable slots */}
+              {HOURS.map((hour) => (
+                <DroppableSlot
+                  key={hour}
+                  id={`slot-${format(day, "yyyy-MM-dd")}-${String(hour).padStart(2, "0")}-00`}
+                  hour={hour}
+                  dayIndex={i}
+                  dayDate={day}
+                  onClick={() => handleSlotClick(day, hour)}
+                />
+              ))}
 
-                {/* Current time indicator */}
-                {isCurrentDay && (
-                  <div
-                    className="absolute left-0 right-0 z-20 pointer-events-none"
-                    style={{ top: currentTimeTop }}
-                  >
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 rounded-full bg-[var(--accent)] shrink-0 -ml-1" />
-                      <div className="flex-1 h-[1.5px] bg-[var(--accent)]" />
-                    </div>
+              {/* Current time indicator */}
+              {isCurrentDay && (
+                <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: currentTimeTop }}>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 rounded-full bg-[var(--accent)] shrink-0 -ml-1" />
+                    <div className="flex-1 h-[1.5px] bg-[var(--accent)]" />
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Task chips — absolutely positioned with overlap layout */}
-                {calculateOverlap(dayTasksForColumn).map(({ task, left, width }) => {
-                  const top = task.deadline ? getTopOffset(task.deadline) : 0;
-                  const estimatedMinutes = (task.time_estimate as number) || 30; // fallback to 30 min height
-                  const minHeight = (estimatedMinutes / 60) * HOUR_HEIGHT;
-                  
-                  return (
-                    <CalendarTaskChip
-                      key={task.id}
-                      task={task}
-                      variant="week"
-                      style={{
-                        top,
-                        left: `${left}%`,
-                        width: `${width}%`,
-                        height: Math.max(minHeight, 24),
-                        minHeight: Math.max(minHeight, 24),
-                        zIndex: 10,
-                      }}
-                      onEdit={onEditTask}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+              {/* Absolute positioned tasks */}
+              {calculateOverlap(dayTasksForColumn).map(({ task, left, width }) => {
+                const top = task.deadline ? getTopOffset(task.deadline) : 0;
+                const estimatedMinutes = (task.time_estimate as number) || 30;
+                const minHeight = (estimatedMinutes / 60) * HOUR_HEIGHT;
+                
+                return (
+                  <CalendarTaskChip
+                    key={task.id}
+                    task={task}
+                    variant="week"
+                    style={{
+                      top,
+                      left: `${left}%`,
+                      width: `${width}%`,
+                      height: Math.max(minHeight, 24),
+                      minHeight: Math.max(minHeight, 24),
+                      position: 'absolute',
+                      zIndex: 10,
+                    }}
+                    onEdit={onEditTask}
+                  />
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

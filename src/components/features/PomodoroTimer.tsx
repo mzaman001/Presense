@@ -336,12 +336,12 @@ export function PomodoroTimer() {
         <div className="relative z-10 flex flex-col items-center gap-0">
           {/* Phase label */}
           <p
-            className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-1"
+            className="text-caption uppercase tracking-[0.18em] font-semibold mb-1"
             style={{ color: "var(--text-3)" }}
           >
             {phase === "work" ? "Work Session" : phase === "short_break" ? "Short Break" : "Long Break"}
           </p>
-          <p className="text-[12px] mb-10" style={{ color: "var(--text-3)" }}>
+          <p className="text-ui mb-10" style={{ color: "var(--text-3)" }}>
             {phase === "work" ? `${sessionCount} of ${longBreakInterval}` : "Take a breather"}
           </p>
 
@@ -383,7 +383,7 @@ export function PomodoroTimer() {
           </div>
 
           {/* Task title */}
-          <h2 className="text-[14px] font-medium mb-12 text-center max-w-[260px] truncate" style={{ color: "var(--text-2)" }}>
+          <h2 className="text-body-lg font-medium mb-12 text-center max-w-[260px] truncate" style={{ color: "var(--text-2)" }}>
             {activeTimer.taskTitle || "Focus Session"}
           </h2>
 

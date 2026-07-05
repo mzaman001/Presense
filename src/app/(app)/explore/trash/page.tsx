@@ -18,17 +18,21 @@ export default function ExploreTrashPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Fetch deleted explores, items, and threads
-    const [exploresRes, itemsRes, threadsRes] = await Promise.all([
+    // Fetch deleted explores, items, threads, people, and locations
+    const [exploresRes, itemsRes, threadsRes, peopleRes, locationsRes] = await Promise.all([
       supabase.from("explores").select("*").eq("status", "deleted").order("deleted_at", { ascending: false }),
       supabase.from("items").select("*").eq("status", "deleted").order("deleted_at", { ascending: false }),
-      supabase.from("threads").select("*").eq("status", "deleted").order("deleted_at", { ascending: false })
+      supabase.from("threads").select("*").eq("status", "deleted").order("deleted_at", { ascending: false }),
+      supabase.from("people").select("*").eq("status", "deleted").order("deleted_at", { ascending: false }),
+      supabase.from("locations").select("*").eq("status", "deleted").order("deleted_at", { ascending: false })
     ]);
 
     const combined = [
       ...(exploresRes.data || []).map((i: any) => ({ ...i, __type: 'explore' })),
       ...(itemsRes.data || []).map((i: any) => ({ ...i, __type: 'item' })),
-      ...(threadsRes.data || []).map((i: any) => ({ ...i, __type: 'thread' }))
+      ...(threadsRes.data || []).map((i: any) => ({ ...i, __type: 'thread' })),
+      ...(peopleRes.data || []).map((i: any) => ({ ...i, __type: 'person' })),
+      ...(locationsRes.data || []).map((i: any) => ({ ...i, __type: 'location' }))
     ].sort((a: any, b: any) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
 
     setItems(combined);
@@ -39,8 +43,11 @@ export default function ExploreTrashPage() {
 
   const handleRestore = async (item: any) => {
     try {
-      const table = item.__type === 'explore' ? 'explores' : item.__type === 'item' ? 'items' : 'threads';
-      const statusToRestore = item.__type === 'item' ? 'active' : 'active';
+      const table = item.__type === 'explore' ? 'explores' : 
+                    item.__type === 'item' ? 'items' : 
+                    item.__type === 'thread' ? 'threads' : 
+                    item.__type === 'person' ? 'people' : 'locations';
+      const statusToRestore = 'active';
       const { error } = await supabase.from(table).update({ status: statusToRestore, deleted_at: null }).eq("id", item.id);
       if (error) throw error;
       setItems(items.filter(i => i.id !== item.id));
@@ -53,7 +60,10 @@ export default function ExploreTrashPage() {
   const handlePermanentDelete = async () => {
     if (!itemToPermanentDelete) return;
     try {
-      const table = itemToPermanentDelete.__type === 'explore' ? 'explores' : itemToPermanentDelete.__type === 'item' ? 'items' : 'threads';
+      const table = itemToPermanentDelete.__type === 'explore' ? 'explores' : 
+                    itemToPermanentDelete.__type === 'item' ? 'items' : 
+                    itemToPermanentDelete.__type === 'thread' ? 'threads' : 
+                    itemToPermanentDelete.__type === 'person' ? 'people' : 'locations';
       const { error } = await supabase.from(table).delete().eq("id", itemToPermanentDelete.id);
       if (error) throw error;
       setItems(items.filter(i => i.id !== itemToPermanentDelete.id));
@@ -91,10 +101,10 @@ export default function ExploreTrashPage() {
             <GlassCard key={item.id} className="p-4 flex items-center justify-between group">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-text-3)]">
+                  <span className="text-caption uppercase tracking-widest px-2 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-text-3)]">
                     {item.__type}
                   </span>
-                  <h4 className="text-card-title text-[var(--text-1)]">{item.title}</h4>
+                  <h4 className="text-card-title text-[var(--text-1)]">{item.title || item.name}</h4>
                 </div>
                 <p className="text-xs text-[var(--color-text-3)] mt-1">
                   Deleted: {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString() : "Unknown"}

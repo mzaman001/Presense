@@ -67,8 +67,8 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               exit={{ y: "100%", opacity: 0 }}
               transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               className={cn(
-                "pointer-events-auto w-full max-h-[90vh] bg-[var(--color-background)] flex flex-col",
-                "rounded-t-[24px] md:rounded-[20px] shadow-2xl overflow-hidden border border-[var(--border-subtle)]",
+                "pointer-events-auto w-full max-h-[90vh] bg-[var(--elev-overlay-bg,var(--color-background))] flex flex-col",
+                "rounded-t-[24px] md:rounded-[20px] shadow-[var(--elev-overlay-shadow,var(--shadow-modal))] overflow-hidden border border-[var(--elev-overlay-border,var(--border-subtle))] [backdrop-filter:var(--elev-overlay-blur,var(--glass-blur-heavy))] [-webkit-backdrop-filter:var(--elev-overlay-blur,var(--glass-blur-heavy))]",
                 "md:max-w-xl md:max-h-[85vh]",
                 className
               )}
@@ -84,7 +84,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               {/* Header - only show if title is provided */}
               {title && (
                 <div className="flex items-center justify-between px-4 py-3 md:p-5 border-b border-[var(--border-subtle)] shrink-0">
-                  <div className="text-[17px] font-semibold text-[var(--color-text-1)]">
+                  <div className="text-title-lg font-semibold text-[var(--color-text-1)]">
                     {title}
                   </div>
                   <button
@@ -98,7 +98,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               )}
 
               {/* Content */}
-              <div className="p-4 md:p-5 overflow-y-auto overscroll-contain flex-1">
+              <div className="p-4 md:p-5 overflow-y-auto overscroll-contain flex-1" data-lenis-prevent>
                 {children}
               </div>
             </m.div>

@@ -1,21 +1,24 @@
-export type ThemeId = "sunset" | "midnight" | "meadow";
+export type ThemeId = "warm" | "navy" | "forest";
 export type ColorMode = "dark" | "light" | "system";
 
-export const DEFAULT_THEME_ID: ThemeId = "sunset";
+export const DEFAULT_THEME_ID: ThemeId = "warm";
 export const DEFAULT_COLOR_MODE: ColorMode = "dark";
 
 const LEGACY_THEME_MAP: Record<string, ThemeId> = {
-  orange: "sunset",
-  wahala: "sunset",
-  blue: "sunset",
-  navy: "sunset",
-  forest: "meadow",
+  orange: "warm",
+  wahala: "warm",
+  sunset: "warm",
+  blue: "navy",
+  midnight: "navy",
+  navy: "navy",
+  forest: "forest",
+  meadow: "forest",
 };
 
 export function normalizeThemeId(value: unknown): ThemeId {
   if (typeof value !== "string") return DEFAULT_THEME_ID;
   const normalized = value.trim().toLowerCase();
-  if (normalized === "sunset" || normalized === "midnight" || normalized === "meadow") {
+  if (normalized === "warm" || normalized === "navy" || normalized === "forest") {
     return normalized;
   }
   return LEGACY_THEME_MAP[normalized] ?? DEFAULT_THEME_ID;
@@ -25,33 +28,37 @@ export function normalizeColorMode(value: unknown): ColorMode {
   return value === "light" || value === "system" || value === "dark" ? value : DEFAULT_COLOR_MODE;
 }
 
-export function getThemeClassNames(themeValue: unknown, modeValue: unknown, prefersLight = false): string[] {
-  const theme = normalizeThemeId(themeValue);
-  const mode = normalizeColorMode(modeValue);
-  const classes: string[] = [];
-
-  if (theme === "midnight") classes.push("theme-midnight");
-  if (theme === "meadow") classes.push("theme-meadow");
-  if (mode === "light" || (mode === "system" && prefersLight)) classes.push("light");
-
-  return classes;
-}
-
 export function applyDocumentTheme(themeValue: unknown, modeValue: unknown, reduceMotion = false) {
   if (typeof document === "undefined") return;
   const prefersLight = typeof window !== "undefined"
     ? window.matchMedia("(prefers-color-scheme: light)").matches
     : false;
+  
+  const theme = normalizeThemeId(themeValue);
+  let mode = normalizeColorMode(modeValue);
+  if (mode === "system") {
+    mode = prefersLight ? "light" : "dark";
+  }
+
   const html = document.documentElement;
+  
+  // Clear legacy classes
   html.classList.remove(
     "theme-blue",
     "theme-navy",
     "theme-midnight",
     "theme-forest",
     "theme-meadow",
-    "light",
-    "reduce-motion",
+    "light"
   );
-  html.classList.add(...getThemeClassNames(themeValue, modeValue, prefersLight));
-  if (reduceMotion) html.classList.add("reduce-motion");
+  
+  // Set modern attributes
+  html.setAttribute("data-theme", theme);
+  html.setAttribute("data-mode", mode);
+  
+  if (reduceMotion) {
+    html.classList.add("reduce-motion");
+  } else {
+    html.classList.remove("reduce-motion");
+  }
 }

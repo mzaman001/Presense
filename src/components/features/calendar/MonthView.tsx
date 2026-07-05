@@ -34,27 +34,64 @@ function DroppableDay({
   id,
   children,
   className,
+  dayIndex,
+  onClick,
+  style,
 }: {
   id: string;
   children: React.ReactNode;
   className?: string;
+  dayIndex: number;
+  onClick: () => void;
+  style?: React.CSSProperties;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prevWeekIndex = dayIndex - 7;
+      if (prevWeekIndex >= 0) {
+        (document.querySelector(`[data-month-slot="${prevWeekIndex}"]`) as HTMLElement)?.focus();
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextWeekIndex = dayIndex + 7;
+      (document.querySelector(`[data-month-slot="${nextWeekIndex}"]`) as HTMLElement)?.focus();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const prevDay = dayIndex - 1;
+      if (prevDay >= 0) {
+        (document.querySelector(`[data-month-slot="${prevDay}"]`) as HTMLElement)?.focus();
+      }
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const nextDay = dayIndex + 1;
+      (document.querySelector(`[data-month-slot="${nextDay}"]`) as HTMLElement)?.focus();
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
+      tabIndex={0}
+      data-month-slot={dayIndex}
+      onKeyDown={handleKeyDown}
       className={cn(
-        "transition-colors",
+        "transition-colors outline-none focus:bg-[rgba(255,255,255,0.08)]",
         isOver && "bg-[var(--accent-dim)]/20",
         className
       )}
+      style={style}
     >
       {children}
     </div>
   );
 }
 
-/** Popover showing all tasks for a specific day */
 function DayPopover({
   date,
   tasks,
@@ -106,131 +143,129 @@ export function MonthView({ currentMonth, tasks, onEditTask, onCreateTaskAt }: M
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  // Get full grid — pad with days from prev/next month
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday start
-  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const allDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
-  // Memoize tasks by day for O(1) lookup
-  const tasksByDay = React.useMemo(() => {
-    const map: Record<string, Task[]> = {};
-    tasks.forEach((t) => {
-      if (!t.deadline) return;
-      try {
-        const d = parseISO(t.deadline);
-        const dayStr = format(d, "yyyy-MM-dd");
-        if (!map[dayStr]) map[dayStr] = [];
-        map[dayStr].push(t);
-      } catch {
-        // ignore invalid dates
-      }
-    });
-    return map;
-  }, [tasks]);
+  const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
   function getTasksForDay(day: Date) {
-    const dayStr = format(day, "yyyy-MM-dd");
-    return tasksByDay[dayStr] || [];
+    return tasks.filter((t) => {
+      if (!t.deadline) return false;
+      return isSameDay(parseISO(t.deadline), day);
+    });
   }
 
-  function handleDayClick(day: Date, e: React.MouseEvent) {
-    e.stopPropagation();
-    const deadline = new Date(day);
-    deadline.setHours(0, 0, 0, 0);
-    onCreateTaskAt?.(deadline);
-  }
+  const handleDayClick = (day: Date, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (onCreateTaskAt) {
+      const d = new Date(day);
+      d.setHours(9, 0, 0, 0); // Default to 9am in Month view
+      onCreateTaskAt(d);
+    }
+  };
+
+  const gridTemplateColumns = "repeat(7, minmax(100px, 1fr))";
 
   return (
-    <div
-      className="flex flex-col h-full overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]"
-      onClick={() => setPopoverDay(null)}
-    >
-      {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] shrink-0">
-        {DAY_HEADERS.map((d) => (
+    <div className="h-full overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <div 
+        className="grid min-h-full min-w-[700px]"
+        style={{
+          gridTemplateColumns,
+          gridTemplateRows: `auto repeat(${Math.ceil(allDays.length / 7)}, minmax(100px, 1fr))`
+        }}
+      >
+        {/* HEADERS */}
+        {DAY_HEADERS.map((d, i) => (
           <div
             key={d}
-            className="py-3 text-center text-[10px] uppercase tracking-widest font-semibold text-[var(--color-text-3)]"
+            className="sticky top-0 z-30 bg-[var(--color-surface)] border-b border-[var(--color-border)] py-3 text-center text-caption uppercase tracking-widest font-semibold text-[var(--color-text-3)]"
+            style={{ gridColumn: i + 1, gridRow: 1 }}
           >
             {d}
           </div>
         ))}
-      </div>
 
-      {/* Calendar grid */}
-      <div className="flex-1 overflow-auto">
-        <div className="grid grid-cols-7 auto-rows-fr h-full min-w-[800px]">
-          {allDays.map((day, index) => {
-            const dayTasks = getTasksForDay(day);
-            const visible = dayTasks.slice(0, MAX_VISIBLE);
-            const overflow = dayTasks.length - MAX_VISIBLE;
-            const isCurrentMonth = isSameMonth(day, currentMonth);
-            const today = isToday(day);
-            const isPopoverOpen = popoverDay && isSameDay(popoverDay, day);
-            const isBottomRow = Math.floor(index / 7) >= 4;
+        {/* CELLS */}
+        {allDays.map((day, index) => {
+          const dayTasks = getTasksForDay(day);
+          const visible = dayTasks.slice(0, MAX_VISIBLE);
+          const overflow = dayTasks.length - MAX_VISIBLE;
+          const isCurrentMonth = isSameMonth(day, currentMonth);
+          const today = isToday(day);
+          const isPopoverOpen = popoverDay && isSameDay(popoverDay, day);
+          const isBottomRow = Math.floor(index / 7) >= 4;
 
-            return (
-              <DroppableDay
-                key={day.toISOString()}
-                id={`date-${format(day, "yyyy-MM-dd")}`}
-                className={cn(
-                  "border-b border-r border-[var(--color-border)] min-h-[100px] relative p-1.5",
-                  !isCurrentMonth && "opacity-40",
-                  today && "bg-[var(--accent)]/[0.04]"
-                )}
-              >
-                {/* Date number */}
-                <div className="flex items-center justify-between mb-1.5">
-                  <button
-                    onClick={(e) => handleDayClick(day, e)}
-                    className={cn(
-                      "w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors",
-                      today
-                        ? "bg-[var(--accent)] text-white"
-                        : "text-[var(--color-text-2)] hover:bg-[rgba(255,255,255,0.08)]"
-                    )}
-                  >
-                    {format(day, "d")}
-                  </button>
-                </div>
+          const col = (index % 7) + 1;
+          const row = Math.floor(index / 7) + 2;
 
-                {/* Task chips */}
-                <div className="space-y-0.5">
-                  {visible.map((task) => (
-                    <CalendarTaskChip
-                      key={task.id}
-                      task={task}
-                      variant="month"
-                      onEdit={onEditTask}
-                    />
-                  ))}
-                  {overflow > 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPopoverDay(isSameDay(day, popoverDay ?? new Date(0)) ? null : day);
-                      }}
-                      className="text-[10px] font-semibold text-[var(--accent)] hover:underline w-full text-left px-1.5 py-0.5"
-                    >
-                      +{overflow} more
-                    </button>
+          return (
+            <DroppableDay
+              key={day.toISOString()}
+              id={`date-${format(day, "yyyy-MM-dd")}`}
+              dayIndex={index}
+              onClick={() => handleDayClick(day)}
+              className={cn(
+                "border-b border-r border-[var(--color-border)] relative p-1.5 cursor-pointer hover:bg-[rgba(255,255,255,0.02)]",
+                !isCurrentMonth && "opacity-40",
+                today && "bg-[var(--accent)]/[0.04]",
+                col === 7 && "border-r-0"
+              )}
+              style={{ gridColumn: col, gridRow: row }}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDayClick(day);
+                  }}
+                  tabIndex={-1} // Handled by parent div
+                  className={cn(
+                    "w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors pointer-events-none",
+                    today
+                      ? "bg-[var(--accent)] text-white"
+                      : "text-[var(--color-text-2)]"
                   )}
-                </div>
+                >
+                  {format(day, "d")}
+                </button>
+              </div>
 
-                {/* Overflow popover */}
-                {isPopoverOpen && (
-                  <DayPopover
-                    date={day}
-                    tasks={dayTasks}
-                    onClose={() => setPopoverDay(null)}
-                    onEditTask={onEditTask}
-                    isBottomRow={isBottomRow}
+              <div className="space-y-0.5">
+                {visible.map((task) => (
+                  <CalendarTaskChip
+                    key={task.id}
+                    task={task}
+                    variant="month"
+                    onEdit={onEditTask}
                   />
+                ))}
+                {overflow > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPopoverDay(isSameDay(day, popoverDay ?? new Date(0)) ? null : day);
+                    }}
+                    tabIndex={-1}
+                    className="text-caption font-semibold text-[var(--accent)] hover:underline w-full text-left px-1.5 py-0.5"
+                  >
+                    +{overflow} more
+                  </button>
                 )}
-              </DroppableDay>
-            );
-          })}
-        </div>
+              </div>
+
+              {isPopoverOpen && (
+                <DayPopover
+                  date={day}
+                  tasks={dayTasks}
+                  onClose={() => setPopoverDay(null)}
+                  onEditTask={onEditTask}
+                  isBottomRow={isBottomRow}
+                />
+              )}
+            </DroppableDay>
+          );
+        })}
       </div>
     </div>
   );

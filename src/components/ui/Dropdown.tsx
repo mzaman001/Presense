@@ -1,4 +1,6 @@
+"use client";
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,11 +32,31 @@ export function Dropdown({
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [position, setPosition] = useState<React.CSSProperties>({});
+  
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setPosition({
+      position: "fixed",
+      zIndex: 220,
+      top: rect.bottom + 4,
+      left: rect.left,
+      minWidth: Math.max(rect.width, 160),
+    });
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current && !containerRef.current.contains(e.target as Node) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(e.target as Node))
+      ) {
         setIsOpen(false);
       }
     };
@@ -65,39 +87,43 @@ export function Dropdown({
         >
           {isPlaceholder ? placeholder : selectedOption.label} ▼
         </button>
-        <AnimatePresence>
-          {isOpen && (
-            <m.div
-              initial={{ opacity: 0, scaleY: 0.9 }}
-              animate={{ opacity: 1, scaleY: 1 }}
-              exit={{ opacity: 0, scaleY: 0.9 }}
-              transition={{ duration: 0.18 }}
-              className="dropdown-panel absolute top-full left-0 mt-1 z-[220]"
-              style={{ minWidth: 160, transformOrigin: "top" }}
-            >
-              {options.map((opt) => {
-                const optValue = typeof opt === "string" ? opt : opt.value;
-                const optLabel = typeof opt === "string" ? opt : opt.label;
-                const optColor = (typeof opt !== "string" ? opt.color : undefined) || colors[optValue] || "currentColor";
-                return (
-                  <button
-                    key={optValue}
-                    type="button"
-                    onClick={() => { onChange(optValue); setIsOpen(false); }}
-                    className={cn("dropdown-item w-full text-left", value === optValue && "selected")}
-                    style={value === optValue && optColor !== "currentColor" ? { borderColor: optColor, color: optColor } : {}}
-                  >
-                    <div
-                      className={cn("w-2 h-2 rounded-full border border-current shrink-0", value === optValue ? "bg-current" : "bg-transparent")}
-                      style={{ borderColor: optColor, backgroundColor: value === optValue ? optColor : "transparent" }}
-                    />
-                    {optLabel}
-                  </button>
-                );
-              })}
-            </m.div>
-          )}
-        </AnimatePresence>
+        {mounted && createPortal(
+          <AnimatePresence>
+            {isOpen && (
+              <m.div
+                ref={dropdownRef}
+                initial={{ opacity: 0, scaleY: 0.9 }}
+                animate={{ opacity: 1, scaleY: 1 }}
+                exit={{ opacity: 0, scaleY: 0.9 }}
+                transition={{ duration: 0.18 }}
+                className="fixed z-[220] bg-[var(--elev-floating-bg,var(--surface-dropdown))] border-[0.5px] border-[var(--elev-floating-border,var(--border-strong))] rounded-[var(--radius-md)] shadow-[var(--elev-floating-shadow,var(--shadow-dropdown))] [backdrop-filter:var(--elev-floating-blur,var(--glass-blur))] [-webkit-backdrop-filter:var(--elev-floating-blur,var(--glass-blur))]"
+                style={{ ...position, transformOrigin: "top" }}
+              >
+                {options.map((opt) => {
+                  const optValue = typeof opt === "string" ? opt : opt.value;
+                  const optLabel = typeof opt === "string" ? opt : opt.label;
+                  const optColor = (typeof opt !== "string" ? opt.color : undefined) || colors[optValue] || "currentColor";
+                  return (
+                    <button
+                      key={optValue}
+                      type="button"
+                      onClick={() => { onChange(optValue); setIsOpen(false); }}
+                      className={cn("dropdown-item w-full text-left", value === optValue && "selected")}
+                      style={value === optValue && optColor !== "currentColor" ? { borderColor: optColor, color: optColor } : {}}
+                    >
+                      <div
+                        className={cn("w-2 h-2 rounded-full border border-current shrink-0", value === optValue ? "bg-current" : "bg-transparent")}
+                        style={{ borderColor: optColor, backgroundColor: value === optValue ? optColor : "transparent" }}
+                      />
+                      {optLabel}
+                    </button>
+                  );
+                })}
+              </m.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
       </div>
     );
   }
@@ -116,39 +142,43 @@ export function Dropdown({
           <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
         </m.div>
       </button>
-      <AnimatePresence>
-        {isOpen && (
-          <m.div
-            initial={{ opacity: 0, scaleY: 0.9 }}
-            animate={{ opacity: 1, scaleY: 1 }}
-            exit={{ opacity: 0, scaleY: 0.9 }}
-            transition={{ duration: 0.18 }}
-            className="dropdown-panel absolute top-full left-0 mt-1 z-[220]"
-            style={{ minWidth: 160, transformOrigin: "top" }}
-          >
-            {options.map((opt) => {
-              const optValue = typeof opt === "string" ? opt : opt.value;
-              const optLabel = typeof opt === "string" ? opt : opt.label;
-              const optColor = (typeof opt !== "string" ? opt.color : undefined) || colors[optValue] || "currentColor";
-              return (
-                <button
-                  key={optValue}
-                  type="button"
-                  onClick={() => { onChange(optValue); setIsOpen(false); }}
-                  className={cn("dropdown-item w-full text-left", value === optValue && "selected")}
-                  style={variant === "select" && value === optValue && optColor !== "currentColor" ? { borderColor: optColor, color: optColor } : {}}
-                >
-                  <div
-                    className={cn("w-2 h-2 rounded-full border border-current shrink-0", value === optValue ? "bg-current" : "bg-transparent")}
-                    style={variant === "select" ? { borderColor: optColor, backgroundColor: value === optValue ? optColor : "transparent" } : {}}
-                  />
-                  {optLabel}
-                </button>
-              );
-            })}
-          </m.div>
-        )}
-      </AnimatePresence>
+      {mounted && createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <m.div
+              ref={dropdownRef}
+              initial={{ opacity: 0, scaleY: 0.9 }}
+              animate={{ opacity: 1, scaleY: 1 }}
+              exit={{ opacity: 0, scaleY: 0.9 }}
+              transition={{ duration: 0.18 }}
+              className="fixed z-[220] bg-[var(--elev-floating-bg,var(--surface-dropdown))] border-[0.5px] border-[var(--elev-floating-border,var(--border-strong))] rounded-[var(--radius-md)] shadow-[var(--elev-floating-shadow,var(--shadow-dropdown))] [backdrop-filter:var(--elev-floating-blur,var(--glass-blur))] [-webkit-backdrop-filter:var(--elev-floating-blur,var(--glass-blur))]"
+              style={{ ...position, transformOrigin: "top" }}
+            >
+              {options.map((opt) => {
+                const optValue = typeof opt === "string" ? opt : opt.value;
+                const optLabel = typeof opt === "string" ? opt : opt.label;
+                const optColor = (typeof opt !== "string" ? opt.color : undefined) || colors[optValue] || "currentColor";
+                return (
+                  <button
+                    key={optValue}
+                    type="button"
+                    onClick={() => { onChange(optValue); setIsOpen(false); }}
+                    className={cn("dropdown-item w-full text-left", value === optValue && "selected")}
+                    style={variant === "select" && value === optValue && optColor !== "currentColor" ? { borderColor: optColor, color: optColor } : {}}
+                  >
+                    <div
+                      className={cn("w-2 h-2 rounded-full border border-current shrink-0", value === optValue ? "bg-current" : "bg-transparent")}
+                      style={variant === "select" ? { borderColor: optColor, backgroundColor: value === optValue ? optColor : "transparent" } : {}}
+                    />
+                    {optLabel}
+                  </button>
+                );
+              })}
+            </m.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

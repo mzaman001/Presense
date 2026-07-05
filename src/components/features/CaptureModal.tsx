@@ -1,10 +1,13 @@
 "use client";
+import { Input } from "../ui/Input";
+import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
+import { routeCapture } from "@/lib/capture-router";
 import { formatRRule, cn, extractMentions } from "@/lib/utils";
 import { Sparkles, Loader2, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +16,7 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
 import { useHaptics } from "@/hooks/useHaptics";
+import { Button } from "@/components/ui/button";
 
 function formatCaptureDeadline(iso: string) {
   const d = new Date(iso);
@@ -224,31 +228,16 @@ export function CaptureModal() {
     setIsRouting(true);
     setLastRoutedInput(input);
     try {
-      const res = await fetch("/api/capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: input, settings: userSettings }),
-      });
-      const data = await res.json();
-      setRoutedItems((data.items ?? []).map((item: RoutedItem) => {
-        const destinationId = item.destinationId ?? destinationToId(item.destination);
-        return {
-          ...item,
-          destinationId,
-          destination: item.destination || destinationIdToLabel(destinationId),
-          confidence: item.confidence ?? 0.72,
-          reason: item.reason ?? "legacy_route_payload",
-        };
-      }));
+      const knownPeopleNames = people.map((p) => p.name);
+      const items = await routeCapture(input, knownPeopleNames, userSettings || {});
+      setRoutedItems(items);
     } catch {
       setRoutedItems([{ type: "unknown", title: input, destination: "Inbox", destinationId: "inbox", confidence: 0.1, reason: "route_request_failed" }]);
       toast.error("Routing failed", { description: "Falling back to manual routing." });
     } finally {
       setIsRouting(false);
     }
-  }, [input, userSettings]);
-
-  // Auto-routing removed. Routing now only happens on Enter key press.
+  }, [input, userSettings, people]);
 
   const changeDestination = (idx: number, destinationId: string) => {
     setRoutedItems((prev) =>
@@ -370,7 +359,7 @@ export function CaptureModal() {
                 autoCapitalize="sentences"
                 autoCorrect="off"
                 placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
-                className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
+                className="flex-1 bg-transparent border-none outline-none text-title-sm font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
                 value={input}
                 onChange={(e) => handleInputChange(e.target.value)}
                 disabled={isRouting}
@@ -382,7 +371,7 @@ export function CaptureModal() {
                 </button>
               )}
               {!routedItems && (
-                <kbd className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[var(--color-surface)]">
+                <kbd className="hidden sm:flex items-center gap-1 text-caption font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[var(--color-surface)]">
                   Enter
                 </kbd>
               )}
@@ -390,7 +379,7 @@ export function CaptureModal() {
               {/* Mentions dropdown overlay */}
               {showPopover && filteredPeople.length > 0 && (
                 <div
-                  className="absolute left-0 right-0 top-full z-50 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-lg max-h-60 overflow-y-auto"
+                  className="absolute left-0 right-0 top-full z-50 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-lg max-h-60 overflow-y-auto" data-lenis-prevent
                   data-testid="mentions-popover"
                 >
                   {filteredPeople.map((person, idx) => (
@@ -413,7 +402,7 @@ export function CaptureModal() {
             {/* Routing chips view */}
             {routedItems && !saved && (
               <div className="p-5 space-y-4">
-                <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-3)] font-semibold">
+                <p className="text-caption uppercase tracking-wider text-[var(--color-text-3)] font-semibold">
                   AI Extracted Context
                 </p>
                 {routedItems.map((item, idx) => (
@@ -511,33 +500,33 @@ export function CaptureModal() {
               {!routedItems ? (
                 <>
                   <span className="text-xs text-[var(--color-text-3)] flex items-center gap-1.5">
-                    Press <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-[var(--border-default)] text-[10px] text-[var(--text-1)] border border-[var(--border-subtle)]">Enter</kbd> to auto-route
+                    Press <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-[var(--border-default)] text-caption text-[var(--text-1)] border border-[var(--border-subtle)]">Enter</kbd> to auto-route
                   </span>
-                  <button
+                  <Button variant="primary"
                     onClick={handleRoute}
                     disabled={!input.trim() || isRouting}
-                    className="btn-primary disabled:opacity-50"
+                    className="disabled:opacity-50"
                   >
                     {isRouting ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Sparkles size={14} strokeWidth={1.5} className="shrink-0" />}
                     {isRouting ? "Routing..." : "Route & Capture"}
-                  </button>
+                  </Button>
                 </>
               ) : !saved ? (
                 <>
-                  <button
+                  <Button variant="secondary"
                     onClick={() => setRoutedItems(null)}
-                    className="btn-secondary"
+                    className=""
                   >
                     <X size={14} strokeWidth={1.5} className="shrink-0" /> Start over
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="primary"
                     onClick={handleConfirm}
                     disabled={isSaving || routedItems.some((i) => !i.destinationId)}
-                    className="btn-primary disabled:opacity-50"
+                    className="disabled:opacity-50"
                   >
                     {isSaving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Check size={14} strokeWidth={1.5} className="shrink-0" />}
                     {isSaving ? "Saving..." : "Confirm & Save"}
-                  </button>
+                  </Button>
                 </>
               ) : null}
             </div>

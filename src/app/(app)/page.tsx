@@ -1,9 +1,11 @@
 "use client";
 
+
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Play, ArrowRight, CheckCircle2, Users, MessageSquare, Compass, Loader2, FolderInput, X, Check, Sparkles, Flame } from "lucide-react";
 import { m } from "framer-motion";
 import Link from "next/link";
@@ -11,9 +13,11 @@ import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
+import { Popover } from "@/components/ui/Popover";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
+import { Button } from "@/components/ui/button";
 
 interface TaskItem {
   id: string;
@@ -58,14 +62,14 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
   const streak = userSettings?.ritual_streak || 0;
 
   const StreakBadge = () => streak > 0 ? (
-    <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold">
+    <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-caption font-bold">
       <Flame className="w-3.5 h-3.5" /> {streak}
     </span>
   ) : null;
 
   if (morningDone && eveningDone) {
     return (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--status-done)]/10 border border-[var(--status-done)]/20 mt-3 text-[12px] text-[var(--status-done)] font-medium">
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--status-done)]/10 border border-[var(--status-done)]/20 mt-3 text-ui text-[var(--status-done)] font-medium">
         <CheckCircle2 className="w-3.5 h-3.5" /> Day complete — Great work today
         <StreakBadge />
       </div>
@@ -74,7 +78,7 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
 
   if (morningDone) {
     return (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-dim)]/10 border border-[var(--accent-border)] mt-3 text-[12px] text-[var(--text-3)] font-medium">
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-dim)]/10 border border-[var(--accent-border)] mt-3 text-ui text-[var(--text-3)] font-medium">
         <CheckCircle2 className="w-3.5 h-3.5 text-[var(--accent)]" /> Day planned <span className="mx-1 opacity-50">•</span> Evening review at {shutdownAmPm}
         <StreakBadge />
       </div>
@@ -85,7 +89,7 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
     <div className="flex items-center gap-2 mt-3">
       <button 
         onClick={() => setActiveRitual('morning')}
-        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-colors text-[12px] text-orange-400 font-medium group"
+        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-colors text-ui text-orange-400 font-medium group"
       >
         <Sparkles className="w-3.5 h-3.5" /> You haven't planned your day yet 
         <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -321,7 +325,7 @@ export default function HomeDashboard() {
 
       {/* Focus Now Hero Card */}
       {primaryTask ? (
-        <div className="glass-card-hero relative overflow-hidden p-8">
+        <GlassCard className="relative overflow-hidden p-8">
           <div className="absolute top-0 right-0 p-8">
             <div 
               className="w-24 h-24 rounded-full relative animate-spin-slow" 
@@ -335,17 +339,17 @@ export default function HomeDashboard() {
           </div>
           
           <div className="relative z-10 p-10 flex flex-col items-center justify-center text-center h-full">
-            <span className="text-[10px] font-bold tracking-widest text-[var(--accent)] uppercase mb-4 px-3 py-1 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20">
+            <span className="text-caption font-bold tracking-widest text-[var(--accent)] uppercase mb-4 px-3 py-1 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20">
               ⚡ FOCUS NOW
             </span>
             <h2 className="text-3xl font-medium text-[var(--text-1)] mb-1">{primaryTask.title}</h2>
             <p className="text-label text-[var(--text-3)] mb-4">{heroReason}</p>
             <p className="text-[var(--text-2)] mb-6 text-lg">{primaryTask.first_step}</p>
             
-            <button onClick={() => setActiveTimer({ taskId: primaryTask.id, taskTitle: primaryTask.title })} className="btn-primary">
+            <Button variant="primary" onClick={() => setActiveTimer({ taskId: primaryTask.id, taskTitle: primaryTask.title })} className="">
               <Play className="w-4 h-4 fill-[currentColor]" />
               <span>Start session &rarr;</span>
-            </button>
+            </Button>
             <button 
               onClick={async () => {
                 const tomorrow = new Date();
@@ -426,7 +430,7 @@ export default function HomeDashboard() {
               Snooze until tomorrow
             </button>
           </div>
-        </div>
+        </GlassCard>
       ) : (
         <GlassCard className="p-8 text-center text-[var(--color-text-3)] border-dashed">
           No active tasks. Take a breath.
@@ -532,7 +536,7 @@ export default function HomeDashboard() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <h3 className="text-section-title text-[var(--text-1)]">Inbox</h3>
-                <div className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[10px] font-bold tracking-wider">
+                <div className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-caption font-bold tracking-wider">
                   {inboxItems.length} NEW
                 </div>
               </div>
@@ -545,34 +549,41 @@ export default function HomeDashboard() {
                 <p className="text-card-title text-[var(--text-1)] flex-1">{item.title}</p>
                 <div className="flex items-center gap-2 w-full md:w-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                   <div className="relative flex-1 md:flex-none">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setActiveRouteItem(activeRouteItem === item.id ? null : item.id); }}
-                      className="btn-secondary w-full dropdown-trigger"
-                    >
-                      <FolderInput className="w-3.5 h-3.5" />
-                      Route it
-                    </button>
-                    {activeRouteItem === item.id && (
-                      <div className="dropdown-panel absolute top-full mt-2 right-0 w-48 p-1 z-50 animate-in fade-in zoom-in-95 duration-100" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => { routeInboxItem(item.id, 'do'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Do (Task)
-                        </button>
-                        <button onClick={() => { routeInboxItem(item.id, 'think'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-teal-400" /> Think (Thread)
-                        </button>
-                        <button onClick={() => { routeInboxItem(item.id, 'explore'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                          <Compass className="w-4 h-4 text-amber-400" /> Explore (Saved)
-                        </button>
-                      </div>
-                    )}
+                    <Popover
+                      placement="bottom-end"
+                      isOpen={activeRouteItem === item.id}
+                      onOpenChange={(open) => setActiveRouteItem(open ? item.id : null)}
+                      trigger={
+                        <Button variant="secondary" 
+                          onClick={(e) => { e.stopPropagation(); setActiveRouteItem(activeRouteItem === item.id ? null : item.id); }}
+                          className="w-full dropdown-trigger"
+                        >
+                          <FolderInput className="w-3.5 h-3.5" />
+                          Route it
+                        </Button>
+                      }
+                      content={
+                        <div className="flex flex-col gap-0.5 p-1 w-48" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => { routeInboxItem(item.id, 'do'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Do (Task)
+                          </button>
+                          <button onClick={() => { routeInboxItem(item.id, 'think'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4 text-teal-400" /> Think (Thread)
+                          </button>
+                          <button onClick={() => { routeInboxItem(item.id, 'explore'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
+                            <Compass className="w-4 h-4 text-amber-400" /> Explore (Saved)
+                          </button>
+                        </div>
+                      }
+                    />
                   </div>
-                  <button 
+                  <Button variant="icon" 
                     onClick={() => dismissInboxItem(item.id)}
-                    className="btn-icon !bg-transparent !border-transparent hover:!bg-red-500/10 hover:!text-red-400 shrink-0"
+                    className="!bg-transparent !border-transparent hover:!bg-red-500/10 hover:!text-red-400 shrink-0"
                     title="Dismiss"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </GlassCard>
             ))}

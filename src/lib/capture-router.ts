@@ -1,6 +1,4 @@
-import * as chrono from 'chrono-node';
-import '@/lib/chrono-custom'; // registers custom parsers on chrono.casual
-import nlp from 'compromise';
+import { registerCustomParsers } from '@/lib/chrono-custom';
 import type { UserSettings } from '@/store/useAppStore';
 
 // ─── Keyword arrays (from spec Section 12.3) ────────────────────────────────
@@ -94,11 +92,12 @@ function routedItem(
 
 // ─── Main router ────────────────────────────────────────────────────────────
 
-export function routeCapture(text: string, knownPeople: string[] = [], userSettings: Partial<UserSettings> = {}): RoutedItem[] {
+export async function routeCapture(text: string, knownPeople: string[] = [], userSettings: Partial<UserSettings> = {}): Promise<RoutedItem[]> {
   const lower = text.toLowerCase().trim();
   // compromise doesn't export great TS types
-  let doc: ReturnType<typeof nlp> | null = null;
+  let doc: any = null;
   if (userSettings?.nlp_date_parsing !== false) {
+    const nlp = (await import('compromise')).default;
     doc = nlp(text);
   }
   const results: RoutedItem[] = [];
@@ -117,7 +116,8 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
 
   if (segments.length > 1) {
     // Recursively route each segment
-    return segments.flatMap((segment) => routeCapture(segment, knownPeople, userSettings));
+    const routedSegments = await Promise.all(segments.map((segment) => routeCapture(segment, knownPeople, userSettings)));
+    return routedSegments.flat();
   }
 
   // 1. URL → Explore
@@ -251,6 +251,8 @@ export function routeCapture(text: string, knownPeople: string[] = [], userSetti
   let parsedDate: Date | null = null;
   let parsedText = '';
   if (userSettings?.nlp_date_parsing !== false) {
+    const chrono = await import('chrono-node');
+    registerCustomParsers(chrono);
     const parsedResults = chrono.parse(text);
     if (parsedResults.length > 0) {
       parsedDate = parsedResults[0].start.date();

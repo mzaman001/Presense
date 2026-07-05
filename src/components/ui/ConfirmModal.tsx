@@ -1,6 +1,7 @@
 import React from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Sheet } from "@/components/ui/Sheet";
 
@@ -75,24 +76,21 @@ export function ConfirmModal({
               </div>
             )}
             <div className="flex items-center justify-end gap-3">
-              <button
+              <Button variant="secondary"
                 onClick={onClose}
                 disabled={isConfirming}
-                className="btn-secondary disabled:opacity-50"
+                className="disabled:opacity-50"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button variant={confirmDestructive ? "danger" : "primary"}
                 disabled={isConfirmDisabled || isConfirming}
                 onClick={handleConfirm}
-                className={cn(
-                  confirmDestructive ? "btn-danger" : "btn-primary",
-                  "disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-                )}
+                className="disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
                 {isConfirming && <Loader2 size={14} className="animate-spin" />}
                 {confirmLabel}
-              </button>
+              </Button>
             </div>
       </div>
     </Sheet>

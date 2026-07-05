@@ -53,7 +53,7 @@ export function MobileDrawer() {
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="url(#brand-gradient)" className="shrink-0">
                   <circle cx="12" cy="12" r="12" />
                 </svg>
-                <span className="text-[17px] font-semibold tracking-tight text-[var(--color-text-1)]">Presense</span>
+                <span className="text-title-lg font-semibold tracking-tight text-[var(--color-text-1)]">Presense</span>
               </div>
               <button 
                 onClick={() => setIsMobileDrawerOpen(false)}
@@ -81,7 +81,7 @@ export function MobileDrawer() {
                     )}
                   >
                     <Icon size={20} strokeWidth={isActive ? 2 : 1.5} />
-                    <span className="text-[15px]">{item.label}</span>
+                    <span className="text-title-sm">{item.label}</span>
                   </Link>
                 );
               })}
@@ -96,7 +96,7 @@ export function MobileDrawer() {
                 className="flex items-center h-[44px] rounded-lg px-3 gap-3 text-[var(--text-2)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)] transition-colors"
               >
                 <Search size={20} strokeWidth={1.5} />
-                <span className="text-[15px]">Search</span>
+                <span className="text-title-sm">Search</span>
               </button>
               
               <button
@@ -107,7 +107,7 @@ export function MobileDrawer() {
                 className="flex items-center h-[44px] rounded-lg px-3 gap-3 text-[var(--text-2)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)] transition-colors"
               >
                 <Settings size={20} strokeWidth={1.5} />
-                <span className="text-[15px]">Settings</span>
+                <span className="text-title-sm">Settings</span>
               </button>
             </div>
           </m.div>

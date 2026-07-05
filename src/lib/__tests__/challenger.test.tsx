@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { extractMentions } from "@/lib/utils";
 import { CaptureModal } from "@/components/features/CaptureModal";
+import * as captureRouter from "@/lib/capture-router";
 import ThreadDetailPage from "@/app/(app)/think/[id]/page";
 import { useAppStore } from "@/store/useAppStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -205,27 +206,9 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       const input = screen.getByPlaceholderText(/capture anything/i) as HTMLInputElement;
       fireEvent.change(input, { target: { value: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) tomorrow" } });
 
-      // Mock the API response for routing
-      const mockFetch = vi.spyOn(window, "fetch").mockResolvedValue({
-        json: () => Promise.resolve({
-          items: [
-            {
-              type: "task",
-              title: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) tomorrow",
-              destination: "Do",
-              deadline: new Date().toISOString(),
-            }
-          ]
-        })
-      } as any);
-
       // Trigger Route
       const routeBtn = screen.getByRole("button", { name: /route/i });
       fireEvent.click(routeBtn);
-
-      await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalled();
-      });
 
       // Confirm and save
       const saveBtn = await screen.findByRole("button", { name: /confirm/i });
@@ -235,12 +218,11 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
         expect(mockInsert).toHaveBeenCalledWith(
           expect.objectContaining({
             linked_people_ids: ["550e8400-e29b-41d4-a716-446655440010"],
-            title: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) tomorrow",
+            title: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)",
           })
         );
       });
 
-      mockFetch.mockRestore();
     });
 
     it("correctly maps mentioned UUID to linked_people in database insert on confirm (Think destination)", async () => {
@@ -262,31 +244,25 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       render(<CaptureModal />, { wrapper });
 
       const input = screen.getByPlaceholderText(/capture anything/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "Idea about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)" } });
+      fireEvent.change(input, { target: { value: "idea: about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)" } });
 
-      const mockFetch = vi.spyOn(window, "fetch").mockResolvedValue({
-        json: () => Promise.resolve({
-          items: [
-            {
-              type: "thought",
-              title: "Idea about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)",
-              destination: "Think",
-            }
-          ]
-        })
-      } as any);
+      const mockRouteCapture = vi.spyOn(captureRouter, "routeCapture").mockResolvedValue([{
+        type: "thought",
+        title: "idea: about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)",
+        destination: "Think",
+        destinationId: "think",
+        confidence: 0.9,
+        reason: "mock"
+      }]);
 
       // Trigger Route
       const routeBtn = screen.getByRole("button", { name: /route/i });
       fireEvent.click(routeBtn);
 
-      await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalled();
-      });
-
       // Confirm and save
       const saveBtn = await screen.findByRole("button", { name: /confirm/i });
       fireEvent.click(saveBtn);
+      console.log("Save button clicked in Think test!");
 
       await waitFor(() => {
         expect(mockInsert).toHaveBeenCalledWith(
@@ -296,7 +272,7 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
         );
       });
 
-      mockFetch.mockRestore();
+      mockRouteCapture.mockRestore();
     });
   });
 
@@ -341,9 +317,11 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
         prefetchedThreads: { "thread-123": initialThread },
       });
 
+      let unmount: () => void;
       // Render ThreadDetailPage
       await act(async () => {
-        render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+        const res = render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+        unmount = res.unmount;
       });
 
       // Wait for thread to load
@@ -400,6 +378,7 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       });
 
       await act(async () => {
+        unmount();
         render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
       });
       await screen.findByDisplayValue("Project Brainstorm");

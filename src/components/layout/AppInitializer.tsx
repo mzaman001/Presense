@@ -4,9 +4,11 @@ import { useEffect } from "react";
 import { useAppStore, UserSettings } from "@/store/useAppStore";
 import { applyDocumentTheme, normalizeColorMode, normalizeThemeId } from "@/lib/theme";
 import { getRitualDecision } from "@/lib/rituals";
+import { usePathname } from "next/navigation";
 
 export function AppInitializer({ initialSettings }: { initialSettings?: UserSettings }) {
   const { userSettings, setUserSettings, setActiveRitual } = useAppStore();
+  const pathname = usePathname() || "";
 
   useEffect(() => {
     if (initialSettings && (!userSettings || Object.keys(userSettings).length === 0)) {
@@ -59,18 +61,23 @@ export function AppInitializer({ initialSettings }: { initialSettings?: UserSett
   }, [userSettings, setActiveRitual]);
 
   useEffect(() => {
-    const isOnboarding = window.location.pathname.startsWith("/onboarding");
+    const isPublicRoute = pathname.startsWith("/onboarding") || pathname.startsWith("/login");
+    const isSettingsLoaded = userSettings && Object.keys(userSettings).length > 0;
+    
+    // If not public and settings haven't loaded yet, do nothing (let layout.tsx initial script handle it)
+    if (!isPublicRoute && !isSettingsLoaded) return;
+
     const theme = normalizeThemeId(
-      isOnboarding ? "sunset" : userSettings?.theme || localStorage.getItem("presense_theme"),
+      isPublicRoute ? "warm" : userSettings?.theme
     );
     const mode = normalizeColorMode(
-      isOnboarding ? "dark" : userSettings?.color_mode || localStorage.getItem("presense_color_mode"),
+      isPublicRoute ? "dark" : userSettings?.color_mode
     );
 
     applyDocumentTheme(theme, mode, Boolean(userSettings?.reduce_motion));
     localStorage.setItem("presense_theme", theme);
     localStorage.setItem("presense_color_mode", mode);
-  }, [userSettings?.theme, userSettings?.color_mode, userSettings?.reduce_motion]);
+  }, [userSettings?.theme, userSettings?.color_mode, userSettings?.reduce_motion, pathname]);
 
   return null;
 }

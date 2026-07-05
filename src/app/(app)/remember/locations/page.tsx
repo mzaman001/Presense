@@ -10,6 +10,7 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
+import { Button } from "@/components/ui/button";
 
 interface LocationItem {
   id: string;
@@ -123,12 +124,12 @@ export default function LocationsPage() {
           </div>
           <h3 className="text-[var(--color-text-1)] font-medium mb-2">No locations here</h3>
           <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Log an item to remember where you put it.</p>
-          <button 
+          <Button variant="primary" 
             onClick={() => setShowAdd(true)}
-            className="btn-primary gap-2 mx-auto"
+            className="gap-2 mx-auto"
           >
             <Plus size={16} /> Log Item
-          </button>
+          </Button>
         </GlassCard>
       ) : (
         <div className="space-y-2">
@@ -154,13 +155,13 @@ export default function LocationsPage() {
                     </div>
                     <div className="text-right shrink-0 space-y-1">
                       {isVeryStale ? (
-                        <span className="text-[10px] text-[var(--color-text-3)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Probably moved?</span>
+                        <span className="text-caption text-[var(--color-text-3)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Probably moved?</span>
                       ) : isStale ? (
-                        <button onClick={(e) => { e.stopPropagation(); markStillHere(item.id); }} className="text-[10px] text-[#FBBF24] flex items-center gap-1 hover:text-[var(--color-text-1)] transition-colors border border-[rgba(251,191,36,0.3)] px-2 py-0.5 rounded-full z-10 relative">
+                        <button onClick={(e) => { e.stopPropagation(); markStillHere(item.id); }} className="text-caption text-[#FBBF24] flex items-center gap-1 hover:text-[var(--color-text-1)] transition-colors border border-[rgba(251,191,36,0.3)] px-2 py-0.5 rounded-full z-10 relative">
                           Stale Â· Still here
                         </button>
                       ) : (
-                        <span className="text-[11px] text-[var(--color-text-3)] flex items-center gap-1">
+                        <span className="text-meta text-[var(--color-text-3)] flex items-center gap-1">
                           <Clock className="w-3 h-3" /> {days === 0 ? "Today" : `${days}d ago`}
                         </span>
                       )}

@@ -20,7 +20,13 @@ serve(async (req) => {
       supabase.from('threads').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
       
       // Explores
-      supabase.from('explores').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate)
+      supabase.from('explores').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
+      
+      // People
+      supabase.from('people').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
+      
+      // Locations
+      supabase.from('locations').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate)
     ]);
 
     // Check for errors in the results array

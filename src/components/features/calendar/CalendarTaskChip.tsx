@@ -64,7 +64,7 @@ export function CalendarTaskChip({
           onEdit?.(task);
         }}
         className={cn(
-          "flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium cursor-grab active:cursor-grabbing truncate w-full select-none",
+          "flex items-center gap-1 px-1.5 py-0.5 rounded text-caption font-medium cursor-grab active:cursor-grabbing truncate w-full select-none",
           "transition-opacity",
           isBeingDragged ? "opacity-30" : "opacity-100"
         )}
@@ -145,11 +145,11 @@ export function CalendarTaskChip({
         borderLeftWidth: "3px",
       }}
     >
-      <p className="text-[11px] font-semibold text-[var(--color-text-1)] leading-tight truncate">
+      <p className="text-meta font-semibold text-[var(--color-text-1)] leading-tight truncate">
         {task.title}
       </p>
       {timeLabel && (
-        <p className="text-[10px] text-[var(--color-text-3)] leading-tight mt-0.5">
+        <p className="text-caption text-[var(--color-text-3)] leading-tight mt-0.5">
           {timeLabel}
         </p>
       )}
@@ -181,7 +181,7 @@ export function CalendarTaskChipOverlay({ task }: { task: Task }) {
         minHeight: 40,
       }}
     >
-      <p className="text-[11px] font-semibold text-[var(--color-text-1)] leading-tight truncate">
+      <p className="text-meta font-semibold text-[var(--color-text-1)] leading-tight truncate">
         {task.title}
       </p>
     </div>

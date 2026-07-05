@@ -80,9 +80,13 @@ export const useAppStore = create<AppState>((set) => ({
   isSearchModalOpen: false,
   setSearchModalOpen: (open) => set({ isSearchModalOpen: open }),
   sidebarState: "full" as const,
-  toggleSidebar: () => set((state) => ({
-    sidebarState: state.sidebarState === "full" ? "rail" : "full"
-  })),
+  toggleSidebar: () => set((state) => {
+    const next = state.sidebarState === "full" ? "rail" : "full";
+    if (typeof window !== 'undefined') {
+      try { localStorage.setItem('presense_sidebar', next); } catch (e) {}
+    }
+    return { sidebarState: next };
+  }),
   isMobileDrawerOpen: false,
   setIsMobileDrawerOpen: (open) => set({ isMobileDrawerOpen: open }),
   isSettingsModalOpen: false,

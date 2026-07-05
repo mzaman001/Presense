@@ -19,6 +19,10 @@ export function LenisProvider({ children, root = false, options }: LenisProvider
   const [lenis, setLenis] = useState<Lenis | null>(null);
 
   useEffect(() => {
+    const isMobile = window.innerWidth < 768;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion || isMobile) return;
+
     const lenisInstance = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
