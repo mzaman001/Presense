@@ -677,7 +677,44 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* === GLASS CARD SYSTEM === */
-@layer components {
+@layer components {
+
+  .glass-card {
+    background: var(--surface-card);
+    backdrop-filter: var(--glass-blur-light);
+    -webkit-backdrop-filter: var(--glass-blur-light);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow var(--transition-base),
+      border-color var(--transition-base),
+      transform var(--transition-base);
+  }
+
+  .glass-card-elevated {
+    background: var(--surface-card);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card-hover);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-card::before, .glass-card-elevated::before, .modal::before, .sidebar::before, .glass-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+  }
+
 
   .card-overdue {
     background: var(--status-overdue-dim);
