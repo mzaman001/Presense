@@ -15,7 +15,7 @@ export function PageHeader({
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-4 shrink-0">
       <div>
-        <p className="text-label text-[var(--text-decorative)] mb-1">
+        <p className="text-label text-[var(--text-3)] mb-1">
           {subtitle}
         </p>
         <div className="flex flex-wrap items-center gap-4">

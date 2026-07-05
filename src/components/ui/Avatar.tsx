@@ -17,12 +17,16 @@ function getInitials(name?: string): string {
 
 export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
   ({ className, src, name, initials, color = "#E5B41E", size = "md", style, ...props }, ref) => {
+    const [imgError, setImgError] = React.useState(false);
     const sizeClasses = { sm: "w-8 h-8 text-xs", md: "w-10 h-10 text-sm", lg: "w-14 h-14 text-base" };
     const displayInitials = initials ?? getInitials(name);
+    const label = name ? `${name}'s avatar` : "User avatar";
 
     return (
       <div
         ref={ref}
+        role="img"
+        aria-label={label}
         className={cn(
           "relative flex shrink-0 overflow-hidden rounded-full items-center justify-center font-semibold text-[var(--color-text-1)]",
           sizeClasses[size],
@@ -31,17 +35,18 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
         style={{ backgroundColor: color, ...style }}
         {...props}
       >
-        {src ? (
+        {src && !imgError ? (
           <Image 
             className="aspect-square h-full w-full object-cover" 
             src={src} 
-            alt={name ? `${name}'s avatar` : "User avatar"} 
+            alt={label} 
             width={size === "sm" ? 32 : size === "md" ? 40 : 56} 
             height={size === "sm" ? 32 : size === "md" ? 40 : 56} 
+            onError={() => setImgError(true)}
             unoptimized 
           />
         ) : (
-          <span>{displayInitials}</span>
+          <span aria-hidden="true">{displayInitials}</span>
         )}
       </div>
     );

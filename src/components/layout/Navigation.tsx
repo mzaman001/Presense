@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { Avatar } from "@/components/ui/Avatar";
+import { Kbd } from "@/components/ui/Kbd";
 import { m } from "framer-motion";
 import { useIsTouch } from "@/hooks/useIsTouch";
 
@@ -219,7 +220,7 @@ export function Sidebar() {
             </span>
             <span className={cn("nav-label flex items-center justify-between flex-1 text-body-lg font-medium leading-none text-[var(--text-3)]", labelClass)}>
               <span className="text-body-lg font-medium leading-none text-[var(--text-3)] whitespace-nowrap">Search</span>
-              <span className="text-caption font-mono text-[var(--text-3)] whitespace-nowrap shrink-0 ml-2">Cmd+K</span>
+              <Kbd className="ml-2 bg-transparent border-none">Cmd+K</Kbd>
             </span>
           </button>
         </div>

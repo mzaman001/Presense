@@ -8,6 +8,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { TaskCard } from "@/components/features/TaskCard";
 import { CalendarView } from "@/components/features/calendar/CalendarView";
@@ -65,7 +66,7 @@ const Column = React.memo(({
       <Icon className="w-4 h-4" style={{ color: accent }} />
       <h2 className="text-sm font-semibold text-[var(--color-text-1)]">{title}</h2>
       {colTasks.length > 0 && (
-        <Badge style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}44` }}>
+        <Badge variant={title.toLowerCase() as any}>
           {colTasks.length}
         </Badge>
       )}
@@ -317,26 +318,15 @@ export default function DoPage() {
           </Button>
         }
       >
-        <div className="flex bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full p-0.5">
-          <button
-            onClick={() => toggleViewMode("board")}
-            className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "board" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
-          >
-            Board
-          </button>
-          <button
-            onClick={() => toggleViewMode("today")}
-            className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "today" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
-          >
-            Today
-          </button>
-          <button
-            onClick={() => toggleViewMode("calendar")}
-            className={cn("px-4 py-1 text-xs font-semibold rounded-full transition-all", viewMode === "calendar" ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]")}
-          >
-            Calendar
-          </button>
-        </div>
+        <SegmentedControl
+          options={[
+            { label: "Board", value: "board" },
+            { label: "Today", value: "today" },
+            { label: "Calendar", value: "calendar" }
+          ]}
+          value={viewMode}
+          onChange={(val) => toggleViewMode(val as any)}
+        />
         <button 
           onClick={() => setShowArchive(!showArchive)}
           className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}

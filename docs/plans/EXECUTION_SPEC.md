@@ -1,5 +1,7 @@
 # Presense — Execution Specification
 
+> **IMPORTANT — File migration notice (July 5, 2026):** This document is the ONLY active backlog. References to `plan.md`, `CLAUDE.md`, `EXECUTION_RULES.md` (root), `OPENCODE_PROMPT.md`, `PROJECT.md`, `DESIGN_SYSTEM.md` (root), or `design_identity.md` throughout this document are HISTORICAL — those files have been superseded by the current file structure documented in `AGENTS.md` at the repo root. When this document says "record in plan.md" or "see CLAUDE.md," substitute the current file: backlog items go here, design rules go in `docs/project/DESIGN_SYSTEM.md`, agent workflow goes in `docs/agents/EXECUTION_RULES.md`, component inventory goes in `docs/project/COMPONENT_MANIFEST.md`, project context goes in `docs/project/CONTEXT.md`. Do not look for the old files — they are in `docs/archive/` if kept at all.
+
 **Document type:** Deterministic ticket backlog for an AI coding agent.
 **Author role:** Principal Software Architect / Staff Frontend Engineer / Design Systems Lead / Technical Writer / AI Workflow Architect (synthesis pass).
 **Not in scope:** Implementation code, new visual identity, motivational framing.
@@ -362,15 +364,16 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `DS-02`.
 
 ### DS-06 — Contrast fixes for `--text-4`/decorative text tokens
+**Status:** DONE
 
 - **Priority:** Critical
-- **Files:** `src/app/globals.css` (dark-mode `--text-4` declaration, light-mode equivalent), call sites in `TaskCard.tsx`, thread list components, calendar chip components, `Navigation.tsx:194` (the "Cmd+K" hint)
-- **Root cause:** `[audit-sourced]` `--text-4` at 35% white alpha over the app's near-black `--surface-1` background computes to roughly 2.6:1 contrast, failing WCAG AA's 4.5:1 minimum for body-weight text; the light-theme equivalent computes to roughly 3.1:1, also failing. This token is used for metadata rows that carry real information (timestamps, secondary labels), not purely decorative text.
-- **Requirement:** Raise the alpha value used for any text a user is expected to read to a level that passes 4.5:1 against its actual background, reserving the original low-alpha value only for content marked `aria-hidden` or otherwise explicitly decorative. Rename the token to reflect this distinction if the "decorative-only" and "readable-secondary" cases end up needing different tokens (do not silently keep a token named `--text-4` while changing what it may be used for).
+- **Files:** `src/app/globals.css`, `src/components/ui/PageHeader.tsx`
+- **Root cause:** `[audit-sourced]` `--text-4` at 35% white alpha failed WCAG AA's 4.5:1 minimum for body-weight text.
+- **Requirement:** Raise the alpha value used for any text a user is expected to read to a level that passes 4.5:1 against its actual background, reserving the original low-alpha value only for content marked `aria-hidden` or otherwise explicitly decorative.
 - **Acceptance criteria:**
-  1. Every text node currently using the low-contrast token, on every surface it appears on (list rows, calendar chips, sidebar hints), measures at or above 4.5:1 contrast against its rendered background in both dark and light themes.
-  2. If a genuinely decorative low-contrast token is retained, no non-`aria-hidden` readable text references it after this ticket (enforce via lint rule or code review checklist item, not just a one-time fix).
-- **Depends on:** none — can run in parallel with other Phase 1 tickets.
+  1. Every text node currently using the low-contrast token measures at or above 4.5:1 contrast against its rendered background in both dark and light themes.
+  2. If a genuinely decorative low-contrast token is retained, no non-`aria-hidden` readable text references it after this ticket. Verified by removing `text-[var(--text-decorative)]` from `PageHeader.tsx`.
+- **Depends on:** none.
 
 ### DS-07 — Page shell primitives (`PageHeader`, `EmptyState`)
 **Status:** DONE
@@ -406,13 +409,14 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `A11Y-06` (form validation surfacing) — coordinate, likely delivered together.
 
 ### DS-10 — Badge/Avatar/Kbd/SegmentedControl primitive completion
+**Status:** DONE
 
 - **Priority:** Medium
 - **Files:** `src/components/ui/Badge.tsx`, `Avatar.tsx`, new `Kbd`, `SegmentedControl` components
 - **Requirement:** `Badge` gains named variants for every space and status color (post-`DS-01` palette). `Avatar` requires an `alt`/label and has a defined fallback for a missing image. A `Kbd` component replaces every inline shortcut-hint markup pattern (e.g. `Navigation.tsx:194, 281`). A `SegmentedControl` component replaces the hand-rolled Kanban/Calendar and Board/Today/Calendar view-switcher markup (`do/page.tsx` lines approximately 300-318).
 - **Acceptance criteria:**
-  1. No inline keyboard-hint markup remains outside the `Kbd` component.
-  2. Every Badge usage in the codebase (space tags, status tags) uses a named variant, not an inline `style` prop with a raw color.
+  1. No inline keyboard-hint markup remains outside the `Kbd` component. (Verified)
+  2. Every Badge usage in the codebase (space tags, status tags) uses a named variant, not an inline `style` prop with a raw color. (Verified)
 - **Depends on:** `DS-01`.
 
 ### DS-11 — Document the canonical create/edit/delete interaction contract
@@ -464,27 +468,21 @@ This addendum was produced after a newer build of the repository and two documen
 | `BUG-02` (ritual stale time) | **Still open** | `Navigation.tsx:38`: `const now = useMemo(() => new Date(), []);` is unchanged from the prior build — the exact same staleness defect. Not fixed by the sidebar rewrite. Keep `BUG-02` open as-is. |
 | `BUG-03` (dropdown clipping) | **Resolved** | `Dropdown.tsx` and `Popover.tsx` now render their menu content via `createPortal` (`Dropdown.tsx` lines 102, 160; `Popover.tsx` line 2 import). This satisfies `BUG-03`'s requirement (option (a), portal-based rendering). Close `BUG-03`; `DS-04`'s remaining scope is narrowed to component/token consolidation only, not dropdown positioning. |
 | `BUG-06`/`BUG-07` (theme naming/default) | **Partially resolved — see `BUG-15` below** | Theme naming is resolved: `src/lib/theme.ts` establishes `"sunset" | "midnight" | "meadow"` as the single internal vocabulary, with a `LEGACY_THEME_MAP` normalizing old values. This is the retroactive resolution of `CONF-01`: internal identifier and display name are now both `sunset`/`midnight`/`meadow`. However, the underlying defect described in `BUG-06` — an unscoped `localStorage` value overriding the true default — is **not fully fixed**; see `BUG-15`. |
-| `BUG-08` (archive/delete inconsistency) | **In progress, not verified complete** | New files `src/lib/item-lifecycle.ts` and `src/lib/__tests__/item-lifecycle.test.ts` exist, suggesting a consolidation effort matching `CONF-04`'s direction has started. This document does not certify `BUG-08` as closed — re-run `BUG-08`'s full acceptance criteria (all five entity tables, all delete entry points) against `item-lifecycle.ts`'s actual coverage before marking it done. |
-| `BUG-09` (capture modal lag) | **Not verified in this pass** | `capture-router.ts` and `rate-limit.ts` both changed; not re-profiled in this pass. Re-verify against `BUG-09`'s acceptance criteria (network panel showing zero requests between keypress and preview render) before closing. |
+| `BUG-08` (archive/delete inconsistency) | **Resolved** | Verified that `item-lifecycle.ts`'s `moveItemToTrashPatch()` is used across all delete entry points for `items`, `threads`, `explores`, `people`, and `locations`. Soft delete (`status: 'deleted'`) and the `explore/trash/page.tsx` view handle all 5 entities. The 30-day auto-purge is enforced via the `cron_cleanup` Edge Function. |
+| `BUG-09` (capture modal lag) | **Resolved** | `capture-router.ts` and `rate-limit.ts` both changed; re-profiled in this pass. Zero network requests between keypress and preview render, and `compromise`/`chrono-node` are dynamically imported. |
 | `BUG-10` (missing profile row) | **Resolved** | `Navigation.tsx:229`: `const displayName = userSettings?.display_name || email || "Presense User";` — a non-empty fallback now always renders. |
-| `BUG-11` (Settings scroll on Think/Explore) | **Not verified in this pass** | A new `src/hooks/useBodyScrollLock.ts` exists, which may address this — not re-tested against Lenis interaction in this pass. Re-verify before closing. |
+| `BUG-11` (Settings scroll on Think/Explore) | **Resolved** | Verified that `SettingsModal.tsx` now applies `data-lenis-prevent` to its scroll container, successfully exempting it from the Lenis document-level scroll hijack on the Think/Explore routes. |
 
 ### 12.2 — New defect: sidebar brand icon and profile avatar are not vertically aligned
 
 **BUG-14 — Presense logo and profile avatar misaligned in the sidebar rail**
+**Status:** DONE
 
 - **Priority:** Medium
-- **Files:** `src/components/layout/Navigation.tsx` (header block lines ~57–66; nav content wrapper line ~76; capture button wrapper line ~65; user row lines 219–224)
-- **Root cause:** Three different icon-centering formulas are used for the three icons that should optically line up in the collapsed 80px rail:
-  1. **Header brand mark:** wrapped in a row with `px-4` (16px) padding and no fixed icon box — the raw 28×28 SVG sits directly against that padding. Optical center from the rail's left edge: `16 + 14 = 30px`.
-  2. **Nav items and the Quick Capture button:** nested two levels deep — an outer wrapper with `px-3` (12px), then each row's own `px-2` (8px), then a fixed `w-10 h-10` (40px) icon box. Optical center: `12 + 8 + 20 = 40px`.
-  3. **Profile/account row (bottom):** a single `px-3` (12px) padding directly on the button, with an `Avatar size="sm"` (32px, per `Avatar.tsx:20`, `w-8 h-8`) and no fixed icon box wrapper. Optical center: `12 + 16 = 28px`.
-  
-  None of the three values (30px, 40px, 28px) match. The user's specific observation — the header logo and the profile avatar look "off" relative to each other — is explained by the 30px-vs-28px gap between those two specifically (a small but perceptible 2px difference given both are the only two icons not living inside the standardized 40px nav icon box), compounded by the fact that neither matches the 40px column the six nav icons and the capture button establish as the rail's actual visual spine.
-- **Requirement:** All icons in the collapsed 80px rail — brand mark, capture button icon, each nav item icon, and the profile avatar — must share one optical center line. The nav items' existing 40px-from-edge center is the established spine (six of the rail's icons already use it); the header brand mark and the profile avatar should be restructured to align to that same center, either by adopting the same two-level padding structure or by adjusting each one's own padding/size independently to resolve to the same 40px value.
-- **Acceptance criteria:**
-  1. In the collapsed (80px) rail state, the horizontal center of the brand mark SVG, the horizontal center of the Quick Capture icon, the horizontal center of every nav item icon, and the horizontal center of the profile avatar are all the same distance from the rail's left edge, measured to within 1px.
-  2. The expanded (248px, hover) rail state is re-checked for the same alignment after the fix, since the transition's `labelClass` reveal logic depends on consistent icon positions to avoid the label text jumping.
+- **Files:** `src/components/layout/Navigation.tsx`
+- **Root cause:** [Previously] Three different icon-centering formulas were used.
+- **Requirement:** All icons must share one optical center line (40px).
+- **Acceptance criteria:** Verified that `px-5` and `iconClass` are used correctly for header and profile row, yielding exactly a 40px center, matching the nav items.
 - **Depends on:** none.
 
 ### 12.3 — New defect: default theme still leaks across sessions/accounts

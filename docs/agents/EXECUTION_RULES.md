@@ -1,6 +1,6 @@
 # Execution Rules — READ THIS BEFORE TOUCHING ANY FILE
 
-> **This file is the contract.** If you are an AI coding agent working on this project, you MUST follow every rule in this file. If any rule conflicts with `docs/plans/plan.md`, this file wins. If `docs/plans/EXECUTION_SPEC.md` and `docs/plans/plan.md` disagree, `docs/plans/EXECUTION_SPEC.md` wins. If you cannot follow a rule, STOP and report why.
+> **This file is the contract.** If you are an AI coding agent working on this project, you MUST follow every rule in this file. The only backlog is `docs/plans/EXECUTION_SPEC.md` — `plan.md` no longer exists. If you cannot follow a rule, STOP and report why.
 
 ---
 
@@ -13,7 +13,7 @@
 ## THE 7 IRON LAWS
 
 ### Law 1: ONE TICKET AT A TIME
-- Pick exactly ONE unblocked item from `docs/plans/EXECUTION_SPEC.md`. Use `docs/plans/plan.md` only as a secondary legacy plan.
+- Pick exactly ONE unblocked item from `docs/plans/EXECUTION_SPEC.md`.
 - Read the ticket's "File(s)" and "Fix" sections completely.
 - Make ONLY the changes described in that ticket.
 - Do NOT touch any other file, even if you notice a "quick improvement."
@@ -52,12 +52,12 @@ npm test
 - If you're about to edit a file, READ IT FIRST. Do not edit based on what you "think" it says.
 - If a ticket references a line number, VERIFY the line number is still correct before editing. Code shifts.
 - If you're unsure how a function works, read it fully before changing it.
-- If plan.md says "change X to Y" but the code already has Y → report "this is already done" and move on. Do NOT change it to something else.
+- If EXECUTION_SPEC.md says "change X to Y" but the code already has Y → report "this is already done" and move on. Do NOT change it to something else.
 
 ### Law 6: PRESERVE THE "DO NOT BREAK" LIST
-The following are CORRECT and must NOT be modified unless a plan.md ticket explicitly says to:
+The following are CORRECT and must NOT be modified unless a ticket in `docs/plans/EXECUTION_SPEC.md` explicitly says to:
 - The hover sidebar pattern (`w-[80px] hover:w-[248px] focus-within:w-[248px]`)
-- The theme names (`sunset`, `midnight`, `meadow` — do NOT revert to `wahala`/`orange`/`blue`/`forest`)
+- The theme names (`warm`, `navy`, `forest` — do NOT revert to `sunset`/`midnight`/`meadow`/`wahala`/`orange`/`blue`)
 - The `proxy.ts` CSP nonce system (cookie propagation via `cookiesToSet` array)
 - The `MotionProvider` with `LazyMotion features={domMax} strict`
 - The `RealtimeProvider` shared-channel architecture with 5-second teardown debounce
@@ -72,7 +72,7 @@ The following are CORRECT and must NOT be modified unless a plan.md ticket expli
 - If a ticket is ambiguous → stop, report the ambiguity, ask for clarification.
 - If a fix would require touching more than 3 files → stop, report, ask if that's expected.
 - If a ticket says "consider" or "optional" → skip it unless explicitly told to do it.
-- If you encounter a bug that's NOT in plan.md → note it but do NOT fix it. Stay on-ticket.
+- If you encounter a bug that's NOT in `docs/plans/EXECUTION_SPEC.md` → note it but do NOT fix it. Stay on-ticket.
 
 ---
 
@@ -81,8 +81,7 @@ The following are CORRECT and must NOT be modified unless a plan.md ticket expli
 ```
 Step 1: Read this file (`docs/agents/EXECUTION_RULES.md`) completely.
 Step 2: Read `docs/plans/EXECUTION_SPEC.md` enough to identify conflicts and the highest-priority unblocked ticket.
-Step 3: Read `docs/plans/plan.md` only as secondary context.
-Step 4: Find exactly ONE highest-priority unblocked ticket.
+Step 3: Find exactly ONE highest-priority unblocked ticket in `docs/plans/EXECUTION_SPEC.md`.
 Step 5: Read the ticket's files, root cause, requirement, acceptance criteria, dependencies, and conflicts.
 Step 6: Read the actual file(s) referenced in the ticket.
 Step 7: Make the EXACT change described. No more, no less.
@@ -178,7 +177,7 @@ If you encounter ANY of these, STOP IMMEDIATELY and report to the user. Do NOT a
 
 ## VERIFICATION CHECKLIST (before claiming a ticket is done)
 
-- [ ] I read the actual file, not just the plan.md description
+- [ ] I read the actual file, not just the EXECUTION_SPEC.md description
 - [ ] I made ONLY the change described in the ticket
 - [ ] I did NOT touch any file not mentioned in the ticket
 - [ ] `npm run build` passes

@@ -13,6 +13,7 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { cn, extractMentions } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Kbd } from "@/components/ui/Kbd";
 import { useAppStore } from "@/store/useAppStore";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 
@@ -449,7 +450,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
               className="input !pr-14 !rounded-2xl !py-4 resize-none"
             />
             <div className="absolute right-3 bottom-3 flex items-center gap-2">
-              <span className="text-caption text-[var(--color-text-3)] font-mono hidden md:inline">Cmd+Enter</span>
+              <Kbd className="hidden md:inline-flex bg-transparent border-none text-[var(--color-text-3)]">Cmd+Enter</Kbd>
               <button type="submit" disabled={!newEntry.trim() || saving} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[rgba(45,212,191,0.15)] text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.25)] transition-colors disabled:opacity-50">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
               </button>
