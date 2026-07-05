@@ -201,7 +201,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="flex flex-col pb-[calc(env(safe-area-inset-bottom,24px)+24px)] px-3 mt-auto">
+      <div className="flex flex-col pb-[calc(env(safe-area-inset-bottom,24px)+84px)] px-3 mt-auto">
         {/* Search */}
         <div 
           className="relative w-full"
