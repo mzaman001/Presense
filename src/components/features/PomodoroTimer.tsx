@@ -9,6 +9,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 type Phase = "work" | "short_break" | "long_break";
 
@@ -153,7 +154,7 @@ export function PomodoroTimer() {
     if (phase === "work" && activeTimer) {
       toast.success(`Session complete! Did you finish '${activeTimer.taskTitle}'?`, {
         duration: 8000,
-        icon: <Timer className="w-4 h-4 text-[var(--accent)]" />,
+        icon: <UiIcon className="w-4 h-4 text-[var(--accent)]" icon={Timer} />,
         action: {
           label: "Mark Done",
           onClick: async () => {
@@ -329,7 +330,7 @@ export function PomodoroTimer() {
           onClick={() => setShowConfirmEnd(true)}
           className="absolute top-6 right-6 p-2 rounded-full text-[var(--text-3)] hover:text-[var(--text-1)] hover:bg-white/10 transition-colors z-10"
         >
-          <X size={18} strokeWidth={1.5} />
+          <UiIcon size={18} strokeWidth={1.5} icon={X} />
         </button>
 
         {/* Content */}
@@ -399,7 +400,7 @@ export function PomodoroTimer() {
               )}
               title="End session"
             >
-              <Square size={16} strokeWidth={1.5} />
+              <UiIcon size={16} strokeWidth={1.5} icon={Square} />
             </button>
 
             <button
@@ -426,8 +427,8 @@ export function PomodoroTimer() {
               title={isRunning ? "Pause" : "Play"}
             >
               {isRunning
-                ? <Pause size={20} strokeWidth={0} className="fill-black" />
-                : <Play  size={20} strokeWidth={0} className="fill-black ml-0.5" />
+                ? <UiIcon size={20} strokeWidth={0} className="fill-black" icon={Pause} />
+                : <UiIcon  size={20} strokeWidth={0} className="fill-black ml-0.5" icon={Play} />
               }
             </button>
 
@@ -441,7 +442,7 @@ export function PomodoroTimer() {
               )}
               title="Skip"
             >
-              <SkipForward size={16} strokeWidth={1.5} />
+              <UiIcon size={16} strokeWidth={1.5} icon={SkipForward} />
             </button>
           </div>
         </div>

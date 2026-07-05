@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useVisualViewport } from "@/hooks/useVisualViewport";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface SheetProps {
   isOpen: boolean;
@@ -92,7 +93,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
                     aria-label="Close"
                     className="p-1.5 rounded-full text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] transition-colors"
                   >
-                    <X size={20} strokeWidth={2} />
+                    <UiIcon size={20} strokeWidth={2} icon={X} />
                   </button>
                 </div>
               )}

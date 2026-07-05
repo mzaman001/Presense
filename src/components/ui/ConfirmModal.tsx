@@ -4,6 +4,7 @@ import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Sheet } from "@/components/ui/Sheet";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -88,7 +89,7 @@ export function ConfirmModal({
                 onClick={handleConfirm}
                 className="disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
-                {isConfirming && <Loader2 size={14} className="animate-spin" />}
+                {isConfirming && <UiIcon size={14} className="animate-spin" icon={Loader2} />}
                 {confirmLabel}
               </Button>
             </div>

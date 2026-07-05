@@ -12,6 +12,7 @@ import {
 import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 // ─── WorkloadBar ──────────────────────────────────────────────────────────────
 function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
@@ -61,7 +62,7 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
               border: "0.5px solid var(--status-overdue-border)",
             }}
           >
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: "var(--status-overdue)" }} />
+            <UiIcon className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: "var(--status-overdue)" }} icon={AlertTriangle} />
             <p className="text-meta leading-relaxed" style={{ color: "var(--text-3)" }}>
               Over capacity — consider snoozing a task or two. Rest is part of the plan.
             </p>
@@ -145,7 +146,7 @@ function TriageCard({ task, onAction }: {
           onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-button-primary-hover)")}
           onMouseLeave={e => (e.currentTarget.style.boxShadow = "var(--shadow-button-primary)")}
         >
-          <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> Do Today
+          <UiIcon className="w-3.5 h-3.5" strokeWidth={2.5} icon={Check} /> Do Today
         </button>
         <button
           onClick={() => onAction(task.id, "snooze")}
@@ -156,7 +157,7 @@ function TriageCard({ task, onAction }: {
             color: "var(--text-2)",
           }}
         >
-          <Clock className="w-3.5 h-3.5" /> Tomorrow
+          <UiIcon className="w-3.5 h-3.5" icon={Clock} /> Tomorrow
         </button>
         <button
           onClick={() => onAction(task.id, "backlog")}
@@ -167,7 +168,7 @@ function TriageCard({ task, onAction }: {
             color: "var(--text-muted)",
           }}
         >
-          <SkipForward className="w-3.5 h-3.5" /> Backlog
+          <UiIcon className="w-3.5 h-3.5" icon={SkipForward} /> Backlog
         </button>
       </div>
     </m.div>
@@ -384,7 +385,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
       updateUserSetting("last_ritual_date", todayString);
       updateUserSetting("ritual_streak", newStreak);
       toast.success("Morning planning done — have a focused day!", {
-        icon: <Sun className="w-4 h-4 text-orange-400" />
+        icon: <UiIcon className="w-4 h-4 text-orange-400" icon={Sun} />
       });
       handleClose();
       router.push("/");
@@ -473,7 +474,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
       updateUserSetting("last_evening_ritual_date", todayString);
       updateUserSetting("ritual_streak", newStreak);
       toast.success("Shutdown complete. Rest well.", {
-        icon: <Moon className="w-4 h-4 text-blue-400" />
+        icon: <UiIcon className="w-4 h-4 text-blue-400" icon={Moon} />
       });
       handleClose();
     } catch (err: unknown) {
@@ -577,8 +578,8 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   }}
                 >
                   {isMorning
-                    ? <Sun className="w-4.5 h-4.5" style={{ color: "var(--accent)" }} strokeWidth={1.8} />
-                    : <Moon className="w-4.5 h-4.5" style={{ color: "var(--accent)" }} strokeWidth={1.8} />
+                    ? <UiIcon className="w-4.5 h-4.5" style={{ color: "var(--accent)" }} strokeWidth={1.8} icon={Sun} />
+                    : <UiIcon className="w-4.5 h-4.5" style={{ color: "var(--accent)" }} strokeWidth={1.8} icon={Moon} />
                   }
                 </div>
               </div>
@@ -627,7 +628,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 style={{ background: "rgba(255,255,255,0.05)", border: "0.5px solid var(--border-default)", color: "var(--text-3)" }}
                 aria-label="Close"
               >
-                <X className="w-3.5 h-3.5" />
+                <UiIcon className="w-3.5 h-3.5" icon={X} />
               </button>
             </div>
           </div>
@@ -667,7 +668,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                             boxShadow: "0 0 24px rgba(74,222,128,0.08)",
                           }}
                         >
-                          <Smile className="w-7 h-7" style={{ color: "var(--status-done)" }} strokeWidth={1.5} />
+                          <UiIcon className="w-7 h-7" style={{ color: "var(--status-done)" }} strokeWidth={1.5} icon={Smile} />
                         </div>
                         <div className="text-center">
                           <p className="text-title-sm font-semibold" style={{ color: "var(--text-1)" }}>Inbox is clear</p>
@@ -678,7 +679,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                       <>
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
-                            <Inbox className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                            <UiIcon className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} icon={Inbox} />
                             <span className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                               To triage
                             </span>
@@ -722,7 +723,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                             boxShadow: "0 0 24px var(--accent-glow)",
                           }}
                         >
-                          <Sparkles className="w-7 h-7" style={{ color: "var(--accent)" }} strokeWidth={1.5} />
+                          <UiIcon className="w-7 h-7" style={{ color: "var(--accent)" }} strokeWidth={1.5} icon={Sparkles} />
                         </div>
                         <div className="text-center">
                           <p className="text-title-sm font-semibold" style={{ color: "var(--text-1)" }}>No tasks for today</p>
@@ -732,7 +733,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                     ) : (
                       <>
                         <div className="flex items-center gap-2 mb-1">
-                          <Clock className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                          <UiIcon className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} icon={Clock} />
                           <span className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                             Today's tasks
                           </span>
@@ -861,7 +862,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                             className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
                             style={{ background: "rgba(74,222,128,0.12)", border: "0.5px solid rgba(74,222,128,0.25)" }}
                           >
-                            <Check className="w-2.5 h-2.5" strokeWidth={3} style={{ color: "var(--status-done)" }} />
+                            <UiIcon className="w-2.5 h-2.5" strokeWidth={3} style={{ color: "var(--status-done)" }} icon={Check} />
                           </div>
                           <p className="text-ui line-through truncate" style={{ color: "var(--text-muted)" }}>{t.title}</p>
                         </div>
@@ -932,7 +933,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {/* Reflection */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <BookOpen className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                    <UiIcon className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} icon={BookOpen} />
                     <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Daily Reflection</p>
                   </div>
                   <TextareaAutosize
@@ -968,7 +969,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 className="flex items-center gap-1.5 text-body font-medium px-3 py-2 rounded-xl transition-all hover:brightness-110 active:scale-95"
                 style={{ color: "var(--text-3)", background: "rgba(255,255,255,0.04)", border: "0.5px solid var(--border-default)" }}
               >
-                <ChevronLeft className="w-4 h-4" /> Back
+                <UiIcon className="w-4 h-4" icon={ChevronLeft} /> Back
               </button>
             ) : (
               <button
@@ -994,7 +995,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                     border: triageTasks.length > 0 ? "0.5px solid var(--border-default)" : "none",
                   }}
                 >
-                  Next <ArrowRight className="w-4 h-4" />
+                  Next <UiIcon className="w-4 h-4" icon={ArrowRight} />
                 </m.button>
               ) : (
                 <m.button
@@ -1008,7 +1009,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                     boxShadow: "0 4px 20px var(--accent-glow), inset 0 1px 1px rgba(255,255,255,0.2)",
                   }}
                 >
-                  {saving ? "Saving…" : "Lock in my day"} <Sparkles className="w-4 h-4" />
+                  {saving ? "Saving…" : "Lock in my day"} <UiIcon className="w-4 h-4" icon={Sparkles} />
                 </m.button>
               )
             ) : (
@@ -1023,7 +1024,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   boxShadow: "var(--shadow-button-primary)",
                 }}
               >
-                {saving ? "Saving…" : "Shut down"} <Moon className="w-4 h-4" />
+                {saving ? "Saving…" : "Shut down"} <UiIcon className="w-4 h-4" icon={Moon} />
               </m.button>
             )}
           </div>

@@ -17,6 +17,7 @@ import { ExploreDrawer } from "@/components/features/ExploreDrawer";
 import { LenisProvider } from "@/components/layout/LenisProvider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ExploreItem {
   id: string;
@@ -89,7 +90,7 @@ const ExploreItemCard = ({
         }}
       >
         <m.div style={{ scale: deleteScale }}>
-          <Trash2 className="w-5 h-5 text-red-400" />
+          <UiIcon className="w-5 h-5 text-red-400" icon={Trash2} />
         </m.div>
       </m.div>
 
@@ -217,7 +218,7 @@ export default function ExplorePage() {
         title="Explore"
         actions={
           <Button variant="secondary" onClick={() => setIsAddDrawerOpen(true)} className="!text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
-            <Plus className="w-4 h-4" /> Save item
+            <UiIcon className="w-4 h-4" icon={Plus} /> Save item
           </Button>
         }
       >
@@ -264,7 +265,7 @@ export default function ExplorePage() {
           ) : items.length === 0 ? (
             <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
               <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                <Link2 className="w-6 h-6 text-[var(--color-text-3)]" />
+                <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={Link2} />
               </div>
               <h3 className="text-[var(--color-text-1)] font-medium mb-2">Nothing saved yet</h3>
               <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Capture &ldquo;interesting...&rdquo; or paste a URL to save articles, tweets, and links.</p>
@@ -272,7 +273,7 @@ export default function ExplorePage() {
                 onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
                 className="gap-2"
               >
-                <Plus size={16} /> Save Link
+                <UiIcon size={16} icon={Plus} /> Save Link
               </Button>
             </GlassCard>
           ) : (

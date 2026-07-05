@@ -19,6 +19,7 @@ interface AddPersonPanelProps {
 }
 
 import { RELATIONSHIP_COLORS } from "@/lib/constants";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 const COLORS = [
   '#3B82F6', // Blue
@@ -167,7 +168,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
               {/* Next Meeting */}
               <div className="bg-[rgba(255,255,255,0.03)] p-4 rounded-xl border border-[var(--color-border)]">
                 <label className="flex items-center justify-between text-label text-[var(--text-3)] mb-3">
-                  <span className="flex items-center gap-2"><Calendar size={13} strokeWidth={1.5} className="text-[var(--text-3)]" /> Next Meeting (Optional)</span>
+                  <span className="flex items-center gap-2"><UiIcon size={13} strokeWidth={1.5} className="text-[var(--text-3)]" icon={Calendar} /> Next Meeting (Optional)</span>
                 </label>
                 <input
                   type="datetime-local"
@@ -198,7 +199,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
                 disabled={saving || !name.trim()}
                 className="flex-1 py-3 w-full disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save Changes"}
+                {saving ? <UiIcon className="w-5 h-5 animate-spin" icon={Loader2} /> : "Save Changes"}
               </Button>
             </div>
     </Sheet>

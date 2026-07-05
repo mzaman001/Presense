@@ -5,6 +5,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Search, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 export function MobileTopBar() {
   const { userSettings, setSettingsModalOpen, setSearchModalOpen, setIsMobileDrawerOpen } = useAppStore();
@@ -17,7 +18,7 @@ export function MobileTopBar() {
           className="flex items-center justify-center -ml-2 p-2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
           aria-label="Open navigation menu"
         >
-          <Menu size={20} strokeWidth={1.5} />
+          <UiIcon size={20} strokeWidth={1.5} icon={Menu} />
         </button>
         {userSettings?.display_name && (
           <button 
@@ -38,13 +39,13 @@ export function MobileTopBar() {
           onClick={() => setSearchModalOpen(true)}
           className="p-2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
         >
-          <Search size={20} strokeWidth={1.5} />
+          <UiIcon size={20} strokeWidth={1.5} icon={Search} />
         </button>
         <Link 
           href="/inbox"
           className="p-2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
         >
-          <Bell size={20} strokeWidth={1.5} />
+          <UiIcon size={20} strokeWidth={1.5} icon={Bell} />
         </Link>
       </div>
     </header>

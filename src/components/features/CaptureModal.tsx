@@ -17,6 +17,7 @@ import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
 import { useHaptics } from "@/hooks/useHaptics";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 function formatCaptureDeadline(iso: string) {
   const d = new Date(iso);
@@ -346,9 +347,9 @@ export function CaptureModal() {
           {/* Input row */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl relative">
               {routedItems ? (
-                <Sparkles className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" />
+                <UiIcon className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" icon={Sparkles} />
               ) : (
-                <Search className="w-5 h-5 text-[var(--color-text-3)] shrink-0" />
+                <UiIcon className="w-5 h-5 text-[var(--color-text-3)] shrink-0" icon={Search} />
               )}
               <input
                 ref={inputRef}
@@ -367,7 +368,7 @@ export function CaptureModal() {
               />
               {input && !routedItems && !isRouting && (
                 <button onClick={() => { handleInputChange(""); inputRef.current?.focus(); }} aria-label="Clear input" className="p-1 mr-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded hover:bg-[var(--color-surface)] transition-colors">
-                  <X className="w-4 h-4" />
+                  <UiIcon className="w-4 h-4" icon={X} />
                 </button>
               )}
               {!routedItems && (
@@ -490,7 +491,7 @@ export function CaptureModal() {
             {/* Saved animation */}
             {saved && (
               <div className="flex items-center justify-center gap-2 p-6 text-[#4ADE80]">
-                <Check className="w-5 h-5" />
+                <UiIcon className="w-5 h-5" icon={Check} />
                 <span className="text-sm font-medium">Saved!</span>
               </div>
             )}
@@ -507,7 +508,7 @@ export function CaptureModal() {
                     disabled={!input.trim() || isRouting}
                     className="disabled:opacity-50"
                   >
-                    {isRouting ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Sparkles size={14} strokeWidth={1.5} className="shrink-0" />}
+                    {isRouting ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Sparkles} />}
                     {isRouting ? "Routing..." : "Route & Capture"}
                   </Button>
                 </>
@@ -517,14 +518,14 @@ export function CaptureModal() {
                     onClick={() => setRoutedItems(null)}
                     className=""
                   >
-                    <X size={14} strokeWidth={1.5} className="shrink-0" /> Start over
+                    <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={X} /> Start over
                   </Button>
                   <Button variant="primary"
                     onClick={handleConfirm}
                     disabled={isSaving || routedItems.some((i) => !i.destinationId)}
                     className="disabled:opacity-50"
                   >
-                    {isSaving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : <Check size={14} strokeWidth={1.5} className="shrink-0" />}
+                    {isSaving ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Check} />}
                     {isSaving ? "Saving..." : "Confirm & Save"}
                   </Button>
                 </>

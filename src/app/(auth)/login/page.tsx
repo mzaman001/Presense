@@ -6,6 +6,7 @@ import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { OnboardingBackground, PresenseLogo } from "@/components/layout/OnboardingBackground";
 import { getAuthCallbackUrl } from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 export default function LoginPage() {
   const [supabase] = useState<ReturnType<typeof createClient> | null>(() => {
@@ -92,7 +93,7 @@ export default function LoginPage() {
               className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
               style={{ background: "rgba(45,212,191,0.10)", border: "0.5px solid rgba(45,212,191,0.25)" }}
             >
-              <Mail size={22} strokeWidth={1.5} className="text-[#2DD4BF]" />
+              <UiIcon size={22} strokeWidth={1.5} className="text-[#2DD4BF]" icon={Mail} />
             </div>
             <p className="text-title-md font-semibold mb-2" style={{ color: "var(--text-1)" }}>Check your inbox</p>
             <p className="text-body" style={{ color: "var(--text-3)" }}>
@@ -139,11 +140,11 @@ export default function LoginPage() {
                 className="w-full flex items-center justify-center gap-2"
               >
                 {loading === "email"
-                  ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-                  : <Sparkles size={14} strokeWidth={1.5} />
+                  ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin" icon={Loader2} />
+                  : <UiIcon size={14} strokeWidth={1.5} icon={Sparkles} />
                 }
                 Send sign-in link
-                <ArrowRight size={14} strokeWidth={1.5} className="ml-auto" />
+                <UiIcon size={14} strokeWidth={1.5} className="ml-auto" icon={ArrowRight} />
               </Button>
             </form>
 
@@ -161,8 +162,8 @@ export default function LoginPage() {
               className="w-full flex items-center justify-center gap-2.5"
             >
               {loading === "google"
-                ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-                : <Globe2 size={14} strokeWidth={1.5} />
+                ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin" icon={Loader2} />
+                : <UiIcon size={14} strokeWidth={1.5} icon={Globe2} />
               }
               Continue with Google
             </Button>

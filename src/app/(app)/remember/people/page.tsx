@@ -36,6 +36,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface Person {
   id: string;
@@ -92,7 +93,7 @@ const TodayPersonCard = ({
         }}
       >
         <m.div style={{ scale: deleteScale }}>
-          <Trash2 className="w-5 h-5 text-red-400" />
+          <UiIcon className="w-5 h-5 text-red-400" icon={Trash2} />
         </m.div>
       </m.div>
 
@@ -113,7 +114,7 @@ const TodayPersonCard = ({
                 <div>
                   <p className="text-sm font-semibold text-[var(--color-text-1)]">{person.name}</p>
                   <p className="text-xs text-[var(--accent)] flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Meeting at {formatMeeting(person.next_meeting!)}
+                    <UiIcon className="w-3 h-3" icon={Clock} /> Meeting at {formatMeeting(person.next_meeting!)}
                   </p>
                 </div>
               </div>
@@ -121,7 +122,7 @@ const TodayPersonCard = ({
             </div>
             {person.notes?.slice(-3).reverse().map((note, ni) => (
               <p key={ni} className="text-xs text-[var(--color-text-3)] flex items-start gap-1.5 mt-1">
-                <ChevronRight className="w-3 h-3 shrink-0 mt-0.5 text-[var(--accent)]" /> {note.text}
+                <UiIcon className="w-3 h-3 shrink-0 mt-0.5 text-[var(--accent)]" icon={ChevronRight} /> {note.text}
               </p>
             ))}
           </GlassCard>
@@ -184,7 +185,7 @@ function SortablePersonRow({
         }}
       >
         <m.div style={{ scale: deleteScale }}>
-          <Trash2 className="w-5 h-5 text-red-400" />
+          <UiIcon className="w-5 h-5 text-red-400" icon={Trash2} />
         </m.div>
       </m.div>
 
@@ -203,7 +204,7 @@ function SortablePersonRow({
             {...listeners} 
             className="w-10 flex items-center justify-center border-r border-[var(--color-border)] cursor-grab active:cursor-grabbing hover:bg-[rgba(255,255,255,0.03)] transition-colors shrink-0"
           >
-            <GripVertical className="w-4 h-4 text-[var(--color-text-3)]" />
+            <UiIcon className="w-4 h-4 text-[var(--color-text-3)]" icon={GripVertical} />
           </div>
           
           <Link href={`/remember/people/${person.id}`} className="flex-1 min-w-0 p-4 block hover:bg-[rgba(255,255,255,0.02)] transition-colors">
@@ -337,7 +338,7 @@ export default function PeoplePage() {
                   <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse shadow-[var(--shadow-accent-glow)]" />
                 </div>
                 <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-card-title hover:bg-[var(--accent-dim-hover)] transition-colors">
-                  <Plus className="w-4 h-4" /> Add person
+                  <UiIcon className="w-4 h-4" icon={Plus} /> Add person
                 </button>
               </div>
               <div className="space-y-3">
@@ -362,7 +363,7 @@ export default function PeoplePage() {
               </div>
               {today.length === 0 && (
                 <button onClick={() => setIsPanelOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-card-title hover:bg-[var(--accent-dim-hover)] transition-colors">
-                  <Plus className="w-4 h-4" /> Add person
+                  <UiIcon className="w-4 h-4" icon={Plus} /> Add person
                 </button>
               )}
             </div>
@@ -378,7 +379,7 @@ export default function PeoplePage() {
         description="Add someone manually, or capture &ldquo;Meeting with Alex&rdquo; to automatically create a profile."
         action={
           <Button variant="primary" onClick={() => setIsPanelOpen(true)} className="gap-2 mx-auto">
-            <Plus size={16} /> Add Person
+            <UiIcon size={16} icon={Plus} /> Add Person
           </Button>
         }
       />

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Sheet } from "@/components/ui/Sheet";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface LocationAddPanelProps {
   isOpen: boolean;
@@ -139,7 +140,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
                   onClick={() => setDeleteConfirm(true)}
                   className="px-3 flex items-center justify-center"
                 >
-                  <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
+                  <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Trash2} />
                 </Button>
               )}
               <Button variant="primary"
@@ -147,7 +148,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
                 disabled={saving || !itemName.trim() || !locationText.trim()}
                 className="flex-1  py-3 w-full disabled:opacity-50"
               >
-                {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (itemToEdit ? "Save Changes" : "Log Location")}
+                {saving ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : (itemToEdit ? "Save Changes" : "Log Location")}
               </Button>
             </div>
       </Sheet>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Lightbulb } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ContextualTipProps {
   id: string;
@@ -33,7 +34,7 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
           className="relative mb-6 overflow-hidden rounded-xl bg-gradient-to-r from-[rgba(229,180,30,0.1)] to-[rgba(235,66,51,0.05)] border border-[rgba(229,180,30,0.2)] p-4 shadow-lg flex items-start gap-3"
         >
           <div className="mt-0.5 w-8 h-8 rounded-full bg-[rgba(229,180,30,0.2)] flex items-center justify-center flex-shrink-0 text-[#E5B41E]">
-            <Lightbulb className="w-4 h-4" />
+            <UiIcon className="w-4 h-4" icon={Lightbulb} />
           </div>
           <div className="flex-1 pr-6">
             <h4 className="text-sm font-semibold text-[#E5B41E] mb-1">{title}</h4>
@@ -43,7 +44,7 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
             onClick={handleDismiss}
             className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
           >
-            <X className="w-4 h-4" />
+            <UiIcon className="w-4 h-4" icon={X} />
           </button>
         </m.div>
       )}

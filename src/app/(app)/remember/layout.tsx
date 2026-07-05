@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Users, MapPin } from "lucide-react";
 import { ContextualTip } from "@/components/ui/ContextualTip";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 export default function RememberLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,7 +31,7 @@ export default function RememberLayout({ children }: { children: React.ReactNode
             pathname.includes("/people") ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
           )}
         >
-          <Users className="w-4 h-4" /> People
+          <UiIcon className="w-4 h-4" icon={Users} /> People
         </Link>
         <Link 
           href="/remember/locations"
@@ -39,7 +40,7 @@ export default function RememberLayout({ children }: { children: React.ReactNode
             pathname.includes("/locations") ? "bg-[var(--color-surface)] text-[var(--color-text-1)]" : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)]"
           )}
         >
-          <MapPin className="w-4 h-4" /> Locations
+          <UiIcon className="w-4 h-4" icon={MapPin} /> Locations
         </Link>
       </div>
 

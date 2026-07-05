@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useHaptics } from "@/hooks/useHaptics";
 import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -190,7 +191,7 @@ export const TaskCard = React.memo(({
         }}
       >
         <m.div style={{ scale: completeScale }}>
-          <Check className="w-5 h-5 text-green-400" />
+          <UiIcon className="w-5 h-5 text-green-400" icon={Check} />
         </m.div>
       </m.div>
 
@@ -203,7 +204,7 @@ export const TaskCard = React.memo(({
         }}
       >
         <m.div style={{ scale: deleteScale }}>
-          <Trash2 className="w-5 h-5 text-red-400" />
+          <UiIcon className="w-5 h-5 text-red-400" icon={Trash2} />
         </m.div>
       </m.div>
 
@@ -246,7 +247,7 @@ export const TaskCard = React.memo(({
               isCompleting && "checked"
             )}
           >
-            {isCompleting && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+            {isCompleting && <UiIcon className="w-3.5 h-3.5 text-white" strokeWidth={3} icon={Check} />}
           </m.button>
 
           <div className="flex-1 min-w-0 pr-4">
@@ -335,13 +336,13 @@ export const TaskCard = React.memo(({
           <div className="flex items-center gap-2">
             {task.time_spent_minutes > 0 && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ background: "rgba(229,180,30,0.08)" }} title="Time spent on this task">
-                <Timer size={12} strokeWidth={1.5} style={{ color: "var(--accent)" }} />
+                <UiIcon size={12} strokeWidth={1.5} style={{ color: "var(--accent)" }} icon={Timer} />
                 <span className="text-caption font-bold" style={{ color: "var(--accent)" }}>{formatTimeSpent(task.time_spent_minutes)}</span>
               </div>
             )}
             {(task.snoozed_until && new Date(task.snoozed_until) > new Date()) && (
               <div className="flex items-center gap-1 px-2 py-1 rounded-md" style={{ background: "var(--surface-1)", border: "0.5px solid var(--border-default)" }}>
-                <Clock size={12} strokeWidth={1.5} style={{ color: "var(--text-3)" }} />
+                <UiIcon size={12} strokeWidth={1.5} style={{ color: "var(--text-3)" }} icon={Clock} />
                 <span className="text-caption" style={{ color: "var(--text-3)" }}>
                   {new Date(task.snoozed_until).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                 </span>
@@ -396,7 +397,7 @@ export const TaskCard = React.memo(({
               }}
               title="Start focus session"
             >
-              <Play size={14} strokeWidth={0} className="fill-current" />
+              <UiIcon size={14} strokeWidth={0} className="fill-current" icon={Play} />
             </Button>
           </div>
         </div>

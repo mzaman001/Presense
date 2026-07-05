@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Popover } from "@/components/ui/Popover";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface InboxItem {
   id: string;
@@ -70,7 +71,7 @@ const InboxItemCard = ({
         }}
       >
         <m.div style={{ scale: deleteScale }}>
-          <Trash2 className="w-5 h-5 text-red-400" />
+          <UiIcon className="w-5 h-5 text-red-400" icon={Trash2} />
         </m.div>
       </m.div>
 
@@ -96,26 +97,26 @@ const InboxItemCard = ({
                 <Button variant="secondary" 
                   className="w-full"
                 >
-                  <FolderInput className="w-3.5 h-3.5" />
+                  <UiIcon className="w-3.5 h-3.5" icon={FolderInput} />
                   Route it
                 </Button>
               }
               content={
                 <div className="flex flex-col p-1">
                   <button onClick={() => { routeInboxItem(item.id, 'do'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-[var(--color-do)]" /> Do (Task)
+                    <UiIcon className="w-4 h-4 text-[var(--color-do)]" icon={CheckCircle2} /> Do (Task)
                   </button>
                   <button onClick={() => { routeInboxItem(item.id, 'think'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-[var(--color-think)]" /> Think (Thread)
+                    <UiIcon className="w-4 h-4 text-[var(--color-think)]" icon={MessageSquare} /> Think (Thread)
                   </button>
                   <button onClick={() => { routeInboxItem(item.id, 'explore'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <Compass className="w-4 h-4 text-[var(--color-explore)]" /> Explore (Saved)
+                    <UiIcon className="w-4 h-4 text-[var(--color-explore)]" icon={Compass} /> Explore (Saved)
                   </button>
                   <button onClick={() => { routeInboxItem(item.id, 'remember'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-[var(--color-people)]" /> Remember (Person)
+                    <UiIcon className="w-4 h-4 text-[var(--color-people)]" icon={Brain} /> Remember (Person)
                   </button>
                   <button onClick={() => { routeInboxItem(item.id, 'location'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[var(--color-people)]" /> Locations
+                    <UiIcon className="w-4 h-4 text-[var(--color-people)]" icon={MapPin} /> Locations
                   </button>
                 </div>
               }
@@ -125,7 +126,7 @@ const InboxItemCard = ({
               className="!bg-transparent !border-transparent hover:!bg-red-500/10 hover:!text-red-400 shrink-0"
               title="Dismiss"
             >
-              <X className="w-4 h-4" />
+              <UiIcon className="w-4 h-4" icon={X} />
             </Button>
           </div>
         </div>
@@ -330,7 +331,7 @@ export default function InboxPage() {
           <p className="text-caption uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
           <div className="flex items-center gap-4">
             <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight flex items-center gap-2">
-              <Inbox size={22} className="text-[var(--accent)]" />
+              <UiIcon size={22} className="text-[var(--accent)]" icon={Inbox} />
               Inbox
             </h1>
           </div>
@@ -345,14 +346,14 @@ export default function InboxPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
+          <UiIcon className="w-6 h-6 animate-spin text-[var(--color-text-3)]" icon={Loader2} />
         </div>
       ) : (
         <div className="max-w-2xl mx-auto space-y-4 pt-4">
           {inboxItems.length === 0 ? (
             <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
               <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-6 h-6 text-[var(--color-text-3)]" />
+                <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={CheckCircle2} />
               </div>
               <h3 className="text-[var(--color-text-1)] font-medium mb-2">Inbox Zero</h3>
               <p className="text-sm text-[var(--color-text-3)] max-w-sm">You've processed everything. Your mind is clear for the day ahead.</p>

@@ -12,6 +12,7 @@ import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
 import { useHaptics } from "@/hooks/useHaptics";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 export function SearchModal() {
   const { isSearchModalOpen, setSearchModalOpen } = useAppStore();
@@ -77,7 +78,7 @@ export function SearchModal() {
       <Sheet isOpen={isSearchModalOpen} onClose={() => setSearchModalOpen(false)}>
         <div className="relative w-full max-w-2xl mx-auto overflow-hidden">
           <div className="flex items-center px-4 border-b border-[var(--color-border)]">
-              <Search size={13} strokeWidth={1.5} className="text-[var(--text-3)] ml-2" />
+              <UiIcon size={13} strokeWidth={1.5} className="text-[var(--text-3)] ml-2" icon={Search} />
               <input
                 ref={inputRef}
                 type="text"
@@ -107,14 +108,14 @@ export function SearchModal() {
               />
               {query && (
                 <button onClick={() => { setQuery(""); inputRef.current?.focus(); }} aria-label="Clear search" className="p-2 ml-1 mr-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface)] transition-colors">
-                  <X className="w-4 h-4" />
+                  <UiIcon className="w-4 h-4" icon={X} />
                 </button>
               )}
-              {loading && <Loader2 className="w-5 h-5 animate-spin text-[var(--color-text-3)]" />}
+              {loading && <UiIcon className="w-5 h-5 animate-spin text-[var(--color-text-3)]" icon={Loader2} />}
               <div className="w-px h-6 bg-[var(--color-border)] mx-1"></div>
               <button onClick={() => setSearchModalOpen(false)} aria-label="Close search modal" className="p-2 ml-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface)] transition-colors">
                 <span className="text-caption font-mono mr-1 border border-[rgba(255,255,255,0.2)] rounded px-1 hidden sm:inline-block">ESC</span>
-                <X className="w-5 h-5 hidden" />
+                <UiIcon className="w-5 h-5 hidden" icon={X} />
               </button>
             </div>
 
@@ -122,7 +123,7 @@ export function SearchModal() {
               {!query && (
                 <div className="p-12 flex flex-col items-center justify-center text-center">
                   <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                    <Search className="w-6 h-6 text-[var(--color-text-3)]" />
+                    <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={Search} />
                   </div>
                   <h3 className="text-[var(--color-text-1)] font-medium mb-2">Search your brain</h3>
                   <p className="text-sm text-[var(--color-text-3)] max-w-[250px]">Type to search across tasks, people, threads, explores, and locations.</p>
@@ -132,7 +133,7 @@ export function SearchModal() {
               {query && !loading && results.length === 0 && (
                 <div className="p-12 flex flex-col items-center justify-center text-center">
                   <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                    <AlertCircle className="w-6 h-6 text-[var(--color-text-3)]" />
+                    <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={AlertCircle} />
                   </div>
                   <h3 className="text-[var(--color-text-1)] font-medium mb-2">No results</h3>
                   <p className="text-sm text-[var(--color-text-3)]">No results found for &ldquo;{query}&rdquo;</p>

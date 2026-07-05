@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface TaskEditData {
   id: string;
@@ -443,7 +444,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                         }}
                         className={cn("w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0", st.completed ? "bg-[var(--color-text-3)] border-[var(--color-text-3)]" : "border-[var(--color-border)] hover:border-[var(--color-text-3)]")}
                       >
-                        {st.completed && <Check className="w-3 h-3 text-[var(--color-background)]" />}
+                        {st.completed && <UiIcon className="w-3 h-3 text-[var(--color-background)]" icon={Check} />}
                       </button>
                       <input
                         value={st.text}
@@ -454,7 +455,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                         className={cn("flex-1 bg-transparent border-none text-sm focus:outline-none placeholder:text-[var(--text-muted)]", st.completed && "line-through text-[var(--text-muted)]")}
                       />
                       <button onClick={() => setSubtasks(subtasks.filter((_, idx) => idx !== i))} className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-muted)] hover:text-[#F87171] transition-all">
-                        <X size={14} />
+                        <UiIcon size={14} icon={X} />
                       </button>
                     </div>
                   ))}
@@ -480,7 +481,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                 <Popover
                   trigger={
                     <button className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", deadline ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
-                      <Calendar size={13} />
+                      <UiIcon size={13} icon={Calendar} />
                       {deadline ? (() => {
                         const d = new Date(deadline);
                         const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
@@ -539,7 +540,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                 <Popover
                   trigger={
                     <button className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", freq !== "Does not repeat" ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
-                      <RotateCw size={13} />
+                      <UiIcon size={13} icon={RotateCw} />
                       {freq !== "Does not repeat" ? freq : "Repeat"}
                     </button>
                   }
@@ -737,7 +738,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                   onClick={() => setDeleteTaskConfirm(true)}
                   className="px-3 flex items-center justify-center"
                 >
-                  <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
+                  <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Trash2} />
                 </Button>
               )}
               <Button variant="primary"
@@ -745,7 +746,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                 disabled={saving || !title.trim()}
                 className="flex-1  py-3 w-full disabled:opacity-50"
               >
-                {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (taskToEdit ? "Save Changes" : "Save Task")}
+                {saving ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : (taskToEdit ? "Save Changes" : "Save Task")}
               </Button>
             </div>
     </Sheet>

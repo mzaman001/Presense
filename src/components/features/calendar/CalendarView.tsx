@@ -33,6 +33,7 @@ import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { Task } from "@/types/calendar";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -261,13 +262,13 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
               onClick={navigatePrev}
               className="p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors"
             >
-              <ChevronLeft size={16} />
+              <UiIcon size={16} icon={ChevronLeft} />
             </button>
             <button
               onClick={navigateNext}
               className="p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors"
             >
-              <ChevronRight size={16} />
+              <UiIcon size={16} icon={ChevronRight} />
             </button>
           </div>
           <h2 className="text-sm font-semibold text-[var(--color-text-1)] min-w-[200px]">

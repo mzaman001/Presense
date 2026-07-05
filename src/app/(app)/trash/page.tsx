@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { ArrowLeft, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 const TYPE_LABELS: Record<string, string> = {
   explore: 'Explore',
@@ -86,7 +87,7 @@ export default function TrashPage() {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
       <header className="mb-8">
         <h1 className="text-page-greeting text-[var(--text-1)] flex items-center gap-3">
-          <Trash2 className="w-6 h-6 text-[var(--color-text-3)]" />
+          <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={Trash2} />
           Trash
         </h1>
         <p className="text-[var(--color-text-3)] mt-1">Items you've deleted. Restore or remove them permanently.</p>
@@ -94,11 +95,11 @@ export default function TrashPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--color-text-3)]" />
+          <UiIcon className="w-8 h-8 animate-spin text-[var(--color-text-3)]" icon={Loader2} />
         </div>
       ) : items.length === 0 ? (
         <GlassCard className="p-12 text-center border-dashed border-[var(--color-border)]">
-          <Trash2 className="w-8 h-8 text-[var(--color-text-3)] mx-auto mb-4" />
+          <UiIcon className="w-8 h-8 text-[var(--color-text-3)] mx-auto mb-4" icon={Trash2} />
           <h3 className="text-section-title text-[var(--text-1)] mb-2">Trash is empty</h3>
           <p className="text-sm text-[var(--color-text-3)]">Nothing to see here.</p>
         </GlassCard>
@@ -122,13 +123,13 @@ export default function TrashPage() {
                   onClick={() => handleRestore(item)}
                   className="px-3 py-1.5 rounded-lg bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 text-xs font-medium flex items-center gap-1.5 transition-colors"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Restore
+                  <UiIcon className="w-3.5 h-3.5" icon={RefreshCw} /> Restore
                 </button>
                 <button
                   onClick={() => setItemToPermanentDelete(item)}
                   className="px-3 py-1.5 rounded-lg bg-[#F87171]/10 text-[#F87171] hover:bg-[#F87171]/20 text-xs font-medium flex items-center gap-1.5 transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete Forever
+                  <UiIcon className="w-3.5 h-3.5" icon={Trash2} /> Delete Forever
                 </button>
               </div>
             </GlassCard>

@@ -15,6 +15,7 @@ import { Plus } from "lucide-react";
 
 import { Task } from "@/types/calendar";
 import { useAppStore } from "@/store/useAppStore";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 const HOUR_HEIGHT = 48; // px per hour
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -151,9 +152,9 @@ function DroppableSlot({
       style={{ height: HOUR_HEIGHT }}
     >
       <div className="absolute top-1/2 left-0 right-0 border-t border-[rgba(255,255,255,0.02)] pointer-events-none" />
-      <Plus
+      <UiIcon
         size={12}
-        className="absolute top-1 right-1 text-[var(--color-text-3)] opacity-0 group-hover:opacity-60 transition-opacity"
+        className="absolute top-1 right-1 text-[var(--color-text-3)] opacity-0 group-hover:opacity-60 transition-opacity" icon={Plus}
       />
     </div>
   );

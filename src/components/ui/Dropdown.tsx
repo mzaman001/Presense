@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface DropdownOption {
   value: string;
@@ -139,7 +140,7 @@ export function Dropdown({
           {selectedOption.label || placeholder}
         </span>
         <m.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
+          <UiIcon className="w-4 h-4 text-[var(--color-text-3)]" icon={ChevronDown} />
         </m.div>
       </button>
       {mounted && createPortal(

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { LenisProvider } from "@/components/layout/LenisProvider";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface Thread {
   id: string;
@@ -201,7 +202,7 @@ export default function ThinkPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search size={13} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+            <UiIcon size={13} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" icon={Search} />
             <input 
               type="text" 
               placeholder="Search threads..." 
@@ -211,10 +212,10 @@ export default function ThinkPage() {
             />
           </div>
           <Button variant="secondary" onClick={handleDailyNote} className="!text-[#FBBF24] !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] hover:!bg-[rgba(251,191,36,0.2)] hidden sm:flex">
-            <Sparkles className="w-4 h-4" /> Daily Note
+            <UiIcon className="w-4 h-4" icon={Sparkles} /> Daily Note
           </Button>
           <Button variant="secondary" onClick={handleNewThread} className="!text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
-            <Plus className="w-4 h-4" /> New thread
+            <UiIcon className="w-4 h-4" icon={Plus} /> New thread
           </Button>
         </div>
       </div>
@@ -227,7 +228,7 @@ export default function ThinkPage() {
 
       <div className="md:hidden">
         <div className="relative">
-          <Search size={13} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+          <UiIcon size={13} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" icon={Search} />
           <input 
             type="text" 
             placeholder="Search threads..." 
@@ -247,7 +248,7 @@ export default function ThinkPage() {
           {filteredThreads.filter(t => t.stale_prompt).length > 0 && (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+                <UiIcon className="w-4 h-4 text-[var(--accent)]" icon={Sparkles} />
                 <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Stale Threads</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -273,7 +274,7 @@ export default function ThinkPage() {
           {filteredThreads.length === 0 ? (
             <GlassCard className="p-12 text-center mt-6 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
               <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                <Sparkles className="w-6 h-6 text-[var(--color-text-3)]" />
+                <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={Sparkles} />
               </div>
               <h3 className="text-[var(--color-text-1)] font-medium mb-2">No threads yet</h3>
               <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo; to start expanding your ideas.</p>
@@ -281,7 +282,7 @@ export default function ThinkPage() {
                 onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
                 className="gap-2"
               >
-                <Plus size={16} /> New Thought
+                <UiIcon size={16} icon={Plus} /> New Thought
               </Button>
             </GlassCard>
           ) : (
@@ -302,14 +303,14 @@ export default function ThinkPage() {
                           : "opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-2)] hover:bg-[var(--color-surface)]"
                       )}
                     >
-                      <Pin size={14} strokeWidth={1.5} className={cn(thread.is_pinned && "fill-current")} />
+                      <UiIcon size={14} strokeWidth={1.5} className={cn(thread.is_pinned && "fill-current")} icon={Pin} />
                     </button>
                   )}
                   <div className="flex items-start gap-3">
                     <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: thread.color_accent }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        {!showArchive && !showTrash && thread.is_pinned && <Pin className="w-3.5 h-3.5 text-[var(--accent)] fill-current" />}
+                        {!showArchive && !showTrash && thread.is_pinned && <UiIcon className="w-3.5 h-3.5 text-[var(--accent)] fill-current" icon={Pin} />}
                         <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug pr-6">{thread.title}</p>
                       </div>
                       {thread.entries?.length > 0 && (
@@ -323,7 +324,7 @@ export default function ThinkPage() {
                         </span>
                         {thread.stale_prompt && (
                           <span className="flex items-center gap-1 text-caption text-[var(--accent)]">
-                            <Sparkles className="w-3 h-3" /> Revisit
+                            <UiIcon className="w-3 h-3" icon={Sparkles} /> Revisit
                           </span>
                         )}
                       </div>

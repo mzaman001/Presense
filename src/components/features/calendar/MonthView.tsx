@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
 import { Task } from "@/types/calendar";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface MonthViewProps {
   currentMonth: Date;
@@ -120,7 +121,7 @@ function DayPopover({
           onClick={onClose}
           className="text-[var(--color-text-3)] hover:text-[var(--color-text-1)] p-0.5 rounded"
         >
-          <X size={12} />
+          <UiIcon size={12} icon={X} />
         </button>
       </div>
       {tasks.map((t) => (

@@ -11,6 +11,7 @@ import { PageSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface LocationItem {
   id: string;
@@ -78,7 +79,7 @@ export default function LocationsPage() {
 
       {/* Search bar â€” primary interaction */}
       <div className="relative">
-        <Search size={13} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+        <UiIcon size={13} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-3)]" icon={Search} />
         <input
           ref={searchRef}
           type="text"
@@ -108,7 +109,7 @@ export default function LocationsPage() {
         </div>
         {!showAdd && (
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent-border)] text-[var(--accent)] text-card-title hover:bg-[var(--accent-dim-hover)] transition-colors">
-            <Plus className="w-4 h-4" /> Log item
+            <UiIcon className="w-4 h-4" icon={Plus} /> Log item
           </button>
         )}
       </div>
@@ -120,7 +121,7 @@ export default function LocationsPage() {
       ) : items.length === 0 && !search.trim() ? (
         <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
           <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-            <MapPin className="w-6 h-6 text-[var(--color-text-3)]" />
+            <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={MapPin} />
           </div>
           <h3 className="text-[var(--color-text-1)] font-medium mb-2">No locations here</h3>
           <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Log an item to remember where you put it.</p>
@@ -128,7 +129,7 @@ export default function LocationsPage() {
             onClick={() => setShowAdd(true)}
             className="gap-2 mx-auto"
           >
-            <Plus size={16} /> Log Item
+            <UiIcon size={16} icon={Plus} /> Log Item
           </Button>
         </GlassCard>
       ) : (
@@ -155,14 +156,14 @@ export default function LocationsPage() {
                     </div>
                     <div className="text-right shrink-0 space-y-1">
                       {isVeryStale ? (
-                        <span className="text-caption text-[var(--color-text-3)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Probably moved?</span>
+                        <span className="text-caption text-[var(--color-text-3)] flex items-center gap-1"><UiIcon className="w-3 h-3" icon={AlertCircle} /> Probably moved?</span>
                       ) : isStale ? (
                         <button onClick={(e) => { e.stopPropagation(); markStillHere(item.id); }} className="text-caption text-[#FBBF24] flex items-center gap-1 hover:text-[var(--color-text-1)] transition-colors border border-[rgba(251,191,36,0.3)] px-2 py-0.5 rounded-full z-10 relative">
                           Stale Â· Still here
                         </button>
                       ) : (
                         <span className="text-meta text-[var(--color-text-3)] flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {days === 0 ? "Today" : `${days}d ago`}
+                          <UiIcon className="w-3 h-3" icon={Clock} /> {days === 0 ? "Today" : `${days}d ago`}
                         </span>
                       )}
                     </div>

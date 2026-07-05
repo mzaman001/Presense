@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { m, AnimatePresence } from "framer-motion";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 const PRESET_TYPES = ["link", "quote", "concept", "book", "movie", "article", "course", "podcast", "other"];
 
@@ -141,26 +142,26 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" /></div>;
+    return <div className="flex justify-center py-20"><UiIcon className="w-6 h-6 animate-spin text-[var(--color-text-3)]" icon={Loader2} /></div>;
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-20">
       <div className="flex items-center justify-between">
         <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Explore
+          <UiIcon className="w-4 h-4" icon={ArrowLeft} /> Back to Explore
         </Link>
         <div className="flex items-center gap-2">
           {url && (
             <a href={url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
-              <ExternalLink className="w-4 h-4" />
+              <UiIcon className="w-4 h-4" icon={ExternalLink} />
             </a>
           )}
           <button onClick={handleArchive} className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
-            <Archive className="w-4 h-4" />
+            <UiIcon className="w-4 h-4" icon={Archive} />
           </button>
           <button onClick={() => setIsDeleteModalOpen(true)} className="p-2 rounded-lg bg-[rgba(248,113,113,0.1)] text-[#F87171] hover:bg-[rgba(248,113,113,0.2)] transition-colors">
-            <Trash2 className="w-4 h-4" />
+            <UiIcon className="w-4 h-4" icon={Trash2} />
           </button>
         </div>
       </div>
@@ -196,7 +197,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                   className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
                 >
                   <span className="capitalize">{isCustomType ? (customTypeInput || "Custom") : type}</span>
-                  <ChevronDown className="w-4 h-4 text-[var(--color-text-3)]" />
+                  <UiIcon className="w-4 h-4 text-[var(--color-text-3)]" icon={ChevronDown} />
                 </button>
                 <AnimatePresence>
                   {isTypeDropdownOpen && (
@@ -219,7 +220,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                         onClick={(e) => { e.stopPropagation(); setIsCustomType(true); setIsTypeDropdownOpen(false); }}
                         className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--accent)] flex items-center gap-2"
                       >
-                        <Plus className="w-3 h-3" /> Custom Type
+                        <UiIcon className="w-3 h-3" icon={Plus} /> Custom Type
                       </button>
                     </m.div>
                   )}
@@ -245,7 +246,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                   <span key={t} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--accent-dim)] text-[var(--accent)] text-xs font-medium">
                     {t}
                     <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-[var(--color-text-1)] transition-colors">
-                      <X className="w-3 h-3" />
+                      <UiIcon className="w-3 h-3" icon={X} />
                     </button>
                   </span>
                 ))}
@@ -271,7 +272,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                 <span className="truncate pr-4">
                   {linkedThreadId ? threads.find(t => t.id === linkedThreadId)?.title || "Unknown Thread" : "-- No Thread Linked --"}
                 </span>
-                <ChevronDown className="w-4 h-4 text-[var(--color-text-3)] shrink-0" />
+                <UiIcon className="w-4 h-4 text-[var(--color-text-3)] shrink-0" icon={ChevronDown} />
               </button>
               <AnimatePresence>
                 {isThreadDropdownOpen && (
@@ -316,7 +317,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
             disabled={saving}
             className="flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--color-background)] font-semibold hover:bg-[#F59E0B] transition-colors disabled:opacity-50"
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? <UiIcon className="w-4 h-4 animate-spin" icon={Loader2} /> : <UiIcon className="w-4 h-4" icon={Save} />}
             Save Changes
           </button>
         </form>

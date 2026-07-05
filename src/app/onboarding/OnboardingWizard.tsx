@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase";
 import { ArrowRight, Loader2, Brain, Users, Lightbulb, Bookmark, CheckCircle2, Zap, Compass, Check } from "lucide-react";
 import { toast } from "sonner";
 import { routeCapture, type RoutedItem } from "@/lib/capture-router";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface OnboardingWizardProps {
   initialName: string;
@@ -252,7 +253,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
               disabled={saving}
               className="w-full flex justify-center items-center gap-2 py-4 rounded-2xl bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold text-lg hover:bg-opacity-90 transition-opacity disabled:opacity-50"
             >
-              {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Next <ArrowRight className="w-5 h-5" /></>}
+              {saving ? <UiIcon className="w-6 h-6 animate-spin" icon={Loader2} /> : <>Next <UiIcon className="w-5 h-5" icon={ArrowRight} /></>}
             </button>
           </m.div>
         )}
@@ -282,7 +283,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 disabled={saving || selectedStruggles.length === 0}
                 className="flex-[2] flex justify-center items-center gap-2 py-4 rounded-2xl bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold text-lg hover:bg-opacity-90 transition-opacity disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Next <ArrowRight className="w-5 h-5" /></>}
+                {saving ? <UiIcon className="w-6 h-6 animate-spin" icon={Loader2} /> : <>Next <UiIcon className="w-5 h-5" icon={ArrowRight} /></>}
               </button>
             </div>
           </m.div>
@@ -318,7 +319,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 disabled={saving}
                 className="flex-[2] flex justify-center items-center gap-2 py-4 rounded-2xl bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold text-lg hover:bg-opacity-90 transition-opacity disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Next <ArrowRight className="w-5 h-5" /></>}
+                {saving ? <UiIcon className="w-6 h-6 animate-spin" icon={Loader2} /> : <>Next <UiIcon className="w-5 h-5" icon={ArrowRight} /></>}
               </button>
             </div>
           </m.div>
@@ -338,7 +339,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
               <AnimatePresence>
                 {routedItem && (
                   <m.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-4 left-4 bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
-                    <Zap className="w-4 h-4" /> → This will go to {routedItem.destination}
+                    <UiIcon className="w-4 h-4" icon={Zap} /> → This will go to {routedItem.destination}
                   </m.div>
                 )}
               </AnimatePresence>
@@ -350,7 +351,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 disabled={saving || !captureInput.trim()}
                 className="flex-[2] flex justify-center items-center gap-2 py-4 rounded-2xl bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold text-lg hover:bg-opacity-90 transition-opacity disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : "Capture & continue"}
+                {saving ? <UiIcon className="w-6 h-6 animate-spin" icon={Loader2} /> : "Capture & continue"}
               </button>
             </div>
           </m.div>
@@ -386,7 +387,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                   onClick={() => setTourIndex(tourIndex + 1)}
                   className="w-full flex justify-center items-center gap-2 py-4 rounded-2xl bg-[var(--color-text-1)] text-[var(--color-background)] font-semibold text-lg hover:bg-opacity-90 transition-opacity"
                 >
-                  Next <ArrowRight className="w-5 h-5" />
+                  Next <UiIcon className="w-5 h-5" icon={ArrowRight} />
                 </button>
               ) : (
                 <button
@@ -394,7 +395,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                   disabled={saving}
                   className="w-full flex justify-center items-center gap-2 py-4 rounded-2xl bg-[var(--accent)] text-[var(--text-on-accent)] font-bold text-lg hover:bg-[var(--accent-hot)] transition-colors disabled:opacity-50"
                 >
-                  {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : "Start using Presense"}
+                  {saving ? <UiIcon className="w-6 h-6 animate-spin" icon={Loader2} /> : "Start using Presense"}
                 </button>
               )}
               <button onClick={handleFinish} className="text-[var(--color-text-3)] text-sm font-medium hover:text-[var(--color-text-1)] transition-colors">

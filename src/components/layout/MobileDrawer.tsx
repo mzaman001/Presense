@@ -16,6 +16,7 @@ import {
   X
 } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -59,7 +60,7 @@ export function MobileDrawer() {
                 onClick={() => setIsMobileDrawerOpen(false)}
                 className="p-2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded-full hover:bg-[var(--surface-hover)]"
               >
-                <X size={20} strokeWidth={1.5} />
+                <UiIcon size={20} strokeWidth={1.5} icon={X} />
               </button>
             </div>
 
@@ -95,7 +96,7 @@ export function MobileDrawer() {
                 }}
                 className="flex items-center h-[44px] rounded-lg px-3 gap-3 text-[var(--text-2)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)] transition-colors"
               >
-                <Search size={20} strokeWidth={1.5} />
+                <UiIcon size={20} strokeWidth={1.5} icon={Search} />
                 <span className="text-title-sm">Search</span>
               </button>
               
@@ -106,7 +107,7 @@ export function MobileDrawer() {
                 }}
                 className="flex items-center h-[44px] rounded-lg px-3 gap-3 text-[var(--text-2)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)] transition-colors"
               >
-                <Settings size={20} strokeWidth={1.5} />
+                <UiIcon size={20} strokeWidth={1.5} icon={Settings} />
                 <span className="text-title-sm">Settings</span>
               </button>
             </div>

@@ -26,6 +26,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Kbd } from "@/components/ui/Kbd";
 import { m } from "framer-motion";
 import { useIsTouch } from "@/hooks/useIsTouch";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -99,7 +100,7 @@ export function Sidebar() {
           title="Quick Capture"
           className={cn(rowClass, "bg-[var(--accent)] text-[var(--text-on-accent)] shadow-[var(--shadow-button-primary)] hover:brightness-105")}
         >
-          <span className={iconClass}><Plus size={22} strokeWidth={1.7} /></span>
+          <span className={iconClass}><UiIcon size={22} strokeWidth={1.7} icon={Plus} /></span>
           <span className={cn("text-body-lg font-semibold", labelClass)}>Quick Capture</span>
         </button>
       </div>
@@ -216,7 +217,7 @@ export function Sidebar() {
             )}
           >
             <span className={iconClass}>
-              <Search size={20} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" />
+              <UiIcon size={20} strokeWidth={1.5} className="group-hover:text-[var(--text-2)] transition-colors" icon={Search} />
             </span>
             <span className={cn("nav-label flex items-center justify-between flex-1 text-body-lg font-medium leading-none text-[var(--text-3)]", labelClass)}>
               <span className="text-body-lg font-medium leading-none text-[var(--text-3)] whitespace-nowrap">Search</span>
@@ -246,11 +247,11 @@ export function Sidebar() {
             )}
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-              <Trash2 size={17} strokeWidth={1.5} className={cn(
+              <UiIcon size={17} strokeWidth={1.5} className={cn(
                 "transition-all",
                 pathname === "/trash" ? "text-[var(--accent)]" : "text-[var(--text-muted)]",
                 !isTouch && pathname !== "/trash" && "group-hover:translate-x-0.5"
-              )} />
+              )} icon={Trash2} />
             </span>
             <span className={cn("nav-label text-body font-medium leading-none", labelClass)}>
               Trash
@@ -273,7 +274,7 @@ export function Sidebar() {
             )}
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-              <Settings size={17} strokeWidth={1.5} className="transition-colors" />
+              <UiIcon size={17} strokeWidth={1.5} className="transition-colors" icon={Settings} />
             </span>
             <span className={cn("nav-label text-body font-medium leading-none", labelClass)}>Settings</span>
           </button>
@@ -342,7 +343,7 @@ export function BottomNav() {
                 className="flex flex-col items-center justify-center gap-1 min-h-[56px] min-w-[44px] flex-1 py-2 rounded-xl transition-all active:scale-95 text-[var(--color-text-1)]"
               >
                 <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-[var(--color-text-1)] text-[var(--color-background)] shadow-lg -mt-6 border-[4px] border-[var(--color-background)]">
-                  <Plus size={24} strokeWidth={2} />
+                  <UiIcon size={24} strokeWidth={2} icon={Plus} />
                 </div>
               </button>
             );

@@ -23,6 +23,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface Task {
   id: string;
@@ -314,7 +315,7 @@ export default function DoPage() {
         title="Do" 
         actions={
           <Button variant="secondary" onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }} className="!text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
-            <Plus className="w-4 h-4" /> Add task
+            <UiIcon className="w-4 h-4" icon={Plus} /> Add task
           </Button>
         }
       >
@@ -417,7 +418,7 @@ export default function DoPage() {
                   onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }}
                   className="gap-2"
                 >
-                  <Plus size={16} /> Add Task
+                  <UiIcon size={16} icon={Plus} /> Add Task
                 </Button>
               }
             />
@@ -443,7 +444,7 @@ export default function DoPage() {
                    onClick={() => { setTaskToEdit(null); setInitialDeadline(null); setIsPanelOpen(true); }}
                    className="gap-2 mx-auto"
                  >
-                   <Plus size={16} /> Add Task
+                   <UiIcon size={16} icon={Plus} /> Add Task
                  </Button>
                }
              />

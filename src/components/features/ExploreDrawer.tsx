@@ -12,6 +12,7 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import { m, AnimatePresence } from "framer-motion";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ExploreDrawerProps {
   item?: any;
@@ -264,7 +265,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                     className="px-4 flex items-center justify-center"
                     title={item.status === "deleted" ? "Delete permanently" : "Move to trash"}
                   >
-                    <Trash2 size={14} strokeWidth={1.5} className="shrink-0" />
+                    <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Trash2} />
                   </Button>
                   <Button variant="secondary"
                     onClick={handleArchiveToggle}
@@ -272,7 +273,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                     className="px-4 flex items-center justify-center disabled:opacity-50"
                     title={item.status === "archived" || item.status === "deleted" ? "Restore" : "Archive"}
                   >
-                    {item.status === "archived" || item.status === "deleted" ? <RefreshCcw size={14} strokeWidth={1.5} className="shrink-0" /> : <Archive size={14} strokeWidth={1.5} className="shrink-0" />}
+                    {item.status === "archived" || item.status === "deleted" ? <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={RefreshCcw} /> : <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Archive} />}
                   </Button>
                 </>
               )}
@@ -281,7 +282,7 @@ export function ExploreDrawer({ item, isOpen, onClose, onSaved }: ExploreDrawerP
                 disabled={saving || !title.trim() || !note?.trim()}
                 className="flex-1  py-3 w-full disabled:opacity-50"
               >
-                {saving ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin shrink-0" /> : (item ? "Save Changes" : "Save")}
+                {saving ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : (item ? "Save Changes" : "Save")}
               </Button>
             </div>
       </Sheet>

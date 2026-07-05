@@ -18,6 +18,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { applyDocumentTheme, normalizeColorMode, normalizeThemeId } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
+
 const TABS = [
   { id: "account", label: "Account", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -178,7 +180,7 @@ function CategoryItem({ cat, initialColor, cats, colors, categoriesKey, colorsKe
           />
         </label>
         <button onClick={() => handleDelete(cat)} className="ml-1 p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-400/10 transition-all">
-          <Trash2 className="w-4 h-4" />
+          <UiIcon className="w-4 h-4" icon={Trash2} />
         </button>
       </div>
     </div>
@@ -232,7 +234,7 @@ function CategoryManager({
             className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors"
           />
           <button onClick={handleAdd} className="p-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-1)] hover:border-[var(--color-accent)] transition-colors">
-            <Plus className="w-5 h-5" />
+            <UiIcon className="w-5 h-5" icon={Plus} />
           </button>
         </div>
       </div>
@@ -500,18 +502,18 @@ export function SettingsModal() {
                       <AnimatePresence mode="wait">
                         {saveStatus === "saving" && (
                           <m.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-text-3)]">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
+                            <UiIcon className="w-3.5 h-3.5 animate-spin" icon={Loader2} /> Saving...
                           </m.div>
                         )}
                         {saveStatus === "saved" && (
                           <m.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5 text-[var(--color-think)]">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+                            <UiIcon className="w-3.5 h-3.5" icon={CheckCircle2} /> Saved
                           </m.div>
                         )}
                       </AnimatePresence>
                     </div>
                     <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[var(--status-danger)] hover:bg-[var(--status-danger-dim)] transition-colors">
-                      <LogOut className="w-4 h-4" /> Sign Out
+                      <UiIcon className="w-4 h-4" icon={LogOut} /> Sign Out
                     </button>
                   </div>
                 </div>
@@ -523,12 +525,12 @@ export function SettingsModal() {
                     aria-label="Close settings"
                     className="absolute top-4 right-4 z-10"
                   >
-                    <X size={16} strokeWidth={1.5} className="shrink-0" />
+                    <UiIcon size={16} strokeWidth={1.5} className="shrink-0" icon={X} />
                   </Button>
 
                   {loading ? (
                     <div className="h-full flex items-center justify-center">
-                      <Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" />
+                      <UiIcon className="w-6 h-6 animate-spin text-[var(--color-text-3)]" icon={Loader2} />
                     </div>
                   ) : (
                     <div className="p-10 max-w-2xl">
@@ -775,7 +777,7 @@ export function SettingsModal() {
                           <div className="p-5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] space-y-6">
                             <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-4">
                               <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--accent-dim)]">
-                                <Sparkles className="w-5 h-5 text-[var(--accent)]" />
+                                <UiIcon className="w-5 h-5 text-[var(--accent)]" icon={Sparkles} />
                               </div>
                               <div>
                                 <h4 className="font-semibold text-[var(--text-1)]">Daily Ritual</h4>
@@ -785,12 +787,12 @@ export function SettingsModal() {
                             
                             <div className="grid grid-cols-2 gap-6">
                               <div>
-                                <label className="text-label text-[var(--text-3)] block mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-orange-400" /> Morning Nudge</label>
+                                <label className="text-label text-[var(--text-3)] block mb-2 flex items-center gap-1.5"><UiIcon className="w-3.5 h-3.5 text-orange-400" icon={Sparkles} /> Morning Nudge</label>
                                 <input type="time" value={settings.nudge_time || "10:00"} onChange={e => updateSetting("nudge_time", e.target.value)} className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none" />
                                 <p className="text-meta text-[var(--text-muted)] mt-2">When should we remind you to plan your day?</p>
                               </div>
                               <div>
-                                <label className="text-label text-[var(--text-3)] block mb-2 flex items-center gap-1.5"><Moon className="w-3.5 h-3.5 text-blue-400" /> Evening Shutdown</label>
+                                <label className="text-label text-[var(--text-3)] block mb-2 flex items-center gap-1.5"><UiIcon className="w-3.5 h-3.5 text-blue-400" icon={Moon} /> Evening Shutdown</label>
                                 <input type="time" value={settings.shutdown_time || "17:00"} onChange={e => updateSetting("shutdown_time", e.target.value)} className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none" />
                                 <p className="text-meta text-[var(--text-muted)] mt-2">When do you usually finish work?</p>
                               </div>
@@ -956,7 +958,7 @@ export function SettingsModal() {
                             onClick={handleExportData}
                             className="w-full"
                           >
-                            <Download size={14} strokeWidth={1.5} className="shrink-0" /> Export All Data
+                            <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Download} /> Export All Data
                           </Button>
                           <div className="grid grid-cols-2 gap-4 mt-4">
                             <Button variant="danger"

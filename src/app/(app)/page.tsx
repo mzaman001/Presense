@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface TaskItem {
   id: string;
@@ -63,14 +64,14 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
 
   const StreakBadge = () => streak > 0 ? (
     <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-caption font-bold">
-      <Flame className="w-3.5 h-3.5" /> {streak}
+      <UiIcon className="w-3.5 h-3.5" icon={Flame} /> {streak}
     </span>
   ) : null;
 
   if (morningDone && eveningDone) {
     return (
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--status-done)]/10 border border-[var(--status-done)]/20 mt-3 text-ui text-[var(--status-done)] font-medium">
-        <CheckCircle2 className="w-3.5 h-3.5" /> Day complete — Great work today
+        <UiIcon className="w-3.5 h-3.5" icon={CheckCircle2} /> Day complete — Great work today
         <StreakBadge />
       </div>
     );
@@ -79,7 +80,7 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
   if (morningDone) {
     return (
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-dim)]/10 border border-[var(--accent-border)] mt-3 text-ui text-[var(--text-3)] font-medium">
-        <CheckCircle2 className="w-3.5 h-3.5 text-[var(--accent)]" /> Day planned <span className="mx-1 opacity-50">•</span> Evening review at {shutdownAmPm}
+        <UiIcon className="w-3.5 h-3.5 text-[var(--accent)]" icon={CheckCircle2} /> Day planned <span className="mx-1 opacity-50">•</span> Evening review at {shutdownAmPm}
         <StreakBadge />
       </div>
     );
@@ -91,8 +92,8 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
         onClick={() => setActiveRitual('morning')}
         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-colors text-ui text-orange-400 font-medium group"
       >
-        <Sparkles className="w-3.5 h-3.5" /> You haven't planned your day yet 
-        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+        <UiIcon className="w-3.5 h-3.5" icon={Sparkles} /> You haven't planned your day yet 
+        <UiIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" icon={ArrowRight} />
       </button>
       <StreakBadge />
     </div>
@@ -241,7 +242,7 @@ export default function HomeDashboard() {
   const primaryTask = tasks.length > 0 ? tasks[0] : null;
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="w-8 h-8 animate-spin text-[var(--color-text-3)]" /></div>;
+    return <div className="flex items-center justify-center min-h-[50vh]"><UiIcon className="w-8 h-8 animate-spin text-[var(--color-text-3)]" icon={Loader2} /></div>;
   }
 
   const hour = new Date().getHours();
@@ -314,7 +315,7 @@ export default function HomeDashboard() {
                     Completed {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : ''}
                   </p>
                 </div>
-                <CheckCircle2 className="w-5 h-5 text-[var(--color-do)]" />
+                <UiIcon className="w-5 h-5 text-[var(--color-do)]" icon={CheckCircle2} />
               </GlassCard>
             ))
           )}
@@ -347,7 +348,7 @@ export default function HomeDashboard() {
             <p className="text-[var(--text-2)] mb-6 text-lg">{primaryTask.first_step}</p>
             
             <Button variant="primary" onClick={() => setActiveTimer({ taskId: primaryTask.id, taskTitle: primaryTask.title })} className="">
-              <Play className="w-4 h-4 fill-[currentColor]" />
+              <UiIcon className="w-4 h-4 fill-[currentColor]" icon={Play} />
               <span>Start session &rarr;</span>
             </Button>
             <button 
@@ -441,7 +442,7 @@ export default function HomeDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link href="/do" className="block">
           <GlassCard hoverable className="h-full flex flex-col justify-between">
-            <CheckCircle2 size={20} strokeWidth={1.5} className="text-[var(--color-do)] mb-4 shrink-0" />
+            <UiIcon size={20} strokeWidth={1.5} className="text-[var(--color-do)] mb-4 shrink-0" icon={CheckCircle2} />
             <div>
               <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={tasks.length} /></div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Active Tasks</div>
@@ -450,7 +451,7 @@ export default function HomeDashboard() {
         </Link>
         <Link href="/remember/people" className="block">
           <GlassCard hoverable className="h-full flex flex-col justify-between">
-            <Users size={20} strokeWidth={1.5} className="text-[var(--color-people)] mb-4 shrink-0" />
+            <UiIcon size={20} strokeWidth={1.5} className="text-[var(--color-people)] mb-4 shrink-0" icon={Users} />
             <div>
               <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={people.length} /></div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">People Tracked</div>
@@ -459,7 +460,7 @@ export default function HomeDashboard() {
         </Link>
         <Link href="/think" className="block">
           <GlassCard hoverable className="h-full flex flex-col justify-between">
-            <MessageSquare size={20} strokeWidth={1.5} className="text-[var(--color-think)] mb-4 shrink-0" />
+            <UiIcon size={20} strokeWidth={1.5} className="text-[var(--color-think)] mb-4 shrink-0" icon={MessageSquare} />
             <div>
               <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={threads.length} /></div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Open Threads</div>
@@ -468,7 +469,7 @@ export default function HomeDashboard() {
         </Link>
         <Link href="/explore" className="block">
           <GlassCard hoverable className="h-full flex flex-col justify-between">
-            <Compass size={20} strokeWidth={1.5} className="text-[var(--color-explore)] mb-4 shrink-0" />
+            <UiIcon size={20} strokeWidth={1.5} className="text-[var(--color-explore)] mb-4 shrink-0" icon={Compass} />
             <div>
               <div className="text-2xl font-light text-[var(--color-text-1)]"><AnimatedNumber value={explores.length} /></div>
               <div className="text-xs text-[var(--color-text-3)] mt-1">Saved Items</div>
@@ -495,7 +496,7 @@ export default function HomeDashboard() {
           <div className="flex items-center justify-between">
             <h3 className="text-section-title text-[var(--text-1)]">Up Next</h3>
             <Link href="/do" className="text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] flex items-center gap-1">
-              {tasks.length > 1 ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — ` : ""}View all <ArrowRight className="w-3 h-3" />
+              {tasks.length > 1 ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — ` : ""}View all <UiIcon className="w-3 h-3" icon={ArrowRight} />
             </Link>
           </div>
           {tasks.slice(1, 6).map((task, i) => (
@@ -513,13 +514,13 @@ export default function HomeDashboard() {
                   onClick={(e) => completeTask(e, task.id)}
                   className={cn("checkbox mt-0.5", completing === task.id && "checked")}
                 >
-                  {completing === task.id && <Check className="w-3.5 h-3.5 text-white" />}
+                  {completing === task.id && <UiIcon className="w-3.5 h-3.5 text-white" icon={Check} />}
                 </button>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-card-title text-[var(--text-1)]">{task.title}</h4>
                   <p className="text-xs text-[var(--color-text-3)] mt-0.5 truncate">{task.first_step}</p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2 mt-1" />
+                <UiIcon className="w-4 h-4 text-[var(--color-text-3)] shrink-0 ml-2 mt-1" icon={ArrowRight} />
               </GlassCard>
             </m.div>
           ))}
@@ -541,7 +542,7 @@ export default function HomeDashboard() {
                 </div>
               </div>
               <Link href="/inbox" className="text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] flex items-center gap-1">
-                View all <ArrowRight className="w-3 h-3" />
+                View all <UiIcon className="w-3 h-3" icon={ArrowRight} />
               </Link>
             </div>
             {inboxItems.map((item: any) => (
@@ -558,20 +559,20 @@ export default function HomeDashboard() {
                           onClick={(e) => { e.stopPropagation(); setActiveRouteItem(activeRouteItem === item.id ? null : item.id); }}
                           className="w-full dropdown-trigger"
                         >
-                          <FolderInput className="w-3.5 h-3.5" />
+                          <UiIcon className="w-3.5 h-3.5" icon={FolderInput} />
                           Route it
                         </Button>
                       }
                       content={
                         <div className="flex flex-col gap-0.5 p-1 w-48" onClick={e => e.stopPropagation()}>
                           <button onClick={() => { routeInboxItem(item.id, 'do'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Do (Task)
+                            <UiIcon className="w-4 h-4 text-emerald-400" icon={CheckCircle2} /> Do (Task)
                           </button>
                           <button onClick={() => { routeInboxItem(item.id, 'think'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                            <MessageSquare className="w-4 h-4 text-teal-400" /> Think (Thread)
+                            <UiIcon className="w-4 h-4 text-teal-400" icon={MessageSquare} /> Think (Thread)
                           </button>
                           <button onClick={() => { routeInboxItem(item.id, 'explore'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                            <Compass className="w-4 h-4 text-amber-400" /> Explore (Saved)
+                            <UiIcon className="w-4 h-4 text-amber-400" icon={Compass} /> Explore (Saved)
                           </button>
                         </div>
                       }
@@ -582,7 +583,7 @@ export default function HomeDashboard() {
                     className="!bg-transparent !border-transparent hover:!bg-red-500/10 hover:!text-red-400 shrink-0"
                     title="Dismiss"
                   >
-                    <X className="w-4 h-4" />
+                    <UiIcon className="w-4 h-4" icon={X} />
                   </Button>
                 </div>
               </GlassCard>

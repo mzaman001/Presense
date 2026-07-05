@@ -16,6 +16,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Kbd } from "@/components/ui/Kbd";
 import { useAppStore } from "@/store/useAppStore";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ThreadEntry {
   text: string;
@@ -254,7 +255,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" /></div>;
+    return <div className="flex justify-center py-20"><UiIcon className="w-6 h-6 animate-spin text-[var(--color-text-3)]" icon={Loader2} /></div>;
   }
 
   if (!thread) {
@@ -283,7 +284,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-8 max-w-2xl mx-auto pb-32">
       <Link href="/think" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to Think
+        <UiIcon className="w-4 h-4" icon={ArrowLeft} /> Back to Think
       </Link>
 
       <div className="flex items-start justify-between gap-4">
@@ -336,7 +337,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             />
             {thread.stale_prompt && (
               <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] rounded-md">
-                <Sparkles className="w-3.5 h-3.5 text-[#2DD4BF]" />
+                <UiIcon className="w-3.5 h-3.5 text-[#2DD4BF]" icon={Sparkles} />
                 <span className="text-xs font-medium text-[#2DD4BF]">{thread.stale_prompt}</span>
               </div>
             )}
@@ -348,21 +349,21 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             className={cn("p-2 rounded-lg transition-colors", thread.is_pinned ? "bg-[rgba(45,212,191,0.1)] text-[#2DD4BF]" : "hover:bg-[var(--color-surface)] text-[var(--color-text-3)]")}
             title={thread.is_pinned ? "Unpin thread" : "Pin thread"}
           >
-            <Pin className="w-4 h-4" />
+            <UiIcon className="w-4 h-4" icon={Pin} />
           </button>
           <button 
             onClick={handleArchive}
             className="p-2 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-3)] transition-colors"
             title={thread.status === "archived" || thread.status === "deleted" ? "Restore thread" : "Archive thread"}
           >
-            {thread.status === "archived" || thread.status === "deleted" ? <RefreshCcw className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+            {thread.status === "archived" || thread.status === "deleted" ? <UiIcon className="w-4 h-4" icon={RefreshCcw} /> : <UiIcon className="w-4 h-4" icon={Archive} />}
           </button>
           <button 
             onClick={() => setDeleteThreadOpen(true)}
             className="p-2 rounded-lg hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171] transition-colors"
             title={thread.status === "deleted" ? "Delete permanently" : "Move to trash"}
           >
-            <Trash2 className="w-4 h-4" />
+            <UiIcon className="w-4 h-4" icon={Trash2} />
           </button>
         </div>
       </div>
@@ -407,7 +408,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
                 className="absolute top-4 right-4 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171]"
                 title="Delete entry"
               >
-                <Trash2 className="w-4 h-4" />
+                <UiIcon className="w-4 h-4" icon={Trash2} />
               </button>
             </GlassCard>
           </m.div>
@@ -452,7 +453,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             <div className="absolute right-3 bottom-3 flex items-center gap-2">
               <Kbd className="hidden md:inline-flex bg-transparent border-none text-[var(--color-text-3)]">Cmd+Enter</Kbd>
               <button type="submit" disabled={!newEntry.trim() || saving} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[rgba(45,212,191,0.15)] text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.25)] transition-colors disabled:opacity-50">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
+                {saving ? <UiIcon className="w-4 h-4 animate-spin" icon={Loader2} /> : <UiIcon className="w-4 h-4 ml-0.5" icon={Send} />}
               </button>
             </div>
           </form>

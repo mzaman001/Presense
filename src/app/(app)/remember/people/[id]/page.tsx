@@ -16,6 +16,7 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import { RELATIONSHIP_COLORS } from "@/lib/constants";
 import { useAppStore } from "@/store/useAppStore";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface PersonNote {
   text: string;
@@ -159,7 +160,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[var(--color-text-3)]" /></div>;
+    return <div className="flex justify-center py-20"><UiIcon className="w-6 h-6 animate-spin text-[var(--color-text-3)]" icon={Loader2} /></div>;
   }
 
   if (!person) {
@@ -176,7 +177,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       <Link href="/remember/people" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to People
+        <UiIcon className="w-4 h-4" icon={ArrowLeft} /> Back to People
       </Link>
 
       <div className="flex items-center gap-4">
@@ -195,10 +196,10 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                 className="bg-[rgba(255,255,255,0.05)] border border-[var(--color-border)] rounded-md px-2 py-1 text-[20px] font-semibold text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] w-full max-w-[300px]"
               />
               <button onClick={handleUpdateName} className="p-1.5 rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
-                <Check className="w-4 h-4" />
+                <UiIcon className="w-4 h-4" icon={Check} />
               </button>
               <button onClick={() => setIsEditingName(false)} className="p-1.5 rounded-md text-[var(--color-text-3)] hover:bg-[var(--color-surface)] transition-colors">
-                <X className="w-4 h-4" />
+                <UiIcon className="w-4 h-4" icon={X} />
               </button>
             </div>
           ) : (
@@ -212,7 +213,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                 className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-all"
                 title="Edit name"
               >
-                <Edit2 className="w-4 h-4" />
+                <UiIcon className="w-4 h-4" icon={Edit2} />
               </button>
             </div>
           )}
@@ -233,7 +234,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         <GlassCard className="p-6 border-[rgba(244,114,182,0.3)] bg-[rgba(244,114,182,0.03)] relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-[#F472B6]" />
           <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4 text-[#F472B6]" />
+            <UiIcon className="w-4 h-4 text-[#F472B6]" icon={Sparkles} />
             <h2 className="text-sm font-semibold text-[#F472B6] tracking-widest uppercase">Briefing</h2>
           </div>
           <ul className="space-y-3">
@@ -274,7 +275,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
             className="w-full bg-[rgba(255,255,255,0.03)] border border-[var(--color-border)] rounded-xl px-4 py-4 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none focus:border-[#F472B6] focus:bg-[rgba(244,114,182,0.03)] transition-all pr-12"
           />
           <button type="submit" disabled={!newNote.trim() || saving} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg bg-[rgba(244,114,182,0.15)] text-[#F472B6] hover:bg-[rgba(244,114,182,0.25)] transition-colors disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {saving ? <UiIcon className="w-4 h-4 animate-spin" icon={Loader2} /> : <UiIcon className="w-4 h-4" icon={Plus} />}
           </button>
         </form>
 
@@ -293,7 +294,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                       className="absolute top-2 right-2 p-1.5 opacity-0 group-hover:opacity-100 bg-[rgba(248,113,113,0.1)] text-[#F87171] rounded-md transition-opacity hover:bg-[rgba(248,113,113,0.2)]"
                       title="Delete note"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <UiIcon className="w-3.5 h-3.5" icon={X} />
                     </button>
                     <p className="text-sm text-[var(--color-text-1)] leading-relaxed mb-2 pr-6">{note.text}</p>
                     <p className="text-meta text-[var(--color-text-3)]">
@@ -309,7 +310,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
 
       <div className="pt-12 mt-12 border-t border-dashed border-[rgba(248,113,113,0.2)]">
         <h3 className="text-sm font-semibold text-[#F87171] mb-2 flex items-center gap-2">
-          <Trash2 className="w-4 h-4" /> Danger Zone
+          <UiIcon className="w-4 h-4" icon={Trash2} /> Danger Zone
         </h3>
         <p className="text-sm text-[var(--color-text-3)] mb-4">
           Deleting a person is permanent. It will remove all their notes and history.
@@ -318,7 +319,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
           onClick={() => setPersonToDelete(true)}
           className="px-4 py-2 bg-[rgba(248,113,113,0.1)] text-[#F87171] rounded-lg text-card-title hover:bg-[rgba(248,113,113,0.2)] transition-colors flex items-center gap-2"
         >
-          {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isDeleting && <UiIcon className="w-4 h-4 animate-spin" icon={Loader2} />}
           Delete Person
         </button>
       </div>
