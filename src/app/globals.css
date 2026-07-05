@@ -695,8 +695,8 @@ h1, h2, h3, h4, h5, h6 {
 
   .glass-card-elevated {
     background: var(--surface-card);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--blur-elevated);
+    -webkit-backdrop-filter: var(--blur-elevated);
     border: 0.5px solid var(--border-card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card-hover);

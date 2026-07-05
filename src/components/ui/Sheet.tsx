@@ -68,8 +68,8 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               exit={{ y: "100%", opacity: 0 }}
               transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               className={cn(
-                "pointer-events-auto w-full max-h-[90vh] bg-[var(--elev-overlay-bg,var(--color-background))] flex flex-col",
-                "rounded-t-[24px] md:rounded-[20px] shadow-[var(--elev-overlay-shadow,var(--shadow-modal))] overflow-hidden border border-[var(--elev-overlay-border,var(--border-subtle))] [backdrop-filter:var(--elev-overlay-blur,var(--glass-blur-heavy))] [-webkit-backdrop-filter:var(--elev-overlay-blur,var(--glass-blur-heavy))]",
+                "glass-card-elevated pointer-events-auto w-full max-h-[90vh] flex flex-col",
+                "rounded-t-[24px] md:rounded-[20px] overflow-hidden",
                 "md:max-w-xl md:max-h-[85vh]",
                 className
               )}
