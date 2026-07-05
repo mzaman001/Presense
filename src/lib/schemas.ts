@@ -15,3 +15,8 @@ export const reorderSchema = z.object({
 export const accountDeleteSchema = z.object({
   confirmToken: z.string().min(1).max(320),
 });
+
+export const locationSchema = z.object({
+  itemName: z.string().min(1, "Name is required").max(200, "Name must be less than 200 characters"),
+  locationText: z.string().min(1, "Location is required").max(500, "Location must be less than 500 characters"),
+});
