@@ -27,3 +27,12 @@ export const personSchema = z.object({
   nextMeeting: z.string().datetime().optional().or(z.literal("")),
   notes: z.string().max(5000, "Notes must be less than 5000 characters").optional(),
 });
+
+export const taskSchema = z.object({
+  title: z.string().min(1, "Title is required").max(500, "Title must be less than 500 characters"),
+  category: z.string().optional(),
+  priority: z.number().min(1).max(4).nullable().optional(),
+  deadline: z.string().datetime().optional().or(z.literal("")),
+  notes: z.string().max(5000, "Notes must be less than 5000 characters").optional(),
+  first_step: z.string().max(500, "First step must be less than 500 characters").optional(),
+});

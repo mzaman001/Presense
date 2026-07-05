@@ -5,6 +5,10 @@ import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { m, AnimatePresence } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { taskSchema } from "@/lib/schemas";
+import { z } from "zod";
 import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
@@ -48,6 +52,10 @@ interface TaskEditData {
   time_estimate?: number | null;
 }
 
+type TaskFormValues = z.infer<typeof taskSchema>;
+
+const DEFAULT_DO_CATEGORIES = ["work", "study", "personal", "errand", "health"];
+
 interface TaskAddPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,20 +66,41 @@ interface TaskAddPanelProps {
 
 export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initialDeadline }: TaskAddPanelProps) {
   const queryClient = useQueryClient();
-  const [title, setTitle] = useState("");
-  const [deadline, setDeadline] = useState("");
   const [parsedDeadline, setParsedDeadline] = useState<Date | null>(null);
   const [startDate, setStartDate] = useState("");
   const [parsedStartDate, setParsedStartDate] = useState<Date | null>(null);
   const [isManualDate, setIsManualDate] = useState(false);
-  const [category, setCategory] = useState("work");
-  const [priority, setPriority] = useState<number | null>(null);
   const [timeEstimate, setTimeEstimate] = useState<number | null>(null);
-  const [notes, setNotes] = useState("");
-  const [firstStep, setFirstStep] = useState("");
   const [subtasks, setSubtasks] = useState<{id: string, text: string, completed: boolean}[]>([]);
   const [linkedPeopleIds, setLinkedPeopleIds] = useState<string[]>([]);
   const [peopleList, setPeopleList] = useState<{id: string, name: string, initials: string, color: string}[]>([]);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting, isValid }
+  } = useForm<TaskFormValues>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title: "",
+      category: "work",
+      priority: null,
+      deadline: "",
+      notes: "",
+      first_step: ""
+    },
+    mode: "onChange"
+  });
+
+  const titleValue = watch("title");
+  const deadlineValue = watch("deadline");
+  const categoryValue = watch("category");
+  const priorityValue = watch("priority");
+  const notesValue = watch("notes");
+  const firstStepValue = watch("first_step");
 
   const [freq, setFreq] = useState("Does not repeat");
   const [days, setDays] = useState<string[]>([]);
@@ -91,7 +120,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
   useEffect(() => {
     if (isOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCategoriesList(userSettings?.do_categories || ["work", "study", "personal", "errand", "health"]);
+      setCategoriesList(userSettings?.do_categories || DEFAULT_DO_CATEGORIES);
     }
   }, [isOpen, userSettings?.do_categories]);
 
@@ -104,7 +133,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
     if (!categoriesList.includes(name)) {
       const newList = [...categoriesList, name];
       setCategoriesList(newList);
-      setCategory(name);
+      setValue("category", name, { shouldValidate: true });
       
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -115,7 +144,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
         useAppStore.getState().setUserSettings(updatedSettings);
       }
     } else {
-      setCategory(name);
+      setValue("category", name, { shouldValidate: true });
     }
     setNewCategoryName("");
     setIsAddingCategory(false);
@@ -177,14 +206,16 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
   useEffect(() => {
     if (isOpen) {
       if (taskToEdit) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setTitle(taskToEdit.title || "");
+        reset({
+          title: taskToEdit.title || "",
+          category: taskToEdit.category || "work",
+          priority: taskToEdit.priority || null,
+          notes: taskToEdit.notes || "",
+          first_step: taskToEdit.first_step || "",
+          deadline: taskToEdit.deadline ? format(new Date(taskToEdit.deadline), "yyyy-MM-dd'T'HH:mm") : ""
+        });
         setIsManualDate(false);
-        setCategory(taskToEdit.category || "work");
-        setPriority(taskToEdit.priority || null);
         setTimeEstimate(taskToEdit.time_estimate || null);
-        setNotes(taskToEdit.notes || "");
-        setFirstStep(taskToEdit.first_step || "");
         setSubtasks(taskToEdit.subtasks || []);
         setLinkedPeopleIds(taskToEdit.linked_people_ids || []);
         
@@ -214,10 +245,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
         if (taskToEdit.deadline) {
           const d = new Date(taskToEdit.deadline);
           setParsedDeadline(d);
-          setDeadline(format(d, "yyyy-MM-dd'T'HH:mm"));
         } else {
           setParsedDeadline(null);
-          setDeadline("");
         }
         
         if (taskToEdit.start_date) {
@@ -229,8 +258,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
           setStartDate("");
         }
       } else {
-        setTitle("");
-        setDeadline(initialDeadline ? format(initialDeadline, "yyyy-MM-dd'T'HH:mm") : "");
+        reset({
+          title: "",
+          category: "work",
+          priority: null,
+          notes: "",
+          first_step: "",
+          deadline: initialDeadline ? format(initialDeadline, "yyyy-MM-dd'T'HH:mm") : ""
+        });
         setParsedDeadline(initialDeadline ?? null);
         setStartDate("");
         setParsedStartDate(null);
@@ -238,20 +273,15 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
         setDays([]);
         setCustomRRule("");
         setIsManualDate(false);
-        setCategory("work");
-        setPriority(null);
         setTimeEstimate(null);
-        setNotes("");
-        setFirstStep("");
         setSubtasks([]);
         setLinkedPeopleIds([]);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, taskToEdit, initialDeadline]);
 
-  const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setTitle(val);
+  const handleTitleChange = async (val: string) => {
     if (!isManualDate && userSettings?.nlp_date_parsing !== false) {
       const chrono = await getChrono();
       const parsedResults = chrono.parse(val);
@@ -272,10 +302,10 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                 ).start.date();
         }
         setParsedDeadline(d);
-        setDeadline(format(d, "yyyy-MM-dd'T'HH:mm"));
+        setValue("deadline", format(d, "yyyy-MM-dd'T'HH:mm"), { shouldValidate: true });
       } else {
         setParsedDeadline(null);
-        setDeadline("");
+        setValue("deadline", "", { shouldValidate: true });
       }
     }
   };
@@ -284,10 +314,10 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
     setIsManualDate(true);
     if (e.target.value) {
       setParsedDeadline(new Date(e.target.value));
-      setDeadline(e.target.value);
+      setValue("deadline", e.target.value, { shouldValidate: true });
     } else {
       setParsedDeadline(null);
-      setDeadline("");
+      setValue("deadline", "", { shouldValidate: true });
     }
   };
 
@@ -309,15 +339,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
       d.setHours(9, 0, 0, 0);
     } else if (type === "none") {
       setParsedDeadline(null);
-      setDeadline("");
+      setValue("deadline", "", { shouldValidate: true });
       return;
     }
     setParsedDeadline(d);
-    setDeadline(format(d, "yyyy-MM-dd'T'HH:mm"));
+    setValue("deadline", format(d, "yyyy-MM-dd'T'HH:mm"), { shouldValidate: true });
   };
 
-  const handleSave = async () => {
-    if (!title.trim()) return;
+  const onSubmit = async (data: TaskFormValues) => {
     setSaving(true);
     
     try {
@@ -341,7 +370,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
           }
         }
 
-        let finalTitle = title.trim();
+        let finalTitle = data.title.trim();
         if (parsedDeadline && !isManualDate) {
           const chrono = await getChrono();
           const parsedResults = chrono.parse(finalTitle);
@@ -357,17 +386,17 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
 
         const payload: Record<string, unknown> = {
           user_id: user.id,
-          title: finalTitle || title.trim(),
-          first_step: firstStep.trim() || null,
+          title: finalTitle || data.title.trim(),
+          first_step: data.first_step?.trim() || null,
           ifthen_trigger: null,
           deadline: parsedDeadline ? parsedDeadline.toISOString() : null,
           start_date: parsedStartDate ? parsedStartDate.toISOString() : null,
           recurrence: finalRecurrence,
-          category,
+          category: data.category || "work",
           status: "active",
-          priority: priority ?? 4,
+          priority: data.priority ?? 4,
           time_estimate: timeEstimate,
-          notes: notes.trim() || null,
+          notes: data.notes?.trim() || null,
           subtasks: subtasks.filter(st => st.text.trim() !== ""),
           linked_people_ids: linkedPeopleIds
         };
@@ -412,25 +441,30 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
   return (
     <>
     <Sheet isOpen={isOpen} onClose={onClose} title={taskToEdit ? "Edit Task" : "Add Task"}>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto p-6 space-y-6" data-lenis-prevent>
               {/* Title */}
               <Input
-  label={<>Task Name <span className="text-red-400">*</span></>}
+                  label={<>Task Name <span className="text-red-400">*</span></>}
                   autoFocus
                   data-autofocus="true"
                   inputMode="text"
                   autoCapitalize="sentences"
                   placeholder="What needs to be done?"
-                  value={title}
-                  onChange={handleTitleChange}
+                  variant="title"
+                  {...register("title", {
+                    onChange: (e) => handleTitleChange(e.target.value)
+                  })}
+                  error={errors.title?.message}
+                  aria-invalid={!!errors.title}
+                  aria-describedby={errors.title ? `title-error` : undefined}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      handleSave();
+                      handleSubmit(onSubmit)();
                     }
                   }}
-                  variant="title"
-/>
+              />
 
               {/* Subtasks */}
               <div>
@@ -470,20 +504,26 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                 <label className="text-label text-[var(--text-3)] block mb-2">First Step <span className="text-[var(--text-muted)]">(optional)</span></label>
                 <input
                   placeholder="What's the smallest action to start this?"
-                  value={firstStep}
-                  onChange={(e) => setFirstStep(e.target.value)}
-                  
+                  className={cn("input", errors.first_step && "!border-red-500")}
+                  {...register("first_step")}
+                  aria-invalid={!!errors.first_step}
+                  aria-describedby={errors.first_step ? `first_step-error` : undefined}
                 />
+                {errors.first_step && (
+                  <p id="first_step-error" className="text-caption text-red-500 mt-1">
+                    {errors.first_step.message}
+                  </p>
+                )}
               </div>
 
               {/* Action Toolbar (Date & Repeat) */}
               <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--color-border)]">
                 <Popover
                   trigger={
-                    <button className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", deadline ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
+                    <button type="button" className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", deadlineValue ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
                       <UiIcon size={13} icon={Calendar} />
-                      {deadline ? (() => {
-                        const d = new Date(deadline);
+                      {deadlineValue ? (() => {
+                        const d = new Date(deadlineValue);
                         const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
                         const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
                         const timeStr = hasTime ? ` ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "";
@@ -515,10 +555,18 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                           <label className="text-caption uppercase font-bold tracking-widest text-[var(--text-muted)] block mb-1.5">Due Date/Time</label>
                           <input
                             type="datetime-local"
-                            value={deadline || ""}
-                            onChange={handleManualDateChange}
-                            className="input !py-1.5 !px-2 !text-xs"
+                            className={cn("input !py-1.5 !px-2 !text-xs", errors.deadline && "!border-red-500")}
+                            {...register("deadline", {
+                              onChange: handleManualDateChange
+                            })}
+                            aria-invalid={!!errors.deadline}
+                            aria-describedby={errors.deadline ? `deadline-error` : undefined}
                           />
+                          {errors.deadline && (
+                            <p id="deadline-error" className="text-caption text-red-500 mt-1">
+                              {errors.deadline.message}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className="text-caption uppercase font-bold tracking-widest text-[var(--text-muted)] block mb-1.5">Start Date</label>
@@ -613,9 +661,10 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                   ].map((p) => (
                     <m.button
                       key={p.val}
+                      type="button"
                       whileTap={{ scale: 0.92 }}
-                      onClick={() => setPriority(priority === p.val ? null : p.val)}
-                      className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${priority === p.val ? p.activeClass : p.colorClass}`}
+                      onClick={() => setValue("priority", priorityValue === p.val ? null : p.val, { shouldValidate: true })}
+                      className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
                     >
                       P{p.val} {p.label}
                     </m.button>
@@ -675,12 +724,13 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                 <div className="flex flex-wrap gap-2 items-center">
                   {categoriesList.map((cat: string) => {
                     const cColor = DEFAULT_DO_COLORS[cat] || "var(--color-text-3)";
-                    const isActive = category === cat;
+                    const isActive = categoryValue === cat;
                     return (
                       <m.button
                         key={cat}
                         whileTap={{ scale: 0.92 }}
-                        onClick={() => setCategory(isActive ? "" : cat)}
+                        type="button"
+                        onClick={() => setValue("category", isActive ? "" : cat, { shouldValidate: true })}
                         style={{
                           borderColor: isActive ? cColor : `${cColor}40`,
                           backgroundColor: isActive ? `${cColor}20` : "transparent",
@@ -722,12 +772,19 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
               <div>
                 <label className="text-label text-[var(--text-3)] block mb-2">Notes</label>
                 <TextareaAutosize
+                  data-testid="autosize-textarea"
                   placeholder="Additional context or details"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  {...register("notes")}
                   minRows={2}
-                  className="input resize-none"
+                  className={cn("input resize-none", errors.notes && "!border-red-500")}
+                  aria-invalid={!!errors.notes}
+                  aria-describedby={errors.notes ? `notes-error` : undefined}
                 />
+                {errors.notes && (
+                  <p id="notes-error" className="text-caption text-red-500 mt-1">
+                    {errors.notes.message}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -741,14 +798,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
                   <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Trash2} />
                 </Button>
               )}
-              <Button variant="primary"
-                onClick={handleSave}
-                disabled={saving || !title.trim()}
+              <Button type="submit" variant="primary"
+                disabled={isSubmitting || !isValid}
                 className="flex-1  py-3 w-full disabled:opacity-50"
               >
-                {saving ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : (taskToEdit ? "Save Changes" : "Save Task")}
+                {isSubmitting ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : (taskToEdit ? "Save Changes" : "Save Task")}
               </Button>
             </div>
+      </form>
     </Sheet>
     <ConfirmModal
       isOpen={deleteTaskConfirm}
