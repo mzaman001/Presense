@@ -15,6 +15,7 @@ import { CalendarView } from "@/components/features/calendar/CalendarView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Clock, Play, Check, Zap, Calendar, Wind, CheckCircle2 } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
+import { useQueryState, parseAsString, parseAsStringEnum } from "nuqs";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -109,7 +110,7 @@ export default function DoPage() {
   const initialFilter = "all";
   
   const queryClient = useQueryClient();
-  const [categoryFilter, setCategoryFilter] = useState<string>(initialFilter);
+  const [categoryFilter, setCategoryFilter] = useQueryState("filter", parseAsString.withDefault(initialFilter));
   const [completing, setCompleting] = useState<string | null>(null);
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
   const prevTaskIdsRef = useRef<Set<string>>(new Set());
@@ -169,13 +170,9 @@ export default function DoPage() {
     prevTaskIdsRef.current = currentIds;
   }, [tasks]);
 
-  const [viewMode, setViewMode] = useState<"board" | "today" | "calendar">(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("presense_do_view");
-      if (saved === "today" || saved === "board" || saved === "calendar") return saved as "board" | "today" | "calendar";
-    }
-    return "board";
-  });
+  const [viewMode, setViewMode] = useQueryState<"board" | "today" | "calendar">("view", parseAsStringEnum<"board" | "today" | "calendar">(["board", "today", "calendar"]).withDefault(
+    (typeof window !== "undefined" && (localStorage.getItem("presense_do_view") as any)) || "board"
+  ));
 
   const toggleViewMode = (mode: "board" | "today" | "calendar") => {
     setViewMode(mode);

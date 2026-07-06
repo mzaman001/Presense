@@ -548,6 +548,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** coordinate with `DS-09`, `A11Y-06` — do not implement any of the three independently.
 
 **TOOL-04 — `nuqs` for shareable, bookmarkable view/filter state**
+**Status:** DONE
 
 - **Priority:** High
 - **Verified:** `nuqs` not present; `do/page.tsx`'s view mode (Board/Today/Calendar) and category filter were confirmed in the prior audit pass to live in local component state (also flagged separately as `INT-02`, which asked for persistence to `user_settings` — these are complementary, not conflicting: URL state for the current session's shareable/bookmarkable link, `user_settings` for the cross-device default).

@@ -42,6 +42,7 @@ import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
 import { WebVitalsReporter } from "@/components/layout/WebVitalsReporter";
 import { cn } from "@/lib/utils";
 import { env } from "@/lib/env";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -113,7 +114,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <WebVitalsReporter />
           <ConnectionStatus />
           <UpdatePrompt />
-          {children}
+          <NuqsAdapter>
+            {children}
+          </NuqsAdapter>
         </TooltipProvider>
         <ToastProvider />
       </body>

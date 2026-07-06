@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 
 import { Task } from "@/types/calendar";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { useQueryState, parseAsStringEnum } from "nuqs";
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -82,14 +83,10 @@ function parseDateId(id: string): Date | null {
 export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter }: CalendarViewProps) {
   const supabase = React.useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
-  const [subView, setSubView] = useState<CalendarSubView>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("presense_calendar_view");
-      if (saved === "day" || saved === "week" || saved === "month") return saved;
-      if (window.matchMedia("(max-width: 767px)").matches) return "day";
-    }
-    return "week";
-  });
+  const [subView, setSubView] = useQueryState<CalendarSubView>("subview", parseAsStringEnum<CalendarSubView>(["day", "week", "month"]).withDefault(
+    (typeof window !== "undefined" && (localStorage.getItem("presense_calendar_view") as any)) || 
+    (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "day" : "week")
+  ));
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
