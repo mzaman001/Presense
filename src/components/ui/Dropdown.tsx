@@ -97,7 +97,7 @@ export function Dropdown({
                 animate={{ opacity: 1, scaleY: 1 }}
                 exit={{ opacity: 0, scaleY: 0.9 }}
                 transition={{ duration: 0.18 }}
-                className="fixed z-[220] bg-[var(--elev-floating-bg,var(--surface-dropdown))] border-[0.5px] border-[var(--elev-floating-border,var(--border-strong))] rounded-[var(--radius-md)] shadow-[var(--elev-floating-shadow,var(--shadow-dropdown))] [backdrop-filter:var(--elev-floating-blur,var(--glass-blur))] [-webkit-backdrop-filter:var(--elev-floating-blur,var(--glass-blur))]"
+                className="dropdown-panel fixed z-[220]"
                 style={{ ...position, transformOrigin: "top" }}
               >
                 {options.map((opt) => {
@@ -152,7 +152,7 @@ export function Dropdown({
               animate={{ opacity: 1, scaleY: 1 }}
               exit={{ opacity: 0, scaleY: 0.9 }}
               transition={{ duration: 0.18 }}
-              className="fixed z-[220] bg-[var(--elev-floating-bg,var(--surface-dropdown))] border-[0.5px] border-[var(--elev-floating-border,var(--border-strong))] rounded-[var(--radius-md)] shadow-[var(--elev-floating-shadow,var(--shadow-dropdown))] [backdrop-filter:var(--elev-floating-blur,var(--glass-blur))] [-webkit-backdrop-filter:var(--elev-floating-blur,var(--glass-blur))]"
+              className="dropdown-panel fixed z-[220]"
               style={{ ...position, transformOrigin: "top" }}
             >
               {options.map((opt) => {

@@ -712,7 +712,7 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
   }
 
-  .glass-card::before, .glass-card-elevated::before, .modal::before, .sidebar::before, .glass-panel::before {
+  .glass-card::before, .glass-card-elevated::before, .modal::before, .sidebar::before, .glass-panel::before, .dropdown-panel::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -811,6 +811,17 @@ h1, h2, h3, h4, h5, h6 {
     border: 0.5px solid var(--border-default);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-toast);
+  }
+
+  .dropdown-panel {
+    background: var(--surface-dropdown);
+    backdrop-filter: var(--blur-dropdown);
+    -webkit-backdrop-filter: var(--blur-dropdown);
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-dropdown);
+    position: relative;
+    overflow: hidden;
   }
 
   /* === BUTTON SYSTEM === */
