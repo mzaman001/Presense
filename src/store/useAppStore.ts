@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 import { markMutation as markProviderMutation } from "@/components/providers/RealtimeProvider";
 
 export interface UserSettings {
@@ -61,14 +61,25 @@ interface AppState {
   setUserSettings: (settings: UserSettings) => void;
   updateUserSetting: (key: string, value: unknown) => void;
   activeTimer: { taskId?: string; taskTitle?: string } | null;
-  setActiveTimer: (timer: { taskId?: string; taskTitle?: string } | null) => void;
+  setActiveTimer: (
+    timer: { taskId?: string; taskTitle?: string } | null,
+  ) => void;
 
   lastMutations: Record<string, number>;
   markMutation: (table?: string) => void;
-  activeRitual: 'morning' | 'evening' | null;
-  setActiveRitual: (ritual: 'morning' | 'evening' | null) => void;
+  activeRitual: "morning" | "evening" | null;
+  setActiveRitual: (ritual: "morning" | "evening" | null) => void;
   prefetchedThreads: Record<string, unknown>;
   setPrefetchedThread: (id: string, thread: unknown) => void;
+  /** Apple-style single-overlay rule.
+   * Only one overlay (dropdown, sheet, modal, panel) is open at a time.
+   * Setting a new overlay ID automatically closes the previous one.
+   * Overlay IDs:
+   *   "capture" | "search" | "settings" | "taskAdd" |
+   *   "routing-dropdown-<itemId>" | "confirm" | "exploreDrawer"
+   */
+  activeOverlay: string | null;
+  setActiveOverlay: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -81,25 +92,36 @@ export const useAppStore = create<AppState>((set) => ({
   isMobileDrawerOpen: false,
   setIsMobileDrawerOpen: (open) => set({ isMobileDrawerOpen: open }),
   isSettingsModalOpen: false,
-  setSettingsModalOpen: (open, defaultTab) => set((state) => ({ isSettingsModalOpen: open, settingsActiveTab: defaultTab || state.settingsActiveTab })),
+  setSettingsModalOpen: (open, defaultTab) =>
+    set((state) => ({
+      isSettingsModalOpen: open,
+      settingsActiveTab: defaultTab || state.settingsActiveTab,
+    })),
   settingsActiveTab: "account",
   setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
   userSettings: {},
   setUserSettings: (settings) => set({ userSettings: settings }),
-  updateUserSetting: (key, value) => set((state) => ({ userSettings: { ...state.userSettings, [key]: value } })),
+  updateUserSetting: (key, value) =>
+    set((state) => ({ userSettings: { ...state.userSettings, [key]: value } })),
   activeTimer: null,
   setActiveTimer: (timer) => set({ activeTimer: timer }),
 
   lastMutations: {},
-  markMutation: (table) => set((state) => {
-    const now = Date.now();
-    markProviderMutation(table);
-    return {
-      lastMutations: { ...state.lastMutations, [table || '_global']: now },
-    };
-  }),
+  markMutation: (table) =>
+    set((state) => {
+      const now = Date.now();
+      markProviderMutation(table);
+      return {
+        lastMutations: { ...state.lastMutations, [table || "_global"]: now },
+      };
+    }),
   activeRitual: null,
   setActiveRitual: (ritual) => set({ activeRitual: ritual }),
   prefetchedThreads: {},
-  setPrefetchedThread: (id, thread) => set((state) => ({ prefetchedThreads: { ...state.prefetchedThreads, [id]: thread } })),
+  setPrefetchedThread: (id, thread) =>
+    set((state) => ({
+      prefetchedThreads: { ...state.prefetchedThreads, [id]: thread },
+    })),
+  activeOverlay: null,
+  setActiveOverlay: (id) => set({ activeOverlay: id }),
 }));
