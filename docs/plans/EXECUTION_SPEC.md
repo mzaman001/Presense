@@ -644,6 +644,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** `INFRA-02`.
 
 **TOOL-14 — Bundle analysis**
+**Status:** DONE
 
 - **Priority:** Medium
 - **Requirement:** Add `@next/bundle-analyzer`, wired via an `ANALYZE=true` build flag, to make bundle composition inspectable on demand. Use it to verify `BUG-09`'s dynamic-import requirement for `compromise`/`chrono-node` actually keeps those libraries out of unrelated route bundles, and to verify `TOOL-12`'s DevTools stay dev-only.
