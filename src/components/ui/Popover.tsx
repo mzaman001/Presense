@@ -89,7 +89,7 @@ export function Popover({ trigger, content, placement = "bottom-start", classNam
             exit={{ opacity: 0, y: 5, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
             className={cn(
-              "min-w-[200px] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl",
+              "dropdown-panel min-w-[200px]",
               className
             )}
             style={position}
