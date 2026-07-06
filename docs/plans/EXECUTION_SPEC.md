@@ -520,6 +520,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 #### Critical / High priority
 
 **TOOL-01 — Typed Supabase client (`database.types.ts`)**
+**Status:** DONE
 
 - **Priority:** Critical
 - **Verified:** 60 `: any` annotations confirmed present; no generated types file exists in `src/types/`.
@@ -531,6 +532,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none. Should land early — many later tickets (`BUG-08`'s `item-lifecycle.ts`, `INFRA-10`'s RLS audit) benefit from typed queries while being written.
 
 **TOOL-02 — Replace `env.ts` with validated, fail-fast environment access**
+**Status:** DONE
 
 - **Priority:** Critical
 - **Verified:** current `env.ts` matches the "silent empty-string fallback" description exactly.
@@ -541,6 +543,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none.
 
 **TOOL-03 — React Hook Form + Zod for all manual-`useState` forms**
+**Status:** DONE
 
 - **Priority:** High
 - **Verified:** neither `react-hook-form` nor `@hookform/resolvers` present in `package.json`; `TaskAddPanel.tsx`, `AddPersonPanel.tsx`, and `SettingsModal.tsx` were confirmed in the prior audit pass to hold form state via individual `useState` calls per field.
@@ -580,6 +583,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none.
 
 **TOOL-07 — Wire `content-visibility: auto` to its intended elements**
+**Status:** DONE
 
 - **Priority:** High
 - **Verified:** `globals.css:1474`'s `.task-card-wrapper` rule has zero corresponding JSX usages — confirmed inert.
@@ -588,6 +592,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none.
 
 **TOOL-08 — Upstash Redis production configuration verification**
+**Status:** DONE
 
 - **Priority:** High
 - **Verified:** `rate-limit.ts`'s current fallback logic only logs a warning when Redis env vars are absent **in development** (`if (process.env.NODE_ENV === "development")`) — in production, if the env vars are absent, `getRateLimit()` silently returns `null` with no warning logged anywhere, meaning a misconfigured production deployment fails open (no rate limiting) with no operational signal.
