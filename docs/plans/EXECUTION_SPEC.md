@@ -622,6 +622,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none.
 
 **TOOL-12 — React Query DevTools (dev-only)**
+**Status:** DONE
 
 - **Priority:** Medium
 - **Verified:** absent from dependencies.
