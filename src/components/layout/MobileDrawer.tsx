@@ -40,7 +40,7 @@ export function MobileDrawer() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsMobileDrawerOpen(false)}
-            className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            className="md:hidden fixed inset-0 z-50 bg-black/50"
           />
           <m.div 
             initial={{ x: "-100%" }}

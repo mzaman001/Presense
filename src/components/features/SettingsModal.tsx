@@ -481,7 +481,7 @@ export function SettingsModal() {
         {isSettingsModalOpen && (
           <m.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/50"
             onClick={() => setSettingsModalOpen(false)}
           >
             <m.div 
@@ -489,6 +489,7 @@ export function SettingsModal() {
               initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
               transition={{ type: "spring", stiffness: 300, damping: 28 }}
               className="modal relative w-full max-w-4xl h-[100dvh] md:h-[80vh] min-h-0 flex flex-col md:flex-row overflow-hidden md:rounded-2xl"
+              style={{ backdropFilter: 'blur(48px)', WebkitBackdropFilter: 'blur(48px)' }}
               onClick={e => e.stopPropagation()}
               role="dialog"
               aria-modal="true"

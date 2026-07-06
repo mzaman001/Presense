@@ -48,7 +48,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] bg-black/50"
           />
 
           {/* Sheet Container */}
@@ -73,6 +73,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
                 "md:max-w-xl md:max-h-[85vh]",
                 className
               )}
+              style={{ backdropFilter: 'blur(48px)', WebkitBackdropFilter: 'blur(48px)' }}
               role="dialog"
               aria-modal="true"
               aria-label={typeof title === "string" ? title : undefined}
