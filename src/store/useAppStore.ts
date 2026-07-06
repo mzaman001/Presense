@@ -71,15 +71,6 @@ interface AppState {
   setActiveRitual: (ritual: "morning" | "evening" | null) => void;
   prefetchedThreads: Record<string, unknown>;
   setPrefetchedThread: (id: string, thread: unknown) => void;
-  /** Apple-style single-overlay rule.
-   * Only one overlay (dropdown, sheet, modal, panel) is open at a time.
-   * Setting a new overlay ID automatically closes the previous one.
-   * Overlay IDs:
-   *   "capture" | "search" | "settings" | "taskAdd" |
-   *   "routing-dropdown-<itemId>" | "confirm" | "exploreDrawer"
-   */
-  activeOverlay: string | null;
-  setActiveOverlay: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -122,6 +113,4 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       prefetchedThreads: { ...state.prefetchedThreads, [id]: thread },
     })),
-  activeOverlay: null,
-  setActiveOverlay: (id) => set({ activeOverlay: id }),
 }));
