@@ -652,7 +652,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** `BUG-09` (verification step).
 
 **TOOL-15 — Floating UI for `Popover`/`Dropdown` collision handling**
-**Status:** DONE
 
 - **Priority:** Medium (downgraded from the source documents' "High/fixes your z-index bug" framing, since the clipping defect itself is already fixed via `createPortal` — see §12.1)
 - **Requirement:** Evaluate migrating `Popover.tsx`'s manual `placement` prop system to Floating UI's `flip`/`shift`/`autoUpdate` middleware, so menus near a viewport edge reposition automatically instead of relying on a developer-specified static placement that may not fit in every case.

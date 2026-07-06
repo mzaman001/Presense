@@ -1,17 +1,10 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Icon as UiIcon } from "@/components/ui/Icon";
-import {
-  useFloating,
-  autoUpdate,
-  offset,
-  flip,
-  shift,
-} from "@floating-ui/react";
 
 interface DropdownOption {
   value: string;
@@ -39,34 +32,41 @@ export function Dropdown({
   variant = "select",
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
-
-  const { refs, floatingStyles } = useFloating({
-    open: isOpen,
-    onOpenChange: setIsOpen,
-    placement: "bottom-start",
-    whileElementsMounted: autoUpdate,
-    middleware: [offset(4), flip({ padding: 8 }), shift({ padding: 8 })],
-  });
-  const { setReference, setFloating, reference, floating } = refs;
+  const [position, setPosition] = useState<React.CSSProperties>({});
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setPosition({
+      position: "fixed",
+      zIndex: 220,
+      top: rect.bottom + 4,
+      left: rect.left,
+      minWidth: Math.max(rect.width, 160),
+    });
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent) => {
       if (
-        reference.current &&
-        !(reference.current as Element).contains(e.target as Node) &&
-        (!floating.current || !floating.current.contains(e.target as Node))
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node) &&
+        (!dropdownRef.current ||
+          !dropdownRef.current.contains(e.target as Node))
       ) {
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [isOpen, reference, floating]);
+  }, [isOpen]);
 
   const selectedOption = (() => {
     if (!Array.isArray(options)) return { value, label: value };
@@ -88,7 +88,7 @@ export function Dropdown({
       "rgba(255,255,255,0.5)";
     const isPlaceholder = !value || value === placeholder;
     return (
-      <div className={cn("relative", className)} ref={setReference}>
+      <div className={cn("relative", className)} ref={containerRef}>
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
@@ -108,13 +108,13 @@ export function Dropdown({
             <AnimatePresence>
               {isOpen && (
                 <m.div
-                  ref={setFloating}
+                  ref={dropdownRef}
                   initial={{ opacity: 0, scaleY: 0.9 }}
                   animate={{ opacity: 1, scaleY: 1 }}
                   exit={{ opacity: 0, scaleY: 0.9 }}
                   transition={{ duration: 0.18 }}
-                  className="dropdown-panel fixed z-[220] min-w-[160px]"
-                  style={{ ...floatingStyles, transformOrigin: "top" }}
+                  className="dropdown-panel fixed z-[220]"
+                  style={{ ...position, transformOrigin: "top" }}
                 >
                   {options.map((opt) => {
                     const optValue = typeof opt === "string" ? opt : opt.value;
@@ -168,7 +168,7 @@ export function Dropdown({
   }
 
   return (
-    <div className={cn("relative w-full", className)} ref={setReference}>
+    <div className={cn("relative w-full", className)} ref={containerRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -196,13 +196,13 @@ export function Dropdown({
           <AnimatePresence>
             {isOpen && (
               <m.div
-                ref={setFloating}
+                ref={dropdownRef}
                 initial={{ opacity: 0, scaleY: 0.9 }}
                 animate={{ opacity: 1, scaleY: 1 }}
                 exit={{ opacity: 0, scaleY: 0.9 }}
                 transition={{ duration: 0.18 }}
-                className="dropdown-panel fixed z-[220] min-w-[160px]"
-                style={{ ...floatingStyles, transformOrigin: "top" }}
+                className="dropdown-panel fixed z-[220]"
+                style={{ ...position, transformOrigin: "top" }}
               >
                 {options.map((opt) => {
                   const optValue = typeof opt === "string" ? opt : opt.value;
