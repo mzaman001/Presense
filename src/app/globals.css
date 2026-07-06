@@ -600,8 +600,8 @@ h1, h2, h3, h4, h5, h6 {
 /* Glassmorphism Utilities */
 .glass-panel {
   background: var(--color-surface);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
+  backdrop-filter: var(--blur-elevated);
+  -webkit-backdrop-filter: var(--blur-elevated);
   border: 0.5px solid var(--color-border);
   border-radius: 16px;
   box-shadow: 

@@ -20,12 +20,8 @@ export default function GlobalError({
     <html>
       <body style={{ background: "#0e0e10", color: "#e8e8ec", fontFamily: "Inter, system-ui, sans-serif", margin: 0 }}>
         <div style={{ display: "flex", minHeight: "100dvh", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-          <div style={{
+          <div className="glass-panel" style={{
             width: "100%", maxWidth: "420px", padding: "40px 32px",
-            background: "rgba(255,255,255,0.04)",
-            border: "0.5px solid rgba(255,255,255,0.1)",
-            borderRadius: "20px",
-            backdropFilter: "blur(24px)",
             textAlign: "center",
             boxShadow: "0 32px 64px rgba(0,0,0,0.5)"
           }}>

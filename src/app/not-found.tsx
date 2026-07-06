@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-base)] p-6">
-      <div className="w-full max-w-md rounded-2xl border border-[var(--border-default)] bg-[var(--surface-1)] p-8 text-center backdrop-blur-xl">
+      <div className="w-full max-w-md rounded-2xl border border-[var(--border-default)] bg-[var(--surface-1)] p-8 text-center glass-panel">
         <div className="mb-4 text-6xl font-bold text-[var(--accent)]">404</div>
         <h2 className="mb-2 text-xl font-semibold text-[var(--text-1)]">
           Page not found
