@@ -45,6 +45,16 @@ next-env.d.ts
 public/sw*
 public/swe-worker*
 
+# Test artifacts
+playwright-report/
+test-results/
+
+# IDE
+.idea/
+
+# Agent scratch
+scratch/
+
 # Temp/Output files
 output.txt
 supabase/.temp/
