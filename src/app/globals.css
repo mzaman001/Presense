@@ -101,7 +101,7 @@
   --touch-target: 44px;
   --sheet-radius: 20px;
   --sheet-handle-w: 36px;
-  --blur-elevated: blur(32px);
+  /* --blur-elevated moved to GLASS RECIPE block */
   accent-color: var(--accent);
 
   /* === BACKGROUND SYSTEM === */
@@ -193,11 +193,17 @@
   --status-danger-dim: rgba(248, 113, 113, 0.10);
   --status-danger-border: rgba(248, 113, 113, 0.25);
 
-  /* === GLASS RECIPE === */
-  --glass-blur: blur(20px);
-  --glass-blur-heavy: blur(32px);
-  --glass-blur-light: blur(16px);
-  --blur-modal: blur(48px);
+  /* === GLASS RECIPE — canonical blur tokens === */
+  --blur-modal: blur(48px);       /* modals, sheets, settings — heaviest */
+  --blur-elevated: blur(32px);    /* sidebar, glass-card-elevated, glass-panel */
+  --blur-dropdown: blur(20px);    /* dropdowns, popovers, toasts */
+  --blur-card: blur(16px);        /* glass-card list items */
+  --blur-chrome: blur(12px);      /* mobile top bar, bottom nav — lightest */
+
+  /* Backward-compat aliases (migrate consumers then remove) */
+  --glass-blur: var(--blur-dropdown);
+  --glass-blur-heavy: var(--blur-elevated);
+  --glass-blur-light: var(--blur-card);
   --glass-noise: url("data:image/svg+xml,..."); /* noise SVG inline */
 
 
@@ -217,15 +223,15 @@
   --elev-flat-border: rgba(255, 255, 255, 0.10);
 
   --elev-raised-shadow: var(--shadow-card);
-  --elev-raised-blur: var(--glass-blur-light);
+  --elev-raised-blur: var(--blur-card);
   --elev-raised-border: rgba(255, 255, 255, 0.14);
 
   --elev-floating-shadow: var(--shadow-dropdown);
-  --elev-floating-blur: var(--glass-blur);
+  --elev-floating-blur: var(--blur-dropdown);
   --elev-floating-border: rgba(255, 255, 255, 0.18);
 
   --elev-overlay-shadow: var(--shadow-modal);
-  --elev-overlay-blur: var(--glass-blur-heavy);
+  --elev-overlay-blur: var(--blur-elevated);
   --elev-overlay-border: rgba(255, 255, 255, 0.22);
 
   /* === SHADOW SYSTEM === */
@@ -1135,10 +1141,12 @@ h1, h2, h3, h4, h5, h6 {
 /* === REDUCED TRANSPARENCY OVERRIDES === */
 @media (prefers-reduced-transparency: reduce) {
   body {
-    --glass-blur: none !important;
-    --glass-blur-heavy: none !important;
-    --glass-blur-light: none !important;
+    --blur-modal: none !important;
     --blur-elevated: none !important;
+    --blur-dropdown: none !important;
+    --blur-card: none !important;
+    --blur-chrome: none !important;
+    /* Aliases also null via cascade from canonical tokens */
 
     /* Make the surfaces fully opaque by blending them with bg-elevated */
     --surface-1: color-mix(in srgb, white 5.5%, var(--bg-elevated)) !important;
