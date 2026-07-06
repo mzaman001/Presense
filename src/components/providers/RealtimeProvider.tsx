@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useCallback, useSt
 import { createClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 
-let lastMutations: Record<string, number> = {};
+const lastMutations: Record<string, number> = {};
 
 export function markMutation(table?: string) {
   const now = Date.now();

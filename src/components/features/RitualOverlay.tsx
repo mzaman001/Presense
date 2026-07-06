@@ -6,8 +6,19 @@ import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { m, AnimatePresence } from "framer-motion";
 import {
-  X, Check, AlertTriangle, Sparkles, Moon, ArrowRight,
-  Clock, BookOpen, Smile, ChevronLeft, Sun, Inbox, SkipForward,
+  X,
+  Check,
+  AlertTriangle,
+  Sparkles,
+  Moon,
+  ArrowRight,
+  Clock,
+  BookOpen,
+  Smile,
+  ChevronLeft,
+  Sun,
+  Inbox,
+  SkipForward,
 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
@@ -22,18 +33,29 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
   return (
     <div className="space-y-3" data-testid="workload-bar">
       <div className="flex items-center justify-between">
-        <span className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+        <span
+          className="text-meta font-bold tracking-widest uppercase"
+          style={{ color: "var(--text-muted)" }}
+        >
           Daily Workload
         </span>
         <span
           className="text-ui font-bold tabular-nums"
-          style={{ color: isOver ? "var(--status-overdue)" : "var(--status-done)" }}
+          style={{
+            color: isOver ? "var(--status-overdue)" : "var(--status-done)",
+          }}
         >
-          {total}m <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>/ {capacity}m</span>
+          {total}m{" "}
+          <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>
+            / {capacity}m
+          </span>
         </span>
       </div>
 
-      <div className="relative h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+      <div
+        className="relative h-[3px] overflow-hidden rounded-full"
+        style={{ background: "rgba(255,255,255,0.06)" }}
+      >
         <m.div
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
@@ -56,15 +78,23 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
+            className="flex items-start gap-2.5 rounded-xl px-3 py-2.5"
             style={{
               background: "var(--status-overdue-dim)",
               border: "0.5px solid var(--status-overdue-border)",
             }}
           >
-            <UiIcon className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: "var(--status-overdue)" }} icon={AlertTriangle} />
-            <p className="text-meta leading-relaxed" style={{ color: "var(--text-3)" }}>
-              Over capacity — consider snoozing a task or two. Rest is part of the plan.
+            <UiIcon
+              className="mt-0.5 h-3.5 w-3.5 shrink-0"
+              style={{ color: "var(--status-overdue)" }}
+              icon={AlertTriangle}
+            />
+            <p
+              className="text-meta leading-relaxed"
+              style={{ color: "var(--text-3)" }}
+            >
+              Over capacity — consider snoozing a task or two. Rest is part of
+              the plan.
             </p>
           </m.div>
         )}
@@ -74,13 +104,19 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
 }
 
 // ─── TriageCard ───────────────────────────────────────────────────────────────
-function TriageCard({ task, onAction }: {
+function TriageCard({
+  task,
+  onAction,
+}: {
   /* @todo: Untyped usage justified per TOOL-01 */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   task: any;
   onAction: (id: string, action: "today" | "backlog" | "snooze") => void;
 }) {
-  const isOverdue = task.status === "overdue" || (task.deadline && new Date(task.deadline) < new Date(new Date().setHours(0,0,0,0)));
+  const isOverdue =
+    task.status === "overdue" ||
+    (task.deadline &&
+      new Date(task.deadline) < new Date(new Date().setHours(0, 0, 0, 0)));
 
   return (
     <m.div
@@ -89,7 +125,7 @@ function TriageCard({ task, onAction }: {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -24, scale: 0.96, filter: "blur(4px)" }}
       transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="relative rounded-2xl p-4 group"
+      className="group relative rounded-2xl p-4"
       style={{
         background: "var(--surface-card)",
         border: "0.5px solid var(--border-card)",
@@ -98,37 +134,57 @@ function TriageCard({ task, onAction }: {
     >
       {/* top highlight */}
       <div
-        className="absolute top-0 left-0 right-0 h-px rounded-t-2xl"
+        className="absolute top-0 right-0 left-0 h-px rounded-t-2xl"
         style={{ background: "var(--border-card-top)" }}
       />
 
-      <div className="flex items-start gap-3 mb-3.5">
+      <div className="mb-3.5 flex items-start gap-3">
         <div
-          className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
           style={{
-            background: isOverdue ? "var(--status-overdue-dim)" : "var(--surface-card)",
+            background: isOverdue
+              ? "var(--status-overdue-dim)"
+              : "var(--surface-card)",
             border: `1px solid ${isOverdue ? "var(--status-overdue-border)" : "var(--border-default)"}`,
           }}
         >
-          {isOverdue && <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--status-overdue)" }} />}
+          {isOverdue && (
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: "var(--status-overdue)" }}
+            />
+          )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <p className="text-body font-semibold leading-snug" style={{ color: "var(--text-1)" }}>
+        <div className="min-w-0 flex-1">
+          <p
+            className="text-body leading-snug font-semibold"
+            style={{ color: "var(--text-1)" }}
+          >
             {task.title}
           </p>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="mt-1 flex items-center gap-2">
             <span
-              className="text-caption font-bold uppercase tracking-widest"
-              style={{ color: isOverdue ? "var(--status-overdue)" : "var(--text-muted)" }}
+              className="text-caption font-bold tracking-widest uppercase"
+              style={{
+                color: isOverdue
+                  ? "var(--status-overdue)"
+                  : "var(--text-muted)",
+              }}
             >
               {task.status === "inbox" ? "Inbox" : "Overdue"}
             </span>
             {task.deadline && (
               <>
                 <span style={{ color: "var(--border-default)" }}>·</span>
-                <span className="text-meta" style={{ color: "var(--text-muted)" }}>
-                  {new Date(task.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                <span
+                  className="text-meta"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {new Date(task.deadline).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}
                 </span>
               </>
             )}
@@ -139,38 +195,44 @@ function TriageCard({ task, onAction }: {
       <div className="flex items-center gap-2">
         <button
           onClick={() => onAction(task.id, "today")}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-ui font-semibold transition-all active:scale-[0.97]"
+          className="text-ui flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 font-semibold transition-all active:scale-[0.97]"
           style={{
             background: "var(--accent)",
             color: "var(--text-on-accent)",
             boxShadow: "var(--shadow-button-primary)",
           }}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-button-primary-hover)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "var(--shadow-button-primary)")}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.boxShadow =
+              "var(--shadow-button-primary-hover)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.boxShadow = "var(--shadow-button-primary)")
+          }
         >
-          <UiIcon className="w-3.5 h-3.5" strokeWidth={2.5} icon={Check} /> Do Today
+          <UiIcon className="h-3.5 w-3.5" strokeWidth={2.5} icon={Check} /> Do
+          Today
         </button>
         <button
           onClick={() => onAction(task.id, "snooze")}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-ui font-medium transition-all active:scale-[0.97] hover:brightness-110"
+          className="text-ui flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-all hover:brightness-110 active:scale-[0.97]"
           style={{
             background: "rgba(255,255,255,0.05)",
             border: "0.5px solid var(--border-default)",
             color: "var(--text-2)",
           }}
         >
-          <UiIcon className="w-3.5 h-3.5" icon={Clock} /> Tomorrow
+          <UiIcon className="h-3.5 w-3.5" icon={Clock} /> Tomorrow
         </button>
         <button
           onClick={() => onAction(task.id, "backlog")}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-ui font-medium transition-all active:scale-[0.97] hover:brightness-110"
+          className="text-ui flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-all hover:brightness-110 active:scale-[0.97]"
           style={{
             background: "rgba(255,255,255,0.05)",
             border: "0.5px solid var(--border-default)",
             color: "var(--text-muted)",
           }}
         >
-          <UiIcon className="w-3.5 h-3.5" icon={SkipForward} /> Backlog
+          <UiIcon className="h-3.5 w-3.5" icon={SkipForward} /> Backlog
         </button>
       </div>
     </m.div>
@@ -184,7 +246,11 @@ interface RitualOverlayProps {
   onClose?: () => void;
 }
 
-export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}) {
+export function RitualOverlay({
+  isOpen,
+  type,
+  onClose,
+}: RitualOverlayProps = {}) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -197,11 +263,12 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
   } = useAppStore();
 
   const activeRitual = type !== undefined ? type : storeActiveRitual;
-  const isCurrentlyOpen = isOpen !== undefined ? isOpen : storeActiveRitual !== null;
+  const isCurrentlyOpen =
+    isOpen !== undefined ? isOpen : storeActiveRitual !== null;
 
   const handleClose = useCallback(() => {
     // Stamp close time so AppInitializer won't fire another ritual for 5 minutes
-    localStorage.setItem('presense_ritual_closed_at', String(Date.now()));
+    localStorage.setItem("presense_ritual_closed_at", String(Date.now()));
     if (onClose) onClose();
     else storeSetActiveRitual(null);
   }, [onClose, storeSetActiveRitual]);
@@ -217,12 +284,14 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
   const [saving, setSaving] = useState(false);
 
   const capacity = userSettings?.daily_capacity_minutes ?? 240;
-  
-  const [todayString, setTodayString] = useState(() => new Date().toLocaleDateString("en-CA"));
-  
+
+  const [todayString, setTodayString] = useState(() =>
+    new Date().toLocaleDateString("en-CA"),
+  );
+
   useEffect(() => {
     const update = () => {
-      setTodayString(prev => {
+      setTodayString((prev) => {
         const next = new Date().toLocaleDateString("en-CA");
         return prev === next ? prev : next;
       });
@@ -242,15 +311,25 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
   useEffect(() => {
     if (!isCurrentlyOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) return;
-      if (e.key === "Escape") { handleClose(); return; }
+      if (
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLButtonElement
+      )
+        return;
+      if (e.key === "Escape") {
+        handleClose();
+        return;
+      }
       if (activeRitual === "morning" && step === 1 && triageTasks.length > 0) {
         const firstTask = triageTasks[0];
-        if (e.key === "Enter" || e.key === "1") handleTriageAction(firstTask.id, "today");
+        if (e.key === "Enter" || e.key === "1")
+          handleTriageAction(firstTask.id, "today");
         if (e.key === "2") handleTriageAction(firstTask.id, "snooze");
         if (e.key === "3") handleTriageAction(firstTask.id, "backlog");
       }
-      if (activeRitual === "morning" && step === 2 && e.key === "Backspace") setStep(1);
+      if (activeRitual === "morning" && step === 2 && e.key === "Backspace")
+        setStep(1);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -262,7 +341,9 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isCurrentlyOpen]);
 
   useEffect(() => {
@@ -270,50 +351,90 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
     setStep(1);
     const fetchData = async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       if (activeRitual === "morning") {
         const { data: tasks } = await supabase
-          .from("items").select("*").in("status", ["inbox", "active", "overdue"]);
+          .from("items")
+          .select("*")
+          .in("status", ["inbox", "active", "overdue"]);
         if (tasks) {
           const todayStart = new Date().setHours(0, 0, 0, 0);
           /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setTriageTasks(tasks.filter((t: any) =>
-            t.status === "inbox" || t.status === "overdue" ||
-            (t.status === "active" && t.deadline && new Date(t.deadline).getTime() < todayStart)
-          ));
+           
+          setTriageTasks(
+            tasks.filter(
+              (t: any) =>
+                t.status === "inbox" ||
+                t.status === "overdue" ||
+                (t.status === "active" &&
+                  t.deadline &&
+                  new Date(t.deadline).getTime() < todayStart),
+            ),
+          );
           /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setTodayTasks(tasks.filter((t: any) =>
-            t.status === "active" && t.deadline &&
-            new Date(t.deadline).getTime() >= todayStart &&
-            new Date(t.deadline).getTime() < todayStart + 86400000
-          ));
+           
+          setTodayTasks(
+            tasks.filter(
+              (t: any) =>
+                t.status === "active" &&
+                t.deadline &&
+                new Date(t.deadline).getTime() >= todayStart &&
+                new Date(t.deadline).getTime() < todayStart + 86400000,
+            ),
+          );
         }
       } else {
         const todayStart = new Date().setHours(0, 0, 0, 0);
         const startISO = new Date(todayStart).toISOString();
-        const [{ data: completed }, { data: incomplete }, { data: logs }] = await Promise.all([
-          supabase.from("items").select("*").eq("status", "done").gte("completed_at", startISO),
-          supabase.from("items").select("*").eq("status", "active"),
-          supabase.from("session_logs").select("*").eq("type", "work").gte("completed_at", startISO),
-        ]);
+        const [{ data: completed }, { data: incomplete }, { data: logs }] =
+          await Promise.all([
+            supabase
+              .from("items")
+              .select("*")
+              .eq("status", "done")
+              .gte("completed_at", startISO),
+            supabase.from("items").select("*").eq("status", "active"),
+            supabase
+              .from("session_logs")
+              .select("*")
+              .eq("type", "work")
+              .gte("completed_at", startISO),
+          ]);
         setCompletedTasks(completed || []);
         /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setTriageTasks((incomplete || []).filter((t: any) =>
-          t.deadline && new Date(t.deadline).getTime() < todayStart + 86400000
-        ));
+         
+        setTriageTasks(
+          (incomplete || []).filter(
+            (t: any) =>
+              t.deadline &&
+              new Date(t.deadline).getTime() < todayStart + 86400000,
+          ),
+        );
         /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setTomorrowTasks((incomplete || []).filter((t: any) =>
-          t.deadline && new Date(t.deadline).getTime() >= todayStart + 86400000 && new Date(t.deadline).getTime() < todayStart + 86400000 * 2
-        ));
+         
+        setTomorrowTasks(
+          (incomplete || []).filter(
+            (t: any) =>
+              t.deadline &&
+              new Date(t.deadline).getTime() >= todayStart + 86400000 &&
+              new Date(t.deadline).getTime() < todayStart + 86400000 * 2,
+          ),
+        );
         /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setFocusMinutes((logs || []).reduce((s: number, l: any) => s + (l.duration_minutes || 0), 0));
+         
+        setFocusMinutes(
+          (logs || []).reduce(
+            (s: number, l: any) => s + (l.duration_minutes || 0),
+            0,
+          ),
+        );
         setReflection("");
       }
       setLoading(false);
@@ -321,54 +442,85 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
     fetchData();
   }, [activeRitual, supabase, todayString]);
 
-  const handleTriageAction = async (taskId: string, action: "today" | "backlog" | "snooze") => {
-    const task = triageTasks.find(t => t.id === taskId);
+  const handleTriageAction = async (
+    taskId: string,
+    action: "today" | "backlog" | "snooze",
+  ) => {
+    const task = triageTasks.find((t) => t.id === taskId);
     if (!task) return;
-    
-    setTriageTasks(prev => prev.filter(t => t.id !== taskId));
+
+    setTriageTasks((prev) => prev.filter((t) => t.id !== taskId));
     const now = new Date();
     const payload =
-      action === "today"  ? { status: "active", deadline: now.toISOString() } :
-      action === "snooze" ? { status: "active", deadline: new Date(now.getTime() + 86400000).toISOString() } :
-                            { status: "active", deadline: null };
-    
-    if (action === "today") setTodayTasks(prev => [...prev, { ...task, ...payload }]);
-    
+      action === "today"
+        ? { status: "active", deadline: now.toISOString() }
+        : action === "snooze"
+          ? {
+              status: "active",
+              deadline: new Date(now.getTime() + 86400000).toISOString(),
+            }
+          : { status: "active", deadline: null };
+
+    if (action === "today")
+      setTodayTasks((prev) => [...prev, { ...task, ...payload }]);
+
     try {
-      const { error } = await supabase.from("items").update(payload).eq("id", taskId);
+      const { error } = await supabase
+        .from("items")
+        .update(payload)
+        .eq("id", taskId);
       if (error) throw error;
       markMutation("items");
-      
-      const actionLabels = { today: "Moved to Today", backlog: "Moved to Backlog", snooze: "Snoozed until tomorrow" };
+
+      const actionLabels = {
+        today: "Moved to Today",
+        backlog: "Moved to Backlog",
+        snooze: "Snoozed until tomorrow",
+      };
       toast.success(actionLabels[action], {
         action: {
-          label: 'Undo',
+          label: "Undo",
           onClick: async () => {
-            if (action === "today") setTodayTasks(prev => prev.filter(t => t.id !== taskId));
-            setTriageTasks(prev => [task, ...prev]);
-            await supabase.from("items").update({ status: task.status, deadline: task.deadline }).eq("id", taskId);
+            if (action === "today")
+              setTodayTasks((prev) => prev.filter((t) => t.id !== taskId));
+            setTriageTasks((prev) => [task, ...prev]);
+            await supabase
+              .from("items")
+              .update({ status: task.status, deadline: task.deadline })
+              .eq("id", taskId);
             markMutation("items");
-          }
-        }
+          },
+        },
       });
-    } catch { toast.error("Failed to update task"); }
+    } catch {
+      toast.error("Failed to update task");
+    }
   };
 
   const handleEstimateChange = async (taskId: string, minutes: number) => {
     const val = Math.max(0, minutes);
-    setTodayTasks(prev => prev.map(t => t.id === taskId ? { ...t, time_estimate: val } : t));
+    setTodayTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, time_estimate: val } : t)),
+    );
     try {
-      await supabase.from("items").update({ time_estimate: val }).eq("id", taskId);
+      await supabase
+        .from("items")
+        .update({ time_estimate: val })
+        .eq("id", taskId);
       markMutation("items");
-    } catch { toast.error("Failed to update estimate"); }
+    } catch {
+      toast.error("Failed to update estimate");
+    }
   };
 
   const handleFinishMorning = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No user");
-      
+
       let newStreak = userSettings?.ritual_streak || 0;
       const lastRitual = userSettings?.last_ritual_date;
       if (lastRitual) {
@@ -380,40 +532,52 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           newStreak = 0;
         }
       }
-      
+
       if (lastRitual !== todayString) {
         newStreak += 1;
       }
-      
-      const { error } = await supabase.from("user_settings").update({ 
-        last_ritual_date: todayString,
-        ritual_streak: newStreak
-      }).eq("user_id", user.id);
+
+      const { error } = await supabase
+        .from("user_settings")
+        .update({
+          last_ritual_date: todayString,
+          ritual_streak: newStreak,
+        })
+        .eq("user_id", user.id);
       if (error) throw error;
-      
-      const { error: logError } = await supabase.from("ritual_logs").insert({ user_id: user.id, ritual_type: "morning" });
+
+      const { error: logError } = await supabase
+        .from("ritual_logs")
+        .insert({ user_id: user.id, ritual_type: "morning" });
       if (logError) console.error("Failed to log morning ritual:", logError);
-      
+
       updateUserSetting("last_ritual_date", todayString);
       updateUserSetting("ritual_streak", newStreak);
       toast.success("Morning planning done — have a focused day!", {
-        icon: <UiIcon className="w-4 h-4 text-orange-400" icon={Sun} />
+        icon: <UiIcon className="h-4 w-4 text-orange-400" icon={Sun} />,
       });
       handleClose();
       router.push("/");
     } catch (err: unknown) {
-      toast.error("Failed to save", { description: err instanceof Error ? err.message : "Unknown error" });
-    } finally { setSaving(false); }
+      toast.error("Failed to save", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCarryOver = async (taskId: string) => {
-    const task = triageTasks.find(t => t.id === taskId);
+    const task = triageTasks.find((t) => t.id === taskId);
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    setTriageTasks(prev => prev.filter(t => t.id !== taskId));
-    
+    setTriageTasks((prev) => prev.filter((t) => t.id !== taskId));
+
     try {
-      const { error } = await supabase.from("items").update({ deadline: tomorrow.toISOString() }).eq("id", taskId);
+      const { error } = await supabase
+        .from("items")
+        .update({ deadline: tomorrow.toISOString() })
+        .eq("id", taskId);
       if (error) throw error;
       markMutation("items");
 
@@ -422,44 +586,87 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           label: "Undo",
           onClick: async () => {
             if (task) {
-              setTriageTasks(prev => [task, ...prev]);
+              setTriageTasks((prev) => [task, ...prev]);
               try {
-                await supabase.from("items").update({ deadline: task.deadline }).eq("id", taskId);
+                await supabase
+                  .from("items")
+                  .update({ deadline: task.deadline })
+                  .eq("id", taskId);
                 markMutation("items");
-              } catch { toast.error("Failed to undo"); }
+              } catch {
+                toast.error("Failed to undo");
+              }
             }
-          }
-        }
+          },
+        },
       });
-    } catch { toast.error("Failed to carry over"); }
+    } catch {
+      toast.error("Failed to carry over");
+    }
   };
 
   const handleFinishEvening = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No user");
       if (reflection.trim()) {
-        const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        const dateStr = new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
         const title = `Daily Note: ${dateStr}`;
-        const { data: existing } = await supabase.from("threads").select("*").eq("title", title).eq("user_id", user.id).eq("status", "active").limit(1);
+        const { data: existing } = await supabase
+          .from("threads")
+          .select("*")
+          .eq("title", title)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .limit(1);
         /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let threadId = "", entries: any[] = [];
-        if (existing && existing.length > 0) { threadId = existing[0].id; entries = existing[0].entries || []; }
-        else {
-          const { data: ins } = await supabase.from("threads").insert({ user_id: user.id, title, color_accent: "#E5B41E", is_pinned: true, entries: [] }).select("*").single();
-          if (ins) { threadId = ins.id; }
+         
+        let threadId = "",
+          entries: any[] = [];
+        if (existing && existing.length > 0) {
+          threadId = existing[0].id;
+          entries = existing[0].entries || [];
+        } else {
+          const { data: ins } = await supabase
+            .from("threads")
+            .insert({
+              user_id: user.id,
+              title,
+              color_accent: "#E5B41E",
+              is_pinned: true,
+              entries: [],
+            })
+            .select("*")
+            .single();
+          if (ins) {
+            threadId = ins.id;
+          }
         }
         if (threadId) {
-          await supabase.from("threads").update({
-            entries: [...entries, { text: reflection.trim(), created_at: new Date().toISOString() }],
-            last_updated: new Date().toISOString(),
-          }).eq("id", threadId);
+          await supabase
+            .from("threads")
+            .update({
+              entries: [
+                ...entries,
+                {
+                  text: reflection.trim(),
+                  created_at: new Date().toISOString(),
+                },
+              ],
+              last_updated: new Date().toISOString(),
+            })
+            .eq("id", threadId);
           markMutation("threads");
         }
       }
-      
+
       let newStreak = userSettings?.ritual_streak || 0;
       const lastEvening = userSettings?.last_evening_ritual_date;
       const lastMorning = userSettings?.last_ritual_date;
@@ -476,42 +683,64 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
         newStreak += 1;
       }
 
-      const { error } = await supabase.from("user_settings").update({ 
-        last_evening_ritual_date: todayString,
-        ritual_streak: newStreak
-      }).eq("user_id", user.id);
+      const { error } = await supabase
+        .from("user_settings")
+        .update({
+          last_evening_ritual_date: todayString,
+          ritual_streak: newStreak,
+        })
+        .eq("user_id", user.id);
       if (error) throw error;
-      
-      const { error: logError } = await supabase.from("ritual_logs").insert({ user_id: user.id, ritual_type: "evening" });
+
+      const { error: logError } = await supabase
+        .from("ritual_logs")
+        .insert({ user_id: user.id, ritual_type: "evening" });
       if (logError) console.error("Failed to log evening ritual:", logError);
-      
+
       updateUserSetting("last_evening_ritual_date", todayString);
       updateUserSetting("ritual_streak", newStreak);
       toast.success("Shutdown complete. Rest well.", {
-        icon: <UiIcon className="w-4 h-4 text-blue-400" icon={Moon} />
+        icon: <UiIcon className="h-4 w-4 text-blue-400" icon={Moon} />,
       });
       handleClose();
     } catch (err: unknown) {
-      toast.error("Failed to complete evening ritual", { description: err instanceof Error ? err.message : "Unknown error" });
-    } finally { setSaving(false); }
+      toast.error("Failed to complete evening ritual", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
-  
+
   const handleSkip = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
       if (activeRitual === "morning") {
-        await supabase.from("user_settings").update({ last_ritual_date: todayString }).eq("user_id", user.id);
+        await supabase
+          .from("user_settings")
+          .update({ last_ritual_date: todayString })
+          .eq("user_id", user.id);
         updateUserSetting("last_ritual_date", todayString);
       } else {
-        await supabase.from("user_settings").update({ last_evening_ritual_date: todayString }).eq("user_id", user.id);
+        await supabase
+          .from("user_settings")
+          .update({ last_evening_ritual_date: todayString })
+          .eq("user_id", user.id);
         updateUserSetting("last_evening_ritual_date", todayString);
       }
     }
-    toast.success("Ritual skipped for today. You can always open it from the sidebar.");
+    toast.success(
+      "Ritual skipped for today. You can always open it from the sidebar.",
+    );
     handleClose();
   };
 
-  const totalEstimate = todayTasks.reduce((s, t) => s + (t.time_estimate || 0), 0);
+  const totalEstimate = todayTasks.reduce(
+    (s, t) => s + (t.time_estimate || 0),
+    0,
+  );
   const isMorning = activeRitual === "morning";
 
   if (!isCurrentlyOpen || !activeRitual) return null;
@@ -525,12 +754,16 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)" }}
+        style={{
+          background: "rgba(0,0,0,0.72)",
+          backdropFilter: "blur(32px)",
+          WebkitBackdropFilter: "blur(32px)",
+        }}
         data-testid="ritual-overlay"
       >
         {/* Ambient glow orbs behind modal */}
         <div
-          className="absolute pointer-events-none"
+          className="pointer-events-none absolute"
           style={{
             width: 480,
             height: 480,
@@ -542,7 +775,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           }}
         />
         <div
-          className="absolute pointer-events-none"
+          className="pointer-events-none absolute"
           style={{
             width: 320,
             height: 320,
@@ -559,7 +792,7 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="relative w-full max-w-[480px] flex flex-col max-h-[88vh] overflow-hidden"
+          className="relative flex max-h-[88vh] w-full max-w-[480px] flex-col overflow-hidden"
           style={{
             background: "var(--surface-modal)",
             backdropFilter: "var(--glass-blur-heavy)",
@@ -571,45 +804,67 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
         >
           {/* Top shimmer line */}
           <div
-            className="absolute top-0 left-8 right-8 h-px pointer-events-none"
-            style={{ background: "linear-gradient(90deg, transparent, var(--border-card-top), transparent)" }}
+            className="pointer-events-none absolute top-0 right-8 left-8 h-px"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, var(--border-card-top), transparent)",
+            }}
           />
 
           {/* ── Header ─────────────────────────────────────────── */}
-          <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
+          <div className="flex shrink-0 items-center justify-between px-6 pt-5 pb-4">
             <div className="flex items-center gap-3.5">
               {/* Icon with glow ring */}
               <div className="relative">
                 <div
-                  className="absolute inset-0 rounded-xl blur-sm opacity-60"
-                  style={{ background: "var(--accent-dim)", transform: "scale(1.3)" }}
+                  className="absolute inset-0 rounded-xl opacity-60 blur-sm"
+                  style={{
+                    background: "var(--accent-dim)",
+                    transform: "scale(1.3)",
+                  }}
                 />
                 <div
-                  className="relative w-9 h-9 rounded-xl flex items-center justify-center"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-xl"
                   style={{
-                    background: "linear-gradient(135deg, var(--accent-dim) 0%, rgba(255,255,255,0.03) 100%)",
+                    background:
+                      "linear-gradient(135deg, var(--accent-dim) 0%, rgba(255,255,255,0.03) 100%)",
                     border: "0.5px solid var(--accent-border)",
                   }}
                 >
-                  {isMorning
-                    ? <UiIcon className="w-4.5 h-4.5" style={{ color: "var(--accent)" }} strokeWidth={1.8} icon={Sun} />
-                    : <UiIcon className="w-4.5 h-4.5" style={{ color: "var(--accent)" }} strokeWidth={1.8} icon={Moon} />
-                  }
+                  {isMorning ? (
+                    <UiIcon
+                      className="h-4.5 w-4.5"
+                      style={{ color: "var(--accent)" }}
+                      strokeWidth={1.8}
+                      icon={Sun}
+                    />
+                  ) : (
+                    <UiIcon
+                      className="h-4.5 w-4.5"
+                      style={{ color: "var(--accent)" }}
+                      strokeWidth={1.8}
+                      icon={Moon}
+                    />
+                  )}
                 </div>
               </div>
 
               <div>
                 <h2
-                  className="text-title-sm font-bold leading-none tracking-tight"
+                  className="text-title-sm leading-none font-bold tracking-tight"
                   style={{ color: "var(--text-1)" }}
                 >
                   {isMorning ? "Morning Planning" : "Evening Review"}
                 </h2>
-                <p className="text-meta mt-1" style={{ color: "var(--text-muted)" }}>
+                <p
+                  className="text-meta mt-1"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   {isMorning
-                    ? step === 1 ? "Step 1 of 2 — Triage your inbox" : "Step 2 of 2 — Commit your day"
-                    : "Shutdown ritual"
-                  }
+                    ? step === 1
+                      ? "Step 1 of 2 — Triage your inbox"
+                      : "Step 2 of 2 — Commit your day"
+                    : "Shutdown ritual"}
                 </p>
               </div>
             </div>
@@ -618,11 +873,17 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
               {/* Step pills */}
               {isMorning && (
                 <div className="flex items-center gap-1.5">
-                  {[1, 2].map(s => (
+                  {[1, 2].map((s) => (
                     <m.div
                       key={s}
-                      animate={{ width: step === s ? 20 : 6, opacity: step === s ? 1 : 0.35 }}
-                      transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      animate={{
+                        width: step === s ? 20 : 6,
+                        opacity: step === s ? 1 : 0.35,
+                      }}
+                      transition={{
+                        duration: 0.3,
+                        ease: [0.25, 0.46, 0.45, 0.94],
+                      }}
                       className="h-1.5 rounded-full"
                       style={{ background: "var(--accent)" }}
                     />
@@ -638,27 +899,39 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
               </button>
               <button
                 onClick={handleClose}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-                style={{ background: "rgba(255,255,255,0.05)", border: "0.5px solid var(--border-default)", color: "var(--text-3)" }}
+                className="flex h-7 w-7 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "0.5px solid var(--border-default)",
+                  color: "var(--text-3)",
+                }}
                 aria-label="Close"
               >
-                <UiIcon className="w-3.5 h-3.5" icon={X} />
+                <UiIcon className="h-3.5 w-3.5" icon={X} />
               </button>
             </div>
           </div>
 
           {/* Separator */}
-          <div className="mx-6 mb-4" style={{ height: "0.5px", background: "var(--border-subtle)" }} />
+          <div
+            className="mx-6 mb-4"
+            style={{ height: "0.5px", background: "var(--border-subtle)" }}
+          />
 
           {/* ── Body ──────────────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-4 space-y-4 scrollbar-thin">
+          <div className="flex-1 scrollbar-thin space-y-4 overflow-y-auto overscroll-contain px-6 pb-4">
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <div className="flex flex-col items-center justify-center gap-4 py-20">
                 <div
-                  className="w-9 h-9 rounded-full border-2 border-t-transparent animate-spin"
-                  style={{ borderColor: "var(--accent-border)", borderTopColor: "var(--accent)" }}
+                  className="h-9 w-9 animate-spin rounded-full border-2 border-t-transparent"
+                  style={{
+                    borderColor: "var(--accent-border)",
+                    borderTopColor: "var(--accent)",
+                  }}
                 />
-                <p className="text-ui" style={{ color: "var(--text-muted)" }}>Preparing your ritual…</p>
+                <p className="text-ui" style={{ color: "var(--text-muted)" }}>
+                  Preparing your ritual…
+                </p>
               </div>
             ) : isMorning ? (
               <AnimatePresence mode="wait">
@@ -673,33 +946,56 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                     className="space-y-3"
                   >
                     {triageTasks.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <div className="flex flex-col items-center justify-center gap-3 py-12">
                         <div
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                          className="flex h-14 w-14 items-center justify-center rounded-2xl"
                           style={{
-                            background: "linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04))",
+                            background:
+                              "linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04))",
                             border: "0.5px solid rgba(74,222,128,0.2)",
                             boxShadow: "0 0 24px rgba(74,222,128,0.08)",
                           }}
                         >
-                          <UiIcon className="w-7 h-7" style={{ color: "var(--status-done)" }} strokeWidth={1.5} icon={Smile} />
+                          <UiIcon
+                            className="h-7 w-7"
+                            style={{ color: "var(--status-done)" }}
+                            strokeWidth={1.5}
+                            icon={Smile}
+                          />
                         </div>
                         <div className="text-center">
-                          <p className="text-title-sm font-semibold" style={{ color: "var(--text-1)" }}>Inbox is clear</p>
-                          <p className="text-ui mt-1" style={{ color: "var(--text-muted)" }}>No inbox or overdue tasks to triage.</p>
+                          <p
+                            className="text-title-sm font-semibold"
+                            style={{ color: "var(--text-1)" }}
+                          >
+                            Inbox is clear
+                          </p>
+                          <p
+                            className="text-ui mt-1"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            No inbox or overdue tasks to triage.
+                          </p>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="mb-1 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <UiIcon className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} icon={Inbox} />
-                            <span className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                            <UiIcon
+                              className="h-3.5 w-3.5"
+                              style={{ color: "var(--text-muted)" }}
+                              icon={Inbox}
+                            />
+                            <span
+                              className="text-meta font-bold tracking-widest uppercase"
+                              style={{ color: "var(--text-muted)" }}
+                            >
                               To triage
                             </span>
                           </div>
                           <span
-                            className="text-meta font-bold px-2 py-0.5 rounded-full"
+                            className="text-meta rounded-full px-2 py-0.5 font-bold"
                             style={{
                               background: "var(--accent-dim)",
                               color: "var(--accent)",
@@ -710,8 +1006,12 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                           </span>
                         </div>
                         <AnimatePresence mode="popLayout">
-                          {triageTasks.map(task => (
-                            <TriageCard key={task.id} task={task} onAction={handleTriageAction} />
+                          {triageTasks.map((task) => (
+                            <TriageCard
+                              key={task.id}
+                              task={task}
+                              onAction={handleTriageAction}
+                            />
                           ))}
                         </AnimatePresence>
                       </>
@@ -728,33 +1028,55 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                     className="space-y-3"
                   >
                     {todayTasks.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <div className="flex flex-col items-center justify-center gap-3 py-12">
                         <div
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                          className="flex h-14 w-14 items-center justify-center rounded-2xl"
                           style={{
                             background: "var(--accent-dim)",
                             border: "0.5px solid var(--accent-border)",
                             boxShadow: "0 0 24px var(--accent-glow)",
                           }}
                         >
-                          <UiIcon className="w-7 h-7" style={{ color: "var(--accent)" }} strokeWidth={1.5} icon={Sparkles} />
+                          <UiIcon
+                            className="h-7 w-7"
+                            style={{ color: "var(--accent)" }}
+                            strokeWidth={1.5}
+                            icon={Sparkles}
+                          />
                         </div>
                         <div className="text-center">
-                          <p className="text-title-sm font-semibold" style={{ color: "var(--text-1)" }}>No tasks for today</p>
-                          <p className="text-ui mt-1" style={{ color: "var(--text-muted)" }}>Go back and mark some tasks as "Do Today".</p>
+                          <p
+                            className="text-title-sm font-semibold"
+                            style={{ color: "var(--text-1)" }}
+                          >
+                            No tasks for today
+                          </p>
+                          <p
+                            className="text-ui mt-1"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            Go back and mark some tasks as "Do Today".
+                          </p>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2 mb-1">
-                          <UiIcon className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} icon={Clock} />
-                          <span className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                        <div className="mb-1 flex items-center gap-2">
+                          <UiIcon
+                            className="h-3.5 w-3.5"
+                            style={{ color: "var(--text-muted)" }}
+                            icon={Clock}
+                          />
+                          <span
+                            className="text-meta font-bold tracking-widest uppercase"
+                            style={{ color: "var(--text-muted)" }}
+                          >
                             Today's tasks
                           </span>
                         </div>
 
                         <div
-                          className="rounded-2xl overflow-hidden divide-y"
+                          className="divide-y overflow-hidden rounded-2xl"
                           style={{
                             background: "var(--surface-card)",
                             border: "0.5px solid var(--border-card)",
@@ -766,43 +1088,74 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                               key={task.id}
                               className="flex items-center justify-between gap-4 px-4 py-3"
                               style={{
-                                borderBottom: i < todayTasks.length - 1 ? "0.5px solid var(--border-subtle)" : "none",
+                                borderBottom:
+                                  i < todayTasks.length - 1
+                                    ? "0.5px solid var(--border-subtle)"
+                                    : "none",
                               }}
                             >
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="flex min-w-0 flex-1 items-center gap-3">
                                 <div
-                                  className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                                  style={{ background: "var(--accent-dim)", border: "0.5px solid var(--accent-border)" }}
+                                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+                                  style={{
+                                    background: "var(--accent-dim)",
+                                    border: "0.5px solid var(--accent-border)",
+                                  }}
                                 >
-                                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+                                  <div
+                                    className="h-1.5 w-1.5 rounded-full"
+                                    style={{ background: "var(--accent)" }}
+                                  />
                                 </div>
-                                <p className="text-body font-medium truncate" style={{ color: "var(--text-1)" }}>
+                                <p
+                                  className="text-body truncate font-medium"
+                                  style={{ color: "var(--text-1)" }}
+                                >
                                   {task.title}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="flex shrink-0 items-center gap-1.5">
                                 <input
                                   type="number"
                                   min="0"
                                   step="5"
                                   value={task.time_estimate || 25}
-                                  onChange={e => handleEstimateChange(task.id, parseInt(e.target.value) || 0)}
-                                  className="w-14 text-center text-body font-bold rounded-lg px-2 py-1.5 focus:outline-none transition-all"
+                                  onChange={(e) =>
+                                    handleEstimateChange(
+                                      task.id,
+                                      parseInt(e.target.value) || 0,
+                                    )
+                                  }
+                                  className="text-body w-14 rounded-lg px-2 py-1.5 text-center font-bold transition-all focus:outline-none"
                                   style={{
                                     background: "var(--surface-input)",
                                     border: "0.5px solid var(--border-input)",
                                     color: "var(--text-1)",
                                   }}
-                                  onFocus={e => (e.target.style.borderColor = "var(--accent)")}
-                                  onBlur={e => (e.target.style.borderColor = "var(--border-input)")}
+                                  onFocus={(e) =>
+                                    (e.target.style.borderColor =
+                                      "var(--accent)")
+                                  }
+                                  onBlur={(e) =>
+                                    (e.target.style.borderColor =
+                                      "var(--border-input)")
+                                  }
                                 />
-                                <span className="text-meta w-6" style={{ color: "var(--text-muted)" }}>min</span>
+                                <span
+                                  className="text-meta w-6"
+                                  style={{ color: "var(--text-muted)" }}
+                                >
+                                  min
+                                </span>
                               </div>
                             </div>
                           ))}
                         </div>
 
-                        <WorkloadBar total={totalEstimate} capacity={capacity} />
+                        <WorkloadBar
+                          total={totalEstimate}
+                          capacity={capacity}
+                        />
                       </>
                     )}
                   </m.div>
@@ -814,45 +1167,73 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {/* Stats row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div
-                    className="relative rounded-2xl px-4 py-4 overflow-hidden"
+                    className="relative overflow-hidden rounded-2xl px-4 py-4"
                     style={{
-                      background: "linear-gradient(135deg, var(--accent-dim) 0%, rgba(255,255,255,0.02) 100%)",
+                      background:
+                        "linear-gradient(135deg, var(--accent-dim) 0%, rgba(255,255,255,0.02) 100%)",
                       border: "0.5px solid var(--accent-border)",
                     }}
                   >
                     <div
-                      className="absolute top-0 left-0 right-0 h-px"
-                      style={{ background: "linear-gradient(90deg, transparent, var(--accent-border), transparent)" }}
+                      className="absolute top-0 right-0 left-0 h-px"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, transparent, var(--accent-border), transparent)",
+                      }}
                     />
-                    <p className="text-caption font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+                    <p
+                      className="text-caption mb-2 font-bold tracking-widest uppercase"
+                      style={{ color: "var(--text-muted)" }}
+                    >
                       Completed
                     </p>
-                    <p className="text-[32px] font-bold leading-none tracking-tight" style={{ color: "var(--text-1)" }}>
+                    <p
+                      className="text-[32px] leading-none font-bold tracking-tight"
+                      style={{ color: "var(--text-1)" }}
+                    >
                       {completedTasks.length}
                     </p>
-                    <p className="text-meta mt-1.5" style={{ color: "var(--status-done)" }}>
+                    <p
+                      className="text-meta mt-1.5"
+                      style={{ color: "var(--status-done)" }}
+                    >
                       tasks done today
                     </p>
                   </div>
 
                   <div
-                    className="relative rounded-2xl px-4 py-4 overflow-hidden"
+                    className="relative overflow-hidden rounded-2xl px-4 py-4"
                     style={{
                       background: "var(--surface-card)",
                       border: "0.5px solid var(--border-card)",
                     }}
                   >
                     <div
-                      className="absolute top-0 left-0 right-0 h-px"
+                      className="absolute top-0 right-0 left-0 h-px"
                       style={{ background: "var(--border-card-top)" }}
                     />
-                    <p className="text-caption font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+                    <p
+                      className="text-caption mb-2 font-bold tracking-widest uppercase"
+                      style={{ color: "var(--text-muted)" }}
+                    >
                       Focus Time
                     </p>
-                    <p className="text-[32px] font-bold leading-none tracking-tight" style={{ color: "var(--text-1)" }}>
-                      {focusMinutes}<span className="text-title-md ml-0.5" style={{ color: "var(--text-3)" }}>m</span>
+                    <p
+                      className="text-[32px] leading-none font-bold tracking-tight"
+                      style={{ color: "var(--text-1)" }}
+                    >
+                      {focusMinutes}
+                      <span
+                        className="text-title-md ml-0.5"
+                        style={{ color: "var(--text-3)" }}
+                      >
+                        m
+                      </span>
                     </p>
-                    <p className="text-meta mt-1.5" style={{ color: "var(--accent)" }}>
+                    <p
+                      className="text-meta mt-1.5"
+                      style={{ color: "var(--accent)" }}
+                    >
                       Pomodoros logged
                     </p>
                   </div>
@@ -861,24 +1242,50 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {/* Completed list */}
                 {completedTasks.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Done today</p>
+                    <p
+                      className="text-meta font-bold tracking-widest uppercase"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Done today
+                    </p>
                     <div
-                      className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto overscroll-contain"
-                      style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
+                      className="max-h-32 overflow-hidden overflow-y-auto overscroll-contain rounded-2xl"
+                      style={{
+                        background: "var(--surface-card)",
+                        border: "0.5px solid var(--border-card)",
+                      }}
                     >
                       {completedTasks.map((t, i) => (
                         <div
                           key={t.id}
                           className="flex items-center gap-3 px-4 py-2.5"
-                          style={{ borderBottom: i < completedTasks.length - 1 ? "0.5px solid var(--border-subtle)" : "none" }}
+                          style={{
+                            borderBottom:
+                              i < completedTasks.length - 1
+                                ? "0.5px solid var(--border-subtle)"
+                                : "none",
+                          }}
                         >
                           <div
-                            className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                            style={{ background: "rgba(74,222,128,0.12)", border: "0.5px solid rgba(74,222,128,0.25)" }}
+                            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+                            style={{
+                              background: "rgba(74,222,128,0.12)",
+                              border: "0.5px solid rgba(74,222,128,0.25)",
+                            }}
                           >
-                            <UiIcon className="w-2.5 h-2.5" strokeWidth={3} style={{ color: "var(--status-done)" }} icon={Check} />
+                            <UiIcon
+                              className="h-2.5 w-2.5"
+                              strokeWidth={3}
+                              style={{ color: "var(--status-done)" }}
+                              icon={Check}
+                            />
                           </div>
-                          <p className="text-ui line-through truncate" style={{ color: "var(--text-muted)" }}>{t.title}</p>
+                          <p
+                            className="text-ui truncate line-through"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            {t.title}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -889,24 +1296,46 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {triageTasks.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Carry over</p>
-                      <span className="text-meta" style={{ color: "var(--text-muted)" }}>{triageTasks.length} incomplete</span>
+                      <p
+                        className="text-meta font-bold tracking-widest uppercase"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        Carry over
+                      </p>
+                      <span
+                        className="text-meta"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {triageTasks.length} incomplete
+                      </span>
                     </div>
                     <div className="space-y-1.5">
                       <AnimatePresence mode="popLayout">
-                        {triageTasks.map(t => (
+                        {triageTasks.map((t) => (
                           <m.div
                             key={t.id}
                             layout
                             exit={{ opacity: 0, x: 20 }}
-                            className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl"
-                            style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
+                            className="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5"
+                            style={{
+                              background: "var(--surface-card)",
+                              border: "0.5px solid var(--border-card)",
+                            }}
                           >
-                            <p className="text-ui truncate flex-1" style={{ color: "var(--text-2)" }}>{t.title}</p>
+                            <p
+                              className="text-ui flex-1 truncate"
+                              style={{ color: "var(--text-2)" }}
+                            >
+                              {t.title}
+                            </p>
                             <button
                               onClick={() => handleCarryOver(t.id)}
-                              className="text-meta font-semibold px-3 py-1.5 rounded-lg transition-all hover:scale-105 active:scale-95 shrink-0"
-                              style={{ background: "var(--accent-dim)", color: "var(--accent-text)", border: "0.5px solid var(--accent-border)" }}
+                              className="text-meta shrink-0 rounded-lg px-3 py-1.5 font-semibold transition-all hover:scale-105 active:scale-95"
+                              style={{
+                                background: "var(--accent-dim)",
+                                color: "var(--accent-text)",
+                                border: "0.5px solid var(--accent-border)",
+                              }}
                             >
                               → Tomorrow
                             </button>
@@ -920,24 +1349,48 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {/* Tomorrow Preview */}
                 {tomorrowTasks.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Up next tomorrow</p>
+                    <p
+                      className="text-meta font-bold tracking-widest uppercase"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Up next tomorrow
+                    </p>
                     <div
-                      className="rounded-2xl overflow-hidden max-h-32 overflow-y-auto overscroll-contain"
-                      style={{ background: "var(--surface-card)", border: "0.5px solid var(--border-card)" }}
+                      className="max-h-32 overflow-hidden overflow-y-auto overscroll-contain rounded-2xl"
+                      style={{
+                        background: "var(--surface-card)",
+                        border: "0.5px solid var(--border-card)",
+                      }}
                     >
                       {tomorrowTasks.map((t, i) => (
                         <div
                           key={t.id}
                           className="flex items-center gap-3 px-4 py-2.5 opacity-60"
-                          style={{ borderBottom: i < tomorrowTasks.length - 1 ? "0.5px solid var(--border-subtle)" : "none" }}
+                          style={{
+                            borderBottom:
+                              i < tomorrowTasks.length - 1
+                                ? "0.5px solid var(--border-subtle)"
+                                : "none",
+                          }}
                         >
                           <div
-                            className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                            style={{ background: "var(--accent-dim)", border: "0.5px solid var(--accent-border)" }}
+                            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+                            style={{
+                              background: "var(--accent-dim)",
+                              border: "0.5px solid var(--accent-border)",
+                            }}
                           >
-                            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+                            <div
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: "var(--accent)" }}
+                            />
                           </div>
-                          <p className="text-ui truncate" style={{ color: "var(--text-muted)" }}>{t.title}</p>
+                          <p
+                            className="text-ui truncate"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            {t.title}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -947,24 +1400,40 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 {/* Reflection */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <UiIcon className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} icon={BookOpen} />
-                    <p className="text-meta font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Daily Reflection</p>
+                    <UiIcon
+                      className="h-3.5 w-3.5"
+                      style={{ color: "var(--text-muted)" }}
+                      icon={BookOpen}
+                    />
+                    <p
+                      className="text-meta font-bold tracking-widest uppercase"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Daily Reflection
+                    </p>
                   </div>
                   <TextareaAutosize
                     value={reflection}
-                    onChange={e => setReflection(e.target.value)}
+                    onChange={(e) => setReflection(e.target.value)}
                     placeholder="What went well today? What is your ONE thing for tomorrow?"
                     minRows={3}
-                    className="w-full px-4 py-3 text-body rounded-xl resize-none focus:outline-none transition-all leading-relaxed"
+                    className="text-body w-full resize-none rounded-xl px-4 py-3 leading-relaxed transition-all focus:outline-none"
                     style={{
                       background: "var(--surface-input)",
                       border: "0.5px solid var(--border-input)",
                       color: "var(--text-1)",
                     }}
-                    onFocus={e => (e.target.style.borderColor = "var(--accent)")}
-                    onBlur={e => (e.target.style.borderColor = "var(--border-input)")}
+                    onFocus={(e) =>
+                      (e.target.style.borderColor = "var(--accent)")
+                    }
+                    onBlur={(e) =>
+                      (e.target.style.borderColor = "var(--border-input)")
+                    }
                   />
-                  <p className="text-caption" style={{ color: "var(--text-muted)" }}>
+                  <p
+                    className="text-caption"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Saved to your Daily Note in Think.
                   </p>
                 </div>
@@ -974,21 +1443,25 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
 
           {/* ── Footer ──────────────────────────────────────── */}
           <div
-            className="flex items-center justify-between px-6 py-4 shrink-0"
+            className="flex shrink-0 items-center justify-between px-6 py-4"
             style={{ borderTop: "0.5px solid var(--border-subtle)" }}
           >
             {isMorning && step === 2 ? (
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-body font-medium px-3 py-2 rounded-xl transition-all hover:brightness-110 active:scale-95"
-                style={{ color: "var(--text-3)", background: "rgba(255,255,255,0.04)", border: "0.5px solid var(--border-default)" }}
+                className="text-body flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  color: "var(--text-3)",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "0.5px solid var(--border-default)",
+                }}
               >
-                <UiIcon className="w-4 h-4" icon={ChevronLeft} /> Back
+                <UiIcon className="h-4 w-4" icon={ChevronLeft} /> Back
               </button>
             ) : (
               <button
                 onClick={handleSkip}
-                className="text-body font-medium transition-colors hover:text-[var(--text-2)] px-2 py-1"
+                className="text-body px-2 py-1 font-medium transition-colors hover:text-[var(--text-2)]"
                 style={{ color: "var(--text-muted)" }}
               >
                 Skip today
@@ -1001,29 +1474,43 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                   whileTap={{ scale: 0.97 }}
                   disabled={triageTasks.length > 0}
                   onClick={() => setStep(2)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-body font-bold transition-all disabled:opacity-35 disabled:cursor-not-allowed"
+                  className="text-body flex items-center gap-2 rounded-full px-5 py-2.5 font-bold transition-all disabled:cursor-not-allowed disabled:opacity-35"
                   style={{
-                    background: triageTasks.length > 0 ? "rgba(255,255,255,0.06)" : "var(--accent)",
-                    color: triageTasks.length > 0 ? "var(--text-3)" : "var(--text-on-accent)",
-                    boxShadow: triageTasks.length > 0 ? "none" : "var(--shadow-button-primary)",
-                    border: triageTasks.length > 0 ? "0.5px solid var(--border-default)" : "none",
+                    background:
+                      triageTasks.length > 0
+                        ? "rgba(255,255,255,0.06)"
+                        : "var(--accent)",
+                    color:
+                      triageTasks.length > 0
+                        ? "var(--text-3)"
+                        : "var(--text-on-accent)",
+                    boxShadow:
+                      triageTasks.length > 0
+                        ? "none"
+                        : "var(--shadow-button-primary)",
+                    border:
+                      triageTasks.length > 0
+                        ? "0.5px solid var(--border-default)"
+                        : "none",
                   }}
                 >
-                  Next <UiIcon className="w-4 h-4" icon={ArrowRight} />
+                  Next <UiIcon className="h-4 w-4" icon={ArrowRight} />
                 </m.button>
               ) : (
                 <m.button
                   whileTap={{ scale: 0.97 }}
                   disabled={saving}
                   onClick={handleFinishMorning}
-                  className="flex items-center gap-2 px-6 py-3 rounded-full text-body-lg font-bold transition-all"
+                  className="text-body-lg flex items-center gap-2 rounded-full px-6 py-3 font-bold transition-all"
                   style={{
                     background: "var(--accent)",
                     color: "var(--text-on-accent)",
-                    boxShadow: "0 4px 20px var(--accent-glow), inset 0 1px 1px rgba(255,255,255,0.2)",
+                    boxShadow:
+                      "0 4px 20px var(--accent-glow), inset 0 1px 1px rgba(255,255,255,0.2)",
                   }}
                 >
-                  {saving ? "Saving…" : "Lock in my day"} <UiIcon className="w-4 h-4" icon={Sparkles} />
+                  {saving ? "Saving…" : "Lock in my day"}{" "}
+                  <UiIcon className="h-4 w-4" icon={Sparkles} />
                 </m.button>
               )
             ) : (
@@ -1031,14 +1518,15 @@ export function RitualOverlay({ isOpen, type, onClose }: RitualOverlayProps = {}
                 whileTap={{ scale: 0.97 }}
                 disabled={saving}
                 onClick={handleFinishEvening}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full text-body font-bold transition-all"
+                className="text-body flex items-center gap-2 rounded-full px-5 py-2.5 font-bold transition-all"
                 style={{
                   background: "var(--accent)",
                   color: "var(--text-on-accent)",
                   boxShadow: "var(--shadow-button-primary)",
                 }}
               >
-                {saving ? "Saving…" : "Shut down"} <UiIcon className="w-4 h-4" icon={Moon} />
+                {saving ? "Saving…" : "Shut down"}{" "}
+                <UiIcon className="h-4 w-4" icon={Moon} />
               </m.button>
             )}
           </div>

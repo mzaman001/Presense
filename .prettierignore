@@ -1,0 +1,8 @@
+node_modules
+.next
+dist
+build
+public
+*.md
+src/types/database.types.ts
+scratch/

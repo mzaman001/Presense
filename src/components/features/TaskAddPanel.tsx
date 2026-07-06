@@ -64,16 +64,26 @@ interface TaskAddPanelProps {
   initialDeadline?: Date | null;
 }
 
-export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initialDeadline }: TaskAddPanelProps) {
+export function TaskAddPanel({
+  isOpen,
+  onClose,
+  onTaskAdded,
+  taskToEdit,
+  initialDeadline,
+}: TaskAddPanelProps) {
   const queryClient = useQueryClient();
   const [parsedDeadline, setParsedDeadline] = useState<Date | null>(null);
   const [startDate, setStartDate] = useState("");
   const [parsedStartDate, setParsedStartDate] = useState<Date | null>(null);
   const [isManualDate, setIsManualDate] = useState(false);
   const [timeEstimate, setTimeEstimate] = useState<number | null>(null);
-  const [subtasks, setSubtasks] = useState<{id: string, text: string, completed: boolean}[]>([]);
+  const [subtasks, setSubtasks] = useState<
+    { id: string; text: string; completed: boolean }[]
+  >([]);
   const [linkedPeopleIds, setLinkedPeopleIds] = useState<string[]>([]);
-  const [peopleList, setPeopleList] = useState<{id: string, name: string, initials: string, color: string}[]>([]);
+  const [peopleList, setPeopleList] = useState<
+    { id: string; name: string; initials: string; color: string }[]
+  >([]);
 
   const {
     register,
@@ -81,7 +91,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
     reset,
     watch,
     setValue,
-    formState: { errors, isSubmitting, isValid }
+    formState: { errors, isSubmitting, isValid },
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
@@ -90,9 +100,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
       priority: null,
       deadline: "",
       notes: "",
-      first_step: ""
+      first_step: "",
     },
-    mode: "onChange"
+    mode: "onChange",
   });
 
   const titleValue = watch("title");
@@ -119,7 +129,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
 
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setCategoriesList(userSettings?.do_categories || DEFAULT_DO_CATEGORIES);
     }
   }, [isOpen, userSettings?.do_categories]);
@@ -134,13 +144,18 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
       const newList = [...categoriesList, name];
       setCategoriesList(newList);
       setValue("category", name, { shouldValidate: true });
-      
+
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         // Update userSettings in DB
         const updatedSettings = { ...userSettings, do_categories: newList };
-        await supabase.from("user_settings").update({ do_categories: newList }).eq("user_id", user.id);
+        await supabase
+          .from("user_settings")
+          .update({ do_categories: newList })
+          .eq("user_id", user.id);
         useAppStore.getState().setUserSettings(updatedSettings);
       }
     } else {
@@ -155,26 +170,37 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
 
     // Save current caches for possible rollback
     const previousTasks = queryClient.getQueryData<TaskEditData[]>(["tasks"]);
-    const previousDashboard = queryClient.getQueryData<{ tasks: TaskEditData[] }>(["dashboard"]);
+    const previousDashboard = queryClient.getQueryData<{
+      tasks: TaskEditData[];
+    }>(["dashboard"]);
 
     // Optimistically remove from ["tasks"]
-    queryClient.setQueryData<TaskEditData[]>(["tasks"], old => old?.filter(t => t.id !== taskToEdit.id) ?? []);
+    queryClient.setQueryData<TaskEditData[]>(
+      ["tasks"],
+      (old) => old?.filter((t) => t.id !== taskToEdit.id) ?? [],
+    );
 
     // Optimistically remove from ["dashboard"]
-    queryClient.setQueryData<{ tasks: TaskEditData[] }>(["dashboard"], old => {
-      if (!old) return old;
-      return {
-        ...old,
-        tasks: old.tasks?.filter(t => t.id !== taskToEdit.id) ?? []
-      };
-    });
+    queryClient.setQueryData<{ tasks: TaskEditData[] }>(
+      ["dashboard"],
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          tasks: old.tasks?.filter((t) => t.id !== taskToEdit.id) ?? [],
+        };
+      },
+    );
 
     try {
       useAppStore.getState().markMutation();
       const supabase = createClient();
-      const { error } = await supabase.from("items").update(moveItemToTrashPatch()).eq("id", taskToEdit.id);
+      const { error } = await supabase
+        .from("items")
+        .update(moveItemToTrashPatch())
+        .eq("id", taskToEdit.id);
       if (error) throw error;
-      
+
       toast.success("Task moved to trash");
       if (onTaskAdded) onTaskAdded();
       onClose();
@@ -183,7 +209,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
       queryClient.setQueryData(["tasks"], previousTasks);
       queryClient.setQueryData(["dashboard"], previousDashboard);
 
-      const message = err instanceof Error ? err.message : "Failed to move task to trash";
+      const message =
+        err instanceof Error ? err.message : "Failed to move task to trash";
       toast.error("Failed to move task to trash", { description: message });
     } finally {
       setDeleteTaskConfirm(false);
@@ -195,7 +222,11 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
       const supabase = createClient();
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
-      const { data } = await supabase.from('people').select('id, name, initials, color').eq('user_id', userData.user.id).order('name');
+      const { data } = await supabase
+        .from("people")
+        .select("id, name, initials, color")
+        .eq("user_id", userData.user.id)
+        .order("name");
       if (data) setPeopleList(data as any);
     }
     if (isOpen) {
@@ -212,20 +243,22 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
           priority: taskToEdit.priority || null,
           notes: taskToEdit.notes || "",
           first_step: taskToEdit.first_step || "",
-          deadline: taskToEdit.deadline ? format(new Date(taskToEdit.deadline), "yyyy-MM-dd'T'HH:mm") : ""
+          deadline: taskToEdit.deadline
+            ? format(new Date(taskToEdit.deadline), "yyyy-MM-dd'T'HH:mm")
+            : "",
         });
         setIsManualDate(false);
         setTimeEstimate(taskToEdit.time_estimate || null);
         setSubtasks(taskToEdit.subtasks || []);
         setLinkedPeopleIds(taskToEdit.linked_people_ids || []);
-        
+
         if (taskToEdit.recurrence) {
           if (taskToEdit.recurrence === "FREQ=DAILY") setFreq("Daily");
           else if (taskToEdit.recurrence === "FREQ=MONTHLY") setFreq("Monthly");
           else if (taskToEdit.recurrence.includes("FREQ=WEEKLY")) {
             setFreq("Weekly");
             const match = taskToEdit.recurrence.match(/BYDAY=([A-Z,]+)/);
-            if (match) setDays(match[1].split(','));
+            if (match) setDays(match[1].split(","));
           } else if (taskToEdit.recurrence.includes("INTERVAL=")) {
             setFreq("Custom");
             setCustomRRule(taskToEdit.recurrence);
@@ -241,14 +274,14 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
         } else {
           setFreq("Does not repeat");
         }
-        
+
         if (taskToEdit.deadline) {
           const d = new Date(taskToEdit.deadline);
           setParsedDeadline(d);
         } else {
           setParsedDeadline(null);
         }
-        
+
         if (taskToEdit.start_date) {
           const d = new Date(taskToEdit.start_date);
           setParsedStartDate(d);
@@ -264,7 +297,9 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
           priority: null,
           notes: "",
           first_step: "",
-          deadline: initialDeadline ? format(initialDeadline, "yyyy-MM-dd'T'HH:mm") : ""
+          deadline: initialDeadline
+            ? format(initialDeadline, "yyyy-MM-dd'T'HH:mm")
+            : "",
         });
         setParsedDeadline(initialDeadline ?? null);
         setStartDate("");
@@ -278,7 +313,7 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
         setLinkedPeopleIds([]);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, taskToEdit, initialDeadline]);
 
   const handleTitleChange = async (val: string) => {
@@ -297,12 +332,16 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
           d =
             merged.length > 0 && merged[0].start
               ? merged[0].start.date()
-              : parsedResults.reduce((a: any, b: any) =>
-                  a.start.date() > b.start.date() ? a : b
-                ).start.date();
+              : parsedResults
+                  .reduce((a: any, b: any) =>
+                    a.start.date() > b.start.date() ? a : b,
+                  )
+                  .start.date();
         }
         setParsedDeadline(d);
-        setValue("deadline", format(d, "yyyy-MM-dd'T'HH:mm"), { shouldValidate: true });
+        setValue("deadline", format(d, "yyyy-MM-dd'T'HH:mm"), {
+          shouldValidate: true,
+        });
       } else {
         setParsedDeadline(null);
         setValue("deadline", "", { shouldValidate: true });
@@ -343,25 +382,27 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
       return;
     }
     setParsedDeadline(d);
-    setValue("deadline", format(d, "yyyy-MM-dd'T'HH:mm"), { shouldValidate: true });
+    setValue("deadline", format(d, "yyyy-MM-dd'T'HH:mm"), {
+      shouldValidate: true,
+    });
   };
 
   const onSubmit = async (data: TaskFormValues) => {
     setSaving(true);
-    
+
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (user) {
-
-
         let finalRecurrence = null;
         if (freq === "Daily") finalRecurrence = "FREQ=DAILY";
         else if (freq === "Monthly") finalRecurrence = "FREQ=MONTHLY";
         else if (freq === "Weekly") {
           finalRecurrence = "FREQ=WEEKLY";
-          if (days.length > 0) finalRecurrence += `;BYDAY=${days.join(',')}`;
+          if (days.length > 0) finalRecurrence += `;BYDAY=${days.join(",")}`;
         } else if (freq === "Custom") {
           if (customInterval > 1) {
             finalRecurrence = `FREQ=${customFreq};INTERVAL=${customInterval}`;
@@ -376,11 +417,16 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
           const parsedResults = chrono.parse(finalTitle);
           if (parsedResults && parsedResults.length > 0) {
             parsedResults.forEach((r: any) => {
-              finalTitle = finalTitle.replace(r.text, '');
+              finalTitle = finalTitle.replace(r.text, "");
             });
-            finalTitle = finalTitle.replace(/\s+/g, ' ').trim();
-            finalTitle = finalTitle.replace(/^(remind me to|remember to|need to|have to|must|gotta)\s+/i, '');
-            if (finalTitle.length > 0) finalTitle = finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
+            finalTitle = finalTitle.replace(/\s+/g, " ").trim();
+            finalTitle = finalTitle.replace(
+              /^(remind me to|remember to|need to|have to|must|gotta)\s+/i,
+              "",
+            );
+            if (finalTitle.length > 0)
+              finalTitle =
+                finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
           }
         }
 
@@ -397,8 +443,8 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
           priority: data.priority ?? 4,
           time_estimate: timeEstimate,
           notes: data.notes?.trim() || null,
-          subtasks: subtasks.filter(st => st.text.trim() !== ""),
-          linked_people_ids: linkedPeopleIds
+          subtasks: subtasks.filter((st) => st.text.trim() !== ""),
+          linked_people_ids: linkedPeopleIds,
         };
 
         if (taskToEdit && taskToEdit.deadline !== payload.deadline) {
@@ -412,26 +458,32 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
         let error;
         useAppStore.getState().markMutation();
         if (taskToEdit) {
-          const res = await supabase.from("items").update(payload as any).eq("id", taskToEdit.id);
+          const res = await supabase
+            .from("items")
+            .update(payload as any)
+            .eq("id", taskToEdit.id);
           error = res.error;
         } else {
           const res = await supabase.from("items").insert(payload as any);
           error = res.error;
         }
-        
+
         if (error) {
           logger.error("Save error:", error);
-          toast.error(`Failed to ${taskToEdit ? "update" : "save"} task`, { description: error.message });
+          toast.error(`Failed to ${taskToEdit ? "update" : "save"} task`, {
+            description: error.message,
+          });
           setSaving(false);
           return;
         }
-        
+
         toast.success(`Task ${taskToEdit ? "updated" : "saved"} successfully`);
         if (onTaskAdded) onTaskAdded();
         onClose();
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Could not save task";
+      const message =
+        err instanceof Error ? err.message : "Could not save task";
       toast.error("Unexpected error", { description: message });
     } finally {
       setSaving(false);
@@ -440,383 +492,608 @@ export function TaskAddPanel({ isOpen, onClose, onTaskAdded, taskToEdit, initial
 
   return (
     <>
-    <Sheet isOpen={isOpen} onClose={onClose} title={taskToEdit ? "Edit Task" : "Add Task"}>
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
-            <div className="flex-1 overflow-y-auto p-6 space-y-6" data-lenis-prevent>
-              {/* Title */}
-              <Input
-                  label={<>Task Name <span className="text-red-400">*</span></>}
-                  autoFocus
-                  data-autofocus="true"
-                  inputMode="text"
-                  autoCapitalize="sentences"
-                  placeholder="What needs to be done?"
-                  variant="title"
-                  {...register("title", {
-                    onChange: (e) => handleTitleChange(e.target.value)
-                  })}
-                  error={errors.title?.message}
-                  aria-invalid={!!errors.title}
-                  aria-describedby={errors.title ? `title-error` : undefined}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleSubmit(onSubmit)();
-                    }
-                  }}
+      <Sheet
+        isOpen={isOpen}
+        onClose={onClose}
+        title={taskToEdit ? "Edit Task" : "Add Task"}
+      >
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex h-full flex-col"
+        >
+          <div
+            className="flex-1 space-y-6 overflow-y-auto p-6"
+            data-lenis-prevent
+          >
+            {/* Title */}
+            <Input
+              label={
+                <>
+                  Task Name <span className="text-red-400">*</span>
+                </>
+              }
+              autoFocus
+              data-autofocus="true"
+              inputMode="text"
+              autoCapitalize="sentences"
+              placeholder="What needs to be done?"
+              variant="title"
+              {...register("title", {
+                onChange: (e) => handleTitleChange(e.target.value),
+              })}
+              error={errors.title?.message}
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? `title-error` : undefined}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSubmit(onSubmit)();
+                }
+              }}
+            />
+
+            {/* Subtasks */}
+            <div>
+              <label className="text-label mb-2 block text-[var(--text-3)]">
+                Subtasks
+              </label>
+              <div className="space-y-1.5">
+                {subtasks.map((st, i) => (
+                  <div
+                    key={st.id || i}
+                    className="group flex items-center gap-2"
+                  >
+                    <button
+                      onClick={() => {
+                        setSubtasks(
+                          subtasks.map((st, idx) =>
+                            idx === i
+                              ? { ...st, completed: !st.completed }
+                              : st,
+                          ),
+                        );
+                      }}
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                        st.completed
+                          ? "border-[var(--color-text-3)] bg-[var(--color-text-3)]"
+                          : "border-[var(--color-border)] hover:border-[var(--color-text-3)]",
+                      )}
+                    >
+                      {st.completed && (
+                        <UiIcon
+                          className="h-3 w-3 text-[var(--color-background)]"
+                          icon={Check}
+                        />
+                      )}
+                    </button>
+                    <input
+                      value={st.text}
+                      onChange={(e) => {
+                        setSubtasks(
+                          subtasks.map((st, idx) =>
+                            idx === i ? { ...st, text: e.target.value } : st,
+                          ),
+                        );
+                      }}
+                      placeholder="Subtask..."
+                      className={cn(
+                        "flex-1 border-none bg-transparent text-sm placeholder:text-[var(--text-muted)] focus:outline-none",
+                        st.completed && "text-[var(--text-muted)] line-through",
+                      )}
+                    />
+                    <button
+                      onClick={() =>
+                        setSubtasks(subtasks.filter((_, idx) => idx !== i))
+                      }
+                      className="p-1 text-[var(--text-muted)] opacity-0 transition-all group-hover:opacity-100 hover:text-[#F87171]"
+                    >
+                      <UiIcon size={14} icon={X} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    setSubtasks([
+                      ...subtasks,
+                      { id: Date.now().toString(), text: "", completed: false },
+                    ])
+                  }
+                  className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-3)] transition-colors hover:text-[var(--text-1)]"
+                >
+                  <span className="text-lg leading-none font-light">+</span> Add
+                  subtask
+                </button>
+              </div>
+            </div>
+
+            {/* First Step */}
+            <div>
+              <label className="text-label mb-2 block text-[var(--text-3)]">
+                First Step{" "}
+                <span className="text-[var(--text-muted)]">(optional)</span>
+              </label>
+              <input
+                placeholder="What's the smallest action to start this?"
+                className={cn("input", errors.first_step && "!border-red-500")}
+                {...register("first_step")}
+                aria-invalid={!!errors.first_step}
+                aria-describedby={
+                  errors.first_step ? `first_step-error` : undefined
+                }
+              />
+              {errors.first_step && (
+                <p
+                  id="first_step-error"
+                  className="text-caption mt-1 text-red-500"
+                >
+                  {errors.first_step.message}
+                </p>
+              )}
+            </div>
+
+            {/* Action Toolbar (Date & Repeat) */}
+            <div className="flex flex-wrap gap-2 border-t border-[var(--color-border)] pt-2">
+              <Popover
+                trigger={
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
+                      deadlineValue
+                        ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                        : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
+                    )}
+                  >
+                    <UiIcon size={13} icon={Calendar} />
+                    {deadlineValue
+                      ? (() => {
+                          const d = new Date(deadlineValue);
+                          const hasTime =
+                            d.getHours() !== 0 || d.getMinutes() !== 0;
+                          const dateStr = d.toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                          });
+                          const timeStr = hasTime
+                            ? ` ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
+                            : "";
+                          return `${dateStr}${timeStr}`;
+                        })()
+                      : "Due Date"}
+                  </button>
+                }
+                content={
+                  <div className="w-[280px] space-y-4 p-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: "today", label: "Today" },
+                        { id: "tomorrow", label: "Tomorrow" },
+                        { id: "weekend", label: "This Weekend" },
+                        { id: "next_week", label: "Next Week" },
+                        { id: "none", label: "No Date" },
+                      ].map((btn) => (
+                        <button
+                          key={btn.id}
+                          onClick={() => setQuickDate(btn.id)}
+                          className="text-meta rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--color-border)]"
+                        >
+                          {btn.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-caption mb-1.5 block font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                          Due Date/Time
+                        </label>
+                        <input
+                          type="datetime-local"
+                          className={cn(
+                            "input !px-2 !py-1.5 !text-xs",
+                            errors.deadline && "!border-red-500",
+                          )}
+                          {...register("deadline", {
+                            onChange: handleManualDateChange,
+                          })}
+                          aria-invalid={!!errors.deadline}
+                          aria-describedby={
+                            errors.deadline ? `deadline-error` : undefined
+                          }
+                        />
+                        {errors.deadline && (
+                          <p
+                            id="deadline-error"
+                            className="text-caption mt-1 text-red-500"
+                          >
+                            {errors.deadline.message}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-caption mb-1.5 block font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                          Start Date
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={startDate || ""}
+                          onChange={(e) => {
+                            setStartDate(e.target.value);
+                            setParsedStartDate(
+                              e.target.value ? new Date(e.target.value) : null,
+                            );
+                          }}
+                          className="input !px-2 !py-1.5 !text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                }
               />
 
-              {/* Subtasks */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Subtasks</label>
-                <div className="space-y-1.5">
-                  {subtasks.map((st, i) => (
-                    <div key={st.id || i} className="flex items-center gap-2 group">
-                      <button
-                        onClick={() => {
-                          setSubtasks(subtasks.map((st, idx) => idx === i ? { ...st, completed: !st.completed } : st));
-                        }}
-                        className={cn("w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0", st.completed ? "bg-[var(--color-text-3)] border-[var(--color-text-3)]" : "border-[var(--color-border)] hover:border-[var(--color-text-3)]")}
-                      >
-                        {st.completed && <UiIcon className="w-3 h-3 text-[var(--color-background)]" icon={Check} />}
-                      </button>
-                      <input
-                        value={st.text}
-                        onChange={(e) => {
-                          setSubtasks(subtasks.map((st, idx) => idx === i ? { ...st, text: e.target.value } : st));
-                        }}
-                        placeholder="Subtask..."
-                        className={cn("flex-1 bg-transparent border-none text-sm focus:outline-none placeholder:text-[var(--text-muted)]", st.completed && "line-through text-[var(--text-muted)]")}
-                      />
-                      <button onClick={() => setSubtasks(subtasks.filter((_, idx) => idx !== i))} className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-muted)] hover:text-[#F87171] transition-all">
-                        <UiIcon size={14} icon={X} />
-                      </button>
-                    </div>
-                  ))}
-                  <button onClick={() => setSubtasks([...subtasks, { id: Date.now().toString(), text: "", completed: false }])} className="text-xs text-[var(--text-3)] hover:text-[var(--text-1)] flex items-center gap-1.5 transition-colors mt-2">
-                    <span className="text-lg leading-none font-light">+</span> Add subtask
+              <Popover
+                trigger={
+                  <button
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
+                      freq !== "Does not repeat"
+                        ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                        : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
+                    )}
+                  >
+                    <UiIcon size={13} icon={RotateCw} />
+                    {freq !== "Does not repeat" ? freq : "Repeat"}
                   </button>
-                </div>
-              </div>
-
-              {/* First Step */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">First Step <span className="text-[var(--text-muted)]">(optional)</span></label>
-                <input
-                  placeholder="What's the smallest action to start this?"
-                  className={cn("input", errors.first_step && "!border-red-500")}
-                  {...register("first_step")}
-                  aria-invalid={!!errors.first_step}
-                  aria-describedby={errors.first_step ? `first_step-error` : undefined}
-                />
-                {errors.first_step && (
-                  <p id="first_step-error" className="text-caption text-red-500 mt-1">
-                    {errors.first_step.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Action Toolbar (Date & Repeat) */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--color-border)]">
-                <Popover
-                  trigger={
-                    <button type="button" className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", deadlineValue ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
-                      <UiIcon size={13} icon={Calendar} />
-                      {deadlineValue ? (() => {
-                        const d = new Date(deadlineValue);
-                        const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
-                        const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-                        const timeStr = hasTime ? ` ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "";
-                        return `${dateStr}${timeStr}`;
-                      })() : "Due Date"}
-                    </button>
-                  }
-                  content={
-                    <div className="p-3 w-[280px] space-y-4">
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          { id: "today", label: "Today" },
-                          { id: "tomorrow", label: "Tomorrow" },
-                          { id: "weekend", label: "This Weekend" },
-                          { id: "next_week", label: "Next Week" },
-                          { id: "none", label: "No Date" }
-                        ].map((btn) => (
-                          <button
-                            key={btn.id}
-                            onClick={() => setQuickDate(btn.id)}
-                            className="px-2 py-1 rounded-md text-meta font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--text-2)] hover:bg-[var(--color-border)] transition-colors"
-                          >
-                            {btn.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-caption uppercase font-bold tracking-widest text-[var(--text-muted)] block mb-1.5">Due Date/Time</label>
-                          <input
-                            type="datetime-local"
-                            className={cn("input !py-1.5 !px-2 !text-xs", errors.deadline && "!border-red-500")}
-                            {...register("deadline", {
-                              onChange: handleManualDateChange
-                            })}
-                            aria-invalid={!!errors.deadline}
-                            aria-describedby={errors.deadline ? `deadline-error` : undefined}
-                          />
-                          {errors.deadline && (
-                            <p id="deadline-error" className="text-caption text-red-500 mt-1">
-                              {errors.deadline.message}
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="text-caption uppercase font-bold tracking-widest text-[var(--text-muted)] block mb-1.5">Start Date</label>
-                          <input
-                            type="datetime-local"
-                            value={startDate || ""}
-                            onChange={(e) => {
-                              setStartDate(e.target.value);
-                              setParsedStartDate(e.target.value ? new Date(e.target.value) : null);
-                            }}
-                            className="input !py-1.5 !px-2 !text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  }
-                />
-
-                <Popover
-                  trigger={
-                    <button className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all", freq !== "Does not repeat" ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]")}>
-                      <UiIcon size={13} icon={RotateCw} />
-                      {freq !== "Does not repeat" ? freq : "Repeat"}
-                    </button>
-                  }
-                  content={
-                    <div className="p-3 w-[280px]">
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {["Does not repeat", "Daily", "Weekly", "Monthly", "Custom"].map(f => (
-                          <button
-                            key={f}
-                            onClick={() => setFreq(f)}
-                            className={cn("px-2 py-1 rounded-md text-meta font-medium transition-colors border", freq === f ? 'bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]' : 'bg-transparent text-[var(--text-3)] border-[var(--color-border)] hover:bg-[var(--color-surface)]')}
-                          >
-                            {f}
-                          </button>
-                        ))}
-                      </div>
-                      {freq === "Weekly" && (
-                        <div className="flex flex-wrap gap-1 p-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
-                          {[
-                            { l: 'Mo', v: 'MO' }, { l: 'Tu', v: 'TU' }, { l: 'We', v: 'WE' }, 
-                            { l: 'Th', v: 'TH' }, { l: 'Fr', v: 'FR' }, { l: 'Sa', v: 'SA' }, { l: 'Su', v: 'SU' }
-                          ].map((d) => (
-                            <button
-                              key={d.v}
-                              onClick={() => setDays(prev => prev.includes(d.v) ? prev.filter(x => x !== d.v) : [...prev, d.v])}
-                              className={cn("px-2 py-1 rounded-md text-meta font-bold transition-colors border", days.includes(d.v) ? 'bg-[#FBBF24] text-amber-950 border-[#FBBF24]' : 'bg-transparent text-[var(--text-3)] border-transparent hover:bg-[var(--color-border)]')}
-                            >
-                              {d.l}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {freq === "Custom" && (
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-meta text-[var(--text-3)] font-medium">Every</span>
-                          <input
-                            type="number"
-                            min="1"
-                            value={customInterval}
-                            onChange={(e) => setCustomInterval(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="input !w-14 !py-1 !px-2 !text-center !text-xs"
-                          />
-                          <Dropdown variant="select"
-                            value={customFreq}
-                            onChange={(value) => setCustomFreq(value)}
-                            options={[
-                              { value: "DAILY", label: "Days" },
-                              { value: "WEEKLY", label: "Weeks" },
-                              { value: "MONTHLY", label: "Months" },
-                              { value: "YEARLY", label: "Years" }
-                            ]}
-                            className="!w-24 !text-xs"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  }
-                />
-              </div>
-
-              {/* Priority */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Priority</label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { val: 1, label: "Urgent", colorClass: "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20", activeClass: "bg-red-500 text-white border-red-500" },
-                    { val: 2, label: "High", colorClass: "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20", activeClass: "bg-amber-500 text-white border-amber-500" },
-                    { val: 3, label: "Medium", colorClass: "bg-teal-500/10 text-teal-500 border-teal-500/30 hover:bg-teal-500/20", activeClass: "bg-teal-500 text-white border-teal-500" },
-                    { val: 4, label: "Low", colorClass: "bg-slate-500/10 text-slate-500 border-slate-500/30 hover:bg-slate-500/20", activeClass: "bg-slate-500 text-white border-slate-500" }
-                  ].map((p) => (
-                    <m.button
-                      key={p.val}
-                      type="button"
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => setValue("priority", priorityValue === p.val ? null : p.val, { shouldValidate: true })}
-                      className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
-                    >
-                      P{p.val} {p.label}
-                    </m.button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Time Estimate */}
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Time Estimate (minutes) <span className="text-[var(--text-muted)]">(optional)</span></label>
-                <input
-                  type="number"
-                  placeholder="e.g. 30"
-                  value={timeEstimate === null ? "" : timeEstimate}
-                  onChange={(e) => setTimeEstimate(e.target.value ? parseInt(e.target.value) : null)}
-                  
-                  min={1}
-                />
-              </div>
-
-              {/* Linked People */}
-              {peopleList.length > 0 && (
-                <div>
-                  <label className="text-label text-[var(--text-3)] block mb-2">Linked People</label>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    {peopleList.map(person => {
-                      const isLinked = linkedPeopleIds.includes(person.id);
-                      return (
+                }
+                content={
+                  <div className="w-[280px] p-3">
+                    <div className="mb-3 flex flex-wrap gap-1.5">
+                      {[
+                        "Does not repeat",
+                        "Daily",
+                        "Weekly",
+                        "Monthly",
+                        "Custom",
+                      ].map((f) => (
                         <button
-                          key={person.id}
-                          onClick={() => {
-                            if (isLinked) {
-                              setLinkedPeopleIds(prev => prev.filter(id => id !== person.id));
-                            } else {
-                              setLinkedPeopleIds(prev => [...prev, person.id]);
-                            }
-                          }}
+                          key={f}
+                          onClick={() => setFreq(f)}
                           className={cn(
-                            "flex items-center gap-2 px-2 py-1.5 rounded-full transition-all border",
-                            isLinked ? "border-[var(--accent)] bg-[var(--accent-dim)]" : "border-transparent hover:bg-[var(--color-surface-hover)]"
+                            "text-meta rounded-md border px-2 py-1 font-medium transition-colors",
+                            freq === f
+                              ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                              : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
                           )}
                         >
-                          <Avatar name={person.name} initials={person.initials} color={person.color} size="sm" />
-                          <span className={cn("text-sm", isLinked ? "text-[var(--accent)] font-medium" : "text-[var(--text-2)]")}>
-                            {person.name.split(' ')[0]}
-                          </span>
+                          {f}
                         </button>
-                      )
-                    })}
+                      ))}
+                    </div>
+                    {freq === "Weekly" && (
+                      <div className="flex flex-wrap gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+                        {[
+                          { l: "Mo", v: "MO" },
+                          { l: "Tu", v: "TU" },
+                          { l: "We", v: "WE" },
+                          { l: "Th", v: "TH" },
+                          { l: "Fr", v: "FR" },
+                          { l: "Sa", v: "SA" },
+                          { l: "Su", v: "SU" },
+                        ].map((d) => (
+                          <button
+                            key={d.v}
+                            onClick={() =>
+                              setDays((prev) =>
+                                prev.includes(d.v)
+                                  ? prev.filter((x) => x !== d.v)
+                                  : [...prev, d.v],
+                              )
+                            }
+                            className={cn(
+                              "text-meta rounded-md border px-2 py-1 font-bold transition-colors",
+                              days.includes(d.v)
+                                ? "border-[#FBBF24] bg-[#FBBF24] text-amber-950"
+                                : "border-transparent bg-transparent text-[var(--text-3)] hover:bg-[var(--color-border)]",
+                            )}
+                          >
+                            {d.l}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {freq === "Custom" && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-meta font-medium text-[var(--text-3)]">
+                          Every
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={customInterval}
+                          onChange={(e) =>
+                            setCustomInterval(
+                              Math.max(1, parseInt(e.target.value) || 1),
+                            )
+                          }
+                          className="input !w-14 !px-2 !py-1 !text-center !text-xs"
+                        />
+                        <Dropdown
+                          variant="select"
+                          value={customFreq}
+                          onChange={(value) => setCustomFreq(value)}
+                          options={[
+                            { value: "DAILY", label: "Days" },
+                            { value: "WEEKLY", label: "Weeks" },
+                            { value: "MONTHLY", label: "Months" },
+                            { value: "YEARLY", label: "Years" },
+                          ]}
+                          className="!w-24 !text-xs"
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                }
+              />
+            </div>
 
-              {/* Category */}
+            {/* Priority */}
+            <div>
+              <label className="text-label mb-2 block text-[var(--text-3)]">
+                Priority
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    val: 1,
+                    label: "Urgent",
+                    colorClass:
+                      "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20",
+                    activeClass: "bg-red-500 text-white border-red-500",
+                  },
+                  {
+                    val: 2,
+                    label: "High",
+                    colorClass:
+                      "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20",
+                    activeClass: "bg-amber-500 text-white border-amber-500",
+                  },
+                  {
+                    val: 3,
+                    label: "Medium",
+                    colorClass:
+                      "bg-teal-500/10 text-teal-500 border-teal-500/30 hover:bg-teal-500/20",
+                    activeClass: "bg-teal-500 text-white border-teal-500",
+                  },
+                  {
+                    val: 4,
+                    label: "Low",
+                    colorClass:
+                      "bg-slate-500/10 text-slate-500 border-slate-500/30 hover:bg-slate-500/20",
+                    activeClass: "bg-slate-500 text-white border-slate-500",
+                  },
+                ].map((p) => (
+                  <m.button
+                    key={p.val}
+                    type="button"
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() =>
+                      setValue(
+                        "priority",
+                        priorityValue === p.val ? null : p.val,
+                        { shouldValidate: true },
+                      )
+                    }
+                    className={`rounded-full border px-4 py-2 text-xs font-bold transition-all ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
+                  >
+                    P{p.val} {p.label}
+                  </m.button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time Estimate */}
+            <div>
+              <label className="text-label mb-2 block text-[var(--text-3)]">
+                Time Estimate (minutes){" "}
+                <span className="text-[var(--text-muted)]">(optional)</span>
+              </label>
+              <input
+                type="number"
+                placeholder="e.g. 30"
+                value={timeEstimate === null ? "" : timeEstimate}
+                onChange={(e) =>
+                  setTimeEstimate(
+                    e.target.value ? parseInt(e.target.value) : null,
+                  )
+                }
+
+                min={1}
+              />
+            </div>
+
+            {/* Linked People */}
+            {peopleList.length > 0 && (
               <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Category</label>
-                <div className="flex flex-wrap gap-2 items-center">
-                  {categoriesList.map((cat: string) => {
-                    const cColor = DEFAULT_DO_COLORS[cat] || "var(--color-text-3)";
-                    const isActive = categoryValue === cat;
+                <label className="text-label mb-2 block text-[var(--text-3)]">
+                  Linked People
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {peopleList.map((person) => {
+                    const isLinked = linkedPeopleIds.includes(person.id);
                     return (
-                      <m.button
-                        key={cat}
-                        whileTap={{ scale: 0.92 }}
-                        type="button"
-                        onClick={() => setValue("category", isActive ? "" : cat, { shouldValidate: true })}
-                        style={{
-                          borderColor: isActive ? cColor : `${cColor}40`,
-                          backgroundColor: isActive ? `${cColor}20` : "transparent",
-                          color: isActive ? cColor : "var(--color-text-3)"
+                      <button
+                        key={person.id}
+                        onClick={() => {
+                          if (isLinked) {
+                            setLinkedPeopleIds((prev) =>
+                              prev.filter((id) => id !== person.id),
+                            );
+                          } else {
+                            setLinkedPeopleIds((prev) => [...prev, person.id]);
+                          }
                         }}
-                        className={`px-3 py-1.5 rounded-full text-xs capitalize transition-all border ${
-                          isActive ? "font-medium shadow-sm" : "hover:bg-[var(--color-surface)]"
-                        }`}
+                        className={cn(
+                          "flex items-center gap-2 rounded-full border px-2 py-1.5 transition-all",
+                          isLinked
+                            ? "border-[var(--accent)] bg-[var(--accent-dim)]"
+                            : "border-transparent hover:bg-[var(--color-surface-hover)]",
+                        )}
                       >
-                        {cat}
-                      </m.button>
+                        <Avatar
+                          name={person.name}
+                          initials={person.initials}
+                          color={person.color}
+                          size="sm"
+                        />
+                        <span
+                          className={cn(
+                            "text-sm",
+                            isLinked
+                              ? "font-medium text-[var(--accent)]"
+                              : "text-[var(--text-2)]",
+                          )}
+                        >
+                          {person.name.split(" ")[0]}
+                        </span>
+                      </button>
                     );
                   })}
-                  {isAddingCategory ? (
-                    <input
-                      autoFocus
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleAddCategory();
-                        if (e.key === "Escape") setIsAddingCategory(false);
-                      }}
-                      onBlur={handleAddCategory}
-                      placeholder="Type & enter..."
-                      className="input !w-32 !py-1.5 !px-3 !rounded-full !text-xs"
-                    />
-                  ) : (
-                    <button
-                      onClick={() => setIsAddingCategory(true)}
-                      className="px-3 py-1.5 rounded-full text-xs bg-transparent text-[var(--color-text-3)] border border-dashed border-[var(--color-border)] hover:border-[rgba(255,255,255,0.5)] hover:text-[var(--color-text-1)] transition-all"
-                    >
-                      + Add new category
-                    </button>
-                  )}
                 </div>
               </div>
+            )}
 
-
-              <div>
-                <label className="text-label text-[var(--text-3)] block mb-2">Notes</label>
-                <TextareaAutosize
-                  data-testid="autosize-textarea"
-                  placeholder="Additional context or details"
-                  {...register("notes")}
-                  minRows={2}
-                  className={cn("input resize-none", errors.notes && "!border-red-500")}
-                  aria-invalid={!!errors.notes}
-                  aria-describedby={errors.notes ? `notes-error` : undefined}
-                />
-                {errors.notes && (
-                  <p id="notes-error" className="text-caption text-red-500 mt-1">
-                    {errors.notes.message}
-                  </p>
+            {/* Category */}
+            <div>
+              <label className="text-label mb-2 block text-[var(--text-3)]">
+                Category
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                {categoriesList.map((cat: string) => {
+                  const cColor =
+                    DEFAULT_DO_COLORS[cat] || "var(--color-text-3)";
+                  const isActive = categoryValue === cat;
+                  return (
+                    <m.button
+                      key={cat}
+                      whileTap={{ scale: 0.92 }}
+                      type="button"
+                      onClick={() =>
+                        setValue("category", isActive ? "" : cat, {
+                          shouldValidate: true,
+                        })
+                      }
+                      style={{
+                        borderColor: isActive ? cColor : `${cColor}40`,
+                        backgroundColor: isActive
+                          ? `${cColor}20`
+                          : "transparent",
+                        color: isActive ? cColor : "var(--color-text-3)",
+                      }}
+                      className={`rounded-full border px-3 py-1.5 text-xs capitalize transition-all ${
+                        isActive
+                          ? "font-medium shadow-sm"
+                          : "hover:bg-[var(--color-surface)]"
+                      }`}
+                    >
+                      {cat}
+                    </m.button>
+                  );
+                })}
+                {isAddingCategory ? (
+                  <input
+                    autoFocus
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddCategory();
+                      if (e.key === "Escape") setIsAddingCategory(false);
+                    }}
+                    onBlur={handleAddCategory}
+                    placeholder="Type & enter..."
+                    className="input !w-32 !rounded-full !px-3 !py-1.5 !text-xs"
+                  />
+                ) : (
+                  <button
+                    onClick={() => setIsAddingCategory(true)}
+                    className="rounded-full border border-dashed border-[var(--color-border)] bg-transparent px-3 py-1.5 text-xs text-[var(--color-text-3)] transition-all hover:border-[rgba(255,255,255,0.5)] hover:text-[var(--color-text-1)]"
+                  >
+                    + Add new category
+                  </button>
                 )}
               </div>
             </div>
 
-            {/* Sticky Bottom Bar */}
-            <div className="p-4 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] flex gap-3 md:rounded-b-2xl">
-              {taskToEdit && (
-                <Button variant="danger"
-                  onClick={() => setDeleteTaskConfirm(true)}
-                  className="px-3 flex items-center justify-center"
-                >
-                  <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Trash2} />
-                </Button>
+            <div>
+              <label className="text-label mb-2 block text-[var(--text-3)]">
+                Notes
+              </label>
+              <TextareaAutosize
+                data-testid="autosize-textarea"
+                placeholder="Additional context or details"
+                {...register("notes")}
+                minRows={2}
+                className={cn(
+                  "input resize-none",
+                  errors.notes && "!border-red-500",
+                )}
+                aria-invalid={!!errors.notes}
+                aria-describedby={errors.notes ? `notes-error` : undefined}
+              />
+              {errors.notes && (
+                <p id="notes-error" className="text-caption mt-1 text-red-500">
+                  {errors.notes.message}
+                </p>
               )}
-              <Button type="submit" variant="primary"
-                disabled={isSubmitting || !isValid}
-                className="flex-1  py-3 w-full disabled:opacity-50"
-              >
-                {isSubmitting ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : (taskToEdit ? "Save Changes" : "Save Task")}
-              </Button>
             </div>
-      </form>
-    </Sheet>
-    <ConfirmModal
-      isOpen={deleteTaskConfirm}
-      onClose={() => setDeleteTaskConfirm(false)}
-      onConfirm={confirmDelete}
-      title="Move Task to Trash?"
-      description="This task will leave active views and can be restored from Trash."
-      confirmLabel="Move to Trash"
-      confirmDestructive
-    />
+          </div>
+
+          {/* Sticky Bottom Bar */}
+          <div className="flex gap-3 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] p-4 md:rounded-b-2xl">
+            {taskToEdit && (
+              <Button
+                variant="danger"
+                onClick={() => setDeleteTaskConfirm(true)}
+                className="flex items-center justify-center px-3"
+              >
+                <UiIcon
+                  size={14}
+                  strokeWidth={1.5}
+                  className="shrink-0"
+                  icon={Trash2}
+                />
+              </Button>
+            )}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isSubmitting || !isValid}
+              className="w-full flex-1 py-3 disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <UiIcon
+                  size={14}
+                  strokeWidth={1.5}
+                  className="shrink-0 animate-spin"
+                  icon={Loader2}
+                />
+              ) : taskToEdit ? (
+                "Save Changes"
+              ) : (
+                "Save Task"
+              )}
+            </Button>
+          </div>
+        </form>
+      </Sheet>
+      <ConfirmModal
+        isOpen={deleteTaskConfirm}
+        onClose={() => setDeleteTaskConfirm(false)}
+        onConfirm={confirmDelete}
+        title="Move Task to Trash?"
+        description="This task will leave active views and can be restored from Trash."
+        confirmLabel="Move to Trash"
+        confirmDestructive
+      />
     </>
   );
 }
-
