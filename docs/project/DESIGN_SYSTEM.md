@@ -118,6 +118,12 @@ All four are in the warm family (per Pillar 2). Each space has a distinct hue so
 | Shadow (card hover) | `0 8px 32px rgba(0,0,0,0.45)` |
 | Shadow (modal) | `0 24px 64px rgba(0,0,0,0.60)` |
 
+**WORKING GLASSMORPHISM RULE (do not change):**
+- **Backdrop overlay:** `bg-black/60` ONLY. NO `backdrop-filter`. NO blur class. NO Tailwind `backdrop-blur-*`.
+- **Modal panel:** inline `style={{ backdropFilter: 'blur(48px)', WebkitBackdropFilter: 'blur(48px)' }}` on the panel element itself.
+- This is NOT negotiable. CSS classes alone do not work due to compositing context issues. The inline style is the ONLY approach that works.
+- `--surface-modal` opacity must be 0.50 (50%) so the blur is visible.
+
 ---
 
 ## 4. Typography
