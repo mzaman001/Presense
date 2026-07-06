@@ -712,7 +712,7 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
   }
 
-  .glass-card::before, .glass-card-elevated::before, .modal::before, .sidebar::before, .glass-panel::before, .dropdown-panel::before {
+  .glass-card::before, .glass-card-elevated::before, .modal::before, .sidebar::before, .glass-panel::before, .dropdown-panel::before, .mobile-top-bar::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -822,6 +822,12 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: var(--shadow-dropdown);
     position: relative;
     overflow: hidden;
+  }
+
+  .mobile-top-bar {
+    backdrop-filter: var(--blur-chrome);
+    -webkit-backdrop-filter: var(--blur-chrome);
+    position: relative;
   }
 
   /* === BUTTON SYSTEM === */

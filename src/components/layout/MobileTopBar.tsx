@@ -11,7 +11,7 @@ export function MobileTopBar() {
   const { userSettings, setSettingsModalOpen, setSearchModalOpen, setIsMobileDrawerOpen } = useAppStore();
 
   return (
-    <header className="md:hidden fixed top-0 left-0 w-full h-[52px] border-b border-[var(--border-subtle)] bg-[var(--color-background)]/95 backdrop-blur-md z-40 flex items-center justify-between px-4" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <header className="mobile-top-bar md:hidden fixed top-0 left-0 w-full h-[52px] border-b border-[var(--border-subtle)] bg-[var(--color-background)]/95 z-40 flex items-center justify-between px-4" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex items-center gap-3">
         <button 
           onClick={() => setIsMobileDrawerOpen(true)}
