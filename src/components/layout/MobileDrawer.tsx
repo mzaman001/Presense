@@ -48,6 +48,7 @@ export function MobileDrawer() {
             exit={{ x: "-100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="mobile-drawer md:hidden fixed top-0 left-0 h-full w-[280px] z-50 border-r border-[var(--border-subtle)] flex flex-col p-4 shadow-2xl"
+            style={{ backdropFilter: 'blur(48px)', WebkitBackdropFilter: 'blur(48px)' }}
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">

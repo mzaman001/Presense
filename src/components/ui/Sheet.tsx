@@ -73,6 +73,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
                 "md:max-w-xl md:max-h-[85vh]",
                 className
               )}
+              style={{ paddingBottom: `${keyboardOffset}px`, backdropFilter: 'blur(48px)', WebkitBackdropFilter: 'blur(48px)' }}
               role="dialog"
               aria-modal="true"
               aria-label={typeof title === "string" ? title : undefined}
