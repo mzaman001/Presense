@@ -563,6 +563,7 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** coordinate with `INT-02`.
 
 **TOOL-05 — Structured logging to replace the `logger.ts` stub**
+**Status:** DONE
 
 - **Priority:** High — this is the concrete implementation ticket for `INFRA-05`, which was previously written at a requirements level without naming a specific library; use this ticket's finding to close that gap.
 - **Verified:** `logger.ts` confirmed to drop all output in production except server-side `error`-level `console.error` calls, with no shipping destination.
