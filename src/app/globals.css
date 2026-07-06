@@ -712,7 +712,7 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
   }
 
-  .glass-card::before, .glass-card-elevated::before, .modal::before, .sidebar::before, .glass-panel::before, .dropdown-panel::before, .mobile-top-bar::before, .bottom-nav::before, .mobile-drawer::before {
+  .glass-card::before, .glass-card-elevated::before, .modal::before, .sidebar::before, .glass-panel::before, .dropdown-panel::before, .mobile-top-bar::before, .bottom-nav::before, .mobile-drawer::before, [data-sonner-toast]::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -804,13 +804,15 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
   }
 
-  .toast {
+  [data-sonner-toast] {
     background: var(--surface-toast);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--blur-dropdown);
+    -webkit-backdrop-filter: var(--blur-dropdown);
     border: 0.5px solid var(--border-default);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-toast);
+    position: relative;
+    overflow: hidden;
   }
 
   .dropdown-panel {
