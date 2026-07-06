@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
@@ -27,7 +28,6 @@ import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
-import { Popover } from "@/components/ui/Popover";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -140,6 +140,7 @@ export default function HomeDashboard() {
   const [showReview, setShowReview] = useState(false);
   const [completing, setCompleting] = useState<string | null>(null);
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
+  const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -304,28 +305,24 @@ export default function HomeDashboard() {
         const item = inboxItems.find((i: any) => i.id === id);
         if (!item) return;
         await supabase.from("items").delete().eq("id", id);
-        await supabase
-          .from("explores")
-          .insert({
-            user_id: item.user_id,
-            title: item.title,
-            type: "other",
-            status: "active",
-          });
+        await supabase.from("explores").insert({
+          user_id: item.user_id,
+          title: item.title,
+          type: "other",
+          status: "active",
+        });
       } else if (space === "think") {
         /* @todo: Untyped usage justified per TOOL-01 */
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const item = inboxItems.find((i: any) => i.id === id);
         if (!item) return;
         await supabase.from("items").delete().eq("id", id);
-        await supabase
-          .from("threads")
-          .insert({
-            user_id: item.user_id,
-            title: item.title,
-            status: "active",
-            color_accent: "#2DD4BF",
-          });
+        await supabase.from("threads").insert({
+          user_id: item.user_id,
+          title: item.title,
+          status: "active",
+          color_accent: "#2DD4BF",
+        });
       }
       toast.success(`Routed to ${space}`);
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -547,16 +544,16 @@ export default function HomeDashboard() {
                       return {
                         ...old,
                         /* @todo: Untyped usage justified per TOOL-01 */
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         tasks: old.tasks.filter(
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           (t: any) => t.id !== snoozedTask.id,
                         ),
                       };
                     });
                     /* @todo: Untyped usage justified per TOOL-01 */
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     queryClient.setQueryData(
                       ["tasks"],
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       (old: any[] | undefined) =>
                         old?.filter((t) => t.id !== snoozedTask.id) ?? [],
                     );
@@ -588,9 +585,9 @@ export default function HomeDashboard() {
 
                             // Optimistic restore (put task back)
                             /* @todo: Untyped usage justified per TOOL-01 */
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             queryClient.setQueryData(
                               ["dashboard"],
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
                               (old: any) => {
                                 if (!old) return old;
                                 return {
@@ -603,9 +600,9 @@ export default function HomeDashboard() {
                               },
                             );
                             /* @todo: Untyped usage justified per TOOL-01 */
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             queryClient.setQueryData(
                               ["tasks"],
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
                               (old: any[] | undefined) =>
                                 old
                                   ? [
@@ -874,35 +871,36 @@ export default function HomeDashboard() {
                       </p>
                       <div className="flex w-full shrink-0 items-center gap-2 opacity-100 transition-opacity md:w-auto md:opacity-0 md:group-hover:opacity-100">
                         <div className="relative flex-1 md:flex-none">
-                          <Popover
-                            placement="bottom-end"
-                            isOpen={activeRouteItem === item.id}
-                            onOpenChange={(open) =>
-                              setActiveRouteItem(open ? item.id : null)
-                            }
-                            trigger={
-                              <Button
-                                variant="secondary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveRouteItem(
-                                    activeRouteItem === item.id
-                                      ? null
-                                      : item.id,
-                                  );
-                                }}
-                                className="dropdown-trigger w-full"
-                              >
-                                <UiIcon
-                                  className="h-3.5 w-3.5"
-                                  icon={FolderInput}
-                                />
-                                Route it
-                              </Button>
-                            }
-                            content={
+                          <Button
+                            variant="secondary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = (
+                                e.currentTarget as HTMLElement
+                              ).getBoundingClientRect();
+                              setDropdownRect(rect);
+                              setActiveRouteItem(
+                                activeRouteItem === item.id ? null : item.id,
+                              );
+                            }}
+                            className="dropdown-trigger w-full"
+                          >
+                            <UiIcon
+                              className="h-3.5 w-3.5"
+                              icon={FolderInput}
+                            />
+                            Route it
+                          </Button>
+                          {activeRouteItem === item.id &&
+                            dropdownRect &&
+                            createPortal(
                               <div
-                                className="flex w-48 flex-col gap-0.5 p-1"
+                                className="dropdown-panel animate-in fade-in zoom-in-95 z-[9999] w-48 p-1 duration-100"
+                                style={{
+                                  position: "fixed",
+                                  top: dropdownRect.bottom + 4,
+                                  left: dropdownRect.right - 192,
+                                }}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <button
@@ -970,9 +968,9 @@ export default function HomeDashboard() {
                                   />{" "}
                                   Locations
                                 </button>
-                              </div>
-                            }
-                          />
+                              </div>,
+                              document.body,
+                            )}
                         </div>
                         <Button
                           variant="icon"

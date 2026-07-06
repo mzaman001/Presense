@@ -1,17 +1,26 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase";
-import { Inbox, Loader2, FolderInput, CheckCircle2, MessageSquare, Compass, Brain, X, MapPin, Trash2 } from "lucide-react";
+import {
+  Inbox,
+  Loader2,
+  FolderInput,
+  CheckCircle2,
+  MessageSquare,
+  Compass,
+  Brain,
+  X,
+  MapPin,
+  Trash2,
+} from "lucide-react";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Popover } from "@/components/ui/Popover";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
@@ -22,26 +31,25 @@ interface InboxItem {
   user_id: string;
 }
 
-const InboxItemCard = ({ 
-  item, 
-  slidingOut, 
-  activeRouteItem, 
-  setActiveRouteItem, 
-  activeDropdownRef, 
-  routeInboxItem, 
-  dismissInboxItem 
+const InboxItemCard = ({
+  item,
+  slidingOut,
+  activeRouteItem,
+  setActiveRouteItem,
+  routeInboxItem,
+  dismissInboxItem,
 }: {
   item: InboxItem;
   slidingOut: string | null;
   activeRouteItem: string | null;
   setActiveRouteItem: (id: string | null) => void;
-  activeDropdownRef: React.RefObject<HTMLDivElement | null>;
   routeInboxItem: (id: string, space: string) => void;
   dismissInboxItem: (id: string) => void;
 }) => {
   const dragX = useMotionValue(0);
   const deleteOpacity = useTransform(dragX, [0, -80], [0, 1]);
   const deleteScale = useTransform(dragX, [0, -80], [0.7, 1]);
+  const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
 
   /* @todo: Untyped usage justified per TOOL-01 */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,21 +67,26 @@ const InboxItemCard = ({
       layout
       layoutId={item.id}
       initial={{ opacity: 0, y: 8 }}
-      animate={slidingOut === item.id ? { opacity: 0, x: 60, scale: 0.96 } : { opacity: 1, y: 0, x: 0, scale: 1 }}
+      animate={
+        slidingOut === item.id
+          ? { opacity: 0, x: 60, scale: 0.96 }
+          : { opacity: 1, y: 0, x: 0, scale: 1 }
+      }
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
       className="group relative rounded-2xl"
     >
       {/* Swipe-to-delete reveal layer */}
       <m.div
-        className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
+        className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-2xl pr-5"
         style={{
-          background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
           opacity: deleteOpacity,
         }}
       >
         <m.div style={{ scale: deleteScale }}>
-          <UiIcon className="w-5 h-5 text-red-400" icon={Trash2} />
+          <UiIcon className="h-5 w-5 text-red-400" icon={Trash2} />
         </m.div>
       </m.div>
 
@@ -86,49 +99,115 @@ const InboxItemCard = ({
         style={{ x: dragX }}
         className="relative"
       >
-        <div
-          className="glass-card !overflow-visible flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 bg-amber-500/5 border border-amber-500/20 group hover:bg-amber-500/10 transition-colors rounded-2xl"
-        >
-          <p className="text-card-title text-[var(--text-1)] flex-1 text-lg">{item.title}</p>
-          <div className="flex items-center gap-2 w-full md:w-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
-            <Popover
-              isOpen={activeRouteItem === item.id}
-              onOpenChange={(open) => setActiveRouteItem(open ? item.id : null)}
-              placement="bottom-end"
-              trigger={
-                <Button variant="secondary" 
-                  className="w-full"
+        <div className="glass-card group flex flex-col items-start justify-between gap-4 !overflow-visible rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-colors hover:bg-amber-500/10 md:flex-row md:items-center">
+          <p className="text-card-title flex-1 text-lg text-[var(--text-1)]">
+            {item.title}
+          </p>
+          <div className="flex w-full shrink-0 items-center gap-2 opacity-100 transition-opacity md:w-auto md:opacity-0 md:group-hover:opacity-100">
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={(e) => {
+                e.stopPropagation();
+                const rect = (
+                  e.currentTarget as HTMLElement
+                ).getBoundingClientRect();
+                setDropdownRect(rect);
+                setActiveRouteItem(
+                  activeRouteItem === item.id ? null : item.id,
+                );
+              }}
+            >
+              <UiIcon className="h-3.5 w-3.5" icon={FolderInput} />
+              Route it
+            </Button>
+            {activeRouteItem === item.id &&
+              dropdownRect &&
+              createPortal(
+                <div
+                  className="dropdown-panel animate-in fade-in zoom-in-95 z-[9999] w-48 p-1 duration-100"
+                  style={{
+                    position: "fixed",
+                    top: dropdownRect.bottom + 4,
+                    left: dropdownRect.right - 192,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <UiIcon className="w-3.5 h-3.5" icon={FolderInput} />
-                  Route it
-                </Button>
-              }
-              content={
-                <div className="flex flex-col p-1">
-                  <button onClick={() => { routeInboxItem(item.id, 'do'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <UiIcon className="w-4 h-4 text-[var(--color-do)]" icon={CheckCircle2} /> Do (Task)
+                  <button
+                    onClick={() => {
+                      routeInboxItem(item.id, "do");
+                      setActiveRouteItem(null);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                  >
+                    <UiIcon
+                      className="h-4 w-4 text-[var(--color-do)]"
+                      icon={CheckCircle2}
+                    />{" "}
+                    Do (Task)
                   </button>
-                  <button onClick={() => { routeInboxItem(item.id, 'think'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <UiIcon className="w-4 h-4 text-[var(--color-think)]" icon={MessageSquare} /> Think (Thread)
+                  <button
+                    onClick={() => {
+                      routeInboxItem(item.id, "think");
+                      setActiveRouteItem(null);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                  >
+                    <UiIcon
+                      className="h-4 w-4 text-[var(--color-think)]"
+                      icon={MessageSquare}
+                    />{" "}
+                    Think (Thread)
                   </button>
-                  <button onClick={() => { routeInboxItem(item.id, 'explore'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <UiIcon className="w-4 h-4 text-[var(--color-explore)]" icon={Compass} /> Explore (Saved)
+                  <button
+                    onClick={() => {
+                      routeInboxItem(item.id, "explore");
+                      setActiveRouteItem(null);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                  >
+                    <UiIcon
+                      className="h-4 w-4 text-[var(--color-explore)]"
+                      icon={Compass}
+                    />{" "}
+                    Explore (Saved)
                   </button>
-                  <button onClick={() => { routeInboxItem(item.id, 'remember'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <UiIcon className="w-4 h-4 text-[var(--color-people)]" icon={Brain} /> Remember (Person)
+                  <button
+                    onClick={() => {
+                      routeInboxItem(item.id, "remember");
+                      setActiveRouteItem(null);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                  >
+                    <UiIcon
+                      className="h-4 w-4 text-[var(--color-people)]"
+                      icon={Brain}
+                    />{" "}
+                    Remember (Person)
                   </button>
-                  <button onClick={() => { routeInboxItem(item.id, 'location'); setActiveRouteItem(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-1)] hover:bg-[var(--color-surface)] rounded-lg transition-colors flex items-center gap-2">
-                    <UiIcon className="w-4 h-4 text-[var(--color-people)]" icon={MapPin} /> Locations
+                  <button
+                    onClick={() => {
+                      routeInboxItem(item.id, "location");
+                      setActiveRouteItem(null);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                  >
+                    <UiIcon
+                      className="h-4 w-4 text-[var(--color-people)]"
+                      icon={MapPin}
+                    />{" "}
+                    Locations
                   </button>
-                </div>
-              }
-            />
-            <Button variant="icon" 
+                </div>,
+                document.body,
+              )}
+            <Button
+              variant="icon"
               onClick={() => dismissInboxItem(item.id)}
-              className="!bg-transparent !border-transparent hover:!bg-red-500/10 hover:!text-red-400 shrink-0"
+              className="shrink-0 !border-transparent !bg-transparent hover:!bg-red-500/10 hover:!text-red-400"
               title="Dismiss"
             >
-              <UiIcon className="w-4 h-4" icon={X} />
+              <UiIcon className="h-4 w-4" icon={X} />
             </Button>
           </div>
         </div>
@@ -140,7 +219,7 @@ const InboxItemCard = ({
 export default function InboxPage() {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
-  
+
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
   const [slidingOut, setSlidingOut] = useState<string | null>(null);
   const activeDropdownRef = useRef<HTMLDivElement>(null);
@@ -159,7 +238,11 @@ export default function InboxPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [activeRouteItem]);
 
-  const { data: inboxItems = [], isLoading: loading, refetch } = useQuery({
+  const {
+    data: inboxItems = [],
+    isLoading: loading,
+    refetch,
+  } = useQuery({
     queryKey: ["inbox-tasks"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -169,7 +252,7 @@ export default function InboxPage() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as InboxItem[];
-    }
+    },
   });
 
   useRealtime("items", refetch);
@@ -177,70 +260,114 @@ export default function InboxPage() {
   const routeInboxItem = async (id: string, space: string) => {
     if (!space) return;
 
-    const item = inboxItems.find(i => i.id === id);
+    const item = inboxItems.find((i) => i.id === id);
     if (!item) return;
 
     setSlidingOut(id);
     setActiveRouteItem(null);
 
     setTimeout(async () => {
-      queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => old?.filter(i => i.id !== id) ?? []);
+      queryClient.setQueryData<InboxItem[]>(
+        ["inbox-tasks"],
+        (old) => old?.filter((i) => i.id !== id) ?? [],
+      );
 
       try {
         let routedId: string | null = null;
 
-        if (space === 'do') {
-          await supabase.from('items').update({ status: 'active' }).eq('id', id);
-        } else if (space === 'remember') {
-          const { data: { user } } = await supabase.auth.getUser();
+        if (space === "do") {
+          await supabase
+            .from("items")
+            .update({ status: "active" })
+            .eq("id", id);
+        } else if (space === "remember") {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (user) {
-            await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
-            const { data: inserted, error: insertError } = await supabase.from('people').insert({
-              user_id: user.id,
-              name: item.title,
-              notes: [{ text: item.title, created_at: new Date().toISOString(), tag: "note" }]
-            }).select('id').single();
+            await supabase
+              .from("items")
+              .update(moveItemToTrashPatch())
+              .eq("id", id);
+            const { data: inserted, error: insertError } = await supabase
+              .from("people")
+              .insert({
+                user_id: user.id,
+                name: item.title,
+                notes: [
+                  {
+                    text: item.title,
+                    created_at: new Date().toISOString(),
+                    tag: "note",
+                  },
+                ],
+              })
+              .select("id")
+              .single();
 
             if (insertError) throw insertError;
             if (inserted) {
               routedId = inserted.id;
             }
           }
-        } else if (space === 'explore') {
-          await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
-          const { data: inserted, error: insertError } = await supabase.from('explores').insert({
-            user_id: item.user_id,
-            title: item.title,
-            type: 'other',
-            status: 'active'
-          }).select('id').single();
+        } else if (space === "explore") {
+          await supabase
+            .from("items")
+            .update(moveItemToTrashPatch())
+            .eq("id", id);
+          const { data: inserted, error: insertError } = await supabase
+            .from("explores")
+            .insert({
+              user_id: item.user_id,
+              title: item.title,
+              type: "other",
+              status: "active",
+            })
+            .select("id")
+            .single();
 
           if (insertError) throw insertError;
           if (inserted) {
             routedId = inserted.id;
           }
-        } else if (space === 'think') {
-          await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
-          const { data: inserted, error: insertError } = await supabase.from('threads').insert({
-            user_id: item.user_id,
-            title: item.title,
-            status: 'active',
-            color_accent: '#2DD4BF'
-          }).select('id').single();
+        } else if (space === "think") {
+          await supabase
+            .from("items")
+            .update(moveItemToTrashPatch())
+            .eq("id", id);
+          const { data: inserted, error: insertError } = await supabase
+            .from("threads")
+            .insert({
+              user_id: item.user_id,
+              title: item.title,
+              status: "active",
+              color_accent: "#2DD4BF",
+            })
+            .select("id")
+            .single();
 
           if (insertError) throw insertError;
           if (inserted) {
             routedId = inserted.id;
           }
-        } else if (space === 'location') {
-          const { data: { user } } = await supabase.auth.getUser();
+        } else if (space === "location") {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (user) {
-            await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
-            const { data: inserted, error: insertError } = await supabase.from('locations').insert({
-              user_id: user.id,
-              item_name: item.title,
-              location_text: item.title
-            }).select('id').single();
+            await supabase
+              .from("items")
+              .update(moveItemToTrashPatch())
+              .eq("id", id);
+            const { data: inserted, error: insertError } = await supabase
+              .from("locations")
+              .insert({
+                user_id: user.id,
+                item_name: item.title,
+                location_text: item.title,
+              })
+              .select("id")
+              .single();
 
             if (insertError) throw insertError;
             if (inserted) {
@@ -255,41 +382,65 @@ export default function InboxPage() {
             label: "Undo",
             onClick: async () => {
               try {
-                if (space === 'do') {
-                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
-                } else if (space === 'remember') {
+                if (space === "do") {
+                  await supabase
+                    .from("items")
+                    .update({ status: "inbox" })
+                    .eq("id", id);
+                } else if (space === "remember") {
                   if (routedId) {
-                    await supabase.from('people').delete().eq('id', routedId);
+                    await supabase.from("people").delete().eq("id", routedId);
                   }
-                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
-                } else if (space === 'explore') {
+                  await supabase
+                    .from("items")
+                    .update({ status: "inbox" })
+                    .eq("id", id);
+                } else if (space === "explore") {
                   if (routedId) {
-                    await supabase.from('explores').delete().eq('id', routedId);
+                    await supabase.from("explores").delete().eq("id", routedId);
                   }
-                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
-                } else if (space === 'think') {
+                  await supabase
+                    .from("items")
+                    .update({ status: "inbox" })
+                    .eq("id", id);
+                } else if (space === "think") {
                   if (routedId) {
-                    await supabase.from('threads').delete().eq('id', routedId);
+                    await supabase.from("threads").delete().eq("id", routedId);
                   }
-                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
-                } else if (space === 'location') {
+                  await supabase
+                    .from("items")
+                    .update({ status: "inbox" })
+                    .eq("id", id);
+                } else if (space === "location") {
                   if (routedId) {
-                    await supabase.from('locations').delete().eq('id', routedId);
+                    await supabase
+                      .from("locations")
+                      .delete()
+                      .eq("id", routedId);
                   }
-                  await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
+                  await supabase
+                    .from("items")
+                    .update({ status: "inbox" })
+                    .eq("id", id);
                 }
-                queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
+                queryClient.setQueryData<InboxItem[]>(
+                  ["inbox-tasks"],
+                  (old) => [item, ...(old ?? [])],
+                );
                 toast.success("Restored to inbox");
               } catch {
                 toast.error("Failed to undo");
                 refetch();
               }
-            }
-          }
+            },
+          },
         });
-      } catch (e) {
-        queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
-        toast.error('Failed to route item');
+      } catch {
+        queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], (old) => [
+          item,
+          ...(old ?? []),
+        ]);
+        toast.error("Failed to route item");
       } finally {
         setSlidingOut(null);
       }
@@ -297,42 +448,56 @@ export default function InboxPage() {
   };
 
   const dismissInboxItem = async (id: string) => {
-    const item = inboxItems.find(i => i.id === id);
+    const item = inboxItems.find((i) => i.id === id);
     if (!item) return;
 
-    queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => old?.filter(i => i.id !== id) ?? []);
+    queryClient.setQueryData<InboxItem[]>(
+      ["inbox-tasks"],
+      (old) => old?.filter((i) => i.id !== id) ?? [],
+    );
 
     try {
-      await supabase.from('items').update(moveItemToTrashPatch()).eq('id', id);
+      await supabase.from("items").update(moveItemToTrashPatch()).eq("id", id);
       toast.success("Dismissed", {
         duration: 5000,
         action: {
           label: "Undo",
           onClick: async () => {
             try {
-              await supabase.from('items').update({ status: 'inbox' }).eq('id', id);
-              queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
+              await supabase
+                .from("items")
+                .update({ status: "inbox" })
+                .eq("id", id);
+              queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], (old) => [
+                item,
+                ...(old ?? []),
+              ]);
               toast.success("Restored to inbox");
             } catch {
               toast.error("Failed to undo");
               refetch();
             }
-          }
-        }
+          },
+        },
       });
-    } catch (e) {
-      queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], old => [item, ...(old ?? [])]);
-      toast.error('Failed to dismiss');
+    } catch {
+      queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], (old) => [
+        item,
+        ...(old ?? []),
+      ]);
+      toast.error("Failed to dismiss");
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <div>
-          <p className="text-caption uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
+          <p className="text-caption mb-1 font-semibold tracking-widest text-[rgba(255,255,255,0.35)] uppercase">
+            Space
+          </p>
           <div className="flex items-center gap-4">
-            <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight flex items-center gap-2">
+            <h1 className="flex items-center gap-2 text-[22px] font-medium tracking-tight text-[var(--color-text-1)]">
               <UiIcon size={22} className="text-[var(--accent)]" icon={Inbox} />
               Inbox
             </h1>
@@ -340,25 +505,36 @@ export default function InboxPage() {
         </div>
       </div>
 
-      <ContextualTip 
-        id="inbox_space" 
-        title="Unload your brain" 
-        description="Dump everything here. Process them later by routing them to the Do, Think, or Explore space." 
+      <ContextualTip
+        id="inbox_space"
+        title="Unload your brain"
+        description="Dump everything here. Process them later by routing them to the Do, Think, or Explore space."
       />
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <UiIcon className="w-6 h-6 animate-spin text-[var(--color-text-3)]" icon={Loader2} />
+          <UiIcon
+            className="h-6 w-6 animate-spin text-[var(--color-text-3)]"
+            icon={Loader2}
+          />
         </div>
       ) : (
-        <div className="max-w-2xl mx-auto space-y-4 pt-4">
+        <div className="mx-auto max-w-2xl space-y-4 pt-4">
           {inboxItems.length === 0 ? (
-            <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
-              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={CheckCircle2} />
+            <GlassCard className="flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
+                <UiIcon
+                  className="h-6 w-6 text-[var(--color-text-3)]"
+                  icon={CheckCircle2}
+                />
               </div>
-              <h3 className="text-[var(--color-text-1)] font-medium mb-2">Inbox Zero</h3>
-              <p className="text-sm text-[var(--color-text-3)] max-w-sm">You've processed everything. Your mind is clear for the day ahead.</p>
+              <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
+                Inbox Zero
+              </h3>
+              <p className="max-w-sm text-sm text-[var(--color-text-3)]">
+                You&apos;ve processed everything. Your mind is clear for the day
+                ahead.
+              </p>
             </GlassCard>
           ) : (
             inboxItems.map((item) => (
@@ -368,7 +544,6 @@ export default function InboxPage() {
                 slidingOut={slidingOut}
                 activeRouteItem={activeRouteItem}
                 setActiveRouteItem={setActiveRouteItem}
-                activeDropdownRef={activeDropdownRef}
                 routeInboxItem={routeInboxItem}
                 dismissInboxItem={dismissInboxItem}
               />
