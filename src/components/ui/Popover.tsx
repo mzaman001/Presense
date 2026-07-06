@@ -1,8 +1,16 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import {
+  useFloating,
+  autoUpdate,
+  offset,
+  flip,
+  shift,
+  FloatingPortal,
+  type Placement,
+} from "@floating-ui/react";
 
 interface PopoverProps {
   trigger: React.ReactNode;
@@ -35,41 +43,29 @@ export function Popover({
     [isControlled, onOpenChange],
   );
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<React.CSSProperties>({});
-  const [mounted, setMounted] = useState(false);
+  const floatingPlacement =
+    placement === "bottom-center" ? "bottom" : placement;
 
+  const { refs, floatingStyles } = useFloating({
+    open: isOpen,
+    onOpenChange: handleOpenChange,
+    placement: floatingPlacement as Placement,
+    middleware: [offset(8), flip({ padding: 8 }), shift({ padding: 8 })],
+    whileElementsMounted: autoUpdate,
+    strategy: "fixed",
+  });
+  const { setReference, setFloating, reference, floating } = refs;
+
+  const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const gap = 8;
-    const next: React.CSSProperties = {
-      position: "fixed",
-      zIndex: 220,
-      minWidth: Math.max(rect.width, 200),
-    };
-
-    if (placement.startsWith("top"))
-      next.bottom = window.innerHeight - rect.top + gap;
-    else next.top = rect.bottom + gap;
-
-    if (placement.endsWith("end")) next.right = window.innerWidth - rect.right;
-    else if (placement.endsWith("center")) {
-      next.left = rect.left + rect.width / 2;
-      next.transform = "translateX(-50%)";
-    } else next.left = rect.left;
-
-    setPosition(next);
-  }, [isOpen, placement]);
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        reference.current &&
+        !(reference.current as Element).contains(event.target as Node) &&
+        (!floating.current || !floating.current.contains(event.target as Node))
       ) {
         handleOpenChange(false);
       }
@@ -80,33 +76,37 @@ export function Popover({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen, handleOpenChange]);
+  }, [isOpen, reference, floating, handleOpenChange]);
 
   return (
-    <div className="relative inline-block" ref={containerRef}>
+    <div className="relative inline-block" ref={setReference}>
       <div onClick={() => handleOpenChange(!isOpen)} className="cursor-pointer">
         {trigger}
       </div>
 
-      {mounted &&
-        createPortal(
+      {mounted && (
+        <FloatingPortal>
           <AnimatePresence>
             {isOpen && (
               <m.div
+                ref={setFloating}
                 initial={{ opacity: 0, y: 5, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 5, scale: 0.95 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className={cn("dropdown-panel min-w-[200px]", className)}
-                style={position}
+                className={cn(
+                  "dropdown-panel z-[220] min-w-[200px]",
+                  className,
+                )}
+                style={floatingStyles}
                 onClick={(e) => e.stopPropagation()} // Prevent clicks inside popover from bubbling and closing it
               >
                 {content}
               </m.div>
             )}
-          </AnimatePresence>,
-          document.body,
-        )}
+          </AnimatePresence>
+        </FloatingPortal>
+      )}
     </div>
   );
 }
