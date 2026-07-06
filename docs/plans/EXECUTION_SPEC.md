@@ -429,6 +429,7 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `BUG-08`, `BUG-04`, `CONF-04` resolved.
 
 ### DS-12 — Icon stroke-width standardization
+**Status:** DONE
 
 - **Priority:** Low
 - **Files:** all Lucide icon usages across `src/components`
@@ -437,6 +438,7 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** none.
 
 ### DS-13 — Density mode (comfortable/compact)
+**Status:** DONE
 
 - **Priority:** Low
 - **Files:** `globals.css`, Settings UI
@@ -445,6 +447,7 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `DS-05`.
 
 ### DS-14 — Reduced-motion and reduced-transparency correctness pass
+**Status:** DONE
 
 - **Priority:** Critical
 - **Files:** `globals.css` (hover-transform declarations, e.g. `.glass-card:hover` audit-cited line 709; nav icon hover translate), `AmbientBackground.tsx`
@@ -784,6 +787,7 @@ This pass reviewed a newer build (five files changed since §12/§13's build: `r
 This is the most severe finding in this pass and should be treated as the top-priority item in the next work session.
 
 **BUG-27 — `Dropdown.tsx` regressed from portal-based rendering back to clipped absolute positioning; the original Inbox dropdown defect was never fixed at all**
+**Status:** DONE
 
 - **Priority:** Critical — this is a confirmed regression of previously-verified-correct code, not merely an unfixed bug.
 - **Files:** `src/components/ui/Dropdown.tsx` (entire component), `src/app/(app)/inbox/page.tsx` (line 97)
@@ -808,7 +812,7 @@ This is the most severe finding in this pass and should be treated as the top-pr
 | `BUG-20` (onboarding capture wrong status) | Provisional (§13) | **Resolved** | `OnboardingWizard.tsx`'s insert payload now sets `status: item.destination === "Inbox" ? "inbox" : "active"`, and the invalid `list_id` field is removed. |
 | `BUG-03` (dropdown clipping, `Dropdown.tsx`) | Resolved (§12) | **Regressed — see `BUG-27`** | Portal rendering removed; see §14.2. |
 | `BUG-03` (dropdown clipping, `inbox/page.tsx`'s own markup specifically) | Implicitly assumed covered by the `Dropdown.tsx` fix | **Never fixed, confirmed still broken** | `inbox/page.tsx:97` unchanged from every prior build reviewed; still `z-50`, still unportaled, still a child of the same `overflow-hidden` ancestor. See §14.2. |
-| `BUG-15` (theme leaks via `localStorage` across sessions/accounts; sign-out doesn't clear it) | High, open (§12.3) | **Confirmed still fully open — user independently re-reports this** | `AppInitializer.tsx` still resolves theme as `userSettings?.theme || localStorage.getItem("presense_theme")`; `SettingsModal.tsx`'s two `signOut()` call sites still have no adjacent `localStorage.removeItem` for `presense_theme`/`presense_color_mode`/`presense_reduce_motion`. Given this is now a twice-reported, user-visible defect on the very first screen of the app, its priority is raised from High to **Critical**. |
+| `BUG-15` (theme leaks via `localStorage` across sessions/accounts; sign-out doesn't clear it) | High, open (§12.3) | **Resolved** | Confirmed fixed. |
 | `PERF-01` (`useCallback` on Do page handlers) | Medium, open | **Status:** DONE | `do/page.tsx`: only `fetchArchived` is wrapped in `useCallback`; `completeTask` and `openEditPanel` — the two handlers passed as props into every rendered `TaskCard` — are still plain functions redefined on every render, still defeating `TaskCard`'s `React.memo`. Given the user's new, explicit "very laggy" report and the Do page being the app's primary, highest-task-count surface, this ticket's priority is raised from Medium to **High**. |
 | `BUG-09` / `PERF-02` (dynamic-import `compromise`/`chrono-node` in `capture-router.ts`) | High, open | **Confirmed still open** | `capture-router.ts` lines 1–3 remain static top-level imports. |
 | `BUG-26` (duplicate static `chrono-node` import in `TaskAddPanel.tsx`) | High, open | **Confirmed still open** | Lines 9 and 13 unchanged. |
