@@ -84,7 +84,6 @@ export function Sidebar() {
               width="28"
               height="28"
               viewBox="0 0 24 24"
-              fill="url(#brand-gradient)"
               className="shrink-0"
             >
               <defs>
@@ -99,7 +98,11 @@ export function Sidebar() {
                   <stop offset="100%" stopColor="var(--accent-deep)" />
                 </linearGradient>
               </defs>
-              <circle cx="12" cy="12" r="12" />
+              <circle cx="12" cy="12" r="12" fill="url(#brand-gradient)" />
+              <path
+                d="M8.5 6.5h4.2c2.4 0 4 1.4 4 3.4s-1.6 3.4-4 3.4H11V17H8.5V6.5Zm2.5 2v2.8h1.5c1 0 1.6-.5 1.6-1.4s-.6-1.4-1.6-1.4H11Z"
+                fill="var(--text-on-accent)"
+              />
             </svg>
           </div>
           <span
