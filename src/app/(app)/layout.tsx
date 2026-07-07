@@ -13,11 +13,18 @@ import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 
 import { MotionProvider } from "@/components/layout/MotionProvider";
+import type { UserSettings } from "@/store/useAppStore";
 
 // App layout — shown for all protected (app) pages
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
@@ -41,7 +48,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (count && count > 0) {
       await supabase
         .from("user_settings")
-        .upsert({ user_id: user.id, onboarding_complete: true }, { onConflict: "user_id" });
+        .upsert(
+          { user_id: user.id, onboarding_complete: true },
+          { onConflict: "user_id" },
+        );
     } else {
       redirect("/onboarding");
     }
@@ -49,7 +59,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      <AppInitializer initialSettings={(settings as any) || undefined} />
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:rounded-lg focus:bg-[var(--bg-base)] focus:px-4 focus:py-2.5 focus:text-sm focus:text-[var(--text-1)] focus:no-underline focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--accent)]"
+      >
+        Skip to content
+      </a>
+      <AppInitializer
+        initialSettings={(settings as UserSettings) || undefined}
+      />
       <MotionProvider>
         <QueryProvider>
           <RealtimeProvider>
@@ -60,9 +78,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
             <DynamicModals />
             <RitualOverlay />
-            <AppContentWrapper>
-              {children}
-            </AppContentWrapper>
+            <AppContentWrapper>{children}</AppContentWrapper>
             <BottomNav />
           </RealtimeProvider>
         </QueryProvider>

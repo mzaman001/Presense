@@ -6,12 +6,9 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export function AppContentWrapper({ children }: { children: React.ReactNode }) {
-  const {
-    setCaptureModalOpen,
-    setSearchModalOpen,
-    setSettingsModalOpen
-  } = useAppStore();
-  
+  const { setCaptureModalOpen, setSearchModalOpen, setSettingsModalOpen } =
+    useAppStore();
+
   const router = useRouter();
 
   useEffect(() => {
@@ -28,7 +25,7 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setSearchModalOpen(true);
         return;
@@ -44,12 +41,24 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
       // Navigation shortcuts
       if (!e.metaKey && !e.ctrlKey && !e.altKey) {
         switch (e.key) {
-          case "1": router.push("/inbox"); break;
-          case "2": router.push("/do"); break;
-          case "3": router.push("/remember/people"); break;
-          case "4": router.push("/think"); break;
-          case "5": router.push("/explore"); break;
-          case "6": router.push("/"); break;
+          case "1":
+            router.push("/inbox");
+            break;
+          case "2":
+            router.push("/do");
+            break;
+          case "3":
+            router.push("/remember/people");
+            break;
+          case "4":
+            router.push("/think");
+            break;
+          case "5":
+            router.push("/explore");
+            break;
+          case "6":
+            router.push("/");
+            break;
           case "c":
             e.preventDefault();
             setCaptureModalOpen(true);
@@ -67,15 +76,16 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
   }, [router, setCaptureModalOpen, setSearchModalOpen, setSettingsModalOpen]);
 
   return (
-    <main 
+    <main
+      id="main-content"
       className={cn(
-        "flex-1 flex flex-col pb-24 md:pb-0 relative z-10",
+        "relative z-10 flex flex-1 flex-col pb-24 md:pb-0",
         "pt-[calc(env(safe-area-inset-top)+52px+0.5rem)] md:pt-8",
         "transition-[margin-left] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)]",
-        "md:ml-[80px]"
+        "md:ml-[80px]",
       )}
     >
-      <div className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 pt-0">
+      <div className="mx-auto w-full max-w-5xl flex-1 p-4 pt-0 md:p-8">
         {children}
       </div>
     </main>
