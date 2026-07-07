@@ -18,6 +18,7 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeft,
+  Timer,
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -323,6 +324,43 @@ export function Sidebar() {
 
         {/* Divider before utility items */}
         <div className="mx-2 my-1 border-t border-[var(--border-subtle)] opacity-50" />
+
+        {/* Focus (Pomodoro) */}
+        <div
+          className="relative w-full"
+          onMouseEnter={() => setHoveredItem("focus")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          <button
+            onClick={() =>
+              useAppStore
+                .getState()
+                .setActiveTimer({ taskTitle: "Focus Session" })
+            }
+            title="Focus Timer"
+            className={cn(
+              "flex h-9 w-full items-center rounded-xl px-2 transition-colors",
+              "text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-2)]",
+            )}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+              <UiIcon
+                size={17}
+                strokeWidth={1.5}
+                className="transition-colors"
+                icon={Timer}
+              />
+            </span>
+            <span
+              className={cn(
+                "nav-label text-body leading-none font-medium",
+                labelClass,
+              )}
+            >
+              Focus
+            </span>
+          </button>
+        </div>
 
         {/* Trash */}
         <div
