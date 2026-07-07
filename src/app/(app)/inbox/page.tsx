@@ -457,17 +457,34 @@ export default function InboxPage() {
     );
 
     try {
-      await supabase.from("items").update(moveItemToTrashPatch()).eq("id", id);
+      const { error } = await supabase
+        .from("items")
+        .update(moveItemToTrashPatch())
+        .eq("id", id);
+      if (error) {
+        queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], (old) => [
+          item,
+          ...(old ?? []),
+        ]);
+        toast.error("Could not dismiss", { description: error.message });
+        return;
+      }
       toast.success("Dismissed", {
         duration: 5000,
         action: {
           label: "Undo",
           onClick: async () => {
             try {
-              await supabase
+              const { error: undoError } = await supabase
                 .from("items")
                 .update({ status: "inbox" })
                 .eq("id", id);
+              if (undoError) {
+                toast.error("Could not restore", {
+                  description: undoError.message,
+                });
+                return;
+              }
               queryClient.setQueryData<InboxItem[]>(["inbox-tasks"], (old) => [
                 item,
                 ...(old ?? []),
