@@ -4,8 +4,8 @@ import React from "react";
 
 export default function OfflinePage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
-      <div className="w-16 h-16 rounded-full bg-[rgba(255,255,255,0.05)] flex items-center justify-center mb-6">
+    <div className="flex min-h-dvh flex-col items-center justify-center p-8 text-center">
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)]">
         <svg
           width="32"
           height="32"
@@ -26,11 +26,12 @@ export default function OfflinePage() {
           <line x1="12" y1="20" x2="12.01" y2="20" />
         </svg>
       </div>
-      <h1 className="text-xl font-semibold text-[var(--color-text-1)] mb-2">
-        You're offline
+      <h1 className="mb-2 text-xl font-semibold text-[var(--color-text-1)]">
+        You&apos;re offline
       </h1>
-      <p className="text-sm text-[var(--color-text-3)] max-w-sm">
-        Check your internet connection and try again. Your data is safe and will sync when you're back online.
+      <p className="max-w-sm text-sm text-[var(--color-text-3)]">
+        Check your internet connection and try again. Your data is safe and will
+        sync when you&apos;re back online.
       </p>
     </div>
   );

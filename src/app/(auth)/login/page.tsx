@@ -3,45 +3,63 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
-import { OnboardingBackground, PresenseLogo } from "@/components/layout/OnboardingBackground";
+import {
+  OnboardingBackground,
+  PresenseLogo,
+} from "@/components/layout/OnboardingBackground";
 import { getAuthCallbackUrl } from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 export default function LoginPage() {
   const [supabase] = useState<ReturnType<typeof createClient> | null>(() => {
-    try { return createClient(); } catch { return null; }
+    try {
+      return createClient();
+    } catch {
+      return null;
+    }
   });
 
-  const [email, setEmail]         = useState("");
+  const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
-  const [loading, setLoading]     = useState<"google" | "email" | null>(null);
-  const [error, setError]         = useState<string | null>(null);
+  const [loading, setLoading] = useState<"google" | "email" | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [initError] = useState<string | null>(() =>
-    supabase ? null : "Supabase failed to initialize. Restart the dev server after adding .env.local."
+    supabase
+      ? null
+      : "Supabase failed to initialize. Restart the dev server after adding .env.local.",
   );
 
   const handleGoogle = async () => {
-    if (!supabase) return setError("Supabase not initialized. Check environment variables.");
-    setLoading("google"); setError(null);
+    if (!supabase)
+      return setError("Supabase not initialized. Check environment variables.");
+    setLoading("google");
+    setError(null);
     try {
       const redirectTo = getAuthCallbackUrl(window.location.href);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo },
       });
-      if (error) { setError(error.message); setLoading(null); }
+      if (error) {
+        setError(error.message);
+        setLoading(null);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start Google sign-in");
+      setError(
+        err instanceof Error ? err.message : "Failed to start Google sign-in",
+      );
       setLoading(null);
     }
   };
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) return setError("Supabase not initialized. Check environment variables.");
+    if (!supabase)
+      return setError("Supabase not initialized. Check environment variables.");
     if (!email.trim()) return;
-    setLoading("email"); setError(null);
+    setLoading("email");
+    setError(null);
     try {
       const emailRedirectTo = getAuthCallbackUrl(window.location.href);
       const { error } = await supabase.auth.signInWithOtp({
@@ -51,14 +69,16 @@ export default function LoginPage() {
       if (error) setError(error.message);
       else setEmailSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send magic link");
+      setError(
+        err instanceof Error ? err.message : "Failed to send magic link",
+      );
     } finally {
       setLoading(null);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden p-4">
       {/* Atmospheric background */}
       <OnboardingBackground phase={1} />
 
@@ -74,34 +94,59 @@ export default function LoginPage() {
       >
         {/* Init error */}
         {initError && (
-          <div className="mb-5 p-3 rounded-[var(--radius-md)] text-sm font-medium"
-            style={{ background: "var(--status-danger-dim)", border: "0.5px solid var(--status-danger-border)", color: "var(--status-danger)" }}>
+          <div
+            className="mb-5 rounded-[var(--radius-md)] p-3 text-sm font-medium"
+            style={{
+              background: "var(--status-danger-dim)",
+              border: "0.5px solid var(--status-danger-border)",
+              color: "var(--status-danger)",
+            }}
+          >
             {initError}
           </div>
         )}
 
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-8">
+        <div className="mb-8 flex items-center gap-2.5">
           <PresenseLogo size={28} />
-          <span className="text-title-lg font-semibold tracking-tight" style={{ color: "var(--text-1)" }}>Presense</span>
+          <span
+            className="text-title-lg font-semibold tracking-tight"
+            style={{ color: "var(--text-1)" }}
+          >
+            Presense
+          </span>
         </div>
 
         {emailSent ? (
           /* Email sent state */
-          <div className="text-center py-4">
+          <div className="py-4 text-center">
             <div
-              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
-              style={{ background: "rgba(45,212,191,0.10)", border: "0.5px solid rgba(45,212,191,0.25)" }}
+              className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full"
+              style={{
+                background: "rgba(45,212,191,0.10)",
+                border: "0.5px solid rgba(45,212,191,0.25)",
+              }}
             >
-              <UiIcon size={22} strokeWidth={1.5} className="text-[#2DD4BF]" icon={Mail} />
+              <UiIcon
+                size={22}
+                strokeWidth={1.5}
+                className="text-[#2DD4BF]"
+                icon={Mail}
+              />
             </div>
-            <p className="text-title-md font-semibold mb-2" style={{ color: "var(--text-1)" }}>Check your inbox</p>
+            <p
+              className="text-title-md mb-2 font-semibold"
+              style={{ color: "var(--text-1)" }}
+            >
+              Check your inbox
+            </p>
             <p className="text-body" style={{ color: "var(--text-3)" }}>
-              We sent a magic link to <span style={{ color: "var(--text-2)" }}>{email}</span>
+              We sent a magic link to{" "}
+              <span style={{ color: "var(--text-2)" }}>{email}</span>
             </p>
             <button
               onClick={() => setEmailSent(false)}
-              className="mt-6 text-ui underline underline-offset-2"
+              className="text-ui mt-6 underline underline-offset-2"
               style={{ color: "var(--accent-text)" }}
             >
               Use a different email
@@ -111,19 +156,26 @@ export default function LoginPage() {
           <>
             {/* Heading */}
             <div className="mb-7">
-              <h1 className="text-[22px] font-semibold tracking-tight mb-1" style={{ color: "var(--text-1)" }}>Sign in</h1>
-              <p className="text-body" style={{ color: "var(--text-3)" }}>Welcome back, second brain.</p>
+              <h1
+                className="mb-1 text-[22px] font-semibold tracking-tight"
+                style={{ color: "var(--text-1)" }}
+              >
+                Sign in
+              </h1>
+              <p className="text-body" style={{ color: "var(--text-3)" }}>
+                Welcome back, second brain.
+              </p>
             </div>
 
             {/* Email form */}
-            <form onSubmit={handleMagicLink} className="space-y-3 mb-4">
+            <form onSubmit={handleMagicLink} className="mb-4 space-y-3">
               <input
                 type="email"
                 name="email"
                 id="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
                 inputMode="email"
@@ -132,50 +184,90 @@ export default function LoginPage() {
                 className="input w-full"
               />
               <div className="flex justify-end">
-                <span className="text-ui" style={{ color: "var(--accent-text)" }}>Magic link &#x2014; no password needed</span>
+                <span
+                  className="text-ui"
+                  style={{ color: "var(--accent-text)" }}
+                >
+                  Magic link &#x2014; no password needed
+                </span>
               </div>
-              <Button variant="primary"
+              <Button
+                variant="primary"
                 type="submit"
                 disabled={!!loading || !email.trim()}
-                className="w-full flex items-center justify-center gap-2"
+                className="flex w-full items-center justify-center gap-2"
               >
-                {loading === "email"
-                  ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin" icon={Loader2} />
-                  : <UiIcon size={14} strokeWidth={1.5} icon={Sparkles} />
-                }
+                {loading === "email" ? (
+                  <UiIcon
+                    size={14}
+                    strokeWidth={1.5}
+                    className="animate-spin"
+                    icon={Loader2}
+                  />
+                ) : (
+                  <UiIcon size={14} strokeWidth={1.5} icon={Sparkles} />
+                )}
                 Send sign-in link
-                <UiIcon size={14} strokeWidth={1.5} className="ml-auto" icon={ArrowRight} />
+                <UiIcon
+                  size={14}
+                  strokeWidth={1.5}
+                  className="ml-auto"
+                  icon={ArrowRight}
+                />
               </Button>
             </form>
 
             {/* Divider */}
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
-              <span className="text-caption uppercase tracking-widest font-semibold" style={{ color: "var(--text-muted)" }}>or</span>
-              <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
+            <div className="my-5 flex items-center gap-3">
+              <div
+                className="h-px flex-1"
+                style={{ background: "var(--border-subtle)" }}
+              />
+              <span
+                className="text-caption font-semibold tracking-widest uppercase"
+                style={{ color: "var(--text-muted)" }}
+              >
+                or
+              </span>
+              <div
+                className="h-px flex-1"
+                style={{ background: "var(--border-subtle)" }}
+              />
             </div>
 
             {/* Google */}
-            <Button variant="secondary"
+            <Button
+              variant="secondary"
               onClick={handleGoogle}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-2.5"
+              className="flex w-full items-center justify-center gap-2.5"
             >
-              {loading === "google"
-                ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin" icon={Loader2} />
-                : <UiIcon size={14} strokeWidth={1.5} icon={Globe2} />
-              }
+              {loading === "google" ? (
+                <UiIcon
+                  size={14}
+                  strokeWidth={1.5}
+                  className="animate-spin"
+                  icon={Loader2}
+                />
+              ) : (
+                <UiIcon size={14} strokeWidth={1.5} icon={Globe2} />
+              )}
               Continue with Google
             </Button>
 
             {/* Error */}
             {error && (
-              <p className="mt-4 text-body text-center p-3 rounded-[var(--radius-md)]"
-                style={{ background: "var(--status-danger-dim)", border: "0.5px solid var(--status-danger-border)", color: "var(--status-danger)" }}>
+              <p
+                className="text-body mt-4 rounded-[var(--radius-md)] p-3 text-center"
+                style={{
+                  background: "var(--status-danger-dim)",
+                  border: "0.5px solid var(--status-danger-border)",
+                  color: "var(--status-danger)",
+                }}
+              >
                 {error}
               </p>
             )}
-
           </>
         )}
       </div>
