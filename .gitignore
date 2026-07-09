@@ -58,3 +58,11 @@ scratch/
 # Temp/Output files
 output.txt
 supabase/.temp/
+
+# Agent persona scaffolding (not project source)
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+docs/AGENT_PROMPT.md

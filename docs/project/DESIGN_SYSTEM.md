@@ -1,838 +1,348 @@
 # DESIGN_SYSTEM.md — Presense
 
-> **The authoritative visual specification.** Every component, every token, every state, every breakpoint. If a pattern isn't here, don't invent it — ask for it to be added.
->
-> **Researched from:** shadcn/ui (Feb 2025 Tailwind v4 update), Radix UI / Base UI primitives, Vaul (drawer patterns), cmdk (command palette), Apple Human Interface Guidelines, Material 3, WCAG 2.2 (W3C), NN/g bottom sheet guidelines, web.dev (content-visibility, Core Web Vitals), Framer Motion / Motion docs, Tailwind CSS v4 docs, and productivity app design analysis of Things3 (Cultured Code), Sunsama, Todoist, Superlist, Notion, Obsidian, Cron/Notion Calendar, Fantastical, Apple Reminders.
+> Read this before touching any UI. This is the authority on how things look, move, and respond. If a pattern isn't here, it doesn't exist yet — see "Adding a new pattern" at the end. This file documents what is **already correctly built** (do not redo it) and specifies what is **missing or under-specified** (build it exactly as written here, do not improvise).
+
+This file is organized in three layers, same order every design system worth using follows: **foundations** (the raw material — color, type, space, motion, glass), **components** (the reusable parts built from foundations), **surfaces** (every actual page/space in the app, specified corner to corner so nothing is left to a coding agent's imagination). A component or page not covered here is a documentation gap, not license to invent — flag it.
 
 ---
 
-## 1. Design Philosophy (Non-Negotiable)
+## 0. The four pillars (unchanged, still non-negotiable)
 
-**Presense feels like a warm lamp in a dark room.** Four pillars, never compromised:
-
-1. **Atmosphere over flatness** — ambient orbs, surface shimmer, grain texture. Never a blank canvas.
-2. **Warmth at the centre** — amber, coral, deep orange. Cool colours are secondary accents only.
-3. **Glass as depth** — cards, panels, modals are glass surfaces floating in atmosphere.
-4. **Inter carries the voice** — all type is Inter. JetBrains Mono for numbers only.
-
-**Design inspiration (studied for patterns, not copied):**
-- **Things3** — calm restraint, circular check-off animation, quiet typography, sidebar hierarchy
-- **Sunsama** — daily ritual flow, time-blocking, warm neutral palette, minimized cognitive load
-- **Superlist** — playful micro-interactions, bouncy springs, satisfying check-off, pastel accents
-- **Todoist** — natural language input, sticky group headers, board/list/calendar views, karma streaks
-- **Notion** — block-based editing, clean command palette, minimal chrome
-- **Linear** — keyboard-first, speed, dense-but-readable, dark-mode craft
-- **Apple Reminders** — mobile-first simplicity, natural language, smart lists
+1. **Atmosphere over flatness.** Every background has ambient light from orbs; every surface floats in an environment, never on a blank canvas.
+2. **Warmth at the centre.** Amber/coral/orange is the default experience. Cool tones (navy, forest) are alternate full themes a user opts into, not accents layered onto the warm theme.
+3. **Glass as the language of depth.** Cards, panels, modals, dropdowns, toasts are glass surfaces — but glass is a **tool for hierarchy**, not decoration on every element. §3 specifies exactly where glass is and isn't allowed, because unrestricted glass is the single most common way this aesthetic breaks (see §3.4).
+4. **Inter carries the voice.** All type is Inter. JetBrains Mono only for numbers/timestamps.
 
 ---
 
-## 2. Theme System
+## 1. Color
 
-### Themes (3 total, using `data-theme` attribute on `<html>`)
+### 1.1 What's already correct — do not rebuild
 
-| Internal ID | CSS selector | Display name | Vibe |
-|---|---|---|---|
-| `warm` | `:root` (default, no attribute needed) | Warm | Amber/coral on near-black. The default. |
-| `navy` | `:root[data-theme="navy"]` | Navy | Deep blue. |
-| `forest` | `:root[data-theme="forest"]` | Forest | Deep green. |
+The token layer in `globals.css` is mature: `--bg-base`, `--accent`/`--accent-hot`/`--accent-deep`, `--text-1` through `--text-4`, `--surface-1`, `--border-default`, and a full `--elev-*` bundle system (`flat`/`raised`/`floating`/`overlay`, each with matched shadow+blur+border) already exist and are correctly structured. `--space-do`/`-think`/`-remember`/`-explore` now resolve to four distinct warm-family hues (`#E5B41E`, `#EB4233`, `#F4A261`, `#A76011`) — CONF-02 is resolved, do not collapse them back to a single shared accent.
 
-### Modes (2 total, using `data-mode` attribute on `<html>`)
+### 1.2 The rule
 
-| Mode | CSS selector | Description |
+**Never write a hex value or an inline `style` color in a `.tsx` file.** Every color is a `var(--token)` reference. If the color you need has no token, that is a design-system gap — add the token to `globals.css` in the same PR and document it here, do not inline it "just this once."
+
+### 1.3 Semantic usage map
+
+| Token | Use for | Never use for |
 |---|---|---|
-| `dark` | `:root` (default) | Dark background, light text |
-| `light` | `:root[data-mode="light"]` | Light background, dark text |
+| `--space-do` / `-think` / `-remember` / `-explore` | Space identity: the sidebar nav item's active state, a space's icon accent, a badge tagging which space an item came from (e.g., on the global Trash or Home feed) | Status inside a single space (see status colors below — a space color and a status color must never be the same token, even if their current hex happens to coincide) |
+| `--status-overdue` / `-today` / `-upcoming` / `-done` | Task/thread status only, inside Do and anywhere a due-state chip appears | Space identity |
+| `--accent` / `-hot` / `-deep` | Primary actions, focus rings, the capture button, active states that are theme-driven rather than space-driven | Space or status meaning — accent is "this is the important interactive thing," not "this belongs to X" |
+| `--text-1` .. `--text-4` | Text only, by importance tier (`-1` = primary, `-4` = least important) | Icon fills, borders, backgrounds |
 
-### Default
+### 1.4 Contrast is checked, not assumed
 
-- Theme: `warm`
-- Mode: `dark`
-- On login page (unauthenticated): always `warm` + `dark`, regardless of localStorage
+Every text/background pairing must pass **4.5:1 for body text, 3:1 for large text (≥18px, or ≥14px bold) and for non-text UI elements** (borders that convey meaning, icon-only buttons) per WCAG 2.2 AA. This applies with extra force on glass surfaces (§3), where the "background" a text color is checked against is whatever is likely to sit behind the blur in practice, not just the flattest-case color. `--text-4` was already bumped once for exactly this reason (`DS-06`) — treat any further low-alpha text token as needing the same check before use, not after a complaint.
 
-### Legacy name mapping (handled by `src/lib/theme.ts`)
+### 1.5 Per-space colors: derived from the theme, not hand-picked (resolves `CONF-02`/`CONF-13`, supersedes the earlier fixed-hex approach)
 
-```
-orange, wahala, sunset → warm
-blue, midnight, navy → navy
-forest, meadow → forest
-```
-
-**NEVER use legacy names in new code.** Use `warm` / `navy` / `forest` only.
-
-### Space identity colors (now distinct per space)
-
-| Space | Token (dark) | Token (light) | Hue family |
-|---|---|---|---|
-| Do | `--space-do: #E5B41E` | `#C8900A` | Amber |
-| Think | `--space-think: #EB4233` | `#D43520` | Coral red |
-| Remember | `--space-remember: #F4A261` | `#D97706` | Peach |
-| Explore | `--space-explore: #A76011` | `#8A4E08` | Deep amber |
-
-All four are in the warm family (per Pillar 2). Each space has a distinct hue so sidebar icons, page headers, and badges can be color-coded without breaking the warm aesthetic.
+Per-space colors are **kept**, and are **derived**, not independently hand-picked. Four independently-chosen hex values per theme (the earlier approach) reliably produces colors that feel too similar and don't sit naturally in every theme — this is a well-documented anti-pattern, not bad luck. The correct mechanism (`DS-28`): in OKLCH (perceptually uniform, so a fixed hue rotation reads as an equally-distinct color at any lightness/chroma), each space's color is that theme's own `--accent` hue rotated by a fixed offset, with lightness and chroma held roughly constant across all four. The same offsets are used in every theme — only the base accent hue differs — so the four space colors are guaranteed to (a) look distinct from each other within a theme, by a consistent, deliberate gap, and (b) never look "out of place," because they're mathematically derived from that theme's own primary color rather than picked separately three times. Apply the result everywhere a space's identity should show: that space's `PageHeader` icon, the sidebar's active-nav-item state, and any cross-space reference badge (global Trash, Home summary cards) — a partially-applied color system is what made this feel arbitrary before.
 
 ---
 
-## 3. Color Tokens
+## 2. Typography
 
-### Rule: NEVER hardcode hex in JSX
+### 2.1 What's already correct
 
-**Use `var(--token)` always.** There are currently 87 hardcoded hex colors in JSX — these are debt, being fixed via `DS-02` in the backlog. New code must not add more.
+A full semantic type scale already exists and should be used as-is: `--text-caption` (10px), `--text-meta` (11px), `--text-ui` (12px), `--text-body` (13px, fluid via `clamp(14px, 0.3vw + 13px, 15px)` at the base), `--text-title-sm` through `--text-title-4xl` (15px–32px), `--text-display`. **This is more mature than most projects at this stage — do not introduce a competing scale, and do not reach for an arbitrary `text-[13px]` when one of these already matches.**
 
-### Core tokens (defined in `globals.css`)
+### 2.2 What to add: a scale-to-usage map (currently missing — this is the actual gap)
 
-| Token | Purpose | Warm (dark) |
+Having a scale and knowing which class to reach for in which context are different things, and the second is what's been missing — hence "every component looks different." Use this table, not judgment, when placing type:
+
+| Context | Token | Weight |
 |---|---|---|
-| `--bg-base` | Page background | `#0F0A00` |
-| `--bg-elevated` | Elevated background | `#1A1000` |
-| `--accent` | Primary accent | `#E5B41E` |
-| `--accent-hot` | Hot accent (coral) | `#EB4233` |
-| `--accent-deep` | Deep accent | `#A76011` |
-| `--text-1` | Primary text | `#FFFFFF` |
-| `--text-2` | Secondary text | `rgba(255,255,255,0.72)` |
-| `--text-3` | Tertiary text | `rgba(255,255,255,0.60)` |
-| `--text-4` | Quaternary / decorative | `rgba(255,255,255,0.55)` |
-| `--surface-1` | Surface level 1 | `rgba(255,255,255,0.055)` |
-| `--surface-2` | Surface level 2 | `rgba(255,255,255,0.085)` |
-| `--border-default` | Default border | `rgba(255,255,255,0.10)` |
-| `--border-strong` | Strong border | `rgba(255,255,255,0.18)` |
+| Page greeting ("Good morning...") | `text-title-4xl` (Home only — this size appears nowhere else) | 500 |
+| Page title (space name: "Do", "Think"...) | `text-title-xl` | 500 |
+| Section header inside a page (e.g. a Do column header, a Settings section) | `text-title-md` | 600 |
+| Card / list-row title (task title, person name, thread first line) | `text-title-sm` | 600 |
+| Body copy (task notes, thread body, descriptions) | `text-body` | 400 |
+| Secondary/meta line under a title (timestamp, category, "3 tasks") | `text-meta` | 400 |
+| Button label, input label, tab label | `text-ui` | 500 |
+| Uppercase eyebrow label, badge text | `text-caption`, letter-spacing `0.04em`, uppercase | 600 |
+| Numbers that need tabular alignment (durations, counts, dates in the calendar grid) | `text-mono` (JetBrains Mono) | 400 |
 
-### Status colors
+### 2.3 Responsive type
 
-| Status | Token | Value |
+Do not scale type per-breakpoint with `md:text-lg` chains scattered through components — the base scale is already fluid (`clamp()`) where it needs to be (`--text-base`). Titles above `text-title-lg` may need a mobile-specific step-down (a 32px display greeting is too large on a 360px viewport) — use a `clamp()` addition to the token itself in `globals.css`, not a per-component Tailwind responsive override, so every consumer of that token benefits at once.
+
+### 2.4 `text-wrap`
+
+Add `text-wrap: balance` to every heading-level token (`title-lg` and above) and `text-wrap: pretty` to `--text-body` at the CSS-variable/utility level, not per-component. This is a one-line, zero-risk addition (browser support is universal enough by 2026 to not need a fallback) that measurably improves how ragged lines look on both narrow and wide measures — do it once, globally, and every component inherits it.
+
+---
+
+## 3. Glass and elevation — Glassmorphism 2.0, not flat blur
+
+This is the pillar with the most current, hard-won industry research behind it, and the one this project has visibly struggled with in practice — inconsistent blur, dropdown-clipping bugs, and a claim ("dropdowns, toasts are glass surfaces too") that wasn't actually true in the shipped app. Follow this section exactly; it supersedes any earlier, shallower version of this guidance.
+
+### 3.0 The five rules of this app's specific glass language (distinct from Apple's Liquid Glass)
+
+Apple's Liquid Glass (2025+) is specular and motion-reactive — it refracts and shifts as you move. This app's glass is **tactile and grainy**, closer to what current (2026) practice calls "Glassmorphism 2.0": frosted, textured, calm, not reflective or kinetic. Five concrete rules follow from that distinction:
+
+1. **Alpha-gradient fills, not a flat translucent color.** A flat `rgba(x,x,x,0.1)` reads as washed-out per current guidance — every glass surface's background is a subtle two-stop gradient within the surface's own hue family, not one flat value.
+2. **A grain/noise layer on every glass surface.** A small (64–128px), tileable, low-contrast noise texture, applied as a shared `background-image` at ~3–6% opacity with `mix-blend-mode: overlay` or `soft-light`. Generate this once as a static, cached asset — never compute noise live per-element or per-frame; that reintroduces exactly the performance cost this document's `PERF-04`/`PERF-08` tickets exist to remove.
+3. **A specular-highlight border, not a flat single-color line.** A thin (0.5–1px) gradient border, slightly brighter along the top edge, simulating light catching a physical glass edge.
+4. **Glass parity across every surface that claims it — including dropdowns and toasts, not just cards/panels/modals.** If this file says a component is glass, it must actually render that way; a stated claim that turns out not to match the shipped component (as happened here) is worse than not making the claim at all.
+5. **Pills are explicitly excluded from the glass language.** Status/priority/category pills are flat, saturated, and glowing (see §7's pill spec) — a distinct visual layer that sits *on top of* glass, not a muted extension of it. Do not "fix" a pill by making it glassy; that would be wrong for this system.
+
+### 3.1 What's already correct
+
+The `--elev-*` bundle system (`flat` → `raised` → `floating` → `overlay`) is the right shape: each level bundles a shadow, a blur amount, and a border together so a component picks one elevation, not three independent values. `--blur-elevated: blur(24px)` exists as a named heavy-blur token rather than a magic number.
+
+### 3.2 The barrier-layer rule (new — this is the fix for "text disappears on glass")
+
+Glassmorphism's single most common failure, confirmed across every current source on the topic, is text contrast collapsing because it's checked against a flat mockup background instead of the actual, variable content that ends up behind the blur in production (ambient orbs, other cards, colorful task chips). The fix used by teams that ship this aesthetic at scale is a **barrier layer**: every glass surface has a solid (not transparent) low-opacity fill *underneath* the blur, so contrast is guaranteed by an opaque color, and the blur/transparency on top is purely decorative atmosphere. Concretely: `GlassCard`'s background is never `backdrop-filter` alone — it is `background: var(--surface-1)` (already near-opaque, ~5.5% white per the existing token) *composited under* the blur, not a fully-transparent pane with only a blur filter. Verify this is how `GlassCard.tsx` is actually implemented; if any glass surface in the codebase relies on blur alone with no solid fill beneath it, that surface has a latent contrast bug waiting for the wrong background to sit behind it.
+
+### 3.3 The blur budget (performance + the "visual fog" pitfall)
+
+Current guidance is consistent and specific: **no more than two stacked/nested `backdrop-filter` regions on screen at once**, and never nest one glass surface's blur inside another's render path (a dropdown opening from inside a glass card should not compound blur on blur). Enforce this structurally:
+
+- Use `--elev-overlay-blur` (24px, the heaviest) only for the single topmost surface actually in focus: an open modal, an open sheet. Never on a card sitting behind it.
+- `--elev-floating-blur` (dropdowns, toasts) and `--elev-raised-blur` (cards) are lighter and are the two "at once" the budget allows — a raised card behind a floating dropdown is fine; a raised card behind an overlay-blur modal behind another dropdown is not.
+- `PERF-04`/`PERF-08` (already tracked) exist specifically to bring the current 16 `backdrop-filter` declarations in line with this budget — this section is that ticket's design rationale, not a new requirement.
+
+### 3.4 Where glass is not allowed
+
+Per current NN/g and practitioner guidance, glass is a **focal tool**, not a base material for every surface. Do not put glass on:
+
+- Long-form reading surfaces: a Think thread's body text, an Explore article's saved content. These render on a flat `--surface-1` panel with no blur — glass behind sustained reading measurably hurts legibility and is the wrong metaphor (you don't read through frosted glass).
+- Dense forms with many stacked fields (the full `TaskAddPanel`/`AddPersonPanel` body). The **sheet/panel container** may be glass (it's a floating overlay); the **input fields inside it** are opaque (`Input`/`Textarea`'s own background is `--surface-1` solid, no blur) — glass-on-glass-on-glass is illegible and is exactly the "busy background" failure mode current guidance warns about.
+- Legal/critical text (delete confirmations' body copy) — `ConfirmModal`'s container may be glass; its message text sits on an inner opaque scrim.
+
+### 3.5 Definition and affordance
+
+Every glass surface gets a **1px border** at `--elev-*-border` — this is not optional polish, it's the accessibility mitigation current guidance calls "edge definition": without it, low-vision users and anyone on a busy background cannot tell where an interactive glass surface begins and ends. A subtle hover "shimmer" (a light gradient sweep, already partially present per `animations.ts`) reinforces that a glass surface is interactive, not just decorative — apply it to every clickable `GlassCard`, not selectively.
+
+### 3.6 Reduced transparency and reduced motion — full fallback, not a tweak
+
+`prefers-reduced-transparency: reduce` must swap every `--elev-*-blur` to `blur(0px)` and raise the corresponding surface to a fully opaque color (not just a higher-opacity translucent one) — this is `DS-14`, already ticketed; this section is why: the current guidance explicitly frames this as "detect the setting and swap to solid, high-contrast surfaces," not "reduce the blur amount." `prefers-reduced-motion: reduce` must remove hover-transform distance entirely (already required by `DS-14`) — the shimmer sweep and any parallax on ambient orbs must also respect this, not just card lift.
+
+---
+
+### 3.7 Reference-informed refinements (sidebar, select dropdown, calendar chips)
+
+Three concrete visual references were reviewed directly against this app's own components, not treated as generic mood-board inspiration:
+
+- **Sidebar background** should eventually adopt the same frosted/grain treatment as every other glass surface (§3.0), rather than a flatter fill — a compact vertical icon+label menu over genuine frost, generous radius, even rhythm, is a proven, calm pattern for exactly this kind of navigation.
+- **`Dropdown`'s `select` variant**, once its scroll/type-ahead gap (`BUG-31`) is fixed, should move toward a mode-picker visual: a checkmark on the active row in a simple list, rather than a different indicator style, for consistency with the platform-native pattern this app's own users already know from their phone.
+- **Calendar task chips** (once the calendar rewrite starts) should use a left-border accent color plus an avatar stack, not a fully-filled colored block — calmer and more legible at a glance, and it pairs naturally with `DS-28`'s derived per-space colors, since the border communicates identity without needing to tint the whole chip.
+
+### 3.8 The discipline principle (why `DS-15`/`DS-17` exist, not just what they enforce)
+
+Apps praised for calm, cohesive mobile design (How We Feel is the clearest example) share one trait more than any specific color or motion choice: **restraint.** Every screen carries one primary action and uses color, decoration, or a new card treatment only when it's actually load-bearing — never "because it looked a little empty." This is not a vague aesthetic preference; it's the actual reason this app locks its Tailwind theme (`DS-15`) and requires a manifest lookup before inventing new UI (`DS-17`) — those tickets exist to make restraint the *default*, structurally, rather than something that has to be remembered on every single new screen.
+
+
+
+## 4. Motion
+
+### 4.1 What's already correct
+
+`--dur-fast` (120ms) / `-base` (200ms) / `-slow` (300ms) / `-very-slow` (500ms) and `--ease-spring` / `-smooth` / `-in-out` already exist as named tokens — use them, never a bare `duration: 0.2` or a hand-picked cubic-bezier in a component file. `MotionProvider`'s `LazyMotion features={domMax} strict` + `m.*`-only convention is correct and is on the "do not break" list.
+
+### 4.2 Duration-to-context map
+
+| Motion | Token | Notes |
 |---|---|---|
-| Overdue | `--status-overdue` | `#F87171` |
-| Today | `--status-today` | `#F59E0B` |
-| Upcoming | `--status-upcoming` | `#2DD4BF` |
-| Done | `--status-done` | `#4ADE80` |
-| Danger | `--status-danger` | `#F87171` |
+| Hover feedback (card lift, button press) | `--dur-fast` + `--ease-smooth` | Gate behind `@media (hover: hover) and (pointer: fine)` — touch devices get no hover state, only active/pressed. **Cards and list rows always lift (`translateY(-2px)` to `-3px`), never scale.** A scale transform grows the element's rendered box past its layout box, which clips visibly inside any `overflow-hidden`/`overflow-x-auto` ancestor (a horizontally-scrollable Kanban column, for instance) — this produced a real, reported bug (`DS-30`). A translateY lift repositions without growing the box, so it never has this problem. Every hoverable card/row in the app uses the same lift distance, duration, and easing — this is one system, not a per-component choice. |
+| Dropdown/popover open | `--dur-fast` + `--ease-spring` | Scale-from-trigger, not a generic fade |
+| Sheet/modal open | `--dur-base` + spring physics (stiffness ~300, damping ~28, matching the existing `modalTransition` token in `animations.ts`) | Slide-from-edge on mobile (Sheet), scale-in on desktop (Modal) — these are different motions for different surfaces, do not use one for both |
+| Page transition | `--dur-base`, opacity-only, no y-axis movement | See §6.11 — this is `BUG-23`'s exact requirement |
+| Toast enter/exit | `--dur-fast` in, `--dur-slow` out (linger before dismiss reads calmer than a symmetric fade) | |
+| Ambient orb drift | `--dur-very-slow` and slower, looping | Must pause on `document.visibilitychange` (tab hidden) — `PERF-03` |
 
-### Glass recipe
+### 4.3 Spring over duration-based easing for anything that feels "physical"
 
-| Property | Value |
+Current practitioner consensus (and Framer Motion's own design intent) is that spring physics reads as more natural for anything simulating a physical object (a sheet being dragged, a card settling into place) while duration+cubic-bezier easing is correct for anything simulating a state change (opacity fades, color transitions). Do not use spring physics for opacity-only transitions (it produces an uncanny "overshoot" on a property that has no physical mass) and do not use fixed-duration easing for drag-released motion (it feels stiff). `Sheet.tsx`'s drag-to-dismiss already uses spring correctly per the "do not break" list — use it as the reference implementation when adding a new draggable surface.
+
+---
+
+## 5. Spacing, radius, and layout grid
+
+### 5.1 Spacing
+
+Use Tailwind's default scale (`gap-1` through `gap-8`, `p-*`) — it is already a closed, sufficient set for this project's density. Once `DS-15` (locking the Tailwind theme) lands, arbitrary spacing values will stop compiling; until then, treat any `p-[Npx]`/`gap-[Npx]` you're about to write as a signal to pick the nearest scale step instead.
+
+### 5.2 Radius
+
+`--radius-xs` (4px) through `--radius-2xl` (24px) plus `--radius-full` already exist. Map by component *category*, not by feeling:
+
+| Category | Radius |
 |---|---|
-| Blur (standard) | `blur(20px)` |
-| Blur (heavy) | `blur(24px)` (reduced from 32px per audit) |
-| Border | `0.5px solid var(--border-card)` |
-| Top highlight | `1px var(--border-card-top)` |
-| Shadow (card) | `0 4px 24px rgba(0,0,0,0.35)` |
-| Shadow (card hover) | `0 8px 32px rgba(0,0,0,0.45)` |
-| Shadow (modal) | `0 24px 64px rgba(0,0,0,0.60)` |
+| Badges, chips, pills, avatars | `--radius-full` |
+| Buttons, inputs, dropdown triggers | `--radius-md` (12px) |
+| Cards, list rows | `--radius-lg` (16px) |
+| Sheets, modals, large panels | `--radius-xl` (20px) — matches the existing `--sheet-radius` token |
+| Toasts | `--radius-lg` |
 
-**WORKING GLASSMORPHISM RULE (do not change):**
-- **Backdrop overlay:** `bg-black/60` ONLY. NO `backdrop-filter`. NO blur class. NO Tailwind `backdrop-blur-*`.
-- **Modal panel:** inline `style={{ backdropFilter: 'blur(48px)', WebkitBackdropFilter: 'blur(48px)' }}` on the panel element itself.
-- This is NOT negotiable. CSS classes alone do not work due to compositing context issues. The inline style is the ONLY approach that works.
-- `--surface-modal` opacity must be 0.50 (50%) so the blur is visible.
+### 5.3 Layout grid
+
+No component should hand-roll a max-width/centering pattern. Every page body is constrained the same way: a single content column, `max-width` set once at the page-shell level (`PageHeader`'s parent container), never per-section. Multi-column layouts (Do's Board view, People's grid) use CSS Grid with `auto-fit`/`minmax()` so column count is a function of available width, not a hardcoded breakpoint list — this is what lets the same component degrade gracefully from a 360px phone to a 1536px monitor without a wall of `sm:`/`md:`/`lg:`/`xl:`/`2xl:` overrides on every element.
 
 ---
 
-## 4. Typography
+## 6. Every surface, corner to corner
 
-### Font families
+This is the section that was missing entirely before this pass, and it is the direct fix for "every page and component feels like its own thing." Every space/page in the app is specified here: its layout shape, its states (loading/empty/error/populated), and its responsive behavior. A page not matching its entry here is out of spec, full stop — this not being checked automatically yet is exactly what `DS-18`'s design-system-check pass is for.
 
-| Token | Font | Usage |
+### 6.1 Global page shell (applies to every authenticated page)
+
+- `PageHeader` at the top: space icon (colored via that space's `--space-*` token) + `text-title-xl` space name + optional `text-meta` description + a right-aligned actions slot (primary "Add" button lives here, always).
+- Below the header: the page's content region, in a single scrollable column on mobile, optionally multi-column on desktop per §5.3.
+- Every page's **primary creation action** (the button in `PageHeader`'s actions slot) and every page's **empty-state creation action** (`EmptyState`'s `action` prop) call the exact same handler — this is `BUG-04`/`BUG-24`'s permanent rule, not a one-time fix. If a new page is added, its empty state's button target is checked against its header button target as part of that page's own PR, not as an afterthought ticket later.
+- Loading state: `Skeleton` rows matching the shape of the content about to appear (a task-list skeleton looks like task rows, not a generic spinner) — never a bare `LoadingSpinner` as the *only* loading treatment for a list-shaped page; `LoadingSpinner` is for actions (a button's in-flight state), not for page-level content loading.
+
+### 6.2 Home (`/`)
+
+- Greeting (`text-title-4xl`, time-of-day aware) at the top — the one place this size is used.
+- A single-column stack on mobile; a 2-column layout on `lg:` and above (today's tasks + upcoming meetings on one side, recent threads + stale explores on the other) using CSS Grid, not fixed pixel widths.
+- Each section ("Today", "Recent Threads", "Stale Explores") is its own `GlassCard` at `raised` elevation — Home is the one page allowed to show several glass cards side-by-side, because they're short, scannable summaries, not the long-form content §3.4 restricts.
+- Empty sections render `EmptyState` at a **compact** size (icon + one line, no illustration) — Home's whole point is a fast overview; a full-height empty-state illustration in one of four stacked sections is disproportionate.
+
+### 6.3 Inbox (`/inbox`)
+
+- A flat list of `InboxItemCard`s, each with a "Route it" action opening a `Popover` (portal-based, per `BUG-03`/`BUG-27` — this is the exact surface that regressed once; any change here ships with the regression-guard screenshot `MD` §14.5 already requires).
+- Swipe-left-to-route on mobile is the touch equivalent of the desktop dropdown — both must offer the identical five destinations in the identical order.
+- Empty state ("Inbox Zero") is the **one documented exception** where the empty-state action correctly opens Quick Capture (`CaptureModal`) rather than a space-specific panel, because Inbox's entire purpose is to receive arbitrary captures — see `BUG-24`.
+
+### 6.4 Do (`/do`) — Board / Today / Calendar
+
+- View switcher (`SegmentedControl`, not three separate buttons) selects Board / Today / Calendar; persist the choice per `INT-02`/`TOOL-04` (URL query param, so it's shareable and survives back-navigation, with `user_settings` as the cross-device fallback default).
+- "Show Archive" is a **tab** (Active / Archive / Trash), not a standalone toggle button — this is now settled (`DS-24`): Think and Explore both already converged on the tab pattern independently, and Do's separate toggle-button treatment is the one that needs to change to match, not the reverse.
+- **Board view:** columns are Overdue / Today / Upcoming / Someday, each tinted by its `--status-*` token (not a space token — see §1.3), laid out with CSS Grid `auto-fit` so column count degrades from 4-across on desktop to a horizontally-scrollable single-column-at-a-time carousel below `md:`, with visible peek of the next column (never a hard-cut single column with no affordance that more exists).
+- **Today view:** single flat list, grouped by time-of-day if the task has a time, otherwise an "Anytime" section at the bottom.
+- **Calendar view:** see §6.4.1 — this is the page most in need of the rebuild already tracked under `BUG-05`/`CONF-08`.
+- Every task row (`TaskCard`) is swipeable on touch (complete right, delete left, asymmetric thresholds per `MOB-03`) and has visible inline actions on hover for pointer input — both paths must produce the identical result (same status transition, same undo toast).
+
+#### 6.4.1 Calendar sub-spec (once `CONF-08` is resolved in favor of a rebuild)
+
+- **Mobile default is Day view**, not a compressed Week view — a single scrollable column of hour slots, current-time indicator, tap-to-create at any slot opening `TaskAddPanel` with that exact date/time pre-filled (never routed through Quick Capture's NLP parser — this was `BUG-05`'s specific, confirmed defect).
+- **Week/Month are desktop-first views**, built on CSS Grid so header cells and body cells share the same grid definition and cannot desync on horizontal scroll (this is the structural reason a rebuild was recommended over patching the old flexbox layout).
+- Every interactive cell and every task chip is keyboard-reachable (`tabIndex`, arrow-key navigation between adjacent slots) — this was previously entirely absent.
+
+### 6.5 Think (`/think`)
+
+- A list of thread previews (`text-title-sm` first line + `text-meta` timestamp), each opening a full thread view (`/think/[id]`) with a `Textarea`-based composer at the bottom, sticky above the mobile keyboard (`useVisualViewport`, matching `Sheet`'s existing keyboard-avoidance pattern).
+- Thread body content renders on flat `--surface-1`, no glass, no blur (§3.4) — this is sustained reading, not a card.
+- Search uses `SearchInput` (currently built, zero adoptions — `DS-05`/`TOOL` gap) with debounced filtering, not a full-page reload.
+
+### 6.6 Remember — People (`/remember/people`) and Locations (`/remember/locations`)
+
+- People renders as a responsive card grid (`Avatar` + name + `text-meta` last-contact date), `auto-fit`/`minmax(180px, 1fr)` so it's 2-across on a phone and up to 5–6 across on a wide desktop with zero breakpoint-specific column-count classes.
+- Locations renders as a list (address-first content doesn't benefit from a grid the way an avatar-first list does) with a map-pin icon per row, tinted `--space-remember`.
+- Both share one add panel pattern (`AddPersonPanel` / `LocationAddPanel`, both `Sheet`-based) and one delete/restore flow (`item-lifecycle.ts`'s `moveItemToTrashPatch`/`restoreItemPatch` — per `BUG-08`'s resolution, People and Locations get the same soft-delete/undo treatment as every other entity, not the historical hard-delete-only behavior).
+
+### 6.7 Explore (`/explore`)
+
+- A single-column reading queue, each item a compact card (thumbnail if present, title, source, saved-date) — **not** glass (§3.4; this is a reading list, treat it like Think's thread body).
+- The Type field (currently a native `<input>` + `<datalist>`, `BUG-25`/`T0-13`) becomes a `Dropdown variant="select"` — this single change is the concrete instance of the broader rule "never use `<datalist>` or native `<select>` anywhere in this app," which belongs in this file precisely so it isn't rediscovered per-component.
+- 30-day auto-archive is a background/data behavior, not a visual one — the visual difference between "active" and "archived-by-age" Explore items is a `text-meta` label ("Archived · 32 days ago"), not a different card treatment.
+
+### 6.8 Trash (`/trash`)
+
+- One flat list across all five entity types (`items`, `people`, `threads`, `explores`, `locations`), each row showing which space it came from via a small `Badge` in that space's `--space-*` color — this is the one place cross-space color-coding earns its keep, since the whole point of this page is "what did I delete, from where."
+- Two actions per row: Restore, Delete permanently (routes through `ConfirmModal` — a second, harder confirmation for a second, harder-to-reverse action).
+- Empty state: "Nothing in trash" — genuinely the one page in the app where an empty state is unambiguously good news; its copy and icon should read that way (not the same "you're all caught up" tone used for a cleared task list, which is a *different* feeling — a full Do list caught up is an accomplishment, an empty trash is just neutral housekeeping).
+
+### 6.9 Settings
+
+- A single `Sheet`/modal (not a routed page — this remains the settled decision per the skip list; do not build `/settings` as a route).
+- **Time-based settings are two concepts, not four (resolves `CONF-14`):** a morning ritual time and an evening ritual time, matching `rituals.ts`'s own two-ritual model exactly — the settings UI should mirror what the code actually reasons about. Do not expose a separate "Quiet Hours" setting; that's a notification/do-not-disturb concept, and the domain's own reference point for this app's ritual system (Sunsama) doesn't have one either — it belongs to the OS's notification settings if it's ever needed at all, not to this app.
+- **Timezone is auto-detected, not a primary setting:** default from `Intl.DateTimeFormat().resolvedOptions().timeZone` silently; only surface a manual override inside an "Advanced" section for the rare case someone needs it, not alongside the two ritual times.
+- Sectioned with `text-title-md` section headers (Account, Appearance, Notifications, Data), each section a flat list of rows (label left, control right — toggle, `Dropdown`, or button), not individually-cased glass cards per row (that's over-fragmenting a single coherent surface into visual noise).
+- Theme picker shows the three themes (Warm/Navy/Forest) as swatches previewing each theme's actual `--accent`/`--bg-base` pair, not a text-only radio list — a color choice should be shown, not described.
+- Must scroll correctly regardless of which page it's opened from (`BUG-11`/`T0-6`, confirmed fixed via `useBodyScrollLock` + Lenis's `data-overlay-open` check — this is now a "do not break" invariant, not an open bug).
+
+### 6.10 Onboarding and Login
+
+- Both are **public routes**: theme is always the literal default (`warm`/`dark`), never read from `localStorage` (`BUG-15`, confirmed fixed) — this file exists partly so a future onboarding redesign doesn't reopen that exact bug by adding a new place that reads a stored preference before authentication.
+- Onboarding's ambient background uses the same orb/token system as the in-app `AmbientBackground`, not a separately hardcoded palette (`BUG-21`) — one atmosphere system, two mount points, not two systems.
+- Login's card is the one place a glass surface sits directly on the raw ambient background with no other content behind it — this is exactly the "simple background, glass only on the focal element" case current guidance holds up as glass done right, so this screen is closer to the ideal than most others and should be treated as a reference example when reviewing other pages' glass usage.
+
+### 6.11 Page-to-page transitions
+
+Per `BUG-23`: one shared, opacity-only fade (`--dur-base`, no y-axis movement) applied uniformly via a single shared transition wrapper for the `(app)` route group — not a per-page bespoke animation, and not zero animation on some pages and a fade on others.
+
+---
+
+## 7. Components — canonical reference
+
+For each: what it's for, its variants, and the one rule most likely to be violated. Full prop tables live in `COMPONENT_MANIFEST.md`; this section is the *why*, that file is the *what*.
+
+**Button** — every clickable action in the app. Variants: `primary` (one per screen, max), `secondary`, `ghost`, `destructive`, `outline`, `link`. Sizes include a dedicated `icon`/`icon-sm`/`icon-lg` set whose *hit area* is 44×44px minimum even when the visual glyph is smaller (per `--touch-target` token, per `DS-09`/WCAG 2.2's target-size success criterion) — pad the hit area, don't shrink the requirement.
+
+**Input / Textarea / SearchInput** — every text entry. Always paired with a visible `label` (not a placeholder-as-label — placeholder text disappears the moment a user starts typing, which is a documented WCAG failure mode for anyone with short-term memory or attention differences). Error state shows inline text wired to `aria-invalid`/`aria-describedby`, not a toast-only error (`A11Y-06`).
+
+**GlassCard** — see §3 in full. Two variants only: `list` (flat, no blur — for rows in a scrollable list, where per-row blur would multiply straight past the §3.3 budget) and `elevated` (blur, for standalone cards, modals, the sidebar). Do not add a third variant without checking whether it's actually one of these two with different padding.
+
+**Dropdown / Popover** — every menu, select, and combobox. Portal-based (`createPortal`), not optional (`BUG-03`/`BUG-27`, "do not break" list). Keyboard: arrow keys move selection, `Enter` commits, `Escape` closes and returns focus to the trigger.
+
+**Sheet** — every mobile-width modal-like surface. Drag-to-dismiss from a dedicated handle (not the whole sheet body, which would fight with a focused input's own touch handling), `useVisualViewport`-aware so the keyboard never covers the active field, snap points (half/full) for content that has a natural "peek" state (`MOB-03`/`T3`).
+
+**ConfirmModal** — every destructive or hard-to-reverse action. Never `window.confirm`.
+
+**EmptyState** — every zero-content condition, phrased for that specific space (§6's per-page notes on tone — "all caught up" reads differently from "nothing in trash").
+
+**PageHeader** — every page's top region, per §6.1.
+
+**Badge / Avatar / Toast** — status/identity tagging, person representation (with a guaranteed non-empty fallback — `BUG-10`'s permanent fix), and the one undo/notification mechanism respectively.
+
+---
+
+## 8. Responsive and mobile system
+
+This section exists because "mobile responsive" was named directly as a priority and because current research is explicit that treating mobile as a shrunk desktop layout — rather than the primary designed experience — is the most common way a responsive app still feels broken on a phone even when it "technically" resizes.
+
+### 8.1 Breakpoints
+
+Tailwind defaults, used mobile-first (unprefixed = phone, `md:` = the point the sidebar switches from `BottomNav` to the hover-rail, `lg:` = desktop multi-column layouts activate per §6's per-page specs):
+
+| Prefix | Min-width | What changes here |
 |---|---|---|
-| `--font-sans` | Inter | All body text, headings, UI |
-| `--font-mono` | JetBrains Mono | Numbers, timestamps, code, keyboard hints |
+| (none) | 0 | `BottomNav`, single-column everything, Calendar defaults to Day view |
+| `sm:` | 640px | Minor spacing increases only — this step rarely changes structure |
+| `md:` | 768px | Sidebar (hover-rail) replaces `BottomNav`; Do's Board view gains its first extra visible column |
+| `lg:` | 1024px | Home's two-column layout activates; Do's Board reaches full 4-column width |
+| `xl:` / `2xl:` | 1280px / 1536px | Content max-width caps, no new structural changes |
 
-### Type scale (use semantic classes, NEVER arbitrary `text-[13px]`)
+### 8.2 Touch targets and thumb reach
 
-| Class | Size | Weight | Line height | Usage |
-|---|---|---|---|---|
-| `text-display` | 48px | 700 | 1.2 | Hero text (rare) |
-| `text-page-greeting` | 26px | 500 | 1.2 | Page greetings |
-| `text-page-title` | 22px | 500 | 1.2 | Page titles |
-| `text-section-title` | 18px | 600 | 1.35 | Section headers |
-| `text-card-title` | 14px | 600 | 1.35 | Card titles |
-| `text-body` | 13px | 400 | 1.6 | Body text |
-| `text-body-small` | 12px | 400 | 1.5 | Secondary body |
-| `text-label` | 10px | 600 | 1.0 | Uppercase labels (tracking: 0.1em) |
-| `text-mono` | 14px | 400 | — | Numbers, timestamps |
+Every interactive control is **44×44px minimum** hit area (`--touch-target` token — already exists, apply it everywhere it currently isn't, per `A11Y-01`/`DS-09`). On mobile layouts specifically, primary actions (the capture button, a view's main "Add" action) sit in the **bottom two-thirds of the viewport** — the zone reachable by a thumb without a grip shift — which is already satisfied by `BottomNav`'s placement and should be checked for any new primary action before it ships at the top of a mobile screen.
 
-### Fluid typography (progressive enhancement)
+### 8.3 Safe areas
 
-For new responsive text, use `clamp()` for fluid scaling:
-```css
-font-size: clamp(13px, 0.25vw + 12.5px, 15px);
-```
+`viewport-fit: cover` plus `env(safe-area-inset-*)` on every fixed-position edge element (`BottomNav`'s `pb-safe`, a full-screen `Sheet`'s top inset) — already partially applied; extend to any new fixed-position element rather than reintroducing the un-inset pattern.
 
-### Mobile input zoom prevention (iOS Safari)
+### 8.4 Viewport height
 
-**All inputs on mobile MUST be at least 16px font-size** or iOS Safari auto-zooms on focus:
-```css
-@media (max-width: 767px) {
-  input, textarea, select { font-size: max(16px, var(--text-md)); }
-}
-```
-(This is already in `globals.css` — do not remove it.)
+`100dvh` (dynamic viewport height), never bare `100vh`, on every full-height container — `100vh` on mobile Safari/Chrome includes space the browser chrome may or may not be occupying, which is the direct mechanism behind "the sheet is taller than the screen" bugs. `100svh` (smallest viewport height) for anything that must never be covered even in the worst-case browser-chrome state (a persistent bottom action bar).
+
+### 8.5 Gesture parity, not gesture exclusivity
+
+Every gesture-driven interaction (swipe-to-complete/delete on `TaskCard`, drag-to-dismiss on `Sheet`) has a pointer/keyboard equivalent that produces the *identical* result — a mouse user or a keyboard user is never blocked from an action only a touch user can reach. This is both an accessibility requirement (WCAG operability) and a plain functional one, since this app is also used on desktop.
+
+### 8.6 Hover is an enhancement, not a dependency
+
+Nothing critical is revealed only on `:hover` (inline row actions that only appear on hover must also have a persistent, tappable affordance — typically the row itself opening a detail view, or a persistent low-emphasis icon rather than one that only renders on pointer-hover). Gate all hover-only visual treatment behind `@media (hover: hover) and (pointer: fine)` so touch devices don't inherit a half-working hover state that never resolves.
+
+### 8.7 One-handed layout bias
+
+Mobile-first here means literally starting each new page's layout at 360–375px width and adding structure as width increases (per §8.1), not designing at desktop width and letting Tailwind's responsive prefixes strip things away — the second approach is exactly how a "technically responsive" page still ends up feeling like a shrunk desktop site, which current guidance calls out by name as the most common mobile-first failure.
 
 ---
 
-## 5. Spacing & Layout
+## 9. Accessibility baseline (cross-reference, not a duplicate)
 
-### Spacing scale (Tailwind default)
-
-| Token | Value | Usage |
-|---|---|---|
-| `gap-1` / `p-1` | 4px | Tight gaps (icon + label) |
-| `gap-2` / `p-2` | 8px | Default gap |
-| `gap-3` / `p-3` | 12px | Section gaps |
-| `gap-4` / `p-4` | 16px | Card padding (standard) |
-| `gap-6` / `p-6` | 24px | Large card padding |
-| `gap-8` | 32px | Major section breaks |
-
-### Radius scale
-
-| Token | Value | Usage |
-|---|---|---|
-| `--radius-xs` | 4px | Small elements (badges, chips) |
-| `--radius-sm` | 8px | Inputs, small buttons |
-| `--radius-md` | 12px | Dropdowns, medium buttons |
-| `--radius-lg` | 16px | Cards, panels |
-| `--radius-xl` | 20px | Modals, large surfaces |
-| `--radius-2xl` | 24px | Sheets (mobile) |
-| `--radius-full` | 9999px | Pills, circles |
-
-### Breakpoints (Tailwind default, mobile-first)
-
-| Prefix | Min width | Target | Layout |
-|---|---|---|---|
-| (none) | 0px | Mobile portrait | Bottom nav, single column, sheets |
-| `sm:` | 640px | Mobile landscape / small tablet | Bottom nav, single column |
-| `md:` | 768px | Tablet | Sidebar appears (hover rail), bottom nav hidden |
-| `lg:` | 1024px | Desktop | Sidebar, multi-column, full features |
-| `xl:` | 1280px | Large desktop | Max content width cap |
-| `2xl:` | 1536px | Extra large | Max content width cap |
-
-### Content width
-
-- Max content width: `max-w-5xl` (1024px) for most pages
-- Max content width for detail pages: `max-w-2xl` (672px)
-- Sidebar width: 80px collapsed, 248px expanded
-
-### Viewport height
-
-**Use `100dvh` (dynamic viewport height), NEVER `100vh`.** iOS Safari's `100vh` includes the URL bar, causing content to be clipped. `100dvh` adjusts dynamically.
-
-```css
-/* Correct */
-height: 100dvh;
-min-height: 100dvh;
-
-/* Wrong — clips on iOS Safari */
-height: 100vh;
-```
-
-### Safe area insets
-
-`viewport-fit: cover` is set in the viewport meta. Use these for notch / home indicator:
-
-```css
-padding-top: env(safe-area-inset-top);
-padding-bottom: env(safe-area-inset-bottom);
-```
-
-The bottom nav uses `pb-safe` class. The MobileTopBar uses inline `style={{ paddingTop: 'env(safe-area-inset-top)' }}`.
+Full tickets live in `EXECUTION_SPEC.md`'s `A11Y-*` series. The design-relevant summary: 4.5:1 text contrast everywhere (§1.4), 44px touch targets everywhere (§8.2), every icon-only control has an `aria-label`, every dialog traps and returns focus, every realtime UI change has a corresponding `aria-live="polite"` announcement, and color is never the only signal (a status pill carries an icon as well as a color, per `A11Y-09`).
 
 ---
 
-## 6. Component Patterns (THE CANONICAL LIST)
-
-> **When creating a new UI element, use these patterns. If a pattern isn't listed here, STOP and ask.**
-
-### Button
-
-```tsx
-import { Button } from "@/components/ui/button";
-
-<Button variant="primary" size="md">Save</Button>
-<Button variant="secondary" size="sm">Cancel</Button>
-<Button variant="ghost" size="icon"><Plus size={20} strokeWidth={1.5} /></Button>
-<Button variant="destructive" size="md">Delete</Button>
-```
-
-**Variants:** `primary` | `secondary` | `ghost` | `destructive` | `outline` | `link`
-**Sizes:** `xs` | `sm` | `md` | `lg` | `icon` (44×44px) | `icon-sm` | `icon-lg`
-
-### UiIcon
-
-```tsx
-import { Icon as UiIcon } from "@/components/ui/Icon";
-import { Plus } from "lucide-react";
-
-<UiIcon icon={Plus} size={20} />
-<UiIcon icon={Plus} size={20} variant="solid" />
-```
-
-**Usage:** Always use `UiIcon` when you need an icon from `lucide-react`. Do not import and render the icon directly. `UiIcon` enforces `strokeWidth={1.5}` for default, and `strokeWidth={2}` for the `solid` variant (intended for filled circular buttons and primary CTAs).
-
-**Rules:**
-- NEVER use raw `<button>` with custom classes in feature components
-- NEVER use `.btn-primary`, `.btn-secondary` etc. (deleted)
-- Icon-only buttons MUST be `size="icon"` (44×44px minimum per WCAG 2.5.5)
-- `strokeWidth={1.5}` for icons inside buttons, `strokeWidth={2}` only inside filled circular buttons
-
-### Input
-
-```tsx
-import { Input } from "@/components/ui/Input";
-
-<Input
-  label="Title"
-  value={title}
-  onChange={(e) => setTitle(e.target.value)}
-  placeholder="Enter title..."
-  error={errors.title?.message}
-  inputMode="text"        // always set inputMode
-  autoComplete="off"      // set appropriately
-  autoCapitalize="sentences"
-/>
-```
-
-**Rules:**
-- NEVER use raw `<input>` in feature components. Use `<Input>`.
-- ALWAYS set `inputMode` (`text` | `email` | `search` | `tel` | `numeric`)
-- ALWAYS set `autoComplete` (`off` | `email` | `name` | `current-password`)
-- ALWAYS set `autoCapitalize` (`sentences` | `words` | `none`)
-- Font-size is 16px on mobile (prevents iOS zoom — handled by CSS)
-
-### Textarea
-
-```tsx
-import { Textarea } from "@/components/ui/Textarea";
-
-<Textarea
-  label="Notes"
-  value={notes}
-  onChange={(e) => setNotes(e.target.value)}
-  minRows={3}
-  placeholder="Enter notes..."
-/>
-```
-
-**Rules:**
-- NEVER use raw `<textarea>` or `TextareaAutosize` directly. Use `<Textarea>`.
-- `<Textarea>` wraps `TextareaAutosize` internally + adds `field-sizing: content` as progressive enhancement
-
-### SearchInput
-
-```tsx
-import { SearchInput } from "@/components/ui/SearchInput";
-
-<SearchInput
-  value={query}
-  onChange={setQuery}
-  placeholder="Search threads..."
-/>
-```
-
-**Rules:**
-- Use for every search box in the app
-- Has built-in search icon, clear button, and `inputMode="search"`
-
-### GlassCard (Surface)
-
-```tsx
-import { GlassCard } from "@/components/ui/GlassCard";
-
-<GlassCard variant="list" className="p-4">
-  Content here
-</GlassCard>
-```
-
-**Variants:**
-- `list` — no blur, for list items (TaskCard, ExploreItem, thread rows). Uses `.glass-card` class.
-- `elevated` — blur(24px), for modals, sidebar, hero. Uses `.glass-card-elevated` class.
-
-**Rules:**
-- NEVER use raw `glass-card` or `glass-panel` CSS classes in JSX. Use `<GlassCard>`.
-- Default padding is `p-6` — override with `className="p-4"` for tighter
-
-### Dropdown
-
-```tsx
-import { Dropdown } from "@/components/ui/Dropdown";
-
-<Dropdown
-  value={selected}
-  onChange={setSelected}
-  options={[{ value: "a", label: "A" }, { value: "b", label: "B" }]}
-  variant="select"  // or "chip" for compact pill trigger
-/>
-```
-
-**Rules:**
-- NEVER use native `<select>`. Always use `<Dropdown>`.
-- NEVER use `<datalist>`. Always use `<Dropdown>` or a combobox pattern.
-- Uses `createPortal` — renders to `document.body`, cannot be clipped by `overflow: hidden`
-- Do NOT replace portal with z-index fix (invariant #3)
-
-### Sheet (mobile modal / bottom sheet)
-
-```tsx
-import { Sheet } from "@/components/ui/Sheet";
-
-<Sheet isOpen={open} onClose={onClose} title="Edit Task">
-  Content here
-</Sheet>
-```
-
-**What Sheet handles:**
-- Drag-to-dismiss (swipe down >100px or velocity >500px/s)
-- Focus trapping (`useDialogFocus`)
-- Body scroll lock (`useBodyScrollLock` — ref-counted, Lenis-aware)
-- Keyboard avoidance (`useVisualViewport` — sheet slides above soft keyboard)
-- Backdrop tap to dismiss
-- Escape key to dismiss
-- Mobile: bottom sheet (rounded top, drag handle)
-- Desktop: centered modal (rounded all sides)
-
-**Rules:**
-- NEVER build a custom modal. Use `<Sheet>` or `<ConfirmModal>`.
-- On mobile, sheets are bottom-anchored (per NN/g bottom sheet guidelines)
-- Drag handle is 48×4px, centered, semi-transparent
-
-### ConfirmModal
-
-```tsx
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
-
-<ConfirmModal
-  isOpen={deleteOpen}
-  onClose={() => setDeleteOpen(false)}
-  onConfirm={handleDelete}
-  title="Delete this item?"
-  description="This cannot be undone."
-  confirmLabel="Delete"
-  confirmDestructive
-  inputRequired="task name"  // optional: require typed confirmation
-/>
-```
-
-**Rules:**
-- NEVER use `window.confirm()`, `window.alert()`, or `window.prompt()`. Always use `<ConfirmModal>`.
-- For destructive actions (delete person, delete account), use `inputRequired` to require typed confirmation
-
-### EmptyState
-
-```tsx
-import { EmptyState } from "@/components/ui/EmptyState";
-
-<EmptyState
-  icon={Wind}
-  title="You're all caught up"
-  description="No tasks due today. Take a well-deserved break."
-  action={{ label: "Add Task", onClick: () => setIsPanelOpen(true) }}
-/>
-```
-
-**Rules:**
-- NEVER use bare "Nothing here" text. Use `<EmptyState>`.
-- The `action.onClick` must open the SAME panel as that space's header "Add" button (not Quick Capture, except in Inbox where Quick Capture IS correct)
-- Every empty state must have: icon + title + description + action
-
-### PageHeader
-
-```tsx
-import { PageHeader } from "@/components/ui/PageHeader";
-
-<PageHeader
-  title="Do"
-  actions={<Button variant="secondary"><Plus size={16} /> Add task</Button>}
-/>
-```
-
-**Rules:**
-- Every space page starts with `<PageHeader>`
-- Contains the space name, optional action buttons, optional view toggle
-
-### Icons (Lucide)
-
-```tsx
-import { Plus, Check, Search } from "lucide-react";
-
-<Plus size={20} strokeWidth={1.5} />
-```
-
-**Rules:**
-- `strokeWidth={1.5}` for ALL UI icons (55 usages currently — correct)
-- `strokeWidth={2}` ONLY inside filled circular buttons (capture button, primary CTAs)
-- NEVER use `strokeWidth={0}`, `{3}`, `{1.8}`, `{2.5}`, `{1.7}` (inconsistency debt — being fixed via DS-06)
-- Size: 20px for sidebar/nav, 16px for inline/card, 14px for compact UI
-
-### Avatar
-
-```tsx
-import { Avatar } from "@/components/ui/Avatar";
-
-<Avatar name="John Doe" color="#E5B41E" size="sm" />
-```
-
-**Sizes:** `sm` (32px) | `md` (40px) | `lg` (56px)
-**Rules:** Always provide a fallback (initials). Never render empty.
-
-### Badge
-
-```tsx
-import { Badge } from "@/components/ui/Badge";
-
-<Badge style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}44` }}>
-  3
-</Badge>
-```
-
-### Skeleton (loading state)
-
-```tsx
-import { PageSkeleton } from "@/components/ui/Skeleton";
-
-{loading ? <PageSkeleton count={5} type="task" /> : <TaskList />}
-```
-
-**Rules:**
-- NEVER use a bare spinner for page-level loading. Use `<Skeleton>` / `<PageSkeleton>`.
-- Shimmer animation is built into the `.skeleton-shimmer` CSS class
-
-### Toast (sonner)
-
-```tsx
-import { toast } from "sonner";
-
-toast.success("Task completed");
-toast.error("Failed to save", { description: error.message });
-toast.success("Task archived", {
-  action: { label: "Undo", onClick: restoreTask },
-  duration: 5000,
-});
-```
-
-**Rules:**
-- EVERY Supabase mutation must show a toast on success AND error
-- Undo toasts use `duration: 5000` (5 seconds, with drain animation)
-- NEVER stack more than 3 toasts
-
----
-
-## 7. Motion System
-
-### Principles (from Disney 12 + Motion docs)
-
-1. **Never block** — optimistic UI + rollback. Never show a spinner for a mutation that should be instant.
-2. **Slow in / slow out** — never use `linear` easing for organic motion. Use springs or cubic-beziers.
-3. **Reduced motion is not no motion** — it's no distance and no easing. Opacity crossfades still communicate change. Remove `transform` distance, not just `transition-duration`.
-4. **Don't animate colors** — expensive. Animate `opacity` or `background-blend` instead.
-5. **Don't use bouncy springs on destructive actions** — a delete should feel decisive, not playful.
-
-### Motion tokens
-
-| Token | Duration | Easing | Usage |
-|---|---|---|---|
-| `--dur-instant` | 80ms | linear | Micro-interactions (button press) |
-| `--dur-fast` | 140ms | ease-out | Exit transitions, dropdown close |
-| `--dur-base` | 220ms | cubic-bezier(0.25, 0.46, 0.45, 0.94) | Standard transitions, page enter |
-| `--dur-slow` | 300ms | cubic-bezier(0.25, 0.46, 0.45, 0.94) | Sheet open, modal enter |
-| `--dur-hero` | 480ms | ease-out | Hero animations (rare) |
-
-### Spring presets
-
-| Preset | Stiffness | Damping | Usage |
-|---|---|---|---|
-| Sheet mobile | 320 | 30 | Sheet enter/exit (per audit recommendation) |
-| Card hover | 400 | 25 | FAB tap, card press |
-| Swipe snap | 500 | 40 | TaskCard swipe snap-back |
-| Tooltip | 300 | 28 | Dropdown enter |
-
-### Per-element motion catalogue
-
-| Element | Enter | Exit | Notes |
-|---|---|---|---|
-| Page transition | `opacity: 0→1, 220ms` | `opacity: 1→0, 140ms` | NO y-axis movement (prevents layout shift) |
-| Modal/Sheet (mobile) | `y: 100%→0, spring(320,30)` | `y: 0→100%, 200ms` | Bottom-anchored |
-| Modal/Sheet (desktop) | `opacity+scale: 0.97→1, spring(300,28)` | `opacity+scale: 1→0.97, 140ms` | Centered |
-| Dropdown | `opacity+scaleY: 0.96→1, 140ms` | `opacity+scaleY: 1→0.96, 100ms` | Transform origin: top |
-| Toast | `opacity+y: 8→0, spring(300,28)` | `opacity+y: 0→16, 140ms` | |
-| Task complete | `scale: [1, 1.2, 1] + checkmark draw, 240ms` | `opacity+scale: 1→0.95, 300ms` | Check-draw CSS keyframe |
-| New item | `opacity+y: -12→0+scale: 0.97→1, 220ms` | `opacity+x: -20+blur, 300ms` | Highlight glow for 400ms |
-
-### Rules
-
-- Use `m.*` not `motion.*` (LazyMotion strict mode)
-- All motion must be inside `<MotionProvider>`
-- Wrap hover transforms in `@media (hover: hover) and (pointer: fine)` — disable on touch
-- Honor `prefers-reduced-motion: reduce` — remove distance, not just duration
-- Honor `prefers-reduced-transparency: reduce` — disable blur, use opaque fallbacks
-
-### Check-off animation (Things3 signature)
-
-The highest-impact beauty win. CSS keyframe `check-draw` already exists in `globals.css`. When `isCompleting` becomes true:
-1. Checkbox fills with `var(--space-do)` (240ms)
-2. Checkmark SVG stroke draws in (240ms, via `stroke-dasharray` animation)
-3. Task title gets strike-through (200ms, starting at 100ms)
-4. Card scales to 0.97 + fades to 0.6 opacity (300ms, starting at 200ms)
-5. Card slides out left + collapses (300ms, starting at 400ms)
-
----
-
-## 8. Mobile-Specific Patterns
-
-### Bottom navigation (mobile only)
-
-5 items: Home, Do, Capture (center FAB), Think, Explore.
-- `md:hidden` — only shows on mobile
-- `min-h-[56px]` per item, `min-w-[44px]` (WCAG 2.5.5)
-- `backdrop-blur-md` (12px, NOT `2xl` — performance on Android)
-- `pb-safe` for safe area inset
-- Center capture button: 48px circle, elevated `-mt-6`, accent gradient
-
-### Sidebar (desktop only)
-
-- `hidden md:flex` — hidden on mobile
-- Collapsed: `w-[80px]` (icon rail)
-- Expanded: `hover:w-[248px]` / `focus-within:w-[248px]`
-- Labels: `opacity-0 max-w-0` by default, animate to `opacity-100 max-w-[160px]` on hover
-- `transition-[width] duration-200` (acceptable — only fires on mouseenter/leave)
-- Profile row at bottom: Avatar + name + email, 60px tall
-
-### Sheet on mobile (per NN/g bottom sheet guidelines)
-
-- Bottom-anchored, `rounded-t-[24px]`
-- Drag handle: 48×4px, centered, `bg-[var(--border-strong)] opacity-50`
-- Max height: `90vh` (use `90dvh` actually)
-- Swipe down to dismiss: threshold 100px OR velocity 500px/s
-- Keyboard avoidance: `useVisualViewport` adjusts `paddingBottom`
-- `overscroll-behavior: contain` on sheet body (prevents scroll chaining)
-
-### Touch targets (WCAG 2.2 §2.5.8 + §2.5.5)
-
-- **Minimum:** 24×24px (WCAG 2.5.8 Level AA)
-- **Recommended:** 44×44px (WCAG 2.5.5 Level AAA, Apple HIG)
-- All icon-only buttons: `size="icon"` = 44×44px
-- Bottom nav items: `min-h-[56px] min-w-[44px]`
-- TaskCard action buttons: wrap in 44×44px transparent hit area
-
-### Swipe gestures (per Things3/Superlist patterns)
-
-| Action | Threshold | Velocity | Notes |
-|---|---|---|---|
-| Complete task | 60px left | OR 400px/s | Easier than delete |
-| Delete task | 100px left | AND 500px/s | Harder — requires intent |
-| Dismiss sheet | 100px down | OR 500px/s | |
-
-### Haptics (per Apple HIG)
-
-```tsx
-import { useHaptics } from "@/hooks/useHaptics";
-const haptics = useHaptics();
-
-haptics.light();      // task complete, FAB tap
-haptics.selection();  // mention select
-haptics.medium();     // task delete
-haptics.success();    // ritual complete
-haptics.error();      // save failed
-```
-
-- Keep under 30ms — anything longer feels like an error
-- Disable when `prefers-reduced-motion: reduce`
-- iOS doesn't support `navigator.vibrate` — use Web Audio API tick as fallback (future)
-
-### Input keyboard types (per Apple HIG + Android best practices)
-
-| Input type | `inputMode` | `autoComplete` | `autoCapitalize` |
-|---|---|---|---|
-| Capture (general) | `text` | `off` | `sentences` |
-| Search | `search` | `off` | `none` |
-| Email | `email` | `email` | `none` |
-| Person name | `text` | `name` | `words` |
-| Task title | `text` | `off` | `sentences` |
-| Thread/note | `text` | `off` | `sentences` |
-
----
-
-## 9. Accessibility (WCAG 2.2 AA)
-
-### Color contrast
-
-| Element | Minimum ratio | Standard |
-|---|---|---|
-| Body text | 4.5:1 | WCAG 2.1 §1.4.3 (Level AA) |
-| Large text (18px+) | 3:1 | WCAG 2.1 §1.4.3 |
-| UI components / borders | 3:1 | WCAG 2.2 §1.4.11 |
-| Non-text contrast | 3:1 | WCAG 2.2 §1.4.11 |
-
-`--text-4` is at 55% alpha (bumped from 35%). Verify on all surfaces.
-
-### Touch targets
-
-- WCAG 2.5.8 (Level AA): 24×24px minimum
-- WCAG 2.5.5 (Level AAA): 44×44px minimum
-- Presense targets AAA (44px) for all icon-only buttons
-
-### Focus management
-
-- Every modal uses `useDialogFocus` (focus trap + restore on close)
-- `:focus-visible` ring: `2px solid var(--accent)`, `2px offset`
-- Skip-to-main-content link (backlog item A11Y-03)
-- `aria-label` on ALL icon-only buttons (backlog item A11Y-01)
-
-### Reduced motion
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  /* Remove DISTANCE, not just duration */
-  .glass-card:hover { transform: none; }  /* not just duration: 0 */
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .glass-card { backdrop-filter: none; background: var(--bg-elevated); }
-  .orb { display: none; }
-}
-```
-
-### Screen reader announces
-
-- `aria-live="polite"` region for realtime updates (backlog item A11Y-02)
-- Toast announcements via sonner's built-in `role="status"`
-- Form errors wired to `aria-invalid` + `aria-describedby` (backlog item A11Y-05)
-
----
-
-## 10. Performance Patterns
-
-### content-visibility (per web.dev)
-
-```css
-/* In globals.css — already declared but needs JSX wiring */
-.task-card-wrapper,
-.explore-item-wrapper {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 88px;
-}
-```
-
-**Must add** `className="task-card-wrapper"` to the motion.div wrapping each TaskCard. Currently the CSS rule is inert (0 usages). This is DS-12 in the backlog.
-
-### Blur budget (per Chrome DevTools guidance)
-
-- Maximum 2 stacked `backdrop-filter` surfaces at any time
-- Bottom nav: `backdrop-blur-md` (12px) — NOT `2xl`
-- MobileTopBar: `backdrop-blur-md` (12px) — NOT `2xl`
-- Modals: `backdrop-blur-sm` (8px) on backdrop, `backdrop-blur-heavy` (24px) on modal body
-- Cards: no blur on `variant="list"`, blur on `variant="elevated"` only
-
-### Dynamic imports (per Next.js docs)
-
-- `compromise` (~140KB) and `chrono-node` (~50KB) must be dynamically imported, not statically imported in client components
-- Heavy modals (PomodoroTimer, RitualOverlay, SettingsModal) are already lazy-loaded via `next/dynamic` — do not change
-
-### Image optimization
-
-- `next/image` with `formats: ['image/avif', 'image/webp']` (already in next.config)
-- Avatar uses `unoptimized` (small, not worth optimizing) — acceptable
-- `loading="lazy"` on below-fold images
-- `fetchpriority="high"` on LCP image (if any)
-
----
-
-## 11. Known Inconsistencies (Debt — Being Fixed)
-
-These are known violations that exist in the codebase:
-
-| # | Issue | Count | Backlog ticket |
-|---|---|---|---|
-| 1 | Hardcoded hex colors in JSX (should be `var(--token)`) | 87 | DS-02 |
-| 2 | Raw `<input>` elements (should be `<Input>`) | 10 | DS-03 |
-| 3 | `TextareaAutosize` imports (should be `<Textarea>`) | 10 | DS-04 |
-| 4 | `<SearchInput>` component exists but unused | 0 usages | DS-05 |
-| 5 | `<Textarea>` component exists but unused | 0 usages | DS-04 |
-| 6 | Icon strokeWidth inconsistency (9 different values) | 9 | DS-06 |
-| 7 | `: any` annotations (should be typed) | 75 | TOOL-01 |
-| 8 | `content-visibility` CSS declared but not wired to JSX | 0 usages | DS-12 |
-| 9 | `template.tsx` missing (page transitions inconsistent) | — | T0-11 |
-| 10 | CI YAML has typo (`branches: ain, master]`) | — | T0-14 |
-
----
-
-## 12. Adding New Components
-
-If you need a UI element that doesn't exist in this document:
-
-1. **STOP.** Do not invent a new pattern.
-2. Check `docs/project/COMPONENT_MANIFEST.md` — does an existing component fit?
-3. If nothing fits, add a ticket to `EXECUTION_SPEC.md` requesting the new primitive.
-4. The human will add the pattern to this document AND the manifest.
-5. Then you can build it.
-
-**This is how we prevent the "every component looks different" problem.** No new visual patterns without being documented here first. Every time an agent has skipped this step, the app has gotten more inconsistent.
-
----
-
-## Research Sources
-
-This design system was informed by:
-
-**Official documentation:**
-- shadcn/ui (Feb 2025 Tailwind v4 update — `data-slot` attributes, React 19, no forwardRef)
-- Radix UI / Base UI (headless primitive patterns, accessibility)
-- Tailwind CSS v4 (Lightning CSS, `@theme`, `data-*` variant support)
-- Framer Motion / Motion (LazyMotion, `m.*` components, spring physics)
-- Next.js 16 (App Router, `next/dynamic`, `next/image`, metadata API)
-- WCAG 2.2 (W3C — §1.4.3 contrast, §1.4.11 non-text contrast, §2.5.5 target size, §2.5.8 target size minimum)
-- MDN (`content-visibility`, `100dvh`, `env(safe-area-inset-*)`, `overscroll-behavior`)
-- web.dev (content-visibility, Core Web Vitals, INP)
-- Apple Human Interface Guidelines (touch targets, haptics, keyboard types)
-- Material 3 (color system, elevation, motion)
-
-**Productivity app analysis:**
-- Things3 (Cultured Code) — calm restraint, check-off animation, sidebar hierarchy, typography
-- Sunsama — daily ritual flow, time-blocking, warm palette, cognitive load minimization
-- Superlist — bouncy springs, satisfying check-off, pastel accents, micro-interactions
-- Todoist — natural language input, sticky group headers, board/list/calendar views
-- Notion — block editing, command palette, minimal chrome
-- Linear — keyboard-first, dark-mode craft, dense-but-readable
-- Cron / Notion Calendar — keyboard navigation, clean week view
-- Fantastical — natural language, mobile-first
-
-**Community & patterns:**
-- Vaul (Emil Kowalski) — drawer pattern, drag-to-dismiss, snap points
-- cmdk (Vercel) — command palette, fuzzy search, keyboard nav
-- Sonner (Emil Kowalski) — toast patterns, undo, drain animation
-- NN/g (Nielsen Norman Group) — bottom sheet UX guidelines
-- LogRocket — bottom sheet design best practices
-- Theo (t3.gg) — `@t3-oss/env-nextjs`, T3 stack conventions
-- Fireship — rapid-fire dev education, modern patterns
-- Josh Comeau — CSS education, spacing, shadows
-- Kevin Powell — responsive design, fluid typography
-- Una Kravets / Adam Argyle (nerdy.dev) — CSS custom properties, `@property`, color-mix
-- Reddit r/webdev, r/reactjs, r/FigmaDesign — community patterns, pain points
-
-
-## 9. Canonical Interaction Patterns
-
-To prevent fragmentation, all interactions must follow these single, approved patterns. Do not introduce alternatives.
-
-### 9.1 Object Creation Entry Points
-- **Pattern:** Creation always happens via a dedicated Side Panel or Sheet (e.g., TaskAddPanel.tsx), never inline content-editable text blocks.
-- **Trigger:** Initiated by a top-level Header action button or an Empty State action button (Empty states must always provide an action matching the header).
-- **Focus:** The primary input (e.g., 	itle) **must immediately receive autofocus** upon the panel opening (via utoFocus prop + bypassing any delayed focus-lock hijacking).
-
-### 9.2 Inline vs. Sheet Editing
-- **Pattern:** Editing an existing object uses the exact same Side Panel or Sheet as creation, populated with the object's existing data.
-- **Rule:** No inline field editing (e.g., clicking a text element to turn it into an input). Click the card/row -> opens the edit panel.
-
-### 9.3 Delete / Undo / Confirm
-- **Pattern:** Soft-delete with Toast-based Undo.
-- **Rule:** Never show a confirmation modal for deleting standard entities.
-- **Implementation:** 
-  1. Call moveItemToTrashPatch() from item-lifecycle.ts (sets status: 'deleted', deleted_at: <now>).
-  2. Fire 	oast.success('Moved to trash', { action: { label: 'Undo', onClick: ... } }) using sonner.
-  3. The undo action calls estoreItemPatch().
-  4. Hard-deletion is exclusively handled asynchronously by the cron_cleanup 30-day retention job.
-
-### 9.4 Toast Conventions
-- **Pattern:** System feedback is provided via bottom-right sonner toasts.
-- **Rule:** Use 	oast.success, 	oast.error, or 	oast.promise exclusively. Do not build custom snackbars. Keep messages extremely brief (e.g., 'Task moved to trash', not 'Your task has been successfully deleted.').
-
-### 9.5 Keyboard Shortcuts
-- **Pattern:** Global shortcuts (e.g., Cmd+K, Cmd+Enter) are implemented via global useEffect keydown listeners.
-- **Rule:** Any visual indication of a keyboard shortcut in the UI **must** use the <Kbd> component (e.g., \<Kbd>Cmd+Enter</Kbd>\). Do not use raw spans or inline styles for shortcut hints.
-
+## 10. Adding a new pattern
+
+1. Check §7 and `COMPONENT_MANIFEST.md`. If an existing component covers it with a new variant/prop, extend that component — do not create a sibling.
+2. If genuinely new: prototype it honoring §1–§5's tokens exactly (no new hex values, no new arbitrary spacing, no new blur amount outside the `--elev-*` bundles).
+3. Add it to `COMPONENT_MANIFEST.md` with its variants and one canonical usage example, and add a short entry to §7 of this file, in the same PR that introduces it. A new component without both updates is an incomplete PR — this is the rule `DS-17`/`DS-18` make machine-checkable; this file is what a human (or a careful agent) checks by hand until that automation exists.

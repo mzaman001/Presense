@@ -1,7 +1,5 @@
 # Presense — Execution Specification
 
-> **IMPORTANT — File migration notice (July 5, 2026):** This document is the ONLY active backlog. References to `plan.md`, `CLAUDE.md`, `EXECUTION_RULES.md` (root), `OPENCODE_PROMPT.md`, `PROJECT.md`, `DESIGN_SYSTEM.md` (root), or `design_identity.md` throughout this document are HISTORICAL — those files have been superseded by the current file structure documented in `AGENTS.md` at the repo root. When this document says "record in plan.md" or "see CLAUDE.md," substitute the current file: backlog items go here, design rules go in `docs/project/DESIGN_SYSTEM.md`, agent workflow goes in `docs/agents/EXECUTION_RULES.md`, component inventory goes in `docs/project/COMPONENT_MANIFEST.md`, project context goes in `docs/project/CONTEXT.md`. Do not look for the old files — they are in `docs/archive/` if kept at all.
-
 **Document type:** Deterministic ticket backlog for an AI coding agent.
 **Author role:** Principal Software Architect / Staff Frontend Engineer / Design Systems Lead / Technical Writer / AI Workflow Architect (synthesis pass).
 **Not in scope:** Implementation code, new visual identity, motivational framing.
@@ -33,7 +31,6 @@ Every ticket below that cites a file path and line number was verified by direct
 These are direct disagreements between sources. Each must be resolved by a human before dependent tickets start. The executing agent must stop and surface the conflict rather than guess.
 
 ### CONF-01 — Default theme name
-**Status:** DONE
 
 - **Source A (`CLAUDE.md`, repo root):** "THEME SYSTEM: The default theme is Wahala (orange/amber)."
 - **Source B (user, this conversation, item 7):** "rename Wahala theme everywhere to something like sunset or something."
@@ -42,7 +39,6 @@ These are direct disagreements between sources. Each must be resolved by a human
 - **Resolution required before:** `BUG-06`, `BUG-07`, `DS-03`.
 
 ### CONF-02 — Space color values
-**Status:** DONE
 
 - **Source A (`DESIGN_SYSTEM.md`, repo root):** Do `#FBBF24` (amber), Think `#2DD4BF` (teal), Remember `#7692FF` (blue/purple), Explore `#A78BFA` (violet) — a cool-toned palette for three of four spaces.
 - **Source B (`design_identity.md` pillar 2 / `DESIGN_SYSTEM.md` philosophy):** "Warmth at the centre — Amber, coral, deep orange. Cool colours appear only as secondary accents." Directly contradicted by Source A's Think/Remember/Explore values.
@@ -97,7 +93,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 ## 4. Phase 0 — Reported defect tickets
 
 ### BUG-01 — Sidebar is not a hover sidebar
-**Status:** DONE
 
 - **Priority:** Critical
 - **Files:** `src/components/layout/Navigation.tsx` (lines 38–86 for the shell, 44–46 for state), `src/store/useAppStore.ts` (lines 53–54, 82–84)
@@ -112,7 +107,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 - **Depends on:** `CONF-05` resolved.
 
 ### BUG-02 — Ritual system shows wrong time-of-day state
-**Status:** DONE
 
 - **Priority:** Critical
 - **Files:** `src/components/layout/Navigation.tsx` (lines 46, 125–174), `src/components/features/RitualOverlay.tsx`
@@ -128,31 +122,32 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
   3. `RitualOverlay.tsx`'s own internal date logic (`todayString`, lines referencing `last_ritual_date`/`last_evening_ritual_date`) is audited for the same "computed once, never refreshed" pattern and fixed if present.
 - **Depends on:** none.
 
-### BUG-03 — Dropdown clipping issues
-**Status:** DONE
-**Priority:** 3 (Blocks core workflows)
-**Files:** `src/app/(app)/inbox/page.tsx`, `src/app/(app)/page.tsx`, `src/components/ui/Dropdown.tsx`, `src/components/features/ExploreDrawer.tsx`
-**Root cause:** `overflow: hidden` on parent containers clipping absolute positioned menus.
-**Requirement:** Menus must render via a portal to escape overflow clipping.
-**Acceptance criteria:**
-- The Inbox "Route it" dropdown renders fully visible over adjacent cards.
-- Every other dropdown/menu call site in the codebase is verified against the same defect class and fixed if affected.
-- Dropdown menus remain interactive with keyboard (arrow keys, Enter, Escape) after the fix — this ticket must not regress keyboard support.
+### BUG-03 — Dropdown menus render clipped/behind other content
+
+- **Priority:** Critical
+- **Files:** `src/app/(app)/inbox/page.tsx` (lines 49–58 for the clipping ancestor, 90–110 for the clipped dropdown), `src/components/ui/Dropdown.tsx` (lines 84–117, 139–176)
+- **Root cause:** In `inbox/page.tsx`, the `InboxItemCard`'s outermost wrapper (`m.div`, line 56) is styled `"group relative rounded-2xl overflow-hidden"`. The "Route it" dropdown menu (`.dropdown-panel absolute top-full mt-2 right-0 ...`, line 91) is a descendant of this `overflow-hidden` ancestor. CSS `overflow: hidden` clips any descendant content that visually extends past the ancestor's box, regardless of the descendant's `z-index` — `z-50` on the dropdown does not help because clipping happens before stacking-context compositing. The screenshot evidence (Image 1) shows exactly this: the dropdown panel's top edge is visible just below the "Route it" button and then is cut off. This is a structural CSS bug, not a z-index bug.
+- **Confirmed same-pattern risk elsewhere:** `src/components/ui/Dropdown.tsx` renders its own `.dropdown-panel` as a plain absolutely-positioned sibling (not portaled to `document.body`). Any call site that places a `<Dropdown>` inside a container with `overflow: hidden` or `overflow: auto` (e.g., a `GlassCard`, a `Sheet` body, a horizontally-constrained row) will reproduce this bug. Known call sites to re-audit: `src/components/features/TaskAddPanel.tsx`, `src/components/features/AddPersonPanel.tsx`, `src/components/features/LocationAddPanel.tsx`, `src/components/features/ExploreDrawer.tsx` (line 268, its dropdown already sits inside a `max-h-48 overflow-y-auto` container — same defect class).
+- **Requirement:** Dropdown/menu surfaces must not be visually clippable by a scrolling or `overflow`-constrained ancestor. This requires either (a) rendering the menu content through a portal to `document.body` (or a dedicated overlay root) with position computed relative to the trigger (standard for Radix/Base UI `Popover`/`Menu` primitives — `src/components/ui/Popover.tsx` and the audit's `13-component-inventory.md` recommendation to migrate `Dropdown` to a portal-backed `Menu` primitive apply here), or (b) removing `overflow: hidden` from every ancestor between a dropdown trigger and the document root and replacing the visual clipping/rounding effect those ancestors relied on with a non-clipping alternative (e.g. `mask-image` or restructured DOM). Option (a) is the only approach that scales past one fix — a per-call-site audit is not a durable fix.
+- **Acceptance criteria:**
+  1. The Inbox "Route it" dropdown renders fully visible, unclipped, positioned correctly relative to the trigger button, at all five destinations' menu heights, including when the trigger is the last visible row in a scrolled list.
+  2. Every other dropdown/menu call site in the codebase (grep for `dropdown-panel`, `<Dropdown`, `<Popover`) is verified against the same defect class and fixed if affected.
+  3. Dropdown menus remain interactive with keyboard (arrow keys, `Enter`, `Escape`) after the fix — this ticket must not regress keyboard support.
 - **Depends on:** none. Should land before `DS-04` (Menu primitive consolidation) since it may be superseded by it, but should not wait for the full design-system pass given its "Critical" severity.
 
-### BUG-04 — "Add Task" button doesn't autofocus title input
-**Status:** DONE
-**Priority:** 4 (Friction point)
-**Files:** `src/components/features/TaskAddPanel.tsx`, `src/hooks/useDialogFocus.ts`
-**Root cause:** `useDialogFocus` manually overrides focus after 350ms to the first focusable element (the close button), ignoring the `autoFocus` attribute on the title input.
-**Requirement:** Opening the "Add Task" panel must instantly focus the title input.
-**Acceptance criteria:**
-- Clicking "Add Task" opens the panel and immediately focuses the title input.
-- Using the `Cmd/Ctrl + K` shortcut opens the panel and focuses the input.
-- Using the native mobile bottom bar action focuses the input.
+### BUG-04 — "Add Task" in empty states opens Quick Capture instead of the Add Task sheet
+
+- **Priority:** High
+- **Files:** `src/app/(app)/do/page.tsx` (lines 328–331 for the correct behavior, lines 416–419 and 441–444 for the defective behavior)
+- **Root cause:** Three separate "Add Task" entry points exist on the Do page. The page-header one (`do/page.tsx:328–331`) correctly calls `setTaskToEdit(null); setIsPanelOpen(true)`, opening the `TaskAddPanel` sheet — this is the correct, intended target. The two empty-state buttons, both labeled "Add Task" and both inside a `"You're all caught up"` `GlassCard` (one in the Today view at lines 416–419, one in the Board/all-columns view at lines 441–444), instead call `useAppStore.getState().setCaptureModalOpen(true)`, opening the global `CaptureModal` (Quick Capture with NLP routing). A user pressing a button labeled identically ("+ Add Task") in three places on the same page gets two different UI surfaces depending on which one they pressed — this is the behavior the user is reporting.
+- **Requirement:** All three "Add Task" entry points on the Do page must open the same target surface. Given the button's label and icon are identical to the page-header "Add task" button (which opens `TaskAddPanel`), and given `TaskAddPanel` is the structured, space-scoped creator for a Do task (per the interaction-pattern convention that per-space "+" buttons are space-scoped creators, while Quick Capture/Cmd+K is the ambiguous, NLP-routed entry point — see `12-interaction-patterns.md` §Create in the audit), the two empty-state buttons must be changed to call `setTaskToEdit(null); setIsPanelOpen(true)`, matching the header button.
+- **Acceptance criteria:**
+  1. Pressing "Add Task" from either empty state opens the `TaskAddPanel` sheet, not `CaptureModal`.
+  2. The header "Add task" button's behavior is unchanged.
+  3. No other page in the app (`Think`, `Explore`, `Remember`) has the same divergence between its empty-state creator button and its header creator button — audit and fix if found (grep each `page.tsx` for `setCaptureModalOpen` vs. that space's own add-panel state setter).
+- **Depends on:** none.
 
 ### BUG-05 — Calendar view is structurally broken
-**Status:** WITHDRAWN (Superseded by calendar rewrite T3-1 per user resolution of CONF-08)
 
 - **Priority:** Critical
 - **Files:** `src/components/features/calendar/CalendarView.tsx` (line 226), `src/components/features/calendar/WeekView.tsx` (lines 192–198, 205–314)
@@ -175,7 +170,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 - **Depends on:** `MOB-02` for the mobile day-view portion (may be delivered together).
 
 ### BUG-06 — Theme is inconsistent at login (sometimes blue, sometimes default)
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** `src/app/layout.tsx` (lines 77–82), `src/components/layout/AppInitializer.tsx` (lines 83–90, 106)
@@ -192,7 +186,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 - **Depends on:** `CONF-01` resolved.
 
 ### BUG-07 — Rename "Wahala" theme and other theme names
-**Status:** DONE
 
 - **Priority:** Medium
 - **Files:** `CLAUDE.md` (theme-system section), `src/app/layout.tsx` (lines 77–82, string literals `'orange'`/`'blue'`/`'forest'`), `AppInitializer.tsx` (lines 83–90), any Settings UI theme picker labels (`SettingsModal.tsx` — locate theme selection UI), `src/app/globals.css` (theme selector classes `.theme-navy`, `.theme-forest`, `html.light`)
@@ -206,7 +199,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 - **Depends on:** `CONF-01` resolved.
 
 ### BUG-08 — Inconsistent archive vs. delete rules across spaces
-**Status:** DONE
 
 - **Priority:** Critical
 - **Files:** `src/components/features/TaskCard.tsx:109` (Do, swipe), `src/components/features/TaskAddPanel.tsx:130` (Do, edit sheet), `src/app/(app)/remember/people/page.tsx:266` and `people/[id]/page.tsx:150` (Remember), `src/app/(app)/think/[id]/page.tsx:214` and `:218` (Think — two different behaviors in the same file), `src/app/(app)/explore/page.tsx:180–195` and `src/components/features/ExploreDrawer.tsx:166–173` (Explore), `src/app/(app)/explore/trash/page.tsx` (the only existing dedicated trash surface), `src/components/features/LocationAddPanel.tsx:84` (Locations)
@@ -228,7 +220,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 - **Depends on:** `CONF-04` resolved. Blocks `DS-11` (interaction-pattern documentation of the canonical delete flow) and `INFRA-09` (retention job).
 
 ### BUG-09 — Capture modal is laggy
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** `src/components/features/CaptureModal.tsx` (lines 200–221, `handleRoute`), `src/app/api/capture/route.ts` (all), `src/lib/capture-router.ts` (lines 1–3, top-level imports)
@@ -246,7 +237,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 - **Depends on:** none.
 
 ### BUG-10 — Sidebar profile icon and name missing
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** `src/components/layout/Navigation.tsx` (lines 331–354)
@@ -259,7 +249,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 - **Depends on:** none. Should be re-verified after `BUG-01` since the sidebar shell will change.
 
 ### BUG-11 — Settings modal cannot scroll while on Think or Explore pages
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** `src/app/(app)/think/page.tsx` (lines 16, 169, 338), `src/app/(app)/explore/page.tsx` (lines 15, 211, 300), `src/components/layout/LenisProvider.tsx` (entire file), `src/components/features/SettingsModal.tsx` (line 534, scroll container)
@@ -301,7 +290,6 @@ Phase 0 tickets may start immediately and in parallel with each other except whe
 Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadmap.md` (`C1–C5`, `H1–H8`), `21-file-by-file-recommendations.md`, reconciled against `CONF-02` and `CONF-03`.
 
 ### DS-01 — Resolve and implement the space-color / status-color system
-**Status:** DONE
 
 - **Priority:** Critical
 - **Files:** `src/app/globals.css` (lines 24–27, 130–142, 426–428+ light theme block), `src/app/(app)/do/page.tsx` (Column `accent` props), `DESIGN_SYSTEM.md`
@@ -314,7 +302,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `CONF-02` resolved.
 
 ### DS-02 — Delete duplicate token systems in `globals.css`
-**Status:** DONE
 
 - **Priority:** Critical
 - **Files:** `src/app/globals.css`
@@ -326,7 +313,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** none. Should land before `DS-03` (theme attribute rewrite touches the same file regions).
 
 ### DS-03 — Formalize themes as `data-theme`/`data-mode` attributes
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** `src/app/globals.css`, `src/app/layout.tsx`, `AppInitializer.tsx`, theme picker UI in `SettingsModal.tsx`
@@ -338,7 +324,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `CONF-01` resolved, `DS-01`, `BUG-06`, `BUG-07`.
 
 ### DS-04 — Consolidate glass surface, button, and dropdown/menu component systems
-**Status:** DONE
 
 - **Priority:** Critical
 - **Files:** `src/components/ui/GlassCard.tsx`, `src/components/ui/button.tsx`, `src/components/ui/Dropdown.tsx`, `src/components/ui/Popover.tsx`, `globals.css` lines with `.glass-card*`, `.glass-panel`, `.btn-*` classes (audit-cited 685-735, 558-571, 829-974)
@@ -351,7 +336,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `BUG-03` (may be superseded by or merged with this ticket — coordinate, do not implement the dropdown fix twice).
 
 ### DS-05 — Semantic typography scale and elevation/motion token additions
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** `src/app/globals.css`, `src/lib/animations.ts`
@@ -364,19 +348,17 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `DS-02`.
 
 ### DS-06 — Contrast fixes for `--text-4`/decorative text tokens
-**Status:** DONE
 
 - **Priority:** Critical
-- **Files:** `src/app/globals.css`, `src/components/ui/PageHeader.tsx`
-- **Root cause:** `[audit-sourced]` `--text-4` at 35% white alpha failed WCAG AA's 4.5:1 minimum for body-weight text.
-- **Requirement:** Raise the alpha value used for any text a user is expected to read to a level that passes 4.5:1 against its actual background, reserving the original low-alpha value only for content marked `aria-hidden` or otherwise explicitly decorative.
+- **Files:** `src/app/globals.css` (dark-mode `--text-4` declaration, light-mode equivalent), call sites in `TaskCard.tsx`, thread list components, calendar chip components, `Navigation.tsx:194` (the "Cmd+K" hint)
+- **Root cause:** `[audit-sourced]` `--text-4` at 35% white alpha over the app's near-black `--surface-1` background computes to roughly 2.6:1 contrast, failing WCAG AA's 4.5:1 minimum for body-weight text; the light-theme equivalent computes to roughly 3.1:1, also failing. This token is used for metadata rows that carry real information (timestamps, secondary labels), not purely decorative text.
+- **Requirement:** Raise the alpha value used for any text a user is expected to read to a level that passes 4.5:1 against its actual background, reserving the original low-alpha value only for content marked `aria-hidden` or otherwise explicitly decorative. Rename the token to reflect this distinction if the "decorative-only" and "readable-secondary" cases end up needing different tokens (do not silently keep a token named `--text-4` while changing what it may be used for).
 - **Acceptance criteria:**
-  1. Every text node currently using the low-contrast token measures at or above 4.5:1 contrast against its rendered background in both dark and light themes.
-  2. If a genuinely decorative low-contrast token is retained, no non-`aria-hidden` readable text references it after this ticket. Verified by removing `text-[var(--text-decorative)]` from `PageHeader.tsx`.
-- **Depends on:** none.
+  1. Every text node currently using the low-contrast token, on every surface it appears on (list rows, calendar chips, sidebar hints), measures at or above 4.5:1 contrast against its rendered background in both dark and light themes.
+  2. If a genuinely decorative low-contrast token is retained, no non-`aria-hidden` readable text references it after this ticket (enforce via lint rule or code review checklist item, not just a one-time fix).
+- **Depends on:** none — can run in parallel with other Phase 1 tickets.
 
 ### DS-07 — Page shell primitives (`PageHeader`, `EmptyState`)
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** new components; call sites across every `page.tsx` under `src/app/(app)/`
@@ -388,7 +370,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `BUG-04` (do not duplicate the fix for the Do empty-state button target).
 
 ### DS-08 — Command surface split (Cmd+K, search, capture)
-**Status:** WITHDRAWN (User elected to keep current Cmd+K capture binding per CONF-06)
 
 - **Priority:** Medium
 - **Files:** `CaptureModal.tsx`, `SearchModal.tsx`, `Navigation.tsx` keybinding registration
@@ -398,7 +379,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `CONF-06` resolved.
 
 ### DS-09 — Input primitives with accessibility wiring
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** new `Input`, `Textarea`, `SearchInput` components; call sites in `TaskAddPanel.tsx`, `AddPersonPanel.tsx`, `LocationAddPanel.tsx`, `CaptureModal.tsx`
@@ -409,18 +389,16 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `A11Y-06` (form validation surfacing) — coordinate, likely delivered together.
 
 ### DS-10 — Badge/Avatar/Kbd/SegmentedControl primitive completion
-**Status:** DONE
 
 - **Priority:** Medium
 - **Files:** `src/components/ui/Badge.tsx`, `Avatar.tsx`, new `Kbd`, `SegmentedControl` components
 - **Requirement:** `Badge` gains named variants for every space and status color (post-`DS-01` palette). `Avatar` requires an `alt`/label and has a defined fallback for a missing image. A `Kbd` component replaces every inline shortcut-hint markup pattern (e.g. `Navigation.tsx:194, 281`). A `SegmentedControl` component replaces the hand-rolled Kanban/Calendar and Board/Today/Calendar view-switcher markup (`do/page.tsx` lines approximately 300-318).
 - **Acceptance criteria:**
-  1. No inline keyboard-hint markup remains outside the `Kbd` component. (Verified)
-  2. Every Badge usage in the codebase (space tags, status tags) uses a named variant, not an inline `style` prop with a raw color. (Verified)
+  1. No inline keyboard-hint markup remains outside the `Kbd` component.
+  2. Every Badge usage in the codebase (space tags, status tags) uses a named variant, not an inline `style` prop with a raw color.
 - **Depends on:** `DS-01`.
 
 ### DS-11 — Document the canonical create/edit/delete interaction contract
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** `DESIGN_SYSTEM.md` or a new `INTERACTION_PATTERNS.md`
@@ -429,7 +407,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `BUG-08`, `BUG-04`, `CONF-04` resolved.
 
 ### DS-12 — Icon stroke-width standardization
-**Status:** DONE
 
 - **Priority:** Low
 - **Files:** all Lucide icon usages across `src/components`
@@ -438,7 +415,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** none.
 
 ### DS-13 — Density mode (comfortable/compact)
-**Status:** DONE
 
 - **Priority:** Low
 - **Files:** `globals.css`, Settings UI
@@ -447,7 +423,6 @@ Source: audit `10-design-system-spec.md`, `13-component-inventory.md`, `20-roadm
 - **Depends on:** `DS-05`.
 
 ### DS-14 — Reduced-motion and reduced-transparency correctness pass
-**Status:** DONE
 
 - **Priority:** Critical
 - **Files:** `globals.css` (hover-transform declarations, e.g. `.glass-card:hover` audit-cited line 709; nav icon hover translate), `AmbientBackground.tsx`
@@ -472,38 +447,43 @@ This addendum was produced after a newer build of the repository and two documen
 | `BUG-02` (ritual stale time) | **Still open** | `Navigation.tsx:38`: `const now = useMemo(() => new Date(), []);` is unchanged from the prior build — the exact same staleness defect. Not fixed by the sidebar rewrite. Keep `BUG-02` open as-is. |
 | `BUG-03` (dropdown clipping) | **Resolved** | `Dropdown.tsx` and `Popover.tsx` now render their menu content via `createPortal` (`Dropdown.tsx` lines 102, 160; `Popover.tsx` line 2 import). This satisfies `BUG-03`'s requirement (option (a), portal-based rendering). Close `BUG-03`; `DS-04`'s remaining scope is narrowed to component/token consolidation only, not dropdown positioning. |
 | `BUG-06`/`BUG-07` (theme naming/default) | **Partially resolved — see `BUG-15` below** | Theme naming is resolved: `src/lib/theme.ts` establishes `"sunset" | "midnight" | "meadow"` as the single internal vocabulary, with a `LEGACY_THEME_MAP` normalizing old values. This is the retroactive resolution of `CONF-01`: internal identifier and display name are now both `sunset`/`midnight`/`meadow`. However, the underlying defect described in `BUG-06` — an unscoped `localStorage` value overriding the true default — is **not fully fixed**; see `BUG-15`. |
-| `BUG-08` (archive/delete inconsistency) | **Resolved** | Verified that `item-lifecycle.ts`'s `moveItemToTrashPatch()` is used across all delete entry points for `items`, `threads`, `explores`, `people`, and `locations`. Soft delete (`status: 'deleted'`) and the `explore/trash/page.tsx` view handle all 5 entities. The 30-day auto-purge is enforced via the `cron_cleanup` Edge Function. |
-| `BUG-09` (capture modal lag) | **Resolved** | `capture-router.ts` and `rate-limit.ts` both changed; re-profiled in this pass. Zero network requests between keypress and preview render, and `compromise`/`chrono-node` are dynamically imported. |
+| `BUG-08` (archive/delete inconsistency) | **In progress, not verified complete** | New files `src/lib/item-lifecycle.ts` and `src/lib/__tests__/item-lifecycle.test.ts` exist, suggesting a consolidation effort matching `CONF-04`'s direction has started. This document does not certify `BUG-08` as closed — re-run `BUG-08`'s full acceptance criteria (all five entity tables, all delete entry points) against `item-lifecycle.ts`'s actual coverage before marking it done. |
+| `BUG-09` (capture modal lag) | **Not verified in this pass** | `capture-router.ts` and `rate-limit.ts` both changed; not re-profiled in this pass. Re-verify against `BUG-09`'s acceptance criteria (network panel showing zero requests between keypress and preview render) before closing. |
 | `BUG-10` (missing profile row) | **Resolved** | `Navigation.tsx:229`: `const displayName = userSettings?.display_name || email || "Presense User";` — a non-empty fallback now always renders. |
-| `BUG-11` (Settings scroll on Think/Explore) | **Resolved** | Verified that `SettingsModal.tsx` now applies `data-lenis-prevent` to its scroll container, successfully exempting it from the Lenis document-level scroll hijack on the Think/Explore routes. |
+| `BUG-11` (Settings scroll on Think/Explore) | **Not verified in this pass** | A new `src/hooks/useBodyScrollLock.ts` exists, which may address this — not re-tested against Lenis interaction in this pass. Re-verify before closing. |
 
 ### 12.2 — New defect: sidebar brand icon and profile avatar are not vertically aligned
 
 **BUG-14 — Presense logo and profile avatar misaligned in the sidebar rail**
-**Status:** DONE
 
 - **Priority:** Medium
-- **Files:** `src/components/layout/Navigation.tsx`
-- **Root cause:** [Previously] Three different icon-centering formulas were used.
-- **Requirement:** All icons must share one optical center line (40px).
-- **Acceptance criteria:** Verified that `px-5` and `iconClass` are used correctly for header and profile row, yielding exactly a 40px center, matching the nav items.
+- **Files:** `src/components/layout/Navigation.tsx` (header block lines ~57–66; nav content wrapper line ~76; capture button wrapper line ~65; user row lines 219–224)
+- **Root cause:** Three different icon-centering formulas are used for the three icons that should optically line up in the collapsed 80px rail:
+  1. **Header brand mark:** wrapped in a row with `px-4` (16px) padding and no fixed icon box — the raw 28×28 SVG sits directly against that padding. Optical center from the rail's left edge: `16 + 14 = 30px`.
+  2. **Nav items and the Quick Capture button:** nested two levels deep — an outer wrapper with `px-3` (12px), then each row's own `px-2` (8px), then a fixed `w-10 h-10` (40px) icon box. Optical center: `12 + 8 + 20 = 40px`.
+  3. **Profile/account row (bottom):** a single `px-3` (12px) padding directly on the button, with an `Avatar size="sm"` (32px, per `Avatar.tsx:20`, `w-8 h-8`) and no fixed icon box wrapper. Optical center: `12 + 16 = 28px`.
+  
+  None of the three values (30px, 40px, 28px) match. The user's specific observation — the header logo and the profile avatar look "off" relative to each other — is explained by the 30px-vs-28px gap between those two specifically (a small but perceptible 2px difference given both are the only two icons not living inside the standardized 40px nav icon box), compounded by the fact that neither matches the 40px column the six nav icons and the capture button establish as the rail's actual visual spine.
+- **Requirement:** All icons in the collapsed 80px rail — brand mark, capture button icon, each nav item icon, and the profile avatar — must share one optical center line. The nav items' existing 40px-from-edge center is the established spine (six of the rail's icons already use it); the header brand mark and the profile avatar should be restructured to align to that same center, either by adopting the same two-level padding structure or by adjusting each one's own padding/size independently to resolve to the same 40px value.
+- **Acceptance criteria:**
+  1. In the collapsed (80px) rail state, the horizontal center of the brand mark SVG, the horizontal center of the Quick Capture icon, the horizontal center of every nav item icon, and the horizontal center of the profile avatar are all the same distance from the rail's left edge, measured to within 1px.
+  2. The expanded (248px, hover) rail state is re-checked for the same alignment after the fix, since the transition's `labelClass` reveal logic depends on consistent icon positions to avoid the label text jumping.
 - **Depends on:** none.
 
 ### 12.3 — New defect: default theme still leaks across sessions/accounts
 
 **BUG-15 — "Sunset" is not reliably the first-run theme for every user**
-**Status:** DONE
 
 - **Priority:** High
 - **Files:** `src/app/layout.tsx` (theme-init inline script, lines ~68–86), `src/components/layout/AppInitializer.tsx` (lines 62–71), `src/components/features/SettingsModal.tsx` (sign-out calls, lines 343, 450)
 - **Root cause:** Two of `BUG-06`'s three original requirements are now met (the default value is correctly `'sunset'` when `localStorage` is empty, per `layout.tsx`'s `|| 'sunset'` fallback and `theme.ts`'s `DEFAULT_THEME_ID`), but the core leakage mechanism is unchanged:
   1. `AppInitializer.tsx:64` resolves theme as `userSettings?.theme || localStorage.getItem("presense_theme")` for any authenticated, non-onboarding user. If `userSettings.theme` is falsy at the moment this effect runs — which is a realistic race condition on first load, since `userSettings` is fetched asynchronously and this effect can run before that fetch resolves — the code falls through to `localStorage`, not to `DEFAULT_THEME_ID`. If that browser has *any* prior `presense_theme` value (from a previous account, a previous test session, or even a value written by this same effect on a previous, still-loading render), that stale value is applied and then immediately written back via `localStorage.setItem("presense_theme", theme)` at line 71 — reinforcing the wrong value rather than self-correcting once `userSettings` finishes loading, because the effect's dependency array (`[userSettings?.theme, ...]`) will re-run and overwrite it correctly *only if* `userSettings.theme` is truthy by then; if the DB row genuinely has no theme set yet (e.g., a brand-new account before its first settings save), the wrong localStorage value persists indefinitely.
-  2. Signing out (`SettingsModal.tsx:343, 450`, `supabase.auth.signOut()`) still does not clear `presense_theme`, `presense_color_mode`, and `presense_reduce_motion` from `localStorage`. On a shared or reused browser, the next login screen — governed solely by the root `layout.tsx` inline script, since `AppInitializer` is not mounted on the unauthenticated `(auth)/login` route — reads whatever the previous session left behind, not the default.
+  2. Signing out (`SettingsModal.tsx:343, 450`, `supabase.auth.signOut()`) still does not clear `presense_theme` (or `presense_color_mode`, `presense_reduce_motion`) from `localStorage`. On a shared or reused browser, the next login screen — governed solely by the root `layout.tsx` inline script, since `AppInitializer` is not mounted on the unauthenticated `(auth)/login` route — reads whatever the previous session left behind, not the default.
   3. **New, related finding — `CONF-07`:** the two theme-rename migrations contradict each other. `20260703000004_rename_theme_values.sql` maps legacy `'blue' → 'midnight'` (a rename intended to preserve the user's preference under a new name) and sets the column default to `'sunset'`. `20260703000005_default_legacy_blue_to_sunset.sql`, applied after it, maps `'blue', 'navy', 'midnight' → 'sunset'` — which does not merely catch stragglers missed by the first migration, it also converts every row that migration `004` had just correctly renamed to `'midnight'` back down to `'sunset'`, and would do the same to any user who explicitly chose "Midnight" as their theme between the two migrations. This is not this ticket's primary defect (the migrations likely ran back-to-back in one deploy with no user-facing window in between), but it must be resolved as a documentation/intent conflict before any further theme-related migration is written, so the same mistake isn't repeated: is `'midnight'` a first-class theme choice or is it, as migration `005` implies, considered equivalent to "not yet migrated"?
 - **Requirement:**
   1. `AppInitializer.tsx`'s theme resolution must never fall back to a raw `localStorage` read for an authenticated user when `userSettings` has not yet loaded — it should either wait for `userSettings` to resolve before applying any theme beyond what the blocking inline script already applied, or fall back to `DEFAULT_THEME_ID` (never a `localStorage` value) when `userSettings.theme` is genuinely absent.
   2. Sign-out must clear `presense_theme`, `presense_color_mode`, and `presense_reduce_motion` from `localStorage`, so the next unauthenticated view of `/login` on that browser always renders the true default rather than a leftover preference.
-  3. `CONF-07` must be resolved explicitly (is `'midnight'` a normal user-selectable theme, protected from being silently reset — the answer implied by migration `004` — or is it, per migration `005`, still being treated as a "not fully migrated" transitional state): **Resolved**: The later migration `20260704000000_update_theme_names_to_warm.sql` definitively resolved this by normalizing all legacy values into the three canonical choices: `'warm'`, `'navy'`, and `'forest'`. Future migrations must respect these three as deliberate, user-chosen values and not overwrite them.
+  3. `CONF-07` must be resolved explicitly (is `'midnight'` a normal user-selectable theme, protected from being silently reset — the answer implied by migration `004` — or is it, per migration `005`, still being treated as a "not fully migrated" transitional state): whichever is decided, no future migration may overwrite a value that the *other* decision would consider a deliberate, current user choice.
 - **Acceptance criteria:**
   1. A brand-new account, on a browser that has never had `presense_theme` set, sees `'sunset'` immediately, with no flash of another theme.
   2. A brand-new account, on a browser whose `localStorage.presense_theme` is currently `'midnight'` from an unrelated prior session, still sees `'sunset'` (the account's true, unset-in-DB default), not `'midnight'`.
@@ -520,7 +500,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 #### Critical / High priority
 
 **TOOL-01 — Typed Supabase client (`database.types.ts`)**
-**Status:** DONE
 
 - **Priority:** Critical
 - **Verified:** 60 `: any` annotations confirmed present; no generated types file exists in `src/types/`.
@@ -532,7 +511,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none. Should land early — many later tickets (`BUG-08`'s `item-lifecycle.ts`, `INFRA-10`'s RLS audit) benefit from typed queries while being written.
 
 **TOOL-02 — Replace `env.ts` with validated, fail-fast environment access**
-**Status:** DONE
 
 - **Priority:** Critical
 - **Verified:** current `env.ts` matches the "silent empty-string fallback" description exactly.
@@ -543,7 +521,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none.
 
 **TOOL-03 — React Hook Form + Zod for all manual-`useState` forms**
-**Status:** DONE
 
 - **Priority:** High
 - **Verified:** neither `react-hook-form` nor `@hookform/resolvers` present in `package.json`; `TaskAddPanel.tsx`, `AddPersonPanel.tsx`, and `SettingsModal.tsx` were confirmed in the prior audit pass to hold form state via individual `useState` calls per field.
@@ -554,7 +531,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** coordinate with `DS-09`, `A11Y-06` — do not implement any of the three independently.
 
 **TOOL-04 — `nuqs` for shareable, bookmarkable view/filter state**
-**Status:** DONE
 
 - **Priority:** High
 - **Verified:** `nuqs` not present; `do/page.tsx`'s view mode (Board/Today/Calendar) and category filter were confirmed in the prior audit pass to live in local component state (also flagged separately as `INT-02`, which asked for persistence to `user_settings` — these are complementary, not conflicting: URL state for the current session's shareable/bookmarkable link, `user_settings` for the cross-device default).
@@ -566,7 +542,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** coordinate with `INT-02`.
 
 **TOOL-05 — Structured logging to replace the `logger.ts` stub**
-**Status:** DONE
 
 - **Priority:** High — this is the concrete implementation ticket for `INFRA-05`, which was previously written at a requirements level without naming a specific library; use this ticket's finding to close that gap.
 - **Verified:** `logger.ts` confirmed to drop all output in production except server-side `error`-level `console.error` calls, with no shipping destination.
@@ -583,7 +558,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none.
 
 **TOOL-07 — Wire `content-visibility: auto` to its intended elements**
-**Status:** DONE
 
 - **Priority:** High
 - **Verified:** `globals.css:1474`'s `.task-card-wrapper` rule has zero corresponding JSX usages — confirmed inert.
@@ -592,7 +566,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none.
 
 **TOOL-08 — Upstash Redis production configuration verification**
-**Status:** DONE
 
 - **Priority:** High
 - **Verified:** `rate-limit.ts`'s current fallback logic only logs a warning when Redis env vars are absent **in development** (`if (process.env.NODE_ENV === "development")`) — in production, if the env vars are absent, `getRateLimit()` silently returns `null` with no warning logged anywhere, meaning a misconfigured production deployment fails open (no rate limiting) with no operational signal.
@@ -627,7 +600,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** none.
 
 **TOOL-12 — React Query DevTools (dev-only)**
-**Status:** DONE
 
 - **Priority:** Medium
 - **Verified:** absent from dependencies.
@@ -644,7 +616,6 @@ The two pasted documents (and the additional list given directly in this turn) w
 - **Depends on:** `INFRA-02`.
 
 **TOOL-14 — Bundle analysis**
-**Status:** DONE
 
 - **Priority:** Medium
 - **Requirement:** Add `@next/bundle-analyzer`, wired via an `ANALYZE=true` build flag, to make bundle composition inspectable on demand. Use it to verify `BUG-09`'s dynamic-import requirement for `compromise`/`chrono-node` actually keeps those libraries out of unrelated route bundles, and to verify `TOOL-12`'s DevTools stay dev-only.
@@ -714,6 +685,131 @@ The two pasted documents (and the additional list given directly in this turn) w
 
 - **Priority:** N/A — **withdrawn, already fixed.** Verified `.github/workflows/ci.yml` already reads `branches: [main, master]` correctly in the current build. No action required. Recorded here only so this recommendation, present in both source documents, is not re-applied by an agent working from those documents directly instead of from this reconciled spec.
 
+### 12.5 — Updated conflict register addition
+
+**CONF-07 — Contradiction between the two theme-legacy-value migrations**
+
+- See `BUG-15` for full detail. Migration `20260703000004_rename_theme_values.sql` treats `'midnight'` as the correct renamed destination for legacy `'blue'` users (a preserved, first-class preference). Migration `20260703000005_default_legacy_blue_to_sunset.sql` treats `'midnight'` as a value to be overwritten back to `'sunset'`, alongside `'blue'`/`'navy'`. A decision is required on whether `'midnight'` is a protected, first-class user choice going forward — this document does not resolve it, per its own rule against silently picking a side in a genuine disagreement between two committed pieces of the codebase.
+- **Resolution required before:** any future migration touching the `theme` column, and before `BUG-15` can be marked fully closed.
+
+---
+
+## 13. Addendum 2 — reconciliation with the independently-authored "Master Plan v5"
+
+A third-party planning document (`plan.md`, "Master Plan v5," self-described as an independent audit of an earlier "Claude v3 plan," verified against the same build examined in §12) was supplied. Its claims were spot-checked against the actual repository rather than merged wholesale, consistent with this document's method throughout. Findings below are organized the same way as §12.4: verified-and-adopted, corrected, or flagged as a new conflict.
+
+### 13.1 — A factual correction to the v5 plan itself
+
+**v5's `T1-3`** claims `.github/workflows/ci.yml` still contains the `branches: ain, master]` typo. Directly re-inspecting that exact file in this document's build (`cat -A .github/workflows/ci.yml`) shows `branches: [main, master]` on both the `push` and `pull_request` triggers — correctly formed, no typo. This matches the finding already recorded in §12.4 (`TOOL-24`, withdrawn). The v5 plan's own stated method ("every claim was verified by reading the actual file... verified against the actual July 3 codebase") does not hold for this specific item — it is either based on a stale read or copied forward from an earlier pass without re-checking. This is noted not to discredit the rest of that document (most of its other claims below were independently re-verified and hold up), but as a caution: **`T1-3`/`TOOL-24` must not be re-applied.** No agent should trust a single source's self-reported verification rigor over direct inspection of the file in question, including this document's own claims — re-check line numbers against the current codebase state at implementation time per this document's existing Definition of Done, item 4.
+
+### 13.2 — New defects verified from the v5 plan and adopted
+
+**BUG-16 — Ritual system has two independent, disagreeing implementations**
+
+- **Priority:** Critical
+- **Files:** `src/lib/rituals.ts` (the decision engine, lines 59–90+), `src/components/layout/AppInitializer.tsx` (lines 6, 22–59, the only consumer of `rituals.ts`), `src/components/layout/Navigation.tsx` (lines 38, 46, 125–174 in the prior build's numbering — re-locate in current build), `src/components/features/RitualOverlay.tsx`
+- **Root cause:** A new, dedicated ritual-decision module, `rituals.ts`, exports a pure function `getRitualDecision()` and is unit-tested (`rituals.test.ts`). It is imported by exactly one consumer: `AppInitializer.tsx`, which uses it to set a single global `activeRitual` value in the app store, presumably read by `RitualOverlay.tsx` to decide which full-screen ritual overlay to show. `Navigation.tsx`'s sidebar button, however, does **not** import or use `rituals.ts` at all (confirmed: `grep` for `getRitualDecision`/`from "@/lib/rituals"` in `Navigation.tsx` returns zero matches) — it computes its own morning/evening/done state inline, independently, using the separately-maintained logic this document's own `BUG-02` already describes (including that ticket's stale-`now` defect, which remains present in this build). The practical consequence: the ritual engine can be fixed in exactly one place (`rituals.ts`, per the fix in the next ticket) and the full-screen overlay will behave correctly, while the sidebar button — the persistent, always-visible surface most likely to be the one the user is looking at when they notice something is wrong — continues running its own older, separately-buggy logic, potentially showing a different ritual state than the overlay would if triggered. Fixing `rituals.ts` alone does not fix the sidebar.
+- **Requirement:** There must be exactly one ritual-decision computation in the app. `Navigation.tsx`'s sidebar button must be changed to read the same `activeRitual`/decision state that `AppInitializer.tsx` computes via `rituals.ts` (or to call `getRitualDecision()` directly with the same inputs), and its own separate inline branching logic must be deleted, not maintained in parallel.
+- **Acceptance criteria:**
+  1. `grep` for a second, independent morning/evening branching implementation outside `rituals.ts` returns zero results.
+  2. The sidebar button's label/icon and the full-screen ritual overlay's trigger state always agree, verified across the same set of test-clock scenarios used to test `rituals.ts` directly.
+- **Depends on:** `BUG-17` (the `morningDone` fix inside `rituals.ts` itself) should land first or simultaneously, since re-pointing `Navigation.tsx` at a still-buggy `rituals.ts` only relocates the bug rather than fixing it.
+
+**BUG-17 — Evening ritual can fire before the morning ritual for a new user**
+
+- **Priority:** Critical
+- **Files:** `src/lib/rituals.ts`, line containing `if (currentMinutes >= shutdownMinutes && !eveningDone)`
+- **Root cause:** Confirmed by direct inspection: this condition does not check `morningDone`. A user who completes onboarding at, say, 10 PM — having never gone through morning planning, since it is their first day — will have `getRitualDecision()` return `evening`/`evening_due` on their very first session, before they have ever seen the morning planning flow. This is a more precisely diagnosed variant of what this document's own `BUG-02` described as "morning routine showing up at evening" — `BUG-02` focused on `Navigation.tsx`'s separate, older logic; this ticket is the equivalent, confirmed defect inside the new, otherwise-more-correct `rituals.ts` engine that supersedes it.
+- **Requirement:** The evening-trigger condition must require `morningDone` to be true before firing, consistent with the general contract (implied by the existing `manual_evening_planning_for_tomorrow` reason code, which already shows an awareness that evening-time actions should route to next-day morning planning when appropriate) that a user cannot be shown an evening review for a day whose morning planning never happened. When `morningDone` is false at or after `shutdownMinutes`, the function should fall through to a morning-oriented result rather than an evening one — using one of the existing `morning_due`/`morning_window_missed` reason codes, or a new one if neither accurately describes "morning window has already fully passed and it's now evening," which is a distinct case from both existing morning reasons and should probably get its own reason code rather than being silently absorbed into an existing one.
+- **Acceptance criteria:**
+  1. `getRitualDecision()` given `{ now: <22:00>, lastMorningDate: null, lastEveningDate: null, ... }` returns a `kind: "morning"` result (or `"none"` with a clear reason), never `kind: "evening"`.
+  2. The existing `rituals.test.ts` suite is extended with this exact scenario as a regression test.
+  3. Once `BUG-16` re-points `Navigation.tsx` and `RitualOverlay.tsx` at this corrected engine, a manual test — create a new account at night — confirms the user sees a morning-planning affordance, not an evening-review affordance.
+- **Depends on:** none for the fix itself; `BUG-16` depends on this.
+
+**BUG-18 — Ritual completion does not persist, so the UI does not update**
+
+- **Priority:** High
+- **Files:** `src/components/features/RitualOverlay.tsx` (the completion handler for both morning and evening flows)
+- **Root cause (to verify against the current build before implementing, since this was reported by the v5 plan against the same build referenced in §12 but not independently re-opened and re-read for this pass):** the ritual overlay's dismissal path is reported to call a local state clear (`setActiveRitual(null)`) without a corresponding write of `last_ritual_date`/`last_evening_ritual_date` to `user_settings` in every completion path. If confirmed, this would mean the ritual can appear to "complete" for the current render but reappear identically on the next page load or focus event, since the persisted date fields — the actual source of truth `morningDone`/`eveningDone` are computed from — were never updated.
+- **Requirement:** Every path that dismisses a ritual as "completed" (as opposed to "snoozed" or "dismissed without completing," if such a distinction exists in the UI) must write the corresponding date field to `user_settings` before or as part of clearing `activeRitual`, and must update the local app-store copy of `userSettings` optimistically so the sidebar/Home reflect completion without requiring a full page reload.
+- **Acceptance criteria:**
+  1. Completing the morning ritual updates `last_ritual_date` in the database to today's date, verified by reloading the page and confirming the ritual does not re-trigger.
+  2. The sidebar button and Home page both reflect the completed state immediately after closing the overlay, with no manual refresh.
+  3. Same for the evening ritual and `last_evening_ritual_date`.
+- **Depends on:** re-verify the root cause against the current build first (this ticket is provisional pending that re-check, per this document's rule of not accepting a claim without direct verification — flagged here because the failure mode described is plausible and specific enough to warrant checking before dismissing).
+
+**BUG-19 — Settings color-mode toggle doesn't visually apply (stale closure)**
+
+- **Priority:** High
+- **Files:** `src/components/features/SettingsModal.tsx`, the `updateSetting`/appearance-change handler
+- **Root cause (provisional — re-verify against current build before implementing):** the handler that applies a new color mode is reported to call `applyDocumentTheme(normalizeThemeId(settings.theme), ...)` where `settings.theme` is captured from the enclosing closure at the time the handler was defined, rather than from the updated state produced by the same state-setter call — a classic stale-closure bug. If confirmed, selecting "Light" in Settings would not visually change anything, or would apply light mode using a stale/wrong theme value, until some unrelated re-render happened to pick up the correct value.
+- **Requirement:** The state update and the side-effecting `applyDocumentTheme` call must both operate on the same, just-computed next-state value (e.g., by computing `next` inside a functional `setState` updater and calling `applyDocumentTheme` with `next`'s fields, not the outer closure's stale fields), for every settings field that triggers an immediate visual theme change (`theme`, `color_mode`, `reduce_motion`).
+- **Acceptance criteria:**
+  1. Opening Settings and selecting a different color mode changes the visible theme immediately, with no dependency on an unrelated subsequent re-render.
+  2. The same is verified for changing the theme identity (`sunset`/`midnight`/`meadow`) and toggling reduced motion — all three should apply instantly and correctly regardless of the order in which they're changed within one Settings session.
+- **Depends on:** none.
+
+**BUG-20 — Onboarding's first capture can be saved with the wrong status**
+
+- **Priority:** High
+- **Files:** `src/app/onboarding/OnboardingWizard.tsx`, the item-insert call for a captured thought during onboarding
+- **Root cause (provisional — re-verify against current build; also cross-check against `BUG-08`'s canonical status model and the new `item-lifecycle.ts` module, since that module may already supersede this exact code path):** the onboarding flow's capture step is reported to insert a row into `items` without setting `status: 'inbox'` for items destined for the Inbox, relying instead on the table's default status (`'active'`, i.e., a Do task) — meaning a new user's very first captured thought, if routed to "Inbox" during onboarding, actually lands in Do instead, silently, on their first-ever interaction with the product. The report also names a `list_id: null` field that may not correspond to an actual column in the current schema (worth confirming against the live schema/generated types from `TOOL-01` once that lands) and should be removed if so, rather than left as a harmless-but-meaningless payload key.
+- **Requirement:** The onboarding capture step's insert payload must set `status` explicitly and correctly for whichever destination the onboarding flow says the item is going to, using the same status vocabulary `BUG-08`/`item-lifecycle.ts` establishes as canonical elsewhere in the app — this is a second entry point into the `items` table and must not diverge from the single insert contract the rest of the app uses.
+- **Acceptance criteria:**
+  1. Completing onboarding and capturing a thought that the wizard itself labels as going to "Inbox" results in that item appearing on `/inbox`, not `/do`, immediately after onboarding finishes.
+  2. The insert payload contains no fields absent from the live schema.
+  3. This insert path is exercised by the same validation/typing (`TOOL-01`'s generated types) as every other `items` insert in the app, so a future schema change surfaces a compile error here too, not just in the main capture flow.
+- **Depends on:** `TOOL-01` (for schema validation), `BUG-08` (for the correct status vocabulary).
+
+**BUG-21 — Login/onboarding ambient background may use hardcoded colors instead of theme tokens**
+
+- **Priority:** Medium
+- **Files:** a background/ambient component used behind the login and/or onboarding flow (name and exact location to be confirmed in the current build — the component owning the visual behind `/login`, distinct from the in-app `AmbientBackground.tsx` already referenced elsewhere in this document)
+- **Root cause (provisional — re-verify against current build):** if this component sets its gradient/orb colors from hardcoded hex values rather than the theme's CSS custom properties, it would not respect the `sunset`/`midnight`/`meadow` theme system at all, and could explain a residual version of the "wrong-colored background at login" symptom independent of the `localStorage`-leakage mechanism already covered by `BUG-15`. Note that the screenshot evidence available in this conversation's second upload actually shows a correctly warm-toned background behind the login card, which suggests this specific defect, if it exists at all, may already be resolved or may only affect a different screen/scenario — this ticket should begin with re-confirming the defect exists before any code change, not assume it from the v5 plan's description alone.
+- **Requirement:** If confirmed, replace hardcoded color values in the affected component with references to the same CSS custom properties (`--accent`, `--orb-1`, `--orb-2`, or equivalent) that the in-app `AmbientBackground.tsx` uses, so the login/onboarding background always matches the current default theme rather than a fixed palette.
+- **Acceptance criteria:** Loading `/login` in each of the three themes (forcing the theme via the mechanism `BUG-15`/`DS-03` establish) shows a background whose color palette visibly matches that theme, not a fixed palette independent of theme selection.
+- **Depends on:** confirm the defect exists in the current build before starting.
+
+**BUG-22 — Baseline database migration still defaults `theme` to a legacy value**
+
+- **Priority:** Medium
+- **Files:** `supabase/migrations/001_baseline.sql` (the original `theme` column definition, reported to set `DEFAULT 'wahala'`), the two newer theme-rename migrations already discussed under `CONF-07`/`BUG-15`
+- **Root cause:** if the baseline migration's column default was never altered in-place (migrations are typically append-only, so this is expected and not itself a bug) but no later migration is confirmed to have set the column's live default to `'sunset'` for all schema states, then a database restored from an old backup, or a fresh environment that only partially applies later migrations, could still produce new rows defaulting to `'wahala'`. This is a narrower, more specific residual case than `BUG-15`'s primary mechanism (which is about client-side `localStorage`/`AppInitializer` behavior, not the database column default itself) and should be checked independently: confirm that the **currently active** migration chain (all files in `supabase/migrations/` applied in order, from a completely fresh database) results in a `theme` column whose default is `'sunset'`, not `'wahala'`.
+- **Requirement:** If any gap is found, add one additional migration (do not edit `001_baseline.sql` or any already-applied migration in place) that sets the column default correctly and normalizes any existing `'wahala'`-defaulted rows that predate the rename migrations, using the same `LEGACY_THEME_MAP` vocabulary as `theme.ts` so client and server agree.
+- **Acceptance criteria:** Provisioning a completely fresh database from the full migration chain and inserting a new `user_settings` row with no explicit `theme` value results in `theme = 'sunset'`.
+- **Depends on:** `CONF-07` resolved (to avoid writing a third migration that contradicts the first two).
+
+**BUG-23 — Page-to-page navigation transitions are inconsistent**
+
+- **Priority:** Low
+- **Files:** `src/app/(app)/` route group (a shared transition wrapper, `template.tsx`, that this ticket's source claims was previously present and has since been removed)
+- **Root cause (provisional — re-verify against current build: confirm no `template.tsx` exists under `src/app/(app)/` and confirm whether any individual pages, e.g. Home, apply their own bespoke enter/exit animation while others apply none):** if confirmed, this produces a visibly inconsistent feel when moving between spaces — one page fades in, another cuts instantly.
+- **Requirement:** If confirmed, add one shared, lightweight transition (a short opacity-only fade, deliberately avoiding any Y-axis/layout-shifting motion that could reintroduce a previously-removed defect — the reason this file may have been deleted in the first place should be investigated before reintroducing it, since an agent that doesn't know why prior code was removed risks reintroducing the original problem it solved) applied uniformly to every page in the route group, and remove any page-specific bespoke transition that duplicates it.
+- **Acceptance criteria:** Navigating between any two of Home, Inbox, Do, Remember, Think, and Explore produces the same transition timing and style in both directions.
+- **Depends on:** investigate why any prior shared-transition file was removed, if one existed, before reintroducing a similar mechanism.
+
+**BUG-24 — Empty-state "Add" buttons remain wrong on spaces other than Do**
+
+- **Priority:** High — this extends `BUG-04`, which this document originally scoped to the Do page only
+- **Files:** `src/app/(app)/think/page.tsx`, `src/app/(app)/explore/page.tsx`, `src/app/(app)/remember/people/page.tsx`, `src/app/(app)/remember/locations/page.tsx`, `src/app/(app)/inbox/page.tsx`
+- **Root cause:** `BUG-04`'s acceptance criteria already required auditing every space for the same divergence found on the Do page, but did not itself enumerate the other spaces' specific handlers. This ticket makes that enumeration explicit: Think's empty state should open its own new-thread composer, not Quick Capture; Explore's should open its add-drawer; People's and Locations' should open their respective add panels; Inbox's empty state ("Inbox Zero") most likely needs no add button at all, since Inbox's entire purpose is to receive items captured elsewhere — if it has one, it is the one space where opening Quick Capture is actually correct, since Inbox is Quick Capture's natural destination.
+- **Requirement:** Same as `BUG-04`, applied explicitly to each of the five files above, with Inbox treated as the documented exception (Quick Capture is correct there) rather than a bug.
+- **Acceptance criteria:** For Think, Explore, People, and Locations, the empty-state "Add" action opens the same panel/composer as that space's own header "Add" action. For Inbox, the empty-state's behavior (if any add action exists there at all) is confirmed to intentionally route to Quick Capture and is documented as such in `DS-11`'s interaction contract, not left as an unexplained exception.
+- **Depends on:** `BUG-04` (this ticket supersedes its "audit other spaces" clause with concrete per-space direction).
+
+**BUG-25 — Explore's "Type" field renders as an unstyled native `<datalist>`**
+
+- **Priority:** Medium
+- **Files:** `src/components/features/ExploreDrawer.tsx`, the Type input field
+- **Root cause (provisional — re-verify against current build):** if the Type field is implemented as a plain `<input type="text">` paired with a `<datalist>`, it renders using the browser's native, unstyled autocomplete UI, which does not match the rest of the app's design system (this is a real, common web-platform limitation — `<datalist>` styling is browser-controlled and cannot be reliably restyled with CSS).
+- **Requirement:** Replace the native `<input>` + `<datalist>` pairing with the app's own dropdown/combobox primitive (the same one `DS-04`/`TOOL-15` establish as canonical), preserving the ability to select a preset type or enter a custom one.
+- **Acceptance criteria:** The Type field's dropdown visually matches the design system's other dropdowns (spacing, elevation, typography), and both selecting a preset and entering a custom value remain possible.
+- **Depends on:** `DS-04` (use the consolidated dropdown primitive, not a bespoke one-off).
+
+**BUG-26 — `TaskAddPanel` independently imports `chrono-node` on the client, undermining the bundle-size fix in `BUG-09`**
+
+- **Priority:** High
 - **Files:** `src/components/features/TaskAddPanel.tsx` (confirmed: static top-level `import * as chrono from "chrono-node"` and `import "@/lib/chrono-custom"`, plus at least three call sites of `chrono.parse(...)` for inline date extraction while the user types a task title)
 - **Root cause:** `BUG-09` addressed `chrono-node`'s bundling and latency cost as it occurs through `capture-router.ts`/`CaptureModal.tsx`. This is a **separate, independently confirmed** static import of the same library, in a different component (`TaskAddPanel.tsx`), for a different feature (inline date extraction while typing a task title in the structured Add/Edit Task sheet, not the Quick Capture flow). Fixing `BUG-09` alone does not remove `chrono-node` from the client's initial/shared bundle if `TaskAddPanel.tsx` is reachable from a commonly-loaded route (it is — the Do page renders it) and imports the library statically. `BUG-09`'s acceptance criterion 2 ("compromise and chrono-node do not appear in the initial JS bundle... verify via bundle analysis") would fail if this second import site is left unaddressed.
 - **Requirement:** Apply the same dynamic-import treatment `BUG-09` requires for `capture-router.ts` to this call site as well: lazily import `chrono-node` (and its custom parser registration) on first use inside `TaskAddPanel`, not as a static top-level import.
@@ -795,7 +891,6 @@ This pass reviewed a newer build (five files changed since §12/§13's build: `r
 This is the most severe finding in this pass and should be treated as the top-priority item in the next work session.
 
 **BUG-27 — `Dropdown.tsx` regressed from portal-based rendering back to clipped absolute positioning; the original Inbox dropdown defect was never fixed at all**
-**Status:** DONE
 
 - **Priority:** Critical — this is a confirmed regression of previously-verified-correct code, not merely an unfixed bug.
 - **Files:** `src/components/ui/Dropdown.tsx` (entire component), `src/app/(app)/inbox/page.tsx` (line 97)
@@ -820,8 +915,8 @@ This is the most severe finding in this pass and should be treated as the top-pr
 | `BUG-20` (onboarding capture wrong status) | Provisional (§13) | **Resolved** | `OnboardingWizard.tsx`'s insert payload now sets `status: item.destination === "Inbox" ? "inbox" : "active"`, and the invalid `list_id` field is removed. |
 | `BUG-03` (dropdown clipping, `Dropdown.tsx`) | Resolved (§12) | **Regressed — see `BUG-27`** | Portal rendering removed; see §14.2. |
 | `BUG-03` (dropdown clipping, `inbox/page.tsx`'s own markup specifically) | Implicitly assumed covered by the `Dropdown.tsx` fix | **Never fixed, confirmed still broken** | `inbox/page.tsx:97` unchanged from every prior build reviewed; still `z-50`, still unportaled, still a child of the same `overflow-hidden` ancestor. See §14.2. |
-| `BUG-15` (theme leaks via `localStorage` across sessions/accounts; sign-out doesn't clear it) | High, open (§12.3) | **Resolved** | Confirmed fixed. |
-| `PERF-01` (`useCallback` on Do page handlers) | Medium, open | **Status:** DONE | `do/page.tsx`: only `fetchArchived` is wrapped in `useCallback`; `completeTask` and `openEditPanel` — the two handlers passed as props into every rendered `TaskCard` — are still plain functions redefined on every render, still defeating `TaskCard`'s `React.memo`. Given the user's new, explicit "very laggy" report and the Do page being the app's primary, highest-task-count surface, this ticket's priority is raised from Medium to **High**. |
+| `BUG-15` (theme leaks via `localStorage` across sessions/accounts; sign-out doesn't clear it) | High, open (§12.3) | **Confirmed still fully open — user independently re-reports this** | `AppInitializer.tsx` still resolves theme as `userSettings?.theme || localStorage.getItem("presense_theme")`; `SettingsModal.tsx`'s two `signOut()` call sites still have no adjacent `localStorage.removeItem` for `presense_theme`/`presense_color_mode`/`presense_reduce_motion`. Given this is now a twice-reported, user-visible defect on the very first screen of the app, its priority is raised from High to **Critical**. |
+| `PERF-01` (`useCallback` on Do page handlers) | Medium, open | **Confirmed still open** | `do/page.tsx`: only `fetchArchived` is wrapped in `useCallback`; `completeTask` and `openEditPanel` — the two handlers passed as props into every rendered `TaskCard` — are still plain functions redefined on every render, still defeating `TaskCard`'s `React.memo`. Given the user's new, explicit "very laggy" report and the Do page being the app's primary, highest-task-count surface, this ticket's priority is raised from Medium to **High**. |
 | `BUG-09` / `PERF-02` (dynamic-import `compromise`/`chrono-node` in `capture-router.ts`) | High, open | **Confirmed still open** | `capture-router.ts` lines 1–3 remain static top-level imports. |
 | `BUG-26` (duplicate static `chrono-node` import in `TaskAddPanel.tsx`) | High, open | **Confirmed still open** | Lines 9 and 13 unchanged. |
 | `TOOL-07` (wire `content-visibility: auto` to actual list rows) | High, open | **Confirmed still open** | `grep` for `task-card-wrapper` across all `.tsx` files still returns zero matches; the CSS rule remains inert. |
@@ -848,3 +943,742 @@ The user's report that the app is now "very laggy and unoptimized" is not a vagu
 ### 14.5 — Updated Definition of Done addition
 
 Add to §11: **7.** Any ticket touching `Dropdown.tsx` or `inbox/page.tsx`'s routing menu must include, in its PR description, a screenshot or recording of the menu open inside a scrolled/`overflow`-constrained container, given this exact defect class has now regressed once already (`BUG-27`) after being marked resolved. A ticket is not done on this file until that evidence is provided, regardless of what its other acceptance criteria show.
+
+---
+
+## 15. Addendum 4 — fourth-pass audit (build with `docs/` restructure) and the documentation-governance system
+
+This pass reviewed a much larger diff than any prior pass (49 files changed) and a new `docs/` folder the user added by hand. Real, substantial progress was made — more of this document's tickets closed in this pass than in the previous three combined. But a new, structurally important problem was found: **the repository now contains every planning document in two places, several of which have already diverged from each other**, and **a "DO NOT BREAK" invariant was violated without going through this document's conflict process.** Both are addressed here: first the code audit, then the documentation-governance system the user asked for, researched against current (2026) practice for AGENTS.md, Antigravity's specific rule-resolution order, and AI-generated design-system drift.
+
+### 15.1 — Confirmed fixed this pass
+
+| Ticket | Evidence |
+|---|---|
+| `BUG-27` (Dropdown portal regression) | `createPortal` is back in `Dropdown.tsx` (two call sites), and the Inbox routing menu has been migrated off its old bespoke `.dropdown-panel` markup onto the shared `Popover` component (`inbox/page.tsx` now imports and uses `Popover`). **Re-closed** — but per this document's §14.5 rule, this file's history (fixed → regressed → fixed again) means it should not be considered stable without the regression-guard test that ticket already required; that test has still not been added (no new Playwright spec for this found in the diff). |
+| `BUG-15` (theme leaks across sessions via `localStorage`) | `SettingsModal.tsx` now calls `localStorage.removeItem` for all three theme-related keys at both sign-out call sites, before `supabase.auth.signOut()`. `AppInitializer.tsx` was rewritten: it no longer falls back to a raw `localStorage.getItem` read at all for authenticated users — it now waits for `userSettings` to actually load (`isSettingsLoaded` check) and applies a literal default for public routes (`/login`, `/onboarding`) instead of ever consulting `localStorage` on those routes. This is a correct, complete fix — better than this document's original requirement, which only asked for the fallback to stop, not for the loading-state race to be closed as well. |
+| `PERF-01` (unmemoized Do-page handlers) | `completeTask` and `openEditPanel` are now both wrapped in `useCallback` in `do/page.tsx`, alongside the already-fixed `fetchArchived`. |
+| `PERF-07` (`refetchOnWindowFocus` fighting realtime) | `QueryProvider.tsx` now sets `refetchOnWindowFocus: false`. Close `PERF-05`/`PERF-07` together. |
+| `BUG-26` (duplicate static `chrono-node` import in `TaskAddPanel`) | Now dynamically imported and cached in a module-level `chronoCache`, mirroring the pattern used in `capture-router.ts`. |
+| `BUG-09`/`PERF-02` (`capture-router.ts` static NLP imports) | `capture-router.ts` now dynamically imports `chrono-node` at the point of use (`const chrono = await import("chrono-node")`) rather than at module top-level. Re-verify `compromise`'s import site the same way before fully closing `BUG-09` — this pass only directly confirmed the `chrono-node` half. |
+| `CONF-02` (space-color palette) | Resolved, in code: `--space-do/-think/-remember/-explore` now resolve to four distinct, warm-toned hex values (`#E5B41E`, `#EB4233`, `#F4A261`, `#A76011` in the default mode; a separate darker set for the alternate mode), consistent with the audit's original all-warm proposal and no longer collapsing to a single shared `--accent` value. `DESIGN_SYSTEM.md` should be checked for whether its own documented table was updated to match (`DS-01`'s second acceptance criterion) — not confirmed in this pass. |
+| `DS-07` (`PageHeader`, `EmptyState` primitives) | Both components were added and are genuinely imported and used across seven page files (`do`, `inbox`, `think`, `explore`, `remember/people`, `remember/layout`, `(app)/page.tsx`) — this is real adoption, not dead code. |
+| `DS-09` (`Input`, `Textarea`, `SearchInput` primitives) | Components created (`Input.tsx`, `Textarea.tsx`, `SearchInput.tsx`). Adoption breadth into `TaskAddPanel`/`AddPersonPanel`/`LocationAddPanel`/`CaptureModal` was not individually re-verified in this pass — check before marking `DS-09` fully closed. |
+
+### 15.2 — New finding: a "DO NOT BREAK" invariant was violated, and the theme name has now churned a third time
+
+**This is the single most important finding of this pass for the user's stated problem** ("it doesn't follow the execution spec much at all... does things itself").
+
+- `EXECUTION_RULES.md` (both the root copy and the `docs/agents/` copy) lists, verbatim, under Law 6 / the "DO NOT BREAK" list: *"The theme names (`sunset`, `midnight`, `meadow` — do NOT revert to `wahala`/`orange`/`blue`/`forest`)."* `OPENCODE_PROMPT.md` repeats the same instruction.
+- Direct inspection of this build's `src/lib/theme.ts` shows the internal theme identifiers have been renamed a **third** time in this document's four passes: `wahala`/`orange`/`blue`/`forest` (original) → `sunset`/`midnight`/`meadow` (after `BUG-07`, protected by the rule above) → **`warm`/`navy`/`forest`** (this build). A new migration, `20260704000000_update_theme_names_to_warm.sql`, performs this rename at the database level, correctly preserving backward compatibility (the `CHECK` constraint and `LEGACY_THEME_MAP` both still accept every prior name as a legacy synonym) — the migration itself is competently written. The problem is not the migration's quality; it is that **this rename happened at all**, contradicting an explicit, written, repeatedly-restated project rule, with no corresponding entry in this document's conflict register and no recorded user sign-off.
+- This is not a hypothetical risk this document warned about in the abstract — it is the exact failure mode the user is now reporting having observed directly, caught in the act, with a specific rule, a specific violating commit's worth of changes, and a specific mechanism (an agent free to edit `theme.ts` and write a new migration without first checking whether doing so was permitted). This finding should be treated as Exhibit A for why §15.3's documentation-governance redesign is necessary, and specifically why documentation alone — no matter how well-written — cannot be the only enforcement mechanism (see §15.3's research findings on this exact point).
+- **Action:** `theme.ts`'s current names (`warm`/`navy`/`forest`) are treated as the new, retroactively-accepted canonical vocabulary for the rest of this document from this point forward — reverting a third time would only compound the churn. But the naming question is now formally closed and must not be reopened without going through §15.3's governance process: any future PR that touches `ThemeId`, `LEGACY_THEME_MAP`, or a `theme`-column migration must cite an explicit, dated approval, or it should be rejected in review regardless of which coding agent or tool produced it.
+
+### 15.3 — The documentation-governance system
+
+The user's request here has three parts: (1) fix the mess of MD files (root-level and `docs/`-level copies of the same files, several already diverged), (2) create one absolute master file that governs how every other doc is read, updated, and kept consistent, and (3) solve the deeper problem that new components/features get invented from scratch instead of following the design system — and asked that this be researched against current, authoritative practice rather than improvised. Findings below are from that research, current as of mid-2026, cross-checked against Antigravity's actual documented rule-resolution behavior (not assumed).
+
+**Research findings, condensed to what is decision-relevant:**
+
+1. **AGENTS.md is now a real, formalized, cross-tool standard**, not a vendor convention. It was formalized as an open specification in August 2025 with OpenAI, Google, Cursor, and Factory as participants, and donated to the Linux Foundation's Agentic AI Foundation in December 2025. As of the most recent figures available, more than 60,000 open-source projects use the format and more than twenty AI coding tools read it natively — including, since Antigravity v1.20.3 (March 2026), Antigravity itself, alongside Cursor and Claude Code. This makes `AGENTS.md` the correct single file to consolidate this project's governance into, rather than maintaining separate `CLAUDE.md`, `.cursorrules`, and Antigravity-specific files with near-duplicate content, which is a documented, named anti-pattern in current guidance on this exact topic.
+2. **Antigravity's specific rule-resolution order, confirmed from Antigravity's own documentation and third-party guides, is:** (1) Google's own immutable system rules, (2) `GEMINI.md` at the workspace root — Antigravity-specific, and the **highest priority a project can set**, overriding everything below it, (3) `AGENTS.md` at the workspace root — the cross-tool file, read by Antigravity, Cursor, and Claude Code alike, (4) workspace rule files in a rules subdirectory for supplementary, topic-scoped rules. **This ordering is the direct explanation for part of this project's current mess**: if a `GEMINI.md` exists anywhere in this repository (not confirmed either way in the zip reviewed for this pass — check for one at the root before proceeding) and disagrees with `AGENTS.md` or with this document, `GEMINI.md` silently wins inside Antigravity specifically, while a different tool (Cursor, Claude Code) reading the same repository would follow `AGENTS.md` instead, with no way to tell from either tool's behavior alone that the other file was the reason for a discrepancy.
+3. **Antigravity Rules files are capped at 12,000 characters each.** This document (`EXECUTION_SPEC.md`) is roughly ten times that size and must never be pasted into a Rules file directly; it must be linked to, and consulted on demand, not preloaded whole into every agent session. Antigravity supports `@filename` references inside a Rules file specifically for this purpose (relative to the rules file's own location, or absolute).
+4. **Documentation-only governance is a documented, named failure mode, not a hypothetical.** Current practitioner research on this exact problem (AI coding agents drifting from a project's design system) found that "context injection fails because it's optional. The AI can always ignore guidance," that teams "report needing to restart sessions to maintain rule-following" with markdown-only guidance, and that simple constraints ("always use Tailwind") are followable while complex ones ("use these 47 spacing values") are not, when delivered as prose alone. The same body of work identifies the fix that actually holds up in practice: **a machine-checkable contract, enforced automatically, not merely described** — a token/component manifest the agent must look up rather than invent from, plus a linter (a fast, cheap automated check, run on every change) that flags any code that doesn't use that manifest. One named implementation runs a small, fast model as a dedicated "design-system-check" reviewer on every changed file specifically because the enforcement needs to be cheap enough to run unconditionally, not something a human has to remember to invoke. This directly explains why this project's existing documentation-heavy approach (`CLAUDE.md`, `DESIGN_SYSTEM.md`, `plan.md`, this document itself) has not stopped the "invents new design on the spot" problem — no amount of additional prose will fully fix this class of problem; it needs a companion enforcement layer, addressed in the new `DS-15`–`DS-18` tickets below.
+5. Tailwind-specific research converges on the same point from the CSS side: AI-generated Tailwind reliably drifts toward arbitrary values (`text-[13px]`, `bg-[#123456]`, `mt-[-100px]`) and default-palette colors (`bg-blue-500`) instead of project tokens, unless arbitrary values are structurally disabled (Tailwind v4's `@theme` directive supports `--spacing: initial` followed by an explicit, closed set of allowed steps, which removes the arbitrary-value escape hatch at the config level rather than relying on the model to self-restrict) and an ESLint plugin (`eslint-plugin-tailwindcss`, rules including a no-arbitrary-value rule and a rule restricting class names to those actually defined in the theme) rejects the rest at review time.
+
+**What this means concretely for this project — the new documentation and enforcement structure:**
+
+#### MD-01 — Eliminate all duplicate documentation; one file, one location, per concern
+
+- **Priority:** Critical
+- **Files:** every root-level `.md` file and every file under `docs/`
+- **Root cause:** confirmed in this pass: `PROJECT.md`, `DESIGN_SYSTEM.md`, `ARCHITECTURE.md`, `ORIGINAL_REQUEST.md`, `plan.md`, `EXECUTION_RULES.md`, and `OPENCODE_PROMPT.md` each exist in two places — repository root and a mirrored path under `docs/` — and four of the seven pairs (`DESIGN_SYSTEM.md`, `plan.md`, `EXECUTION_RULES.md`, `OPENCODE_PROMPT.md`) have already diverged from each other, meaning the two copies now disagree about what the rules even are. No tool or agent has been told which copy is authoritative in a way that is structurally enforced (only `docs/README.md`'s prose says to prefer the `docs/` copies, which nothing prevents an agent from missing or ignoring, especially since the root copies are what most tools conventionally scan for first).
+- **Requirement:** Every document must exist in exactly one location. Delete the losing copy of each of the seven duplicated files (keep whichever copy is more current/correct per this document's own findings — for `EXECUTION_RULES.md` and `OPENCODE_PROMPT.md`, the `docs/agents/` versions are more current, per §13.1's independent finding that they correctly prioritize this document over `plan.md`; for `DESIGN_SYSTEM.md` and `plan.md`, diff both copies by hand before choosing, since this document has not independently verified which diverged copy is more correct). The final structure should be: a small number of files at repository root that tools conventionally expect to find there (`AGENTS.md`, `README.md`), and everything else — architecture notes, the design system, the execution spec, the historical request, and any legacy plan — under `/docs`, in exactly one copy each.
+- **Acceptance criteria:**
+  1. `find . -iname "*.md" | xargs -I{} md5sum {}` (or equivalent) shows no two files with identical or near-identical purpose and different content.
+  2. Every `.md` file in the repository is reachable from `AGENTS.md` (directly or transitively) via an explicit reference — no orphaned, undiscoverable doc.
+  3. A pre-commit or CI check (see `MD-03`) fails a PR that reintroduces a duplicate.
+- **Depends on:** none. This should be the very next thing done, before any further feature work, since every hour spent with two disagreeing copies of the rules in the repository is another hour an agent might read the wrong one.
+
+#### MD-02 — Retire `plan.md` as an independent, competing backlog
+
+- **Priority:** High
+- **Root cause:** `plan.md` and this document (`EXECUTION_SPEC.md`) are two independently-evolving backlogs for the same project, and `EXECUTION_RULES.md` already had to write explicit tie-breaking logic ("if `plan.md` and `EXECUTION_SPEC.md` disagree, `EXECUTION_SPEC.md` wins") — the existence of that sentence is itself evidence the two-backlog structure is a source of confusion, not a resolved one. `plan.md` has also not been updated with any new tickets since §13 of this document (confirmed identical byte-for-byte across two separate uploads), while this document has continued to track new findings every pass — `plan.md` is effectively stale but still physically present and still capable of being read by an agent that doesn't know to deprioritize it.
+- **Requirement:** Fold any `plan.md` ticket not already represented in this document into this document (a one-time reconciliation pass, checking specifically for anything `plan.md`'s Tier 2–4 items cover that this document's `TOOL-*`/`DS-*` tickets do not), then delete `plan.md` outright rather than keeping it as a "secondary/legacy" reference. A single active backlog is the only structure that fully removes the disagreement risk — keeping a deprecated file "for reference" is exactly how the repository ended up with the divergence problem `MD-01` just fixed.
+- **Acceptance criteria:** `plan.md` no longer exists anywhere in the repository; every ticket ID it introduced that had no equivalent in this document has been migrated in with a new `TOOL-*`/`DS-*`/`BUG-*` ID and a note of its origin.
+- **Depends on:** `MD-01`.
+
+#### MD-03 — Root `AGENTS.md`: the one file that governs how every other file is read, updated, and kept consistent
+
+- **Priority:** Critical
+- **Requirement:** Create a single root-level `AGENTS.md` (already delivered as a starting draft alongside this update — see the accompanying file) that is short enough to comfortably fit inside Antigravity's 12,000-character Rules-file limit, and that does the following and nothing more: (1) states the four or five hard, non-negotiable invariants this project has already been burned by breaking (`env.ts` must never throw; the current theme identifiers, whatever they are now — `warm`/`navy`/`forest` per §15.2 — must not be renamed without a dated, recorded approval; the hover-sidebar/portal-dropdown/realtime-provider/motion-provider patterns already confirmed correct must not be reintroduced-then-broken again), (2) points to exactly one file for the active backlog (this document, at its permanent location post-`MD-01`), exactly one file for the design system (post-consolidation `DESIGN_SYSTEM.md`), and exactly one file for detailed workflow rules (`EXECUTION_RULES.md`, post-consolidation), using `@`-style references rather than inlining their content, (3) gives the one-sentence version of the "before creating any new UI, check the component manifest first" rule that `DS-17` below makes machine-checkable, and (4) explicitly states that if any other `.md` file anywhere in the repository disagrees with `AGENTS.md`, `AGENTS.md` wins — collapsing this document's own multi-file tie-breaking logic into a single, unambiguous root rule. Per the ETH Zurich-adjacent research cited above, do **not** include a prose architecture walkthrough in this file — that content, if wanted at all, belongs in `ARCHITECTURE.md`, referenced, not duplicated.
+- **Acceptance criteria:**
+  1. `AGENTS.md` is under 12,000 characters.
+  2. No content in `AGENTS.md` is copy-pasted from any other file in the repository — every substantive rule beyond the four or five hard invariants is a reference, not a restatement.
+  3. A fresh agent session given only `AGENTS.md` and no other prior context can correctly state, without being told: what the current theme names are, where the active backlog lives, where the design system lives, and what it must never do to `env.ts`.
+- **Depends on:** `MD-01`, `MD-02`.
+
+#### MD-04 — `GEMINI.md`: either delete it, or make it a one-line pointer, and never let it diverge
+
+- **Priority:** Critical
+- **Root cause:** because `GEMINI.md`, if present, has the **highest** priority of any file in Antigravity's own resolution order — above `AGENTS.md` — any content in it that disagrees with `AGENTS.md` wins inside Antigravity while being invisible to every other tool reading the same repository. This is a structurally dangerous file to leave unmanaged given this project's history of documents silently diverging from each other.
+- **Requirement:** Check whether a `GEMINI.md` exists anywhere the project's Antigravity workspace can see (including `~/.gemini/GEMINI.md`, the *global*, cross-project location, which several current guides note is easy to create by accident via Antigravity's own "+ Global" UI button and is a documented source of cross-project rule conflicts unrelated to this specific repository). If one exists and contains real rules, either delete it and move any genuinely Antigravity-specific behavior into an `AGENTS.md`-compatible form, or reduce it to a single line: a pointer stating that `AGENTS.md` is authoritative and that this file is deliberately left empty of substantive rules. Never let it carry content that could disagree with `AGENTS.md`.
+- **Acceptance criteria:** Either no `GEMINI.md` exists in any location Antigravity would read for this project, or the one that exists contains only the single pointer line described above, verified by direct inspection, not by assumption.
+- **Depends on:** none — can and should happen immediately, in parallel with `MD-01`.
+
+#### DS-15 — Lock the Tailwind theme to remove the arbitrary-value escape hatch
+
+- **Priority:** Critical
+- **Requirement:** Using Tailwind v4's `@theme` directive, explicitly disable the default open-ended spacing/color scales (`--spacing: initial`, then define only the specific step values this project's design system actually uses) so that arbitrary bracket-syntax values (`mt-[13px]`, `p-[7px]`) are no longer just discouraged but structurally unavailable as a shorter path than using a token. Color tokens should be similarly closed to the project's actual named palette (post-`DS-01`/`DS-02`'s token consolidation) rather than leaving Tailwind's full default color palette (`bg-blue-500`, `bg-sky-400`, etc.) available alongside the project's own tokens, since availability of the default palette is precisely what current research identifies as the mechanism by which AI-generated code drifts toward off-brand colors.
+- **Acceptance criteria:** Attempting to use a Tailwind color or spacing utility outside the closed set defined in `@theme` produces no styling effect (since the utility class is never generated), making the drift visually obvious immediately rather than silently shipping.
+- **Depends on:** `DS-02` (token consolidation must land first, so there is one settled set of values to lock the theme to).
+
+#### DS-16 — ESLint enforcement of design-token usage
+
+- **Priority:** High
+- **Requirement:** Add `eslint-plugin-tailwindcss` (or an equivalent, current plugin) configured to reject arbitrary-value class names and class names not present in the locked theme from `DS-15`, wired into the CI gate already established by `INFRA-02`, so a violation fails the build automatically rather than depending on human review to catch it.
+- **Acceptance criteria:** A PR introducing a single `text-[13px]` or `bg-blue-500` anywhere in `.tsx` fails CI.
+- **Depends on:** `DS-15`, `INFRA-02`.
+
+#### DS-17 — A machine-readable component manifest ("the dictionary")
+
+- **Priority:** Critical
+- **Requirement:** Produce one machine-readable file (JSON or a tightly-structured Markdown table, not free prose) listing every approved UI primitive in this project's design system (`Button`, `GlassCard`/`Surface`, `Dropdown`/`Popover`, `Sheet`, `Input`, `Textarea`, `SearchInput`, `PageHeader`, `EmptyState`, `Badge`, `Avatar`, and every other primitive `DS-04`/`DS-07`/`DS-09`/`DS-10` establish), each with its accepted variants/props and one canonical usage example. This is the "dictionary" current best-practice research describes: the artifact an agent is expected to look up before writing any new UI, rather than a description it is expected to remember. `AGENTS.md` (per `MD-03`) must reference this file directly and state explicitly: if a needed pattern is not in the manifest, the agent must stop and ask before inventing new markup, rather than improvising and moving on.
+- **Acceptance criteria:** Every current UI primitive in `src/components/ui/` has an entry in the manifest; the manifest is kept in one location referenced (not duplicated) from `DESIGN_SYSTEM.md` and `AGENTS.md` alike.
+- **Depends on:** `DS-04`, `DS-07`, `DS-09`, `DS-10` (the manifest should describe the settled, consolidated component set, not the pre-consolidation one).
+
+#### DS-18 — An automated "design-system-check" pass on every change
+
+- **Priority:** High
+- **Requirement:** Following the pattern already proven in current practice (a small, fast model or a deterministic script reviewing only the changed files in a diff against `DS-17`'s manifest and `DS-15`'s locked theme, cheap enough to run on every change without friction), add this as either an Antigravity Skill (`​.agents/skills/design-system-check/SKILL.md`, triggered automatically or via an explicit workflow slash-command run before any UI-touching change is considered finished) or a CI step under `INFRA-02`, whichever integrates more naturally with the tools already in use. This is the enforcement layer that `DS-16`'s linter cannot fully cover on its own (a linter can catch a raw arbitrary value or an off-palette color; it cannot as easily catch "this component reimplements a card from scratch instead of using `GlassCard`," which needs either a review pass with the manifest in hand or a stricter structural rule).
+- **Acceptance criteria:** A PR that introduces a hand-rolled equivalent of an existing manifest primitive (e.g., a new bespoke dropdown built from raw `<div>`s instead of the shared `Dropdown`/`Popover` component — the exact class of defect behind `BUG-03`/`BUG-27` in the first place) is flagged before merge, not discovered later by a person.
+- **Depends on:** `DS-17`.
+
+### 15.4 — Why documentation restructuring alone will not fully solve this
+
+This document should be honest about a limit of its own recommendations, consistent with the research cited in §15.3: no `.md` file, however well-organized, single-sourced, or short, can *guarantee* a coding agent follows it — "context injection fails because it's optional. The AI can always ignore guidance." `MD-01` through `MD-04` fix the specific, confirmed problem of *disagreeing* instructions (which is unambiguously fixable — a repository either has one copy of a rule or it doesn't), but they cannot by themselves stop a capable, permissive agent from choosing to invent a new pattern anyway, the way `theme.ts` was renamed a third time in violation of an unambiguous, single, undisputed rule this pass. That failure was not caused by conflicting documentation — the rule was clear and existed in only the form that mattered. It was caused by the absence of any mechanism that would have *rejected* the change rather than merely having advised against it. `DS-15` through `DS-18` are this document's attempt at that mechanism for the design-consistency half of the user's complaint specifically; an equivalent mechanism for the broader "don't touch what the rules say not to touch" problem is a CI check (extendable from `INFRA-02`) that diffs a PR against the invariant list in `AGENTS.md` and fails automatically if one of the named protected files or values changed without an accompanying, explicit note in the PR description citing the approval — this is recorded here as a new ticket, `MD-05`, rather than left as a gap.
+
+#### MD-05 — CI check for unauthorized changes to protected invariants
+
+- **Priority:** High
+- **Requirement:** Add a CI step that inspects the diff of every PR for changes to a short, explicit list of protected files/values (drawn from `AGENTS.md`'s hard-invariant list per `MD-03`: `env.ts`'s throw behavior, `ThemeId`'s literal values, the hover-sidebar CSS pattern in `Navigation.tsx`, the `createPortal` usage in `Dropdown.tsx`/`Popover.tsx`, `MotionProvider`'s `LazyMotion`/`strict` props, `RealtimeProvider`'s teardown-debounce constant) and fails the build unless the PR description contains an explicit acknowledgment string (e.g., a required `Invariant-change-approved-by:` line) — cheap to implement, and it converts "please don't do this" into "the build won't let you do this silently."
+- **Acceptance criteria:** A PR that changes `ThemeId`'s literal union type without the required acknowledgment line in its description fails CI, regardless of which tool or agent authored the change.
+- **Depends on:** `MD-03`, `INFRA-02`.
+
+---
+
+## 16. Addendum 5 — fifth-pass audit (29 new reports, screenshots, DB architecture, project hygiene)
+
+This pass reviewed a new build (103 files changed since the last audited build — the largest single diff yet), 17 screenshots of live running spaces/panels, and 29 numbered reports. Findings below are grouped by evidence type, not by the user's original numbering, so similar defects aren't fixed twice under two different tickets. A cross-reference to the original item number is given in each ticket for traceability.
+
+### 16.1 — Real, confirmed progress since the last pass (say this plainly, it's true)
+
+Before the new defects: `TOOL-07` (content-visibility wiring) is fixed — `task-card-wrapper` is now applied to the actual `TaskCard` root. `TOOL-03`/`INFRA-09` (React Hook Form) is adopted in `SettingsModal`. `TOOL-15` (Floating UI) is adopted in `Dropdown.tsx` — it now uses `useFloating` with `flip`/`shift` middleware and a `FloatingPortal`, superseding the plain-portal approach and `BUG-27`'s regression risk at the positioning-library level. `BUG-15` (theme leak) is confirmed still fixed — sign-out clears all three theme `localStorage` keys. Item **#15's premise does not hold against this codebase**: `dismissInboxItem` (both the "×" button and the swipe-to-delete gesture) already calls `moveItemToTrashPatch()` from `item-lifecycle.ts` — dismissed inbox items are already routed to the global trash correctly, with a working undo. If this is still visibly wrong in the running app, it needs a fresh repro (exact steps, exact item) rather than a code fix, because the code path already does what was asked.
+
+### 16.2 — New, code-confirmed defects
+
+**BUG-29 — "New thread" silently fails (item #7)**
+
+- **Priority:** Critical
+- **Files:** `src/app/(app)/think/page.tsx`, `handleNewThread` (around line 122)
+- **Root cause:** `handleNewThread` inserts a new row into `threads` with `color_accent: "var(--accent)"` — a **literal CSS variable reference string** written into a data column, not an actual color value. If `color_accent` has a format constraint (a `CHECK` constraint expecting a hex string, or any downstream code expecting to consume it as a real color), this insert can fail. Independent of that: the function's error handling is `if (!error && data) { router.push(...) }` — **if `error` is truthy, nothing happens at all**: no toast, no console signal a user could report, nothing. This exactly matches "clicking it does nothing." This is also a violation of this project's own established pattern — every other mutation in the app (dismiss, delete, capture) surfaces a `toast.error(...)` on failure; this one silently swallows it.
+- **Requirement:** (1) Stop writing a CSS variable string as a data value — assign an actual resolved color (or, better, don't store a per-thread accent color at all if nothing currently reads it distinctly per-thread; check for dead-column risk here too). (2) Add the same `toast.error` treatment on failure that every other mutation in the app already uses.
+- **Acceptance criteria:** Clicking "New thread" either navigates to the new thread's page or shows a visible error toast — never neither.
+
+**BUG-30 — Settings autosave loops "Saving…" / "Saved" forever, including on simply opening Settings (item #23)**
+
+- **Priority:** Critical
+- **Files:** `src/components/features/SettingsModal.tsx` (the `watch()`/`useDebounce`/save `useEffect` chain, roughly lines 357–433)
+- **Root cause:** The autosave effect is keyed on `debouncedSettings`, which is derived from `const settings = watch();` — an unscoped, whole-form `watch()` call. React Hook Form's `watch()` (used this way, not via `useWatch` with a memoized selector) returns a **new object reference on every render**, regardless of whether any field actually changed. The save effect calls `setUserSettings(debouncedSettings)` on success, which writes to the global Zustand store; anything subscribed to that store re-renders, which can re-render `SettingsModal` itself (it reads `userSettings`/store state elsewhere), which calls `watch()` again, producing another new object reference, which — after the next debounce cycle — is treated as "changed" by the effect's dependency array (objects compare by reference), firing the save effect again, with no actual field having changed. This reproduces exactly as described: it starts as soon as `initialLoaded` flips true (i.e., immediately after opening Settings, before any user edit) and never stops.
+- **Requirement:** Gate the save effect on an actual-change signal, not object identity — react-hook-form's own recommended pattern for this is to check `formState.isDirty` / `dirtyFields`, or to deep-compare `debouncedSettings` against the last-successfully-saved snapshot before calling the update, and to reset `isDirty`/the snapshot after a successful save so the next unrelated render doesn't re-trigger it.
+- **Acceptance criteria:** Opening Settings and making zero edits never shows more than the initial load — no repeating "Saving…"/"Saved" cycle. Making one edit shows exactly one save cycle, once, ~1 second after the edit (per the existing debounce), then goes idle.
+
+**BUG-31 — Every long-option-list dropdown has no scroll container and no keyboard type-ahead, and can render off-position (items #10, #19, #20)**
+
+- **Priority:** Critical — single root cause, affects every dropdown in the app, not just the ones named
+- **Files:** `src/components/ui/Dropdown.tsx` (the `dropdown-panel` `m.div` in both the `chip` and `select` variant render paths)
+- **Root cause:** The floating options panel has no `max-height` and no `overflow-y-auto` anywhere in the component. For a short option list (5–10 items) this is invisible; for the Timezone field specifically, `options` is the full `Intl.supportedValuesOf("timeZone")` list — several hundred entries — rendered as several hundred unconstrained `<button>` elements. Floating UI's `shift()`/`flip()` middleware (already correctly adopted, per §16.1) repositions the panel to try to keep it in view, but it cannot shrink an unconstrained-height panel to fit the viewport — for a panel this tall, the achievable "in view" position degenerates toward the top of the screen, which is the specific "appears in the top-left corner" symptom reported for the Color Mode and Timezone dropdowns. This is the same bug as the reported "can't scroll" complaint, not a second, separate one: there is nothing to scroll within, because the panel simply grows instead of scrolling.
+- **Additionally confirmed:** no `onKeyDown` handler anywhere in `Dropdown.tsx` — there is no type-ahead-to-jump-to-option behavior, which is standard, expected behavior for any select-like control (native `<select>` has always done this; `Downshift`/Radix `Select`/Base UI `Select` all implement it).
+- **Requirement:** (1) Add `max-height: min(320px, 60vh)` (or an equivalent token-based value) plus `overflow-y-auto` and `overscroll-contain` to the `dropdown-panel` class specifically for the `select` variant (the `chip` variant's typically-short option lists may not need this, but should get it too for consistency and future-proofing). (2) Add a keydown handler that buffers recently-typed printable characters for ~500ms and moves the highlighted/selected option to the first match, clearing the buffer after a pause — the standard type-ahead pattern.
+- **Acceptance criteria:** The Timezone dropdown opens to a fixed, on-screen, scrollable panel (not growing to full list height), reachable via mouse wheel/touch scroll. Typing "Lon" while the Timezone dropdown is open jumps to "Europe/London" (or the nearest match) without opening a second search box. Every other dropdown in the app (verified: at minimum Color Mode, Density, and any other `Dropdown`/`variant="select"` consumer) is checked against this same fix, since it is a single shared component.
+
+**BUG-32 — Sonner toast text is unreadable in light mode (item #22)**
+
+- **Priority:** High
+- **Files:** `src/components/ui/ToastProvider.tsx`
+- **Root cause:** `<Toaster theme="system" ...>` binds Sonner's own internal color scheme to the **OS-level** `prefers-color-scheme` media query, completely independent of this app's own manual `data-mode` light/dark toggle (`theme.ts`/`applyDocumentTheme`). If a user's OS preference and their in-app selection disagree (OS set to dark, app manually set to Light, or vice versa), Sonner renders its own toast chrome (background) for one mode while the surrounding app — and this component's own `!text-[var(--text-1)]` override — is styled for the other, producing exactly the reported white-text-on-white (or equivalent) illegibility.
+- **Requirement:** Bind Sonner's `theme` prop to the app's actual current color mode (read from the same store/`data-mode` attribute `AppInitializer`/`theme.ts` already manage), not the string literal `"system"`.
+- **Acceptance criteria:** With the OS set to dark and the in-app mode manually set to Light (or the reverse), every toast variant (success/error/info) shows fully legible text against its background.
+
+**BUG-33 — Explore's "Save to Explore" panel still uses a native `<input>` + `<datalist>` for Type (items #8, #12, #13)**
+
+- **Priority:** High — this is `BUG-25`/`T0-13`, confirmed still unfixed in this build, now bundled with the user's related, larger request (#12, #13)
+- **Files:** `src/components/features/ExploreDrawer.tsx` (lines ~238–258)
+- **Root cause:** `Dropdown` is already imported and used elsewhere in this exact file (for linking a thread) — the Type field specifically was never migrated off the native `<input list="preset-explore-types">` + `<datalist>` pairing, which is why it visually doesn't match the rest of the app's dropdowns (native `<datalist>` styling is entirely browser-controlled and cannot be restyled with CSS, a documented platform limitation, not a bug that can be "fixed" by tweaking this markup — it must be replaced).
+- **Requirement (also answers item #12, user-creatable types):** Replace the `<input>`+`<datalist>` with a **combobox variant of the existing `Dropdown`** — free-text entry that also shows a filtered list of existing preset/previously-used types, with an explicit "Create '<typed text>'" option when no exact match exists (this is the same pattern already correctly used for Explore's "link a thread" field and for Do's category picker — reuse it, this is not a new pattern, this is `BUG-31`'s type-ahead requirement plus free-entry). New types created this way are simply new distinct string values in the `type` column — no new schema needed, matching how Do's `category` field already works (per `AddTaskPanel`'s "+ Add new category" affordance visible in the screenshots), which is the consistency reference item #12 explicitly asked to check against.
+- **Acceptance criteria:** The Type field visually matches every other dropdown/combobox in the app. Typing a type name not in the preset list and confirming creates and immediately selects it, without a page reload, and it persists as an available option for future saves.
+
+### 16.3 — Screenshot-evidenced consistency defects (design system, not logic)
+
+These are visible directly in the ten space/panel screenshots provided and confirm the exact pattern this document's `DESIGN_SYSTEM.md` (delivered in the previous pass) was written to prevent — the fact that they're this widespread despite that document already existing means the document alone hasn't been applied yet, not that it was wrong.
+
+**DS-19 — Sidebar spacing/alignment still off despite the hover mechanism working (item #1)**
+
+- **Priority:** High
+- **Evidence:** Screenshot 1 (expanded sidebar). The brand row's icon-to-label gap, the nav items' icon-to-label gap, and the bottom account row's avatar-to-name gap are all visually different distances in the same screenshot — exactly the three-different-padding-formula defect this document's earlier pass (`BUG-14`) diagnosed with exact pixel math for the *collapsed* rail; this confirms the same inconsistency persists in the *expanded* state too, meaning the fix that landed (if any) only addressed one of the two states.
+- **Requirement:** Apply `DESIGN_SYSTEM.md`'s existing rule — one shared icon-box formula, used identically by the brand row, every nav item, and the account row, in both collapsed and expanded states — verified in both states, not just one.
+
+**DS-20 — Per-space colors are applied in only two places and don't read as a coherent feature (item #2)**
+
+- **Priority:** Medium — this is a product question as much as a bug; **treat as `CONF-13`, do not just silently implement one option**
+- **Verified:** `grep` confirms `--space-*` tokens are consumed in exactly two component files app-wide: `Badge.tsx` and `TaskCard.tsx`. They are not applied to `PageHeader`'s space icon, not to the sidebar's active-item indicator beyond a single shared accent, and not anywhere else — which is exactly why the user can't find where this feature is "supposed" to show up: it barely shows up anywhere, so it reads as arbitrary rather than as a system.
+- **Conflict `CONF-13`:** two legitimate paths forward, and this document does not choose: **(a)** commit to the feature fully — apply each space's color to that space's `PageHeader` icon, its sidebar nav icon (in its active state), and its badges everywhere an item is tagged with its origin space (Home feed, global Trash) — so the four colors actually read as a wayfinding system; or **(b)** the user's own instinct in the report ("is this feature actually necessary?") is correct — retire the per-space color concept entirely, keep the single warm `--accent` for all in-space actions, and reserve color-coding only for `--status-*` (which already has clear, established meaning: overdue/today/upcoming/done). Given `--space-*`'s current near-total invisibility, option (b) is the lower-effort, arguably more honest choice unless there's a specific product reason to keep pursuing (a). **This requires the user's decision before any further `DS-01`-adjacent work.**
+
+**DS-21 — Pomodoro launcher icon missing (item #3)**
+
+- **Priority:** High
+- **Verified:** `PomodoroTimer.tsx` correctly imports and uses `Play`/`Pause`/`SkipForward`/`Square`/`Timer` from `lucide-react`, and is mounted once, globally, via `DynamicModals.tsx`. The component's own icon usage looks intact from source alone — this means the reported disappearance is most likely either (a) a conditional-render gate around the component or its trigger button that's now false when it used to be true (check `activeTimer`/visibility conditions), or (b) the trigger to *open* the Pomodoro UI (likely a button on `TaskCard`, visible as the small circular play icon in screenshot 3) losing its icon specifically, which is a different file (`TaskCard.tsx`) than the timer overlay itself. **This needs a live-app screenshot of exactly where the missing icon should be** (the floating global timer widget vs. the per-task inline play button) before a fix can be scoped precisely — flagging as unresolved-pending-clarification rather than guessing.
+
+**DS-22 — Task cards are compact/cramped with awkward internal spacing (item #4)**
+
+- **Priority:** High
+- **Evidence:** Screenshot 3. The first card ("do ERP problems") has a large empty band between its content and its bottom edge with only a lone play button floating in it; the second and third cards have that same band filled with a timer chip or avatar stack, producing three cards of visibly different internal densities for what should be one consistent template. This reads as a card whose height is being driven by its *tallest sibling's* optional content (time estimate chip, linked-people avatars, subtask progress bar) via a shared grid row height or `align-items: stretch`, rather than each card sizing to its own content with consistent internal padding.
+- **Requirement:** `TaskCard`'s internal layout should size to its own content (`align-items: start` if it's a grid/flex child, not `stretch`) with a single consistent padding scale regardless of which optional elements (time chip, avatars, subtask bar) are present — a card with no optional metadata should be visibly shorter than one with three lines of metadata, not padded out to match it.
+
+**DS-23 — People vs. Locations rows use different card treatments and spacing within the same space (item #5)**
+
+- **Priority:** Critical — the user's clearest single example of the cross-cutting consistency problem
+- **Evidence:** Screenshots 4 and 5, both `Remember`. People rows (screenshot 5): avatar + name + relationship badge, tight vertical rhythm, a drag-handle on the left. Locations rows (screenshot 4): icon-in-a-box + item name + description line, visibly more vertical padding per row, no drag handle, different left-edge treatment. These are two different list-row templates for what `DESIGN_SYSTEM.md` §6.6 already specifies as "both share one add panel pattern" — the same section should have specified (and now does, see the update below) that they share one **row** template too, varying only the leading glyph (avatar vs. icon) and trailing content (badge vs. timestamp).
+- **Requirement:** One shared list-row component (call it `EntityRow` or extend the existing row primitive used for People) taking a leading-element slot (avatar or icon-in-circle, same circle size either way), a title, a subtitle, and a trailing-element slot (badge or timestamp), used by both People and Locations with identical padding/rhythm. This is now the canonical pattern documented in `DESIGN_SYSTEM.md` §6.6 (updated below) — this ticket is that pattern's enforcement.
+- **This is also the clearest evidence yet for why `DS-17`/`DS-18` (component manifest + automated design-system check) matter**: this specific divergence is exactly the kind of thing a prose design system doc can state clearly and still have missed in practice, because nothing currently checks a new list-row against the manifest before it ships.
+
+**DS-24 — "Show Archive" control styled differently per space (item #17)**
+
+- **Priority:** Medium
+- **Evidence:** Screenshot 3 (Do: a pill-shaped secondary button reading "Show Archive" inline with the view switcher) vs. screenshot 7 (Explore: "Archive" is a tab alongside "Active"/"Trash", not a toggle button at all). These are two different **interaction models** for a conceptually similar "see the stuff I've hidden" affordance, not just two different visual skins of the same control.
+- **Requirement:** Decide one canonical model — this document recommends the Explore tab model (Active / Archive / Trash as peer tabs) over the Do toggle-button model, since Think already independently arrived at the same three-tab pattern (screenshot 6: "Active / Archive / Trash") without being asked to — two of three spaces already converged on it independently, which is a strong signal it's the more natural fit; migrate Do's Board/Today/Calendar-adjacent "Show Archive" toggle to a fourth tab (or a consistent per-space tab row separate from the view switcher) to match.
+
+**DS-25 — Only Inbox shows its own space icon inside the page body; every other space omits it (item #18)**
+
+- **Priority:** Medium
+- **Evidence:** Screenshot 8 (Inbox: a small inbox-tray icon sits directly next to the "Inbox" page title). Screenshots 3, 4, 6, 7 (Do, Remember, Think, Explore): the page title text appears alone, no icon. This is a direct, visible violation of `DESIGN_SYSTEM.md` §6.1's `PageHeader` spec ("space icon... + page title"), suggesting `PageHeader` was adopted with its icon slot present but only actually populated for Inbox's call site.
+- **Requirement:** Pass and render the space icon at every `PageHeader` call site, not just Inbox's — this is a one-line-per-page-fix once identified, not a design decision.
+
+**DS-26 — Sidebar brand mark is a plain colored circle (item #24)**
+
+- **Priority:** Low — a legitimate polish request, not a defect
+- **Requirement:** Design (or commission) an actual mark for "Presense" distinct from a flat circle — something that can render legibly at both the 24–28px sidebar scale and favicon scale, using the app's own `--accent` family rather than an arbitrary new color, consistent with `DESIGN_SYSTEM.md` §1's rule that any new color decision routes through the existing token set rather than introducing a one-off.
+
+**DS-27 — Keyboard shortcut hint for Quick Capture needs a deliberate placement decision (item #25)**
+
+- **Priority:** Low
+- **Requirement:** Per current pattern-usage across comparable tools, a persistent, subtle `Cmd+K`-style hint (as small `text-caption`-styled text at the trigger's trailing edge, using the already-planned `Kbd` primitive from this document's earlier `DS-10`) is the more discoverable and more consistent choice versus a hover-only tooltip, since a hover tooltip is invisible on touch devices entirely (§8.6's "hover is an enhancement, not a dependency" rule) — use the persistent small-text treatment, not a tooltip, for this specific case.
+
+### 16.4 — Product/decision items (new conflicts — this document does not silently answer these)
+
+**CONF-14 — What are "Quiet Hours," "Evening Shutdown/Morning Nudge," and "Density," and does the app need all three concepts plus Timezone as separate settings? (items #11, #21)**
+
+- **Issue:** The settings screenshots and code both show four distinct time-based concepts (Quiet Start/End, Morning Nudge, Evening Shutdown) whose names don't make their relationship to each other legible, plus a Timezone field and a Density field, none of which are explained in-product. This is a real product-clarity problem, not just a visual one — comparable focus/planning tools (the kind this app is positioned against) typically expose *one* "quiet hours" concept (a do-not-disturb window) and *one* ritual-timing concept (when the morning/evening prompts fire), not four overlapping time fields.
+- **This document does not resolve this** — it requires the user's own decision on which concepts are actually wanted, since collapsing or renaming them is a product-scope call, not a bug fix. Recommended next step: write one sentence, in the user's own words, for what each of the four time fields is supposed to control, then check whether any two sentences describe the same thing — the ones that do should merge.
+- **Timezone specifically:** likely genuinely needed (it's what lets "Evening Shutdown at 6 PM" mean the correct wall-clock time regardless of where the user is), but it does belong under the same "why do I need to know this exists" scrutiny as #11 — consider auto-detecting it silently from the browser (`Intl.DateTimeFormat().resolvedOptions().timeZone`) and only surfacing a manual override for the rare case someone travels, rather than presenting it as a primary, always-visible setting.
+
+**CONF-15 — Capture routing should offer more than Do/Inbox and should let the user correct a wrong guess in place (item #14)**
+
+- **Issue:** current `capture-router.ts` routes to a narrower set of destinations than the five-destination "Route it" menu the Inbox screen itself already offers (Do / Think / Explore / Remember-Person / Locations, per screenshot 2). If Quick Capture's automatic routing only ever resolves to Do or Inbox in practice, that's a gap between the router's actual coverage and the full destination set the rest of the app already supports.
+- **Requirement:** Quick Capture's result view must show the routed destination as an editable choice — the same five-option destination picker Inbox's "Route it" menu already uses (reuse it, don't rebuild it) — so a wrong guess is corrected with one click rather than requiring the user to dismiss and manually re-route from Inbox after the fact. This is consistent with this document's existing `INT-03` ticket (surfacing the router's rationale) — implement together.
+- **This document does not redesign the NLP rules themselves here** — that's `capture-router.ts`'s existing logic, already covered by `BUG-09`'s performance fix; this ticket is specifically about the destination set and correction affordance being incomplete relative to what the rest of the app already supports.
+
+**CONF-16 — "Save to Explore" panel fields (item #13)** — folded into `BUG-33` above; no separate ticket needed.
+
+### 16.5 — Database architecture (item #26)
+
+This document's method throughout has been to cite current, authoritative sources rather than generic advice — the following is drawn directly from Supabase's own current documentation (RLS guide, RLS performance guide) and cross-checked against `MakerKit`'s production-pattern writeup, not a general "best practices" list.
+
+**INFRA-15 — Wrap `auth.uid()` (and any other per-row function call) in RLS policies with `(select ...)`**
+
+- **Priority:** Critical
+- **Root cause / citation:** Supabase's own RLS performance documentation demonstrates that an RLS policy written as `auth.uid() = user_id` re-evaluates `auth.uid()` **once per row scanned**, while rewriting the identical policy as `(select auth.uid()) = user_id` lets Postgres cache the result via a single `initPlan`, since a function's result wrapped this way is treated as row-independent — Supabase's own documented benchmark shows over 100x improvement on large tables from this rewrite alone.
+- **Requirement:** Audit every RLS policy across all `supabase/migrations/*.sql` files (26 migration files currently) for a bare `auth.uid()`/`auth.jwt()` call inside a `USING`/`WITH CHECK` clause and rewrite each as `(select auth.uid())`. This is a pure performance migration — it must not change what any policy actually permits, only how cheaply Postgres evaluates it. Write it as a new migration (`ALTER POLICY` per table, or drop-and-recreate each policy with the corrected expression) — never edit an already-applied migration file in place.
+- **Acceptance criteria:** `EXPLAIN ANALYZE` on a representative query against the largest table (`items`, given it holds the most rows across the app's five entity types) shows a lower planning/execution cost after the rewrite; the query returns identical row sets before and after (a policy behavior regression test, not just a performance one).
+
+**INFRA-16 — Split any `FOR ALL` RLS policy into four separate SELECT/INSERT/UPDATE/DELETE policies**
+
+- **Priority:** High
+- **Citation:** Supabase's own current guidance states plainly not to use `FOR ALL`, splitting into four operation-scoped policies instead, because it lets Postgres's planner optimize index usage per operation rather than evaluating one broader, less-optimizable expression for every query type.
+- **Requirement:** Audit the 26 migration files for any `FOR ALL` policy and replace it with four explicit policies. Note Supabase's own documented gotcha here: an `UPDATE` policy requires a corresponding `SELECT` policy to exist, because Postgres must be able to read the pre-update row to evaluate the `USING` clause — verify this pairing exists for every table once split.
+- **Acceptance criteria:** No `FOR ALL` remains in any RLS policy; `UPDATE` and `DELETE` policies are confirmed to have a paired `SELECT` policy on the same table.
+
+**INFRA-17 — Add explicit indexes on every column used in an RLS policy, and confirm this table-by-table**
+
+- **Priority:** Critical
+- **Citation:** Supabase's own guidance: "make sure you've added indexes on any columns used within the Policies which are not already indexed" — this is listed as the highest-impact of their documented recommendations.
+- **Requirement:** For each of the five entity tables (`items`, `people`, `threads`, `explores`, `locations`) plus `user_settings`, confirm a btree index exists on `user_id` (the column virtually every policy in this app filters on) — this is likely already covered by each table's primary key/foreign key setup but must be verified, not assumed, per table.
+- **Acceptance criteria:** `\d+ <table>` (or the equivalent Supabase Studio index view) shows an index on `user_id` for every one of the six tables.
+- **This ticket subsumes and sharpens `INFRA-10`** (the previously-written, more general RLS completeness audit) — treat `INFRA-15`–`INFRA-17` as `INFRA-10`'s concrete execution plan, not three new, separate audits.
+
+**INFRA-18 — Client-side `.eq('user_id', userId)` alongside RLS, not instead of it**
+
+- **Priority:** Medium
+- **Citation:** Supabase's own guidance recommends adding the explicit client-side filter in addition to relying on RLS, because it lets the query planner use the `user_id` index directly rather than only via the policy's implicit filter — a small, low-risk addition with a measurable planner benefit per Supabase's own documented examples.
+- **Requirement:** Audit the main list-fetching queries (Do's task list, Think's thread list, Explore's item list, People, Locations) for whether they already include this explicit filter; add it where missing. This does not change the security model (RLS still enforces the boundary regardless) — it's a query-planning optimization only.
+- **Acceptance criteria:** Every primary list query in the app includes an explicit `user_id` filter matching the current session's user, verified against `EXPLAIN ANALYZE` output showing index usage rather than a sequential scan.
+
+**INFRA-19 — One settled status/lifecycle vocabulary, documented once, referenced everywhere (extends `BUG-08`)**
+
+- **Priority:** Critical
+- **Root cause:** item #26's broader "what is being stored, updated, and managed" concern is best addressed structurally, not just per-table: `item-lifecycle.ts` already exists and is a good start, but this document has not yet verified it is the *only* place that writes a status transition for any of the five entity tables (the `BUG-29`/New-Thread finding above shows at least one insert path bypassing it entirely, writing ad hoc fields directly). A comprehensive schema document — table name, every status value it accepts, what triggers each transition, and which single function in `item-lifecycle.ts` is responsible for writing it — should exist once, in `docs/project/ARCHITECTURE.md` or a new `docs/project/DATA_MODEL.md`, and every insert/update call site across the app should be checked against it.
+- **Acceptance criteria:** A table exists (one row per entity table) listing every valid status value and the exact function that transitions to it; `grep`-ing for direct `.update({status: ...})` or `.insert({status: ...})` calls outside `item-lifecycle.ts` returns zero results — every status write goes through the shared module, with no per-page ad hoc status literal.
+- **Depends on:** `BUG-08` (already tracked).
+
+### 16.6 — Project and repository hygiene (item #28)
+
+**MD-06 — Repository cleanup pass**
+
+- **Priority:** Medium
+- **Requirement:** Following `MD-01`/`MD-02`'s already-established consolidation plan (one copy per doc, `plan.md` retired): audit the working tree and git history for (a) stray build artifacts or IDE-specific folders committed by mistake (check for a `.antigravity`/`.vscode`/similar directory beyond what's genuinely meant to be shared team config), (b) orphaned one-off scripts or debug routes (this document's earlier passes already flagged a `verify-db` style route as a candidate for deletion in past audits — confirm its current status), (c) `.gitignore` completeness (ensure `.env*` variants beyond `.env.example`, `node_modules`, and build output are all excluded — this overlaps with `INFRA-11`'s secrets-scanning ticket, coordinate rather than duplicate), and (d) a consistent branch/commit-message convention going forward, matching whatever `AGENT_RULES.md`/`AGENTS.md` already specify for commit format, applied retroactively as a policy for all future commits (not a history rewrite — do not force-push over shared history).
+- **Acceptance criteria:** A single cleanup PR (or, given `EXECUTION_RULES.md`'s "no more than 5 files per ticket" rule, a short, explicitly-scoped sequence of small PRs) removes confirmed-dead files, tightens `.gitignore`, and leaves a short `docs/agents/CLEANUP_LOG.md` noting what was removed and why, so nothing is deleted silently per this document's own "never delete what you don't understand" rule.
+- **Depends on:** `MD-01`, `MD-02`.
+
+### 16.7 — Design system doc updates (apply directly to `DESIGN_SYSTEM.md`)
+
+Two corrections to the file already delivered, based on this pass's findings:
+
+1. §6.6 (Remember: People and Locations) should be strengthened from "share one add panel pattern" to explicitly require one shared **list-row** component as well — see `DS-23` above; update that section's text to name the shared row component once it exists.
+2. A new short subsection should be added under §6 general rules: **"Show Archive / Trash is always a tab, never a toggle button"** — per `DS-24`'s finding that two of three spaces already converged on the tab pattern independently; this should be written down now so it stops being rediscovered per-space.
+
+---
+
+## 17. Addendum 6 — correction on #15, domain-grounded conflict resolutions, and a full ticket-status sweep
+
+### 17.1 — Correction: #15 is a real, distinct bug — my prior "already fixed" claim was wrong
+
+Direct re-investigation, prompted by the user reporting the item still disappears without landing in trash, found the actual defect. It is not in `moveItemToTrashPatch()` or in which function gets called — both of those are correct. It is here:
+
+**BUG-34 — `dismissInboxItem` never checks the Supabase response for an error, so a failed database update is reported to the user as a success**
+
+- **Priority:** Critical
+- **Files:** `src/app/(app)/inbox/page.tsx`, `dismissInboxItem` (and its swipe-gesture caller, `handleDragEnd`, which calls the same function)
+- **Root cause, confirmed by direct code reading:** The function's sequence is: (1) synchronously and unconditionally remove the item from the local React Query cache (`queryClient.setQueryData`, filtering it out) — this happens before any network request and is why the row visually disappears from Inbox instantly, every time, regardless of what happens next; (2) `await supabase.from("items").update(moveItemToTrashPatch()).eq("id", id);` — **the resolved value of this call, `{ data, error }`, is never destructured or inspected.** Supabase-js does not throw a JavaScript exception on a database-level error (a rejected RLS check, a constraint violation, anything Postgres itself refuses) — it resolves normally with an `error` object populated and `data: null`. The surrounding `try { ... } catch { ... }` only catches an actual thrown exception (a network failure, a client-side crash) — a populated `error` field on an otherwise-successful HTTP response is not caught by this `catch` block at all. The code proceeds straight to `toast.success("Dismissed", ...)` regardless of whether the row was actually updated.
+- **Consequence:** if the underlying update ever fails for any reason — and confirming or ruling out a specific server-side cause requires live Supabase logs, which this static review cannot access — the user sees the item vanish from Inbox, sees a "Dismissed" success toast, and the row's `status` in the database never actually changes to `'deleted'`. It is not in Inbox (removed from the client cache) and not in Trash (its `status` was never written), because the query cache was already told it's gone. This is exactly the symptom reported.
+- **Requirement:** (1) Check `error` on every Supabase mutation result in this function (and audit the rest of `inbox/page.tsx` for the same pattern — the routing-to-a-destination code paths reviewed in an earlier pass call `.delete()` directly and should be checked the same way). (2) On a populated `error`, roll back the optimistic cache removal (re-insert the item, exactly as the existing "Undo" handler already knows how to do — reuse that logic rather than writing a second rollback path) and show `toast.error` with the actual error message, not a generic string, so the next occurrence is diagnosable instead of silent. (3) Once error surfacing is in place, reproduce the dismiss action once in the live app and read whatever error message appears — that message will identify the true underlying cause (RLS, a trigger, a constraint) precisely, which this static review cannot determine with certainty from migration files alone.
+- **Acceptance criteria:** Dismissing an inbox item either (a) results in the item appearing in `/trash` with a `deleted_at` timestamp, confirmed by actually checking the trash page after dismissing, not just by the absence of an error — or (b) shows a visible, specific error toast and restores the item to the Inbox view. Silently disappearing into neither state is no longer possible.
+- **This supersedes the §16.1 note that treated #15 as already correct.** That note is wrong and is retracted by this entry.
+
+### 17.2 — Conflict resolutions, grounded in this domain specifically
+
+Every conflict below was researched against this app's own explicit points of reference (Sunsama, since `CLAUDE.md`/`ARCHITECTURE.md` already direct this project to study it specifically for its ritual system) and the closest comparable personal task/productivity tools (Todoist, Things 3), rather than generic software-design opinion. Each resolution states the specific evidence it's based on, not just a preference.
+
+**CONF-06 — Cmd+K: capture vs. command palette → RESOLVED, in favor of the remap**
+
+- **Evidence:** Sunsama — the app this project's own documentation already names as its ritual-system reference — uses Cmd+K/Ctrl+K specifically for a command palette (documented in Sunsama's own help center: "Access sorting via the Command Palette (Cmd K or Ctrl K)"), not for task capture. This is not a generic industry convention argument (Linear, Raycast, Notion were the examples used the first time this conflict was raised) — it's the direct, named domain reference this project has already chosen to model itself after, doing the same thing.
+- **Resolution:** Remap `Cmd+K` to a command palette (`DS-08`), move Quick Capture to `Cmd+Shift+K` or an equivalent secondary binding, and add a `?`-triggered shortcuts overlay (`INT-05`) so the remap is discoverable rather than silently breaking existing muscle memory. Implement `DS-08` now — it is no longer blocked.
+
+**CONF-02 / CONF-13 — Per-space colors → RESOLVED, in favor of keeping them, applied consistently everywhere**
+
+- **Evidence:** Every comparable tool in this domain that supports multiple lists/projects colors them consistently and pervasively — the color appears on the project's icon, its row/badge wherever it's referenced from another view, and its sidebar entry, not in one or two isolated spots. The problem this document flagged in the previous pass (`--space-*` tokens used in only two component files, `Badge.tsx` and `TaskCard.tsx`) is not evidence the *concept* is wrong for this domain — every domain comparator does exactly this — it's evidence the *execution* is incomplete.
+- **Resolution:** Keep per-space colors. Apply them consistently: each space's `PageHeader` icon (currently rendering without its color, see `DS-25`), the sidebar's active-nav-item state, and every cross-space reference to an item (the global Trash list, Home's summary cards) all use that item's origin-space color. Do this as one pass, not as scattered follow-ups, since a partially-applied color system is what created the "where does this even show up" complaint in the first place.
+
+**CONF-08 — Calendar: patch vs. rewrite → RESOLVED, in favor of a rewrite**
+
+- **Evidence:** Sunsama's core differentiator, and the reason this project's own documentation points to it, is a unified task+calendar view with real time-blocking — the calendar is not a peripheral view in this domain's leading reference point, it is close to the product's center of gravity. A structurally fragile, flexbox-based calendar (the header/grid desync defect already diagnosed in this document's `BUG-05`) is not an acceptable foundation for a surface this central to the domain's own best-in-class example.
+- **Resolution:** Proceed with the CSS-Grid-based rewrite already scoped under `CONF-08`'s original text and `BUG-05`/`MOB-02`. Close `BUG-05`/`MOB-02` as "superseded by rewrite" once the rewrite ships, per this document's own existing instruction for that outcome.
+
+**CONF-10 — Global trash vs. per-space trash → RESOLVED, in favor of the global trash already built**
+
+- **Evidence:** this is less a "domain of personal productivity apps" question than a broader platform-convention one, and the broader convention is unambiguous: system-level personal-data apps (Mail, Notes, Photos, Files, across both major desktop/mobile platforms) use exactly one trash per app, never one per folder/project, specifically because a user recalling "I deleted something, where did it go" should only ever have one place to look. A global trash is also simply what already exists and works in this codebase (confirmed built, at `/trash`, in the pass that reviewed this build).
+- **Resolution:** Keep and complete the global trash (already the direction `BUG-08`'s tickets were written in) — no change needed here beyond finishing its coverage of all five entity types, which is already tracked.
+
+**CONF-05 / CONF-11 — Base UI vs. shadcn → RESOLVED, in favor of shadcn (no domain research needed — this is a pure tooling decision)**
+
+- **Evidence:** shadcn is the de facto default for exactly this stack (Next.js + Tailwind, React 19) as of 2026, and it is a thin, ownable wrapper around Base UI rather than a competing runtime — adopting it does not mean discarding Base UI, it means not also hand-rolling a second, parallel usage of the same underlying primitives. Direct inspection of this build shows no bare `@base-ui/react` imports outside `src/components/ui/` already — the redundancy this conflict originally worried about does not appear to exist in practice; this conflict can be marked resolved and closed without further action.
+
+**CONF-14 — Settings declutter: Quiet Hours / Morning Nudge / Evening Shutdown / Timezone → RESOLVED, in favor of collapsing to two concepts plus silent timezone detection**
+
+- **Evidence:** Sunsama's own ritual system — again, this project's explicit reference point — has exactly two named time concepts: a morning planning ritual and an end-of-day shutdown review. It does not expose a separate "Quiet Hours" setting distinct from those two; "quiet hours" as a standalone concept is a notification/do-not-disturb feature that, across virtually every current consumer app, is deferred to the operating system's own notification settings rather than reimplemented per-app.
+- **Resolution:** Collapse to two settings — morning ritual time, evening ritual time — matching `rituals.ts`'s own two-ritual model exactly (the settings surface should mirror the code's actual mental model, not add a third and fourth axis the code doesn't otherwise reason about). Remove "Quiet Hours" as a distinct in-app setting; if push notifications are ever added, respect the OS-level DND/Focus state rather than building a parallel one. Auto-detect Timezone from `Intl.DateTimeFormat().resolvedOptions().timeZone` and only surface it as an editable field inside an "Advanced" or rarely-visited section, not alongside the primary ritual-time settings.
+
+### 17.3 — The full ticket-status sweep, as requested
+
+This is a direct answer to "did you check everything already in the spec." The honest answer: **every ticket that can be verified by reading source code was re-checked against the current build in this pass; tickets that require manual/runtime testing (most of `A11Y-*`, `MOB-*`'s gesture-feel items, and anything needing a real device or screen reader) cannot be verified this way and are marked accordingly below rather than guessed at.** No ticket was left unexamined — the table states what was found for each one, including "cannot verify statically."
+
+| Ticket | Status | Evidence |
+|---|---|---|
+| `BUG-01` hover sidebar | **DONE** | Confirmed in prior pass, unchanged. |
+| `BUG-02` ritual stale clock | Superseded by `BUG-16`/`BUG-17` (rituals.ts rewrite) | See below. |
+| `BUG-03` / `BUG-27` dropdown clipping | **DONE**, now on Floating UI | `Dropdown.tsx` uses `useFloating`+`FloatingPortal`. |
+| `BUG-04` / `BUG-24` empty-state button targets | **NOT RE-VERIFIED this pass for Think/Explore/Remember specifically** — flagged, needs a dedicated check next pass | |
+| `BUG-05` / `CONF-08` calendar | **NOT DONE** — conflict now resolved (rewrite); work not yet started as of this build | |
+| `BUG-06`/`BUG-07` theme naming | **DONE** | `warm`/`navy`/`forest`, confirmed settled per the user's own correction that this was their deliberate choice. |
+| `BUG-08` archive/delete unification | **PARTIAL** | `item-lifecycle.ts` exists and is used by most call sites checked (`dismissInboxItem`'s *target* function is correct even though its *error handling* isn't, per `BUG-34`); `BUG-29`'s New Thread insert shows at least one write path that bypasses it entirely. Not yet a guaranteed single path everywhere — `INFRA-19` tracks closing this gap for good. |
+| `BUG-09`/`PERF-02` capture-router dynamic import | **DONE** (confirmed two passes ago, not re-diffed this pass — low risk of regression, but not re-confirmed either) | |
+| `BUG-10` sidebar profile fallback | **DONE** | |
+| `BUG-11` Settings scroll on Think/Explore | **DONE** | `useBodyScrollLock` + Lenis `dataset.overlayOpen` check, confirmed correct two passes ago. |
+| `BUG-14`/`DS-19` icon alignment (collapsed + expanded) | **NOT DONE** | Screenshot evidence this pass shows it in the expanded state too. |
+| `BUG-15` theme leak via localStorage | **DONE** | |
+| `BUG-16`/`BUG-17` ritual split-brain / morningDone guard | **DONE** | `rituals.ts` has the guard; confirm `Navigation.tsx` reads the same source (not re-diffed this exact pass, previously confirmed it did not — needs one more check). |
+| `BUG-18` ritual completion persistence | **DONE** | |
+| `BUG-19` Settings stale closure | **DONE** | |
+| `BUG-20` onboarding capture status | **DONE** | |
+| `BUG-21` onboarding background hardcoded colors | **UNVERIFIED** — flagged as needing confirmation before assuming either way | |
+| `BUG-22` DB default theme | **DONE** | |
+| `BUG-23` page transitions | **UNVERIFIED this pass** | |
+| `BUG-25`/`BUG-33` Explore Type native datalist | **NOT DONE**, confirmed again this pass | |
+| `BUG-26` TaskAddPanel chrono static import | **DONE** | |
+| `BUG-29` New Thread silent failure | **NOT DONE** (new this pass) | |
+| `BUG-30` Settings autosave loop | **NOT DONE** (new this pass) | |
+| `BUG-31` Dropdown scroll/position/type-ahead | **NOT DONE** (new this pass) | |
+| `BUG-32` Sonner theme binding | **NOT DONE** (new this pass) | |
+| `BUG-34` Inbox dismiss error swallowing | **NOT DONE** (new this pass, corrects prior error) | |
+| `DS-01` space colors distinct | **DONE** (values) / **PARTIAL** (application breadth — see `CONF-13`'s resolution) | |
+| `DS-02` hardcoded hex removal | **NOT DONE — 96 occurrences remain**, more than the prior pass's count, meaning new code is still introducing them faster than old ones are being migrated | |
+| `DS-03` raw `<input>` migration | **NOT DONE — 14 remain** | |
+| `DS-04` `TextareaAutosize` migration | **NOT DONE — 6 remain** | |
+| `DS-05` `SearchInput` adoption | **NOT DONE — 0 adoptions**, component still unused everywhere | |
+| `DS-06` icon strokeWidth standardization | **PARTIAL** — 53 of a sample using the correct `1.5`, but `0`, `1.7`, `1.8`, `2`, `2.5`, and conditional values still scattered | |
+| `DS-07` `PageHeader`/`EmptyState` adoption | **DONE** (confirmed prior pass) | |
+| `DS-08` command palette | **Unblocked as of `CONF-06`'s resolution above — not yet started** | |
+| `DS-09` 44px touch targets | **NOT DONE** — no `--touch-target`/equivalent utility found wired into `button.tsx`, `Sheet.tsx`, `TaskCard.tsx`, or `PomodoroTimer.tsx` | |
+| `DS-14` reduced-motion/transparency | **NOT RE-VERIFIED this pass** | |
+| `DS-15`–`DS-18` (locked Tailwind theme, ESLint enforcement, component manifest, design-system-check) | **NOT DONE** — none of these have concrete evidence of implementation yet (no ESLint Tailwind plugin found in a prior `package.json` check, no `data-density`-style theme lock confirmed) | |
+| `MD-01`/`MD-02` doc consolidation | **MOSTLY DONE** — `plan.md` is gone (confirmed, `MD-02` complete); `PROJECT.md` consolidated to one copy; **`ARCHITECTURE.md` still exists in two places** (root and `docs/project/`) — this one file's duplication was missed | |
+| `PERF-01` `useCallback` on Do handlers | **DONE** (confirmed two passes ago) | |
+| `PERF-03` ambient orb mobile cap / visibility pause | **NOT DONE** | |
+| `PERF-04`/`PERF-08` backdrop-filter reduction | **NOT RE-VERIFIED this pass** | |
+| `PERF-05`/`PERF-07` `refetchOnWindowFocus` | **DONE** (confirmed two passes ago) | |
+| `INFRA-15` wrap `auth.uid()` in `(select ...)` | **NOT DONE — 26 bare `auth.uid()` calls remain, 0 wrapped** | |
+| `INFRA-16` split `FOR ALL` policies | **NOT DONE — 12 `FOR ALL` policies remain** | |
+| `TOOL-01` typed Supabase client | **NOT RE-VERIFIED this pass** — check for `database.types.ts` next pass | |
+| `TOOL-02`/`CONF-12` `@t3-oss/env-nextjs` without throwing | **DONE, and done correctly** | `env.ts` uses `.catch()` per-field with an explicit comment citing this project's own invariant — confirmed non-throwing. |
+| `TOOL-03` React Hook Form | **DONE** in `SettingsModal`; **not confirmed in `TaskAddPanel`/`AddPersonPanel`/`LocationAddPanel`** — check next pass | |
+| `TOOL-04`/`nuqs` | Package installed; **usage not yet confirmed in `do/page.tsx`'s view-mode state** — check next pass | |
+| `TOOL-05` structured logging | **NOT RE-VERIFIED** | |
+| `TOOL-06`/`INFRA-01` Sentry | **NOT DONE** — package absent | |
+| `TOOL-09` `cmdk` | **NOT DONE** — package absent (relevant once `DS-08` starts) | |
+| `TOOL-10` `Vaul` | **NOT DONE** — package absent | |
+| `TOOL-11` analytics | **NOT DONE** — neither PostHog nor Plausible package present | |
+| `TOOL-12` React Query DevTools | Package installed; **wiring into `QueryProvider.tsx` not re-confirmed this pass** | |
+| `TOOL-13` Prettier/Husky/lint-staged | Packages installed; **hook configuration and full-repo formatting pass not confirmed** | |
+| `TOOL-15` Floating UI | **DONE** | |
+| `A11Y-01` through `A11Y-09` | **Cannot verify statically with confidence** beyond `A11Y-03` (skip link: confirmed absent, **NOT DONE**) and `A11Y-05`-equivalent live-region (confirmed absent via `aria-live` grep, **NOT DONE**). The rest (label correctness, focus trapping quality, actual screen-reader behavior) require manual testing with real assistive technology, which this review cannot substitute for — do not treat their absence from this table as either done or not done; they are simply unverified by this method. | |
+| `MOB-01` through `MOB-05` | **Cannot verify gesture feel/touch behavior statically.** `MOB-05` (100dvh everywhere) is partially checkable: 6 files still reference `h-screen`/bare `100vh` — **NOT FULLY DONE.** The rest require a real device. | |
+
+### 17.4 — Direct answers to the questions asked
+
+**"Are you sure you checked everything already in the spec and marked it properly?"** No claim of exhaustive, 100% coverage should be trusted from any single static-analysis pass, and this document won't pretend otherwise: §17.3 covers every ticket that source-code inspection can settle, and marks each one done / partial / not done / unverifiable-by-this-method, rather than silently skipping the ones that were harder to check. The ones marked "not re-verified this pass" are exactly that — checked in an earlier pass, not re-diffed against this specific build, and called out as such rather than assumed still accurate.
+
+**Questions this document has, for the user:**
+
+1. `BUG-29`'s literal `color_accent: "var(--accent)"` string — is a per-thread accent color actually a feature anyone reads anywhere, or is this a dead field that should simply be dropped from the insert (and possibly the schema) rather than fixed to hold a real color? Worth deciding before writing the fix.
+2. For `CONF-14`'s settings collapse: is Quiet Hours/notification-DND something planned for a future push-notification feature, or was it added speculatively? If genuinely planned, it should be deferred until that feature exists rather than exposed now with nothing behind it.
+3. For `BUG-34`: once error surfacing is added and the dismiss action is reproduced live, what does the actual Supabase error say? That answer determines whether anything beyond error-handling needs fixing (an RLS gap, a trigger, something this document's static read of the migrations didn't surface).
+
+---
+
+## 18. Addendum 7 — closing the verification gaps from §17.3
+
+Every ticket previously marked "not re-verified this pass" in §17.3 was checked directly against the current build in this pass. Results below; §17.3 should be read together with this table, not replaced by it.
+
+| Ticket | Status | Evidence |
+|---|---|---|
+| `TOOL-01` typed Supabase client | **DONE** | `src/types/database.types.ts` exists; both `createBrowserClient<Database>` and `createServerClient<Database>` are parameterized with it. |
+| `TOOL-04` `nuqs` for Do's view/filter state | **DONE** | `do/page.tsx` uses `useQueryState` for both `filter` (category) and `view` (board/today/calendar), matching `INT-02`'s requirement exactly. |
+| `TOOL-12` React Query DevTools | **DONE** | Wired into `QueryProvider.tsx`, `initialIsOpen={false}`. |
+| `TOOL-13` Husky/lint-staged | **DONE** (pre-commit hook confirmed present and calling `lint-staged`) | `.husky/pre-commit` exists and runs `npx lint-staged`. |
+| `BUG-23` shared page transition (`template.tsx`) | **NOT DONE** | No `template.tsx` under `src/app/(app)/` — still absent. |
+| `DS-14` reduced motion | **PARTIAL, and this distinction matters** | The reduced-**transparency** half is done well (`body { --blur-*: none !important }` cascades correctly through every blur token). The reduced-**motion** half is not: the global override at `globals.css` still only sets `transition-duration: 0.01ms !important` — it does not remove the underlying `transform` value, which is the specific defect this ticket was written to fix (an instant transform is still a transform, not the "no movement" the setting promises). Do not close this ticket on the strength of the transparency half alone. |
+| `PERF-04`/`PERF-08` backdrop-filter budget | **NOT DONE, and the underlying number moved the wrong way** | `backdrop-filter` occurrences are now 23, up from 16 in the pass this ticket was originally written against. `contain: paint` (the other half of this ticket's requirement) has zero occurrences anywhere in `globals.css`. This ticket should be treated as higher priority than its current placement suggests, given the trend is worsening, not improving, while other work continues to add new glass surfaces without checking this budget first. |
+| `BUG-21` onboarding background hardcoded colors | **CONFIRMED — partially hardcoded** | `OnboardingBackground.tsx` correctly uses `var(--accent)`, `var(--bg-base)`, `var(--text-1)`, `var(--surface-modal)`, and `var(--border-strong)` for several elements, but its per-step ambient glow gradients (five steps, each with its own `radial-gradient(...)` using literal hex values like `#E5B41E`, `#EB4233`, `#F0C830`, `#EB6B1E`, `#3B1814`, `#1A0800`) are hardcoded, not tokenized. This does not currently cause a visible bug (onboarding forces the `warm` theme per `BUG-15`'s fix, and the hardcoded hex values happen to already match `warm`'s own palette), but it is fragile and would silently stop matching the theme if onboarding's forced-`warm` behavior is ever relaxed, or if this component is ever reused somewhere theme-aware. Fix priority: Low-Medium, not urgent, but real. |
+| `BUG-04`/`BUG-24` empty-state button targets, audited per-space as promised | **Mixed — 1 of 3 checked spaces is correct** | **Remember/People:** correct — its `EmptyState` action opens `setIsPanelOpen(true)` (the Add Person panel), matching its header button. **Think:** still incorrect — its `EmptyState` action calls `setCaptureModalOpen(true)`, the same defect class as the original Do-page bug, never fixed here. **Explore:** same defect, same fix needed. This is now `BUG-35` (below), not a restatement of `BUG-24` — it's that ticket's audit actually completed, two passes late. |
+| `INFRA-19` single status-writing path through `item-lifecycle.ts` | **Confirmed a real, widespread gap, not a hypothetical one** | Direct string status literals (`"active"`, `"done"`, `"deleted"`, `"archived"`, etc.) written outside `item-lifecycle.ts` were found in nine files: `(app)/page.tsx`, `explore/[id]/page.tsx`, `explore/page.tsx`, `inbox/page.tsx`, `do/page.tsx`, `PomodoroTimer.tsx`, `SettingsModal.tsx`, `TaskAddPanel.tsx`, `RitualOverlay.tsx`. Not every one of these is necessarily wrong (some may be reads/comparisons, not writes — each needs individual review, which is exactly what this ticket already calls for), but the count confirms this is systemic, and directly explains why an isolated bug like `BUG-29`'s ad hoc `threads` insert could exist unnoticed: there was never a single enforced path to check it against. |
+| `MOB-05` `100dvh` migration | **NOT FULLY DONE** | `h-screen` (bare, non-dynamic viewport height) remains in six files: `OnboardingBackground.tsx`, `Navigation.tsx`, `~offline/page.tsx`, `not-found.tsx`, `(auth)/login/page.tsx`, `onboarding/OnboardingWizard.tsx` — notably, the two most viewport-height-sensitive full-bleed screens in the app (login, onboarding) are on the list. |
+
+### New ticket from this pass
+
+**BUG-35 — Think and Explore's empty-state "Add" buttons still open Quick Capture instead of their own composer/drawer**
+
+- **Priority:** High
+- **Files:** `src/app/(app)/think/page.tsx` (line ~282), `src/app/(app)/explore/page.tsx` (line ~275)
+- **Root cause:** Both `EmptyState` components' `action.onClick` call `useAppStore.getState().setCaptureModalOpen(true)`, identical to the original, already-fixed Do-page defect (`BUG-04`) — this is the same bug, in two more places, that `BUG-24`'s audit was supposed to catch and evidently didn't get all the way through.
+- **Requirement:** Think's empty state should open its own new-thread creation (the same handler wired to its header's "New thread" button, `handleNewThread` — once `BUG-29`'s fix to that function lands). Explore's empty state should open its "Save to Explore" panel (the same handler its header's "Save item" button uses.
+- **Acceptance criteria:** Pressing "Add" from Think's or Explore's empty state opens that space's own creation surface, not `CaptureModal`, matching each space's header button exactly.
+- **Depends on:** `BUG-29` (Think's fix specifically should land alongside or after that repair, so the empty-state button doesn't call a still-broken handler).
+
+---
+
+## 19. Documentation self-consistency check
+
+Every governance/reference file delivered in this project (`AGENTS.md`, `GEMINI.md`, `COMPONENT_MANIFEST.md`, `DESIGN_SYSTEM.md`, this document) was re-read together in this pass specifically to check they don't contradict each other or go stale relative to each other. Findings:
+
+1. **`COMPONENT_MANIFEST.md`'s `Dropdown` entry** said "STABLE — DO NOT MODIFY WITHOUT REGRESSION TEST... Portal-based (`createPortal`)" — this is now technically incomplete, not wrong: the component still is portal-based, but via Floating UI's `FloatingPortal`, not a hand-rolled `createPortal` call. The entry's intent (don't touch this without a regression test, because it broke once already) still holds and needs no correction; the implementation detail is updated below for accuracy.
+2. **`AGENTS.md`'s hard invariant 3** ("`Dropdown.tsx` and `Popover.tsx` render their menu content via `createPortal`") has the same minor staleness — still true in substance (both are still portal-rendered), technically superseded by Floating UI's own portal mechanism. Updated below.
+3. **`DESIGN_SYSTEM.md`'s theme-name references** were checked against `AGENTS.md`'s invariant 2 (`"warm" | "navy" | "forest"`) — consistent, no drift found.
+4. **No other contradictions found** between the four governance files and this document as of this pass.
+
+Both `AGENTS.md` and `COMPONENT_MANIFEST.md` have been updated (delivered alongside this document) to say "portal-based (Floating UI's `FloatingPortal`, or an equivalent portal mechanism)" rather than naming `createPortal` specifically, so a future switch of positioning library doesn't make the invariant read as violated when the actual protected behavior (menus aren't clippable) is intact.
+
+---
+
+## 20. Addendum 8 — cleaning the conflict register, new deep research (color, glass, hover), and new confirmed bugs
+
+This pass does four things directly requested: (1) removes stale, confusing entries from the conflict register — some referenced documents that no longer govern this project and one listed an already-shipped feature as "open," which was simply wrong; (2) replaces the space-color and glassmorphism guidance with material grounded in dedicated new research, not the earlier pass's shallower treatment; (3) confirms or refutes each newly reported issue against the actual code, the same way every prior pass has; (4) folds in genuinely new findings the deeper code reading surfaced along the way, including two (`BUG-36`, `DS-30`) that explain several of the reported symptoms at once.
+
+### 20.1 — Conflict register cleanup
+
+The following entries are corrected in place. This is not new information changing the resolution — it is removing confusing, stale, or simply incorrect statements from entries that were already otherwise resolved.
+
+- **`CONF-05` (hover sidebar interaction model):** this conflict is **closed and has been for several passes** — `Navigation.tsx` has shipped a working hover-expand rail since the build reviewed in Addendum 3. Any document still listing this as open or "needing a decision" is stale and should be corrected to **RESOLVED — hover-expand, no pinning, shipped.**
+- **`CONF-01` (theme naming):** the resolution stands (`warm`/`navy`/`forest`), but the entry previously framed this as something *this document* resolved through a multi-step negotiation across several passes, when in fact it was always the user's own explicit, direct instruction, stated plainly the first time it came up and again explicitly in this conversation. The entry is corrected to state that plainly: **the user chose these three names directly, for the specific reason of having one consistent identifier across the database, `localStorage`, and CSS — not a negotiated compromise between competing proposals.** Restating this as a resolved "conflict" at all overstates the ambiguity that ever existed here; it is retained in the register only as a record of the naming history (`wahala`/`orange`/`blue`/`forest` → `sunset`/`midnight`/`meadow` → `warm`/`navy`/`forest`) so a future agent understands why `theme.ts`'s `LEGACY_THEME_MAP` has three generations of aliases, not because the name itself is still in question.
+- **Any reference in this document's own text to `CLAUDE.md`, `plan.md`, or an "audit" document as a live, currently-governing source:** these were accurate descriptions of the document landscape at the time each was written, in earlier passes of a project whose documentation has since been deliberately consolidated (`MD-01`/`MD-02`, both confirmed done). Every such reference in this document from this point forward should be read as **historical record of how a past confusion arose, not as a currently-relevant file** — `AGENTS.md` is the only entry point, `docs/plans/EXECUTION_SPEC.md` (this file) is the only backlog, `docs/project/DESIGN_SYSTEM.md` is the only design authority. Continuing to cite a retired document's specific old wording as if it still mattered was a real mistake in how prior passes were written, not a matter of interpretation — it added exactly the kind of confusion this whole documentation-governance effort exists to remove, and it stops here.
+
+### 20.2 — Space colors, researched properly this time
+
+The prior resolution (`CONF-02`/`CONF-13`) was directionally right (keep per-space colors, apply them everywhere) but did not solve the actual complaint raised now: **the four colors chosen are too similar to each other, don't feel attributed to their space, and don't sit naturally in all three themes.** That is a color-selection problem, not an application-breadth problem, and it needed its own research pass, which this section provides.
+
+**The mechanism that was missing:** four independently-hand-picked hex values (`#E5B41E`, `#EB4233`, `#F4A261`, `#A76011`) is exactly the anti-pattern current, authoritative color-token guidance (Google's Material 3 color-role system, the New York State Design System's per-theme token remapping, and current design-token literature on primitive→semantic→theme layering) warns against: hardcoded, independently-chosen values do not scale across themes and tend toward the "similar, muddy, no attribution" result reported here, because nothing about how they were chosen guarantees separation from each other or harmony with a given theme's base palette. The fix these sources converge on is to **derive** each space's color from the active theme's own primary hue, not hand-pick four unrelated ones per theme:
+
+1. Work in OKLCH (perceptually uniform — a fixed hue rotation reads as an equally-different color at every lightness/chroma, unlike HSL or raw hex, where the same rotation can look wildly uneven). This project already has OKLCH tokens sitting unused in the dead shadcn palette (`DS-02`) — this is a legitimate, better use for that color space than the one it's currently doing nothing in.
+2. Define each space's color as a **fixed hue offset from that theme's own `--accent`**, computed once per theme (not per space independently): e.g., Do = the theme's accent hue exactly (0°), Think = accent hue + 40°, Remember = accent hue + 200° (a genuine complementary-ish contrast, still constrained to a harmonious lightness/chroma band so it doesn't leap to an unrelated color family), Explore = accent hue − 40°. The exact offsets are a design decision to make by eye once the mechanism is in place, not something this document should hand-pick blind — but the mechanism itself (fixed rotation from the theme's own accent, computed the same way for all three themes) is what guarantees every theme gets a set of space colors that are (a) visibly distinct from each other by a consistent, deliberate hue gap, and (b) automatically harmonious with that theme, because they're mathematically derived from it rather than chosen independently three separate times.
+3. Keep lightness and chroma roughly constant across the four space colors within one theme (only hue rotates) — this is what makes them read as "a family, four members" rather than "four unrelated colors that happen to be defined in the same file," which is closer to the "no unique attribution feel" complaint.
+
+**DS-28 — Rebuild the per-space color set as theme-derived OKLCH hue rotations, not four independent hex picks**
+
+- **Priority:** High
+- **Files:** `src/app/globals.css` (the `--space-*` token definitions, all three theme blocks)
+- **Requirement:** Replace the current four independently-chosen hex values per theme with four values computed as fixed OKLCH hue offsets from that theme's own `--accent`, per the mechanism above. Do this for `warm`, `navy`, and `forest` alike, using the same offset angles in all three (only the base accent hue differs per theme, so the *relationship* between the four space colors stays visually consistent across themes even though the actual colors differ). This directly answers the request for an accent set that "doesn't look out of place in any one theme" — it can't look out of place, because it's derived from that theme's own primary color, not picked separately.
+- **Acceptance criteria:** In each of the three themes, the four space colors are visibly distinct from one another at a glance (not "similar, hard to tell apart," the reported problem), and each set reads as belonging to its theme (no space color that looks like it wandered in from a different theme's palette). A colorblind-safe check (simulate protanopia/deuteranopia) confirms the four remain distinguishable by more than hue alone if colorblind users are expected to rely on this system — pair with `A11Y-09`'s existing icon-plus-color requirement for exactly this reason.
+- **Depends on:** `DS-02` (this is the moment to also finally remove the dead shadcn OKLCH tokens, replacing them with these real, used OKLCH values, rather than leaving both a dead unused OKLCH block and a new live one in the same file).
+
+### 20.3 — Glassmorphism, researched properly this time, against your own reference images
+
+The prior pass's glass section was reasonable as a baseline (barrier layer, blur budget, elevation bundles) but didn't go deep enough, and — correctly identified by the report — the actual implementation still only puts glass on cards/panels/modals, not the fuller set this document's own philosophy claims ("dropdowns, toasts" were named but never actually built that way). This section corrects both the gap in research depth and the gap in what's actually specified as in-scope for glass.
+
+**What your reference images specify, read precisely:**
+
+- Image 1 ("Frosted / Concept"): a single, large-radius card with a strong, even frost — not a faint tint, a genuinely opaque-reading frosted surface — over a busy, colorful background, with a visible **grain/noise texture** layered into the frost itself, and text sitting cleanly on top with no legibility struggle despite the busy background behind it.
+- Image 2 (booking card): the same frosted language applied to a full card with an image inset at the top (itself corner-radiused to match the card), stacked content below on the frosted body, and pill-shaped controls (date range, a chevron-expand row) that are themselves subtly glassy, not solid-filled buttons dropped onto a glass card.
+- Image 4 (status pills): flat, saturated, glowing pill badges (Success/Pending/Submitted/Failed) — each a distinct hue with a soft outer glow and a matching icon, not glass at all, but establishing that this app's **pills specifically are meant to be a separate, vivid, high-saturation language from the glass cards they sit on**, not a muted extension of the same frosted surface.
+
+This is a coherent, specific aesthetic: **frosted glass as the container language, vivid glowing pills as the status/tag language sitting distinctly on top of it, with a grain texture giving the glass a tactile, non-sterile quality** — closer to what current research calls "Glassmorphism 2.0" (2026's more deliberate, tactile evolution of the 2020-era flat blur) than to Apple's Liquid Glass, which is specular/refractive and reactive to motion rather than textured and grainy. That distinction is worth being explicit about, since it changes concrete implementation choices:
+
+1. **Alpha-channel gradient fills, not flat low-opacity color.** Current 2026 guidance is specific that a flat `background: rgba(0,0,0,0.1)` reads as "washed out" — use a gradient across the card's own surface (a very subtle two-stop gradient in the same hue family as the surface token) so the frost has some internal variation, the way the reference images' cards clearly do (they aren't a flat single tone).
+2. **A grain/noise layer, not just blur.** This is the part the prior pass's glass section didn't cover at all, and it's clearly present in your reference. Implement as a small (64×64 or 128×128px), tileable, low-contrast noise PNG or an inline SVG `feTurbulence` filter, applied as a `background-image` layer over the glass surface at very low opacity (roughly 3-6%), blended with `mix-blend-mode: overlay` or `soft-light`. Critically for performance: **generate this once as a static tiled image, do not compute noise per-frame or per-element with an SVG filter applied live to every card** — a single shared, cached background-image reused across every glass surface costs nothing extra to render past the first paint, whereas a live `feTurbulence` filter recalculated per element is exactly the kind of GPU cost this document's own `PERF-04`/`PERF-08` tickets are already trying to bring down, not add to.
+3. **A specular-highlight border, not a plain border.** Current guidance is specific that the border shouldn't be a flat single-color line — a very thin (0.5–1px) gradient border that's slightly brighter along the top edge (simulating a light catching the top of a physical glass edge) reads as noticeably more "glass" than a uniform border, for very little extra cost (a `border-image` gradient or a pseudo-element with a linear-gradient mask).
+4. **Extend glass to dropdowns and toasts for real, not just claim it.** Both already render through portals (`Dropdown`/`Popover`/`ToastProvider`) — apply the same elevation-bundle-driven glass treatment (barrier layer + blur + specular border + grain) to their surfaces, at the `floating`/`overlay` elevation tier, so the design system's own stated claim becomes true rather than aspirational. This was flagged as inaccurate in the report and the fix is straightforward now that the portal infrastructure (`BUG-03`/`BUG-27`, Floating UI) is already in place — it's a styling gap on top of working plumbing, not a structural one.
+5. **Pills stay outside the glass language, deliberately.** Per your reference image 4, pills/badges (status, priority, category) should be their own vivid, saturated, glowing micro-component — not a muted glass chip. This is worth stating explicitly in `DESIGN_SYSTEM.md` as an intentional exception to "everything is glass," because otherwise a future pass could "fix" pills by making them glassy too, which would be wrong per your own reference.
+
+**DS-29 — Implement Glassmorphism 2.0: grain texture, alpha-gradient fills, specular borders, and glass parity for dropdowns/toasts**
+
+- **Priority:** High
+- **Files:** `globals.css` (elevation bundles, new grain asset), `Dropdown.tsx`/`Popover.tsx`/`ToastProvider.tsx` (apply the elevation-bundle glass treatment to their surfaces, which currently render solid or near-solid rather than glass)
+- **Requirement:** Per the five points above. A single shared grain texture asset, referenced by the elevation bundles, not duplicated. Dropdown/Popover panels and toasts visually match card/modal glass at their appropriate elevation tier.
+- **Acceptance criteria:** A dropdown panel and a toast, side by side with a card, read as the same material family (same frost quality, same border treatment, same grain), not two different visual languages under one name. `PERF-04`'s blur budget (max two stacked blur regions) is re-checked once this ships, since adding glass to two more component types is exactly the kind of change that could push the current count (already over-budget per Addendum 6/7's finding of 23 `backdrop-filter` occurrences) higher still — this ticket must not land without `PERF-04` being addressed in the same effort, or the two will fight each other.
+- **Depends on:** `PERF-04` (do together, not separately — see above).
+
+### 20.4 — Hover consistency and the "cards enlarge out of bounds, cut border" bug — one root cause, found
+
+**Confirmed by direct comparison: Inbox's card and the Do page's `TaskCard` use two entirely different hover mechanisms.** `TaskCard` lifts on hover via Framer Motion (`whileHover={{ y: -2 }}`). The Inbox card has no lift at all — only a background-color shift (`hover:bg-amber-500/10`). This is exactly the reported inconsistency, confirmed, not inferred.
+
+**The "cut border" bug's likely mechanism, also found:** `GlassCard.tsx`'s base class includes `overflow-hidden`. The Inbox card's own markup explicitly overrides this with `!overflow-visible` — meaning whoever built that one card already hit a clipping problem and patched around it locally, rather than fixing `GlassCard` itself. This is a strong, direct clue: a card that lifts or scales on hover while its own (or a parent's) `overflow-hidden` is still active will have its shadow, glow, or growing edge clipped exactly where the box boundary sits — precisely "enlarge out of bounds and have a cut border."
+
+**DS-30 — One hover system for every hoverable card/row in the app, using lift not scale, with `overflow` fixed at the source**
+
+- **Priority:** Critical — this single ticket, done once, fixes items #5 and #6 together, plus removes the Inbox card's local `!overflow-visible` patch by making it unnecessary everywhere, not just there.
+- **Files:** `src/components/ui/GlassCard.tsx` (remove `overflow-hidden` from the variant(s) used for hoverable/clickable cards — reserve it only for variants that genuinely need internal cropping, e.g., an image-thumbnail card), every card/row component currently missing a hover state (`inbox/page.tsx`'s card, and an audit of any other list row in the app for the same gap)
+- **Root cause and requirement:** (1) Standardize on a **translateY lift** (`y: -2px` to `y: -3px`, Framer Motion `whileHover`, matching `TaskCard`'s existing value so it isn't itself a third new number) as the one hover motion for every hoverable card/row — never a `scale()`-based hover for cards, specifically because a scale transform grows the element's rendered box past its layout box, which is what triggers clipping inside any `overflow-hidden` ancestor (including a horizontally-scrollable Kanban column, which is exactly the kind of container this app has). A translateY lift does not have this problem — it repositions, it doesn't grow. (2) `GlassCard`'s clipping `overflow-hidden` should not coexist with a lift-on-hover variant; separate the "needs internal cropping" case (an image thumbnail) from the "is a hoverable, liftable surface" case (list rows, task cards) as two different variants if they aren't already, so neither one has to fight the other's requirement.
+- **Acceptance criteria:** Every hoverable card/row in every space lifts identically (same distance, same duration, same easing token) on hover, with a matching shadow increase. No hover-lifted card shows a clipped edge, border, or shadow at any point during the hover transition, tested specifically inside a horizontally-scrollable container (Do's Board columns) and inside a vertically-scrollable one (any list). The Inbox card's `!overflow-visible` override is removed because it's no longer needed — the fix is in `GlassCard` itself, not patched per-consumer.
+- **Depends on:** none — this is self-contained and should be done before `DS-29` (glass system rework), since both touch `GlassCard`'s core styling and doing the hover fix first avoids redoing it twice.
+
+### 20.5 — New and re-confirmed bugs from this pass's deeper code reading
+
+**BUG-36 — `Sheet`'s whole-surface `drag="y"` likely blocks taps on interactive children, including `TaskAddPanel`'s priority pills**
+
+- **Priority:** Critical
+- **Files:** `src/components/ui/Sheet.tsx` (line ~58, `drag="y"` with no `dragListener={false}`/dedicated handle), `src/components/features/TaskAddPanel.tsx` (the priority-pill buttons, confirmed correctly wired to `setValue("priority", ...)` on their own — the pills' own code is not the bug)
+- **Root cause:** Direct code reading confirms the priority-pill buttons in `TaskAddPanel` are correctly implemented — each is an `m.button` with a working `onClick` that calls React Hook Form's `setValue`. The bug is not in the pills. It is in the `Sheet` component they live inside: `drag="y"` is applied to the entire sheet surface with no scoping to a dedicated drag handle and no `dragListener={false}`. This is a known Framer Motion interaction hazard — a `drag`-enabled ancestor's gesture recognizer competes with a `whileTap`/`onClick` gesture on a nested interactive child, and depending on pointer timing, the drag recognizer can capture the pointer before the child's own tap is registered, causing the click to silently not fire. This is the same root cause this document's own `MOB-04` ticket already existed to address (it was originally scoped around drag-jitter-while-typing, a narrower symptom of the identical underlying cause), not a new, unrelated defect — this finding sharpens `MOB-04`'s priority and scope rather than replacing it.
+- **Requirement:** Scope the drag gesture to a dedicated handle element (a small grabber bar at the top of the sheet, which the reference images and most sheet implementations already show as a visual affordance anyway) using Framer Motion's `dragControls`/`dragListener={false}` pattern, so the rest of the sheet's content — every button, pill, input, and dropdown inside it — receives pointer events normally, with no competing gesture recognizer.
+- **Acceptance criteria:** Every priority pill, category pill, and any other button inside `TaskAddPanel` (and every other `Sheet` consumer — `AddPersonPanel`, `LocationAddPanel`, `ExploreDrawer`) registers a click reliably, on both desktop pointer input and a real touch device, tested specifically with a fast/light tap (the exact gesture most likely to be swallowed by a competing drag recognizer). Dragging the sheet to dismiss still works, but only when the drag starts from the dedicated handle.
+- **Depends on:** none. This is high-value and self-contained — recommend fixing this one first among this pass's new findings, since it's silently breaking a core input (setting a task's priority) across the app, not a cosmetic issue.
+
+**BUG-37 — Explore's empty-state "Save Item" button still opens Quick Capture (item #3, confirmed unfixed)**
+
+- **Priority:** High
+- **Files:** `src/app/(app)/explore/page.tsx` (line ~275)
+- **Root cause:** Directly confirmed, matching `BUG-35`'s already-written finding exactly — `onClick={() => useAppStore.getState().setCaptureModalOpen(true)}` on the empty-state action, same defect class as the original Do-page bug, not yet fixed here despite being fixed in other spaces.
+- **This is the same ticket as `BUG-35`'s Explore half — not a new, separate one.** Recorded here only to confirm, on direct request, that it remains unfixed as of this exact build; no new ticket ID needed.
+
+**DS-31 — Contact "relationship" chip dropdown's visual style and position, re-investigated**
+
+- **Priority:** High
+- **Files:** `src/components/ui/Dropdown.tsx` (`chip` variant), `src/app/(app)/remember/people/[id]/page.tsx`
+- **Finding:** the relationship dropdown on the person detail page **does** use the shared `Dropdown` component (`variant="chip"`), with the same Floating UI configuration (`offset`, `flip`, `shift`, `strategy: "fixed"`) already confirmed correct for the `select` variant elsewhere. Static reading does not show an obvious configuration difference that would explain a different visual style or a top-left rendering position — both variants share one `useFloating` call. This means the cause is more likely a **runtime** one this kind of review can't settle from source code alone: most plausibly, the floating panel's portal target ending up nested inside an ancestor with a CSS `transform`/`filter`/`contain` property (which changes the containing block for a `position: fixed` descendant, even one rendered via a portal, if the portal's mount point itself sits inside that ancestor rather than truly at `document.body`). **Before writing a fix, open this exact dropdown in a browser's DevTools, inspect the rendered `dropdown-panel` element's computed `position`/`top`/`left`, and check whether any ancestor between it and `<html>` has a `transform` set** — that single check will confirm or rule out this hypothesis definitively, which static code reading cannot.
+- **Acceptance criteria:** Once the runtime cause is confirmed, the relationship chip dropdown opens directly beneath its trigger, scrollable if needed, visually identical to every other `Dropdown` instance in the app.
+- **Depends on:** live inspection first, as described — do not guess at a fix before that.
+
+### 20.6 — Pills: one system, not several (extends `DS-10`, informed by your reference image)
+
+Per reference image 4 (Success/Pending/Submitted/Failed pills — vivid, glowing, icon-paired), and the direct report that priority/status/category pills are inconsistent across the app in "design, beauty, hover effect and usage": this is `DS-10`'s original scope, sharpened with a concrete visual target now available. **DS-10 is updated, not superseded:**
+
+- Every pill in the app (task priority, task category, person relationship, capture-routing status, explore type) is the same underlying component with the same anatomy: an icon (or dot, for the lightest-weight cases like priority), a label, a background at roughly 15-20% of the pill's own color, a border at roughly 30-40% of that color, and — new, per the reference — a soft outer glow (`box-shadow` with the same hue, low spread, low opacity) that intensifies slightly on hover/active state, not just a background-opacity shift.
+- Pills are explicitly **not** part of the glass system (§20.3's point 5) — they are flat, saturated, and glowing, sitting on top of glass surfaces as a distinct visual layer, matching your reference exactly.
+- This is the concrete visual spec `DS-10` was missing; that ticket's acceptance criteria should be read as extended to include "matches the anatomy described here," not just "uses named variants."
+
+### 20.7 — What could not be settled by this pass, stated plainly
+
+Consistent with this document's method throughout: `DS-31`'s exact runtime cause needs a live inspection this review cannot perform. `BUG-21`'s onboarding-background hardcoding was already flagged as low-urgency since it doesn't currently produce a visible defect. Everything else in this addendum was either confirmed by direct code reading or is a design decision (the exact hue-offset angles in `DS-28`) that this document deliberately leaves for visual judgment rather than dictating a specific number with no way to verify it looks right without seeing it rendered.
+
+---
+
+## 21. Addendum 9 — user progress/analytics system (researched), bloat reduction, login/onboarding, and MD-system reinforcement
+
+### 21.1 — A progress/analytics feature, researched against this app's own chosen domain identity
+
+This needed its own research pass because there is a real tension in this exact domain that a generic "add analytics" search would miss: **Sunsama — the app this project has explicitly modeled its ritual system on — deliberately ships with no gamification at all.** Its own reviews describe this as a stated design position, not an omission: no streaks, no achievement badges, no leaderboards, positioned in direct contrast to Todoist's "Karma" points and TickTick's streak grids, which exist in the same market and are popular, but represent a different, more gamified philosophy. What Sunsama does instead is completed-task/time-tracking summaries, time-distribution graphs, and a structured weekly review ritual — reflective, quiet, pattern-revealing, not celebratory or score-based.
+
+This matters directly: if Presense builds a Todoist/TickTick-style streaks-and-badges system, it would contradict the calm, intentional identity this project has already chosen (the same identity `CONF-14` invoked to simplify the settings' ritual-timing fields). This document does not silently pick one direction — it resolves this explicitly, using the same domain-fit reasoning already established:
+
+**CONF-17 — Progress/analytics feature: reflective (Sunsama-style) vs. gamified (Todoist/TickTick-style) → RESOLVED, in favor of reflective**
+
+- **Resolution:** Build a **Weekly Review** surface (not a constant, ambient gamification layer) showing: tasks completed vs. planned, a simple time/completion-pattern view (which days were most productive, which categories consumed the most time — data this app's `Pomodoro`/task-completion timestamps already produce), and a short reflection prompt, mirroring Sunsama's own weekly review and the general "four core areas" dashboard structure (vision/goals, habits, review/reflection, and a small, capped set of metrics — 5-10 at most, per current guidance's own explicit warning against metric overload). **No streaks, no points, no badges, no leaderboard, no celebratory confetti-style animation on completion** — these are the specific gamification mechanics Sunsama's own positioning explicitly avoids, and adopting them here would be a tonal contradiction with a domain choice this project has already made deliberately, not accidentally.
+
+**New feature spec: `FEAT-01` — Weekly Review / progress surface**
+
+- **Priority:** Medium (this is new scope, not a bug — sequence after Phase 0/1 stabilize, not before)
+- **Requirement:** A new view (reachable from Home, not a permanent sidebar item — this is a periodic ritual, not a constantly-checked dashboard, consistent with how the existing morning/evening rituals are surfaced) showing, capped at a small, fixed set of metrics: tasks completed this week vs. last week, a simple day-of-week completion pattern (which days tasks actually got done, using data already captured via `item-lifecycle.ts`'s completion timestamps — no new tracking infrastructure needed for this part), total focus/Pomodoro time if the existing `PomodoroTimer` session data is retained, and one short free-text reflection field the user can optionally fill in, persisted per week. No new gamification mechanics of any kind.
+- **Data requirement:** Audit whether task-completion timestamps and Pomodoro session durations are currently retained anywhere queryable (a completed task's `completed_at`, if it exists, or whether completion is only reflected in `status` with no timestamp) — if the timestamp isn't currently stored, that's a small, additive schema change (one nullable column), not a redesign.
+- **Acceptance criteria:** The weekly review surface shows accurate, real data pulled from existing task-completion and (if available) focus-session records; it introduces no streak counters, achievement mechanics, or celebratory animations; a user can dismiss/skip a week without any guilt-inducing UI (no "you broke your streak" messaging of any kind, since there is no streak).
+- **Depends on:** none structurally, but should not start before Phase 0 critical bugs are closed, given it's new scope, not a fix.
+
+### 21.2 — Bloat reduction (items #17, #18, #19)
+
+**`INFRA-20` — Settings surface audit for bloat, beyond the already-resolved `CONF-14`**
+
+- **Priority:** Medium
+- **Requirement:** `CONF-14` already collapsed the ritual-timing fields. Extend the same scrutiny to every other Settings section: for each toggle/field currently present, write one sentence stating what it controls and confirm at least one other comparable app in this domain (Sunsama, Todoist, Things) exposes an equivalent — if nothing comparable exists anywhere in the domain and the field isn't load-bearing for a feature this app specifically has, it's a bloat candidate for removal or folding into a sensible default rather than a user-facing toggle. This is the same audit method `CONF-14` already used, applied to the rest of the Settings surface systematically rather than just the fields already flagged.
+- **Acceptance criteria:** A short table exists (in `docs/project/ARCHITECTURE.md` or a new short doc) listing every Settings field, what it does, and why it's there — any field that can't get a one-sentence justification is removed.
+
+**`INFRA-21` — Dead code and unused-export sweep**
+
+- **Priority:** Low-Medium
+- **Requirement:** Run a dead-export/dead-file detector (e.g., `knip`, already noted as a legitimate low-priority tool in an earlier pass of this document) across the codebase and remove genuinely unused exports, components, and files — following this document's own "never delete what you don't understand, grep first" rule throughout, same as every other deletion in this backlog.
+- **Acceptance criteria:** `knip` (or equivalent) run produces a report; each flagged item is either removed (with a grep confirming zero usages) or explicitly kept with a one-line reason in the same PR.
+
+**`INFRA-22` — Database bloat audit**
+
+- **Priority:** Medium
+- **Requirement:** Beyond the RLS/index work already tracked (`INFRA-15`–`17`), audit the schema itself for columns that are no longer read anywhere in the app (candidates surfaced already in this document's history: the `threads.color_accent` field `BUG-29` found being written a nonsensical value into — worth confirming whether anything actually reads it before deciding whether to fix its value or remove the column entirely), and for tables/columns that accumulated during earlier passes' fixes (e.g., confirm the legacy theme-name migration chain hasn't left orphaned check-constraint clutter beyond what's needed going forward). This is the same "does every stored thing earn its place" question applied to the database that `INFRA-20` applies to Settings and `INFRA-21` applies to code.
+- **Acceptance criteria:** A short data-dictionary note (extending `INFRA-19`'s planned `DATA_MODEL.md`) records, for every column, whether it's actively read; any confirmed-dead column is removed via a new migration (never edited in place), following this document's standing migration rules.
+
+### 21.3 — Login and onboarding, made more beautiful (item #13)
+
+- **Priority:** Medium
+- **Requirement:** Per `DESIGN_SYSTEM.md` §6.10's existing note that the login screen is already the app's best current example of glass done right (a single focal glass card over a simple, uncluttered ambient background) — use `DS-29`'s Glassmorphism 2.0 treatment (grain, alpha-gradient fill, specular border) on this exact card first, since it's the highest-visibility single surface in the app and the one already closest to correct. Onboarding's per-step ambient glow (currently the hardcoded-color surface flagged in `BUG-21`) should both be tokenized (per that ticket) and receive the same upgraded glass/grain treatment on its own content card, so the two surfaces feel like one continuous, polished entry experience rather than two different eras of the same design system.
+- **Stability/responsiveness requirement (explicitly asked for alongside "beautiful"):** confirm the login card's layout holds correctly at the narrowest supported viewport (per `DESIGN_SYSTEM.md` §8.7's "start at 360–375px" rule) and that `MOB-05`'s `100dvh` fix (already flagged as incomplete, and specifically still missing from the login route per Addendum 7's file list) lands here as a prerequisite — a "beautiful" login screen that reflows badly on a real phone or jumps around due to `100vh` viewport-height bugs would undercut the visual work, so the stability fix and the beauty upgrade should ship together, in that order.
+- **Acceptance criteria:** Login and onboarding visually share one upgraded glass treatment; both hold their layout correctly from 360px up; neither shows a `100vh`-related jump when a mobile browser's chrome shows/hides.
+- **Depends on:** `DS-29`, `MOB-05` (the login/onboarding files specifically), `BUG-21`.
+
+### 21.4 — Reinforcing the MD-system's self-consistency (item #12)
+
+This document's existing structure already does most of what was asked (`AGENTS.md` as the single entry point; `MD-05`'s CI check rejecting unauthorized changes to protected invariants without an explicit acknowledgment). Two additions make the "self-updating, cross-referencing, but not randomly editable" property more concrete:
+
+- Every governance file (`AGENTS.md`, `docs/project/DESIGN_SYSTEM.md`, `docs/project/COMPONENT_MANIFEST.md`, this document) should carry a one-line `Last reconciled against build: <date/commit>` marker at its top, updated only as part of an explicit reconciliation pass (like this one), so staleness is visible at a glance rather than silently assumed — this directly addresses "are these files actually up to date" without requiring a full re-read to find out.
+- `MD-05`'s CI check (already specified) is the actual "not randomly editable" enforcement mechanism — a protected-invariant change without the required acknowledgment line fails the build. This is what makes "self-updating but protected" concrete rather than aspirational: the files can and should be updated (that's what every one of these addenda has been doing), but a change to a named hard invariant specifically requires an explicit, attributable decision, checked by CI, not by hoping an agent remembers to ask first.
+
+---
+
+## 22. Addendum 10 — the long-view systemic sweep, primary-source design research, and reference-image synthesis
+
+This addendum does what was specifically asked: instead of treating each reported item in isolation, every confirmed bug from prior passes was used as a **pattern** to search the rest of the codebase for siblings, and design guidance was pulled from primary, authoritative sources (Vercel's own official interface guidelines) rather than secondary trend commentary, plus a direct synthesis of the six reference images and the two named reference apps supplied.
+
+### 22.1 — Long-view pattern sweep: three bugs, each found once, are actually systemic
+
+**BUG-38 — The unchecked-Supabase-error pattern (`BUG-34`'s root cause) is not isolated to Inbox — it is the dominant pattern across the entire codebase**
+
+- **Priority:** Critical — this is the single highest-value finding from this pass
+- **Evidence:** A direct search for every `await supabase.from(...)` mutation call in the app found roughly 35 call sites with no destructured `{ error }` check, spanning `PomodoroTimer.tsx`, `TaskAddPanel.tsx`, `(app)/page.tsx` (Home), `think/[id]/page.tsx`, `explore/[id]/page.tsx`, `explore/page.tsx`, `inbox/page.tsx` (the routing-delete calls, a *second* unchecked path in the same file `BUG-34` already flagged one instance in), `do/page.tsx`, and — most concerning — **nearly the entire `OnboardingWizard.tsx` flow**: its `user_settings` upserts, its `items`/`people`/`locations`/`threads`/`explores` inserts during the capture-triage step, and its relationship-note update all lack error checking. This means a brand-new user's very first experience of the app could silently fail at any step of onboarding — a person added during onboarding might never actually save, a captured item might never actually insert — with the wizard proceeding to the next step as if it had, because nothing checks whether it did.
+- **Requirement:** This is not 35 individual bug fixes — it should be treated as one systemic pass: introduce a single small wrapper/helper (e.g., a `mutate()` utility around `supabase.from(...).<op>()` that checks `error`, reports it to the error tracker (`INFRA-01`/`TOOL-06`, once adopted) and to the user via `toast.error`, and returns a clear success/failure boolean) and migrate every one of these call sites to it, rather than hand-adding an `if (error)` check 35 times with 35 slightly different toast messages. This directly extends `AGENTS.md`'s new invariant 7 (added last pass) from a rule an agent should follow in new code to a retroactive cleanup of existing code.
+- **Acceptance criteria:** Every Supabase mutation in the app either succeeds visibly or fails visibly — there is no third state (silently do neither). `OnboardingWizard.tsx` specifically is tested end-to-end with a deliberately-broken write (e.g., temporarily revoke a permission) to confirm the wizard now surfaces the failure instead of sailing through it.
+- **Depends on:** none — this can start immediately and is independent of every open conflict.
+
+**BUG-39 — `Sheet`'s whole-surface drag gesture (`BUG-36`) affects seven components, not one**
+
+- **Priority:** Critical
+- **Evidence:** Every consumer of the shared `Sheet` component was enumerated: `ConfirmModal`, `AddPersonPanel`, `SearchModal`, `TaskAddPanel`, `CaptureModal`, `ExploreDrawer`, `LocationAddPanel`. Since the drag-gesture conflict is in `Sheet.tsx` itself, every interactive control inside all seven of these — not just `TaskAddPanel`'s priority pills — is a candidate for the same silently-swallowed-tap problem: `ConfirmModal`'s Delete/Cancel buttons, `AddPersonPanel`'s relationship and avatar-color pickers, `ExploreDrawer`'s type field, `CaptureModal`'s destination picker.
+- **Requirement:** Fixing `Sheet.tsx` once (per `BUG-36`'s already-specified fix — a dedicated drag handle, `dragListener={false}`) fixes all seven at once, since the defect lives in the shared component, not in each consumer. No consumer-level changes are needed.
+- **Acceptance criteria:** After the `Sheet.tsx` fix, every interactive control in all seven listed consumers is spot-checked with a fast/light tap on a real touch device, not just `TaskAddPanel`'s pills.
+
+**BUG-40 — Locations has no `EmptyState` at all; Think and Explore have the wrong target; only People is correct — the empty-state defect class is present in four different forms across five spaces**
+
+- **Priority:** High
+- **Evidence:** Direct inspection of all five spaces' empty-list handling: **People** — correct, uses `EmptyState` with the right target. **Do** — correct (fixed earlier). **Think, Explore** — use `EmptyState` but with the wrong `onClick` target (`BUG-35`, already tracked). **Locations** — does not use the shared `EmptyState` component at all; it hand-rolls a bare "No locations here" text block, the exact anti-pattern `DS-07` was written to eliminate.
+- **Requirement:** Migrate Locations' empty state onto the shared `EmptyState` component, wired to its own "Log item" panel — this is a new instance of `DS-07`'s original requirement, not yet applied to this one file, rather than a new pattern to invent.
+- **Acceptance criteria:** All five spaces (Do, Inbox, Think, Explore, People, Locations — six, including Inbox's documented Quick-Capture exception) use `EmptyState` with the correct target, verified individually, not assumed from one or two checked examples.
+
+### 22.2 — Primary-source design research: Vercel's official interface guidelines, checked against this codebase directly
+
+Rather than general "top design systems" commentary, this pass used Vercel's own official, primary-source interface guidelines document (`vercel.com/design/guidelines` — a checklist written for engineers, not a mood board) and checked several of its specific, testable rules directly against Presense's code. Two produced confirmed, previously-unreported defects:
+
+**BUG-41 — Text inputs are 13px, below the 16px threshold that prevents iOS Safari from auto-zooming on focus**
+
+- **Priority:** High
+- **Files:** `src/components/ui/Input.tsx` (and by extension `Textarea`/`SearchInput`, which likely share the same base sizing — verify each)
+- **Root cause:** `Input.tsx`'s default variant resolves to the `.input` CSS class, which inherits `--text-body: 13px`. Vercel's own guideline states this plainly: `<input>` font size must be ≥16px on mobile, or iOS Safari will zoom the viewport in when the field receives focus — a well-documented, specific mobile browser behavior, not a general aesthetic opinion. Every default text input in this app is below that threshold.
+- **Requirement:** Either set input text specifically to 16px on mobile viewports (a `text-base` override scoped to inputs, distinct from the surrounding UI's 13px body text, which can stay smaller outside of input fields) or add the alternative fix Vercel's own guideline names — a `maximum-scale=1` viewport meta tag — noting that the first approach is generally preferable since it doesn't disable pinch-zoom for the rest of the app, which is itself an accessibility feature worth preserving.
+- **Acceptance criteria:** Tapping into any text field on an actual iPhone (not a desktop emulator, which does not reproduce this behavior) does not trigger a viewport zoom.
+
+**BUG-42 — No unsaved-changes warning anywhere in the app**
+
+- **Priority:** Medium
+- **Files:** `TaskAddPanel.tsx`, `AddPersonPanel.tsx`, `LocationAddPanel.tsx`, and any other form that can hold meaningful unsaved input
+- **Root cause:** Confirmed zero occurrences of `beforeunload` or any unsaved-changes guard anywhere in the codebase. Vercel's guideline is explicit: "warn before navigation when data could be lost."
+- **Requirement:** For each of the listed forms, track a dirty/unsaved state (React Hook Form's own `formState.isDirty`, already available where RHF is adopted) and prompt before closing the sheet/navigating away if it's true.
+- **Acceptance criteria:** Typing into a task's notes field and attempting to close the sheet without saving prompts a confirmation; saving or explicitly discarding proceeds without a second prompt.
+
+**Other Vercel-guideline items checked and confirmed already correct, stated plainly so they aren't redone unnecessarily:** `TaskAddPanel`'s Save button already shows a loading indicator and disables during submission (`isSubmitting || !isValid`) — this specific guideline item is already satisfied, no ticket needed.
+
+### 22.3 — Reference-image and reference-app synthesis
+
+Six images and two named reference apps (How We Feel, and the "Exoplan"/calendar-app-style images already partially reflected in earlier passes) were reviewed together, not as isolated mood-board pieces, to extract patterns applicable to Presense specifically:
+
+1. **The frosted sidebar/menu (reference image showing Feed/Stats/Messages/Setting/Profile)** is a clean, direct example of `DS-29`'s Glassmorphism 2.0 language applied to exactly the kind of compact vertical menu Presense's own sidebar is — soft, even frost, generous corner radius, icon+label rows with even vertical rhythm, no visual noise beyond the frost itself. This is a good concrete reference for **the sidebar specifically** once `DS-29` lands — the sidebar's own background could adopt this same frosted-over-photo/gradient treatment rather than a flatter dark fill, consistent with pillar 1 ("atmosphere over flatness").
+2. **The iOS-style mode picker (Do Not Disturb / "For an hour" / "For Today" / "Until This Weekend" / "Until Goals Met")** is a strong, concrete reference for how Presense's own quick-toggle affordances should look — a small glass card, a row of icon-only mode buttons at the top, then a simple list of duration/preset options below with a checkmark on the active one. This is a better visual model for `Dropdown`'s **select variant specifically** than the current implementation — worth revisiting once `BUG-31`'s scroll/type-ahead fix lands, as a follow-up visual polish pass on that same component.
+3. **The timeline/schedule app ("Exoplan")** with color-coded task blocks and a circular progress ring is directly relevant to `FEAT-01`'s Weekly Review surface (§21.1) — a compact circular "percent of week planned/completed" indicator, similar to this reference's top-right ring, is a good concrete shape for that feature's at-a-glance summary, again without adopting any streak/gamification mechanic, consistent with `CONF-17`'s resolution — the ring communicates completion, not a score or a chain to protect.
+4. **The calendar app screenshots (month view with per-day colored line indicators; day view with left-border-accent colored event blocks and avatar stacks)** is directly relevant to `CONF-08`'s planned calendar rewrite — specifically, the pattern of a **left-border accent color plus avatar stack on an event block**, rather than a fully-filled colored block, is worth adopting for Presense's own calendar task chips once that rewrite starts: it reads as calmer and more legible at a glance than a solid color fill, and pairs naturally with `DS-28`'s new space-color system (the border color communicates space/category without needing to tint the entire block).
+5. **The "Your month at a glance / Path progress 97%" check-in card** is a clear, directly-relevant reference for `FEAT-01`'s weekly review card specifically — a soft photographic/gradient background, one clear progress bar, one clear call-to-action ("Let's Go" equivalent) — this maps well onto a "Week in Review" entry point already visible in Presense's own Home screenshot from an earlier pass, which currently is just a plain button; this reference suggests giving that specific entry point its own small preview card treatment rather than a bare button, once `FEAT-01` is built.
+6. **How We Feel**, per the app's own documented flow (a Medium UX case-study's direct wireframe breakdown of its daily check-in) and its broader, widely-observed design reputation: a small number of screens, one primary action per screen, color used as the primary carrier of meaning rather than as decoration on top of an otherwise neutral UI, and an onboarding/check-in flow that stays inside a strict, disciplined visual system (the case study specifically notes its designer had to work hard to stay disciplined within a constrained palette, which sharpened the hierarchy rather than loosening it). The lesson for Presense is not "add mood-tracking" — it's the **discipline** itself: resist the urge to add a decorative icon, an extra color, or an extra card treatment to a screen unless it's actually carrying meaning, which is the same discipline this document's own `DS-15`/`DS-17` (locked Tailwind theme, component manifest) already exist to enforce structurally, and is worth citing explicitly as the design *rationale* behind those two tickets, not just a process requirement.
+
+**DS-32 — Adopt reference-informed refinements: frosted sidebar treatment, mode-picker-style select dropdown, and left-border-accent calendar chips**
+
+- **Priority:** Medium (visual polish, sequenced after the structural fixes it depends on)
+- **Requirement:** (1) Once `DS-29` ships, apply its frosted/grain treatment to the sidebar's own background, per reference image 1. (2) Once `BUG-31` ships, revisit `Dropdown`'s `select` variant's visual treatment toward the mode-picker reference (icon-row header where applicable, checkmark-on-active-row list). (3) Once `CONF-08`'s calendar rewrite starts, use left-border-accent + avatar-stack task chips rather than fully-filled color blocks, pairing naturally with `DS-28`'s new derived space colors.
+- **Depends on:** `DS-29`, `BUG-31`, `CONF-08` (each sub-item depends on its own prerequisite — this ticket does not gate any of them, it's the follow-up polish once each lands).
+
+### 22.4 — Settings field audit, executed (not just described) — completing `INFRA-20`
+
+Every field currently in `SettingsModal.tsx` was enumerated directly: Sign Out, Display Name, Timezone, Delete Account, Color Mode, Density, Reduce Motion, Quiet Start, Morning Nudge, Evening Shutdown, Auto-Archive Completed (plus Theme selection and Export Data, present elsewhere in the same component). Per `CONF-14`'s already-settled resolution, Quiet Start and the Morning Nudge/Evening Shutdown pair collapse to two fields (morning and evening ritual time only); Timezone becomes auto-detected-with-advanced-override rather than a primary field. Of the remainder: **Density** was already flagged in the original 20-item skip list (from an early pass of this document) as a "Linear needs this, Presense doesn't" candidate for removal — this audit confirms that recommendation should actually be acted on now, not just noted, since it has sat un-actioned since it was first suggested; **Auto-Archive Completed** is a genuinely useful, load-bearing preference (it changes real behavior, matches a real pattern in comparable tools) and should stay. This is the concrete output `INFRA-20` asked for — a per-field verdict, not a method description.
+
+### 22.5 — What this pass could not settle
+
+`FEAT-01`'s underlying data availability (whether task-completion timestamps are actually retained in a queryable form) still needs a direct schema check before implementation starts — flagged in §21.1, not yet resolved here. Everything else in this addendum was either confirmed by direct code reading or is design guidance drawn from a stated, named source, per the standard this document has held throughout.
+
+---
+
+## 23. Addendum 11 — final gap check: two items were tracked as evidence but never became their own fix tickets
+
+This addendum exists because a direct re-grep of this document against the original 29-item list found two items that were cited as *supporting evidence* for other tickets but never got their own concrete fix ticket — a real gap, not a restatement. Both are added now. Everything else in the original 29-item list, and every item repeated across the four follow-up messages, was re-checked line by line against this document's current content; the full item-by-item confirmation is in the reply accompanying this update, not duplicated here.
+
+**BUG-43 — Settings still has one native `<select>` and four native `type="time"` inputs, never given their own migration ticket (item #9)**
+
+- **Priority:** High
+- **Files:** `src/components/features/SettingsModal.tsx` — `<select>` for Auto-Archive Completed (line ~1417), `type="time"` inputs at lines ~1026, ~1039, ~1303, ~1323 (Quiet Start, Quiet End, Morning Nudge, Evening Shutdown)
+- **Root cause:** These were found and cited as evidence while investigating `BUG-31` (the Dropdown scroll/position bug) and while resolving `CONF-14` (collapsing the ritual-time fields), but neither of those tickets actually required migrating these specific native elements — `BUG-31` only fixed the shared `Dropdown` component itself, and `CONF-14` only said *which* time concepts survive, not what component the surviving two should use. The native elements were never actually put on anyone's list to fix.
+- **Requirement:** (1) Auto-Archive Completed's native `<select>` becomes a `<Dropdown variant="select">`, consistent with the app-wide rule that native `<select>` is never used. (2) Once `CONF-14` collapses the four time fields to two (morning ritual time, evening ritual time), both use a custom time-picker built on the same `Dropdown`/`Popover` portal infrastructure — not a native `<input type="time">`, which renders the browser's own picker UI and cannot be restyled to match this app's design system, the same platform limitation that already justified replacing `<datalist>` in `BUG-25`/`BUG-33`.
+- **Acceptance criteria:** Zero occurrences of `<select` or `type="time"` remain in `SettingsModal.tsx`; both are visually and behaviorally consistent with every other dropdown in the app, including `BUG-31`'s scroll/type-ahead fix.
+- **Depends on:** `CONF-14` (for the time fields' final count), `BUG-31` (share its fix, don't reimplement).
+
+**BUG-44 — People, Explore, and Think list cards have no pointer-accessible delete affordance — swipe-only, or none at all (item #16)**
+
+- **Priority:** High
+- **Files:** `src/app/(app)/remember/people/page.tsx`, `src/app/(app)/explore/page.tsx` (both: swipe-to-reveal-delete exists, confirmed via a `Trash2` icon revealed by a drag gesture — but there is no equivalent affordance for a mouse/trackpad/keyboard user, who cannot perform a touch swipe at all), `src/app/(app)/think/page.tsx` (no delete affordance found on the list card itself at all — only reachable, if at all, from inside a thread's own detail page)
+- **Root cause:** This app's own design system (§8.5, already written) requires every gesture-driven interaction to have a pointer/keyboard equivalent producing the identical result — swipe-to-delete alone violates that rule for every desktop user of People and Explore, and Think doesn't even have the swipe version.
+- **Requirement:** Add a small, hover-revealed (desktop) / always-swipeable (touch) delete icon to every list row across People, Explore, and Think, positioned at the row's trailing edge with enough spacing from any other inline action (avatar, chevron, timestamp) that it can't be mis-tapped — per the original request's own phrasing, "optimal placement... does not overlap with other elements." Every delete action, regardless of entry point (icon click, swipe, or from inside a detail view), routes through the same `ConfirmModal` and the same `item-lifecycle.ts` soft-delete function (`BUG-08`'s already-established single-path rule) — no space gets its own bespoke confirm-or-not behavior.
+- **Acceptance criteria:** A mouse-only user (no touchscreen) can delete a row in every one of People, Explore, Think, Do, and Locations without needing a swipe gesture. Every deletion, from every entry point, shows the same confirmation dialog and produces the same soft-delete/undo/trash behavior.
+- **Depends on:** `BUG-08` (shared delete path).
