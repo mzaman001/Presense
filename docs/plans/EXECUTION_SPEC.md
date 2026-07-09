@@ -26,6 +26,8 @@
 
 Every ticket below that cites a file path and line number was verified by direct inspection of the repository, not inferred from the audit alone. Where a ticket relies solely on the audit's own claim (not independently re-verified line-by-line in this pass), it is marked `[audit-sourced, not re-verified]`.
 
+**Note (audit July 9, 2026):** Of the files listed in row 2 above, only `ARCHITECTURE.md` (now at `docs/project/`), `DESIGN_SYSTEM.md` (at `docs/project/`), and `AGENTS.md` (root) currently exist in the repository. `PROJECT.md`, `ORIGINAL_REQUEST.md`, `CLAUDE.md`, and `plan.md` were retired during MD-01/MD-02 doc consolidation (see §15.3). They are retained in this table as historical record of the document landscape at audit time, not as currently-relevant files. This document's own §1430 instruction governs: read all such references as historical. The current canonical doc set is: `AGENTS.md` (root, single entry point), `docs/agents/EXECUTION_RULES.md`, `docs/plans/EXECUTION_SPEC.md` (this file), `docs/project/{CONTEXT, DESIGN_SYSTEM, ARCHITECTURE, COMPONENT_MANIFEST, DOCS_NEEDS_CODE}.md`, `GEMINI.md` (root, pointer), `README.md` (root, public).
+
 ## 2. Conflict register
 
 These are direct disagreements between sources. Each must be resolved by a human before dependent tickets start. The executing agent must stop and surface the conflict rather than guess.
@@ -37,6 +39,7 @@ These are direct disagreements between sources. Each must be resolved by a human
 - **Source C (audit `10-design-system-spec.md`):** proposes renaming the theme's `data-theme` attribute value to `warm` (a system identifier, not a display name).
 - **Conflict:** "Wahala" is both a display name and, per `CLAUDE.md`, treated as a rule ("Currently active theme tokens" are defined under this name). The user wants a *display* rename (e.g., "Sunset"). The audit wants an *internal* rename (`data-theme="warm"`). These are not mutually exclusive but must be decided as two separate values: (a) the internal `data-theme` attribute/enum value used in code and storage, (b) the user-facing label shown in Settings. Tickets `BUG-07` and `DS-03` must not each invent a different pair of values.
 - **Resolution required before:** `BUG-06`, `BUG-07`, `DS-03`.
+- **Resolution status (audit July 9, 2026): CONFIRMED RESOLVED.** Themes are `warm`/`navy`/`forest` (third name set). `src/lib/theme.ts`'s `LEGACY_THEME_MAP` handles all 3 generations: `wahala`/`orange`/`blue`/`forest` (original) → `sunset`/`midnight`/`meadow` (intermediate) → `warm`/`navy`/`forest` (current). No further rename permitted — see `AGENTS.md` invariant 2 and `docs/agents/EXECUTION_RULES.md` Law 6. The user chose these three names directly, for the specific reason of having one consistent identifier across the database, `localStorage`, and CSS — not a negotiated compromise between competing proposals.
 
 ### CONF-02 — Space color values
 
@@ -47,6 +50,7 @@ These are direct disagreements between sources. Each must be resolved by a human
 - **Source E (audit `10-design-system-spec.md` §Color):** proposes a new all-warm four-color palette (`#E5B41E`/`#EB4233`/`#F4A261`/`#A76011`) that matches neither Source A nor Source D.
 - **Conflict:** there are three different concepts sharing token names — (1) per-space identity color (documented, unused in default theme), (2) per-status color inside Do (hardcoded, actually rendered), (3) the audit's proposed replacement palette. A fix cannot proceed until it is decided whether `--space-*` tokens mean "space identity" or get renamed/merged with the existing per-status Do colors, and whether the resulting palette is warm-only (per identity pillar) or mixed.
 - **Resolution required before:** `DS-01`.
+- **Resolution status (audit July 9, 2026): CONFIRMED RESOLVED.** `--space-do/-think/-remember/-explore` resolve to 4 distinct warm-family hues (`#E5B41E`, `#EB4233`, `#F4A261`, `#A76011` in default mode; separate darker set for alternate mode). DS-28 (OKLCH derivation) is spec'd in `docs/project/DESIGN_SYSTEM.md` §1.5 but NOT YET implemented — current values are hand-picked warm hex, not OKLCH-derived. See `docs/project/DOCS_NEEDS_CODE.md`.
 
 ### CONF-03 — `globals.css` "never touch" rule vs. required rewrite
 
@@ -1682,3 +1686,70 @@ This addendum exists because a direct re-grep of this document against the origi
 - **Requirement:** Add a small, hover-revealed (desktop) / always-swipeable (touch) delete icon to every list row across People, Explore, and Think, positioned at the row's trailing edge with enough spacing from any other inline action (avatar, chevron, timestamp) that it can't be mis-tapped — per the original request's own phrasing, "optimal placement... does not overlap with other elements." Every delete action, regardless of entry point (icon click, swipe, or from inside a detail view), routes through the same `ConfirmModal` and the same `item-lifecycle.ts` soft-delete function (`BUG-08`'s already-established single-path rule) — no space gets its own bespoke confirm-or-not behavior.
 - **Acceptance criteria:** A mouse-only user (no touchscreen) can delete a row in every one of People, Explore, Think, Do, and Locations without needing a swipe gesture. Every deletion, from every entry point, shows the same confirmation dialog and produces the same soft-delete/undo/trash behavior.
 - **Depends on:** `BUG-08` (shared delete path).
+
+---
+
+## 24. Addendum 12 — audit July 9, 2026 unified findings cross-reference
+
+This addendum exists to cross-reference the July 9, 2026 complete audit (`Presense_Full_Complete_Audit.md`, 2135 lines, 14-step audit by GLM-4.6) against this document's ticket history. The audit consolidates this document's open tickets into 8 root patterns and a 46-item P0/P1/P2 roadmap with 10 quick wins. The audit's findings are consistent with this document's §17.3 ticket sweep — no contradictions, only consolidation.
+
+### 24.1 — The 8 root patterns (audit framing, mapped to this document's tickets)
+
+| Root pattern | Audit name | This document's tickets | Status |
+|---|---|---|---|
+| 1 | Silent Data Loss (Critical, trust-breaking) | BUG-34, BUG-38 + 37/71 unchecked mutations | Open — P0 |
+| 2 | Theme System Has a Broken Mode (Critical, unreadable) | warm-light `globals.css:336-420` missing `--text-*` overrides | Open — P0 |
+| 3 | Mobile Viewport + Form Interaction Bugs (High) | 7 `h-screen` (MOB-05), BUG-36/39 Sheet drag, BUG-41 input 13px | Open — P0/P1 |
+| 4 | Design System Fragmentation (High, polish erosion) | 99 hardcoded hex (DS-02), 6 hover magnitudes (DS-30), 44 raw `<input>` (DS-03), 6 `type="time"` + 1 `<select>` + 1 `<datalist>` (BUG-43/25/33), 3 dashed-border tokens | Open — P1 |
+| 5 | Settings + Schema Bloat (Medium, calm-identity erosion) | 9 unused notification booleans, 4 redundant time fields (CONF-14 decided, NOT implemented), Density (INFRA-20), 4 dead tables, 2 dead columns, `ritual_streak` contradicts CONF-17, `ollama_*` dead plumbing | Open — P1 |
+| 6 | Missing Industry-Standard Flows (Strategic, competitive gap) | No calendar, no native apps, no AI, no semantic search, no command palette (DS-08), no weekly review (FEAT-01), no recurring task UI, no snooze UI, no linked-people UI, no bulk actions, no drag-between-spaces, no password reset, no magic link resend | Open — P2 |
+| 7 | Incomplete Error Boundaries + Loading States (Medium) | 5 routes missing `error.tsx`, 5 missing `loading.tsx`, `ModalErrorBoundary` missing from 5 Sheet-based modals, 0 `aria-live`, 0 `beforeunload` (BUG-42), 0 skip-to-content (A11Y-03) | Open — P1 |
+| 8 | CI/CD Has Minimum Viable Gates (Medium, shipping safety) | No visual regression, no a11y scan, no Lighthouse, no bundle budget, no error tracking (TOOL-06), no E2E user-flow tests, no RLS automated test suite (TOOL-18), commit messages are GUIDs | Open — P1 |
+
+### 24.2 — The 10 quick wins (audit §11(b), <1 day each)
+
+1. Replace 7 `h-screen` with `h-dvh` (MOB-05)
+2. Fix Sonner `theme="system"` → bind to `data-mode` (BUG-32)
+3. Set input font-size 16px on mobile (BUG-41)
+4. Add skip-to-content link (A11Y-03)
+5. Fix `dismissInboxItem` error check (BUG-34)
+6. Fix Think "New thread" to show toast on error (BUG-29)
+7. Add Pomodoro launcher to sidebar header (DS-21)
+8. Replace brand mark with proper SVG (DS-26)
+9. Fix warm-light theme text overrides (Root Pattern 2)
+10. Remove `ritual_streak` column (new migration)
+
+### 24.3 — Ticket status reconciliation (audit July 9, 2026 vs this document's §17.3)
+
+**Resolved tickets confirmed by audit:** BUG-01 (hover sidebar), BUG-03 (dropdown portal, re-fixed after regression), BUG-06/07 (themes = warm/navy/forest), BUG-10 (profile row fallback), BUG-15 (theme leaks via localStorage), BUG-26 (chrono duplicate import), BUG-27 (dropdown portal regression re-fixed), PERF-01 (unmemoized Do-page handlers), PERF-07 (refetchOnWindowFocus), TOOL-07 (content-visibility wiring), TOOL-03 (React Hook Form in SettingsModal), TOOL-15 (Floating UI adopted in Dropdown/Popover).
+
+**Open tickets confirmed by audit:** BUG-02 (ritual stale time — audit does not explicitly confirm, may still be open), BUG-08 (archive/delete inconsistency — in progress via item-lifecycle.ts, not fully verified), BUG-09 (capture modal lag — partially resolved, dynamic imports applied), BUG-11 (Settings scroll on Think/Explore — not verified), BUG-23 (page transitions — NOT implemented, no template.tsx), BUG-25/33 (Explore datalist — NOT fixed), BUG-29 (New thread silent fail — open), BUG-30 (Settings autosave loop — open), BUG-31 (Dropdown scroll/type-ahead — open), BUG-32 (Sonner toast theme — open), BUG-34 (Inbox dismiss — open, ROOT PATTERN 1), BUG-35/37/40 (empty states — open), BUG-36/39 (Sheet drag — open, ROOT PATTERN 3), BUG-38 (unchecked mutations — open, 37/71, ROOT PATTERN 1), BUG-41 (input 13px — open), BUG-42 (no beforeunload — open), BUG-43 (native select/time — open), BUG-44 (no pointer delete — open). DS-14 (reduced motion/transparency — NOT implemented). DS-28 (OKLCH — spec only). DS-29 (Glassmorphism 2.0 — spec only). DS-30 (translateY lift — partially violated, 6 hover magnitudes). FEAT-01 (Weekly Review — not started).
+
+### 24.4 — New audit findings not previously tracked in this document
+
+The audit introduces the **ROOT PATTERN** framing as a consolidation tool. This document's ticket structure (BUG-*/DS-*/A11Y-*/MOB-*/INT-*/PERF-*/INFRA-*/TOOL-*/MD-*/CONF-*) is preserved; the root patterns are a cross-reference layer, not a replacement. No new ticket IDs are introduced by the audit — every audit finding maps to an existing ticket.
+
+### 24.5 — The single most important fix (audit final verdict)
+
+Per the audit's final verdict: **"Build the `mutate()` wrapper and migrate all 37 unchecked Supabase mutations."** This single fix resolves the data-integrity weakness that currently makes the app untrustworthy for daily use. Every other improvement is secondary to "does my data actually persist when I tap a button?" See `docs/project/DOCS_NEEDS_CODE.md` for the implementation plan.
+
+### 24.6 — The single most important decision (audit final verdict)
+
+Per the audit's final verdict: **"What is Presense's competitive positioning?"** Three options:
+1. **"Open-source Sunsama"** — pursue calendar integration, native apps, weekly review (FEAT-01). Compete on calm + open-source.
+2. **"Personal second-brain"** — pursue semantic search, AI features, linked-note graph. Compete on knowledge management.
+3. **"Solo dev's personal tool, shared publicly"** — accept current scope, focus on data integrity + design polish, don't pursue strategic features. Honest positioning.
+
+Each path implies a different roadmap. Pick one before pursuing Strategic-tier items (P2).
+
+---
+
+## 25. Meta-finding — documentation overhead (audit W12)
+
+The audit flags this document itself as **W12: "Documentation overhead exceeds personal-project scope — 8 governance files + 1684-line EXECUTION_SPEC.md + 349-line DESIGN_SYSTEM.md. No comparable OSS personal project (Anytype, Reor, Amplenote) has this much process."**
+
+This is an acknowledged trade-off: the governance system exists because the project has experienced repeated regressions (env.ts throwing, dropdown portal removed, theme renamed 3 times, BUG-34 silent data loss). The audit's own §S7 lists "Hard-invariant governance prevents regression" as a genuine differentiator: "More rigorous than any comparable OSS project."
+
+**Recommendation:** Trimming governance should only happen AFTER P0/P1 tickets land and the app is stable. Do not trim this document pre-emptively. The 8 root patterns and 10 quick wins in §24 are the prioritization framework — work through those first, then consider governance reduction once the app is trustworthy for daily use.
+
+The current doc count is 10 md files (post-MD-01/MD-02 consolidation, with `docs/project/DOCS_NEEDS_CODE.md` added as the bridge between docs and code). The audit's "8 governance files" count refers to the pre-`DOCS_NEEDS_CODE.md` state. The new file is intentionally small and focused — it does not add governance overhead, it routes code-fix needs to a single discoverable location.

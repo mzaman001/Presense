@@ -1,8 +1,6 @@
 # GEMINI.md
 
-This file is intentionally a pointer, not a rules file.
-
-Antigravity resolves `GEMINI.md` above `AGENTS.md`. To prevent silent divergence between what Antigravity does and what every other tool (Cursor, Claude Code, Codex) does on this same repository, this file must never contain a rule that isn't also in `AGENTS.md`.
+This file is a pointer, not a rules file. It exists because Antigravity resolves `GEMINI.md` above `AGENTS.md` — if this file ever contained a rule that disagrees with `AGENTS.md`, that rule would silently win inside Antigravity while being invisible to every other tool (Cursor, Claude Code, Codex) reading the same repository.
 
 **Read and follow `AGENTS.md` at the repository root. That file is authoritative.**
 

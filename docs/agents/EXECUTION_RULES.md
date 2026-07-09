@@ -66,7 +66,7 @@ The following are CORRECT and must NOT be modified unless a ticket in `docs/plan
 - The `rituals.ts` pure-function approach (the logic is correct now that T0-1 is applied)
 - The `theme.ts` normalizer (`normalizeThemeId`, `normalizeColorMode`, `applyDocumentTheme`)
 - The `item-lifecycle.ts` status standardization
-- The `env.ts` returning empty strings (NOT throwing — do NOT make it throw again)
+- The `env.ts` returning empty strings (NOT throwing — do NOT make it throw again). Uses `@t3-oss/env-nextjs` with `.catch(() => logAndReturnEmpty(...))` wrapper — do NOT remove the `.catch()` and do NOT configure the library in its default (throwing) mode.
 
 ### Law 7: IF UNSURE, STOP AND ASK
 - If a ticket is ambiguous → stop, report the ambiguity, ask for clarification.
@@ -153,7 +153,8 @@ fix: T0-1 add morningDone check before evening ritual trigger
 | "Let me refactor this while I'm here" | Refactors break things | Stay on-ticket. Refactor later. |
 | "This CSS class looks unused, I'll delete it" | It might be used dynamically | Grep first. If unsure, leave it. |
 | "The ticket says 'consider' so I'll do it" | "Consider" means optional | Skip optional items unless told |
-| "I'll make env.ts throw on missing vars" | THIS CRASHED THE ENTIRE SITE | env.ts must NEVER throw at runtime |
+| "I'll make env.ts throw on missing vars" | THIS CRASHED THE ENTIRE SITE | env.ts must NEVER throw at runtime. Also covers: removing the `.catch()` wrapper from `@t3-oss/env-nextjs` in `env.ts`, or configuring `@t3-oss/env-nextjs` in its default (throwing) mode. |
+| "I'll skip the `error` check on this Supabase mutation, it's just a quick update" | Silent data loss — 37 of 71 existing mutations already have this bug (BUG-38, ROOT PATTERN 1), don't add a 38th. The user sees a success toast while the DB write silently failed. | Always destructure `{ error }` and check it. Once `mutate()` wrapper lands (see `docs/project/DOCS_NEEDS_CODE.md`), use that instead. |
 | "I'll delete template.tsx, it's unused" | Deletion is irreversible | Never delete without grepping + confirming |
 
 ---
@@ -165,13 +166,14 @@ If you encounter ANY of these, STOP IMMEDIATELY and report to the user. Do NOT a
 1. A migration that drops a column (`ALTER TABLE ... DROP COLUMN`)
 2. A change to `proxy.ts` that removes the CSP header
 3. A change to `MotionProvider` that removes `LazyMotion` or `strict`
-4. A change that makes `env.ts` throw at runtime (instead of returning empty string)
+4. A change that makes `env.ts` throw at runtime (instead of returning empty string) — including removing the `.catch()` wrapper around `@t3-oss/env-nextjs` that currently prevents it from throwing, or configuring `@t3-oss/env-nextjs` in its default (throwing) mode
 5. A change to the RLS policies that removes `auth.uid() = user_id`
 6. A change to the Supabase service-role key usage in `/api/account`
 7. Deletion of any file in `src/components/ui/`
 8. Deletion of any migration file in `supabase/migrations/`
 9. A change that touches more than 5 files for a single ticket
 10. Any change to `package.json` that removes a dependency
+11. A new Supabase mutation (`.insert()`/`.update()`/`.delete()`) that does not destructure and check the returned `error` — see invariant 7 in `AGENTS.md` and `docs/project/DOCS_NEEDS_CODE.md`. The codebase currently has 37 violations (BUG-38); do not add a 38th.
 
 ---
 

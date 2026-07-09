@@ -38,6 +38,8 @@ The token layer in `globals.css` is mature: `--bg-base`, `--accent`/`--accent-ho
 
 Every text/background pairing must pass **4.5:1 for body text, 3:1 for large text (≥18px, or ≥14px bold) and for non-text UI elements** (borders that convey meaning, icon-only buttons) per WCAG 2.2 AA. This applies with extra force on glass surfaces (§3), where the "background" a text color is checked against is whatever is likely to sit behind the blur in practice, not just the flattest-case color. `--text-4` was already bumped once for exactly this reason (`DS-06`) — treat any further low-alpha text token as needing the same check before use, not after a complaint.
 
+**Audit note (July 9, 2026):** `--text-4` and `--text-decorative` tokens currently have **0 usages** in the codebase (audit-verified) — they were problematic per DS-06 and were effectively abandoned. Do not introduce new usages without first re-verifying contrast. See `docs/project/DOCS_NEEDS_CODE.md` for removal candidates.
+
 ### 1.5 Per-space colors: derived from the theme, not hand-picked (resolves `CONF-02`/`CONF-13`, supersedes the earlier fixed-hex approach)
 
 Per-space colors are **kept**, and are **derived**, not independently hand-picked. Four independently-chosen hex values per theme (the earlier approach) reliably produces colors that feel too similar and don't sit naturally in every theme — this is a well-documented anti-pattern, not bad luck. The correct mechanism (`DS-28`): in OKLCH (perceptually uniform, so a fixed hue rotation reads as an equally-distinct color at any lightness/chroma), each space's color is that theme's own `--accent` hue rotated by a fixed offset, with lightness and chroma held roughly constant across all four. The same offsets are used in every theme — only the base accent hue differs — so the four space colors are guaranteed to (a) look distinct from each other within a theme, by a consistent, deliberate gap, and (b) never look "out of place," because they're mathematically derived from that theme's own primary color rather than picked separately three times. Apply the result everywhere a space's identity should show: that space's `PageHeader` icon, the sidebar's active-nav-item state, and any cross-space reference badge (global Trash, Home summary cards) — a partially-applied color system is what made this feel arbitrary before.
@@ -122,6 +124,12 @@ Every glass surface gets a **1px border** at `--elev-*-border` — this is not o
 
 `prefers-reduced-transparency: reduce` must swap every `--elev-*-blur` to `blur(0px)` and raise the corresponding surface to a fully opaque color (not just a higher-opacity translucent one) — this is `DS-14`, already ticketed; this section is why: the current guidance explicitly frames this as "detect the setting and swap to solid, high-contrast surfaces," not "reduce the blur amount." `prefers-reduced-motion: reduce` must remove hover-transform distance entirely (already required by `DS-14`) — the shimmer sweep and any parallax on ambient orbs must also respect this, not just card lift.
 
+**⚠ SPEC WRITTEN, NOT YET IMPLEMENTED (DS-14 open).** Audit (July 9, 2026) confirms:
+- `prefers-reduced-transparency: reduce` has **0 occurrences** in the entire codebase — not handled anywhere.
+- `prefers-reduced-motion: reduce` at `globals.css:775, 1120, 1149-1168` only sets `transition-duration: 0.01ms !important` — does **NOT** remove the `transform` value. A `hover:scale-[1.01]` still scales instantly instead of not scaling. **Setting promises "no movement" but delivers "instant movement."**
+- Fix: remove transform/distance for every hover/interactive animation when reduced-motion is set; add `prefers-reduced-transparency: reduce` branch that disables backdrop blur and ambient orb animation.
+- See `docs/project/DOCS_NEEDS_CODE.md`.
+
 ---
 
 ### 3.7 Reference-informed refinements (sidebar, select dropdown, calendar chips)
@@ -144,6 +152,8 @@ Apps praised for calm, cohesive mobile design (How We Feel is the clearest examp
 
 `--dur-fast` (120ms) / `-base` (200ms) / `-slow` (300ms) / `-very-slow` (500ms) and `--ease-spring` / `-smooth` / `-in-out` already exist as named tokens — use them, never a bare `duration: 0.2` or a hand-picked cubic-bezier in a component file. `MotionProvider`'s `LazyMotion features={domMax} strict` + `m.*`-only convention is correct and is on the "do not break" list.
 
+**Audit note (July 9, 2026):** `useReducedMotion` is **duplicated** — defined in both `src/hooks/useReducedMotion.ts` AND `src/lib/animations.ts:21`. Pick one and delete the other. See `docs/project/DOCS_NEEDS_CODE.md`.
+
 ### 4.2 Duration-to-context map
 
 | Motion | Token | Notes |
@@ -151,11 +161,26 @@ Apps praised for calm, cohesive mobile design (How We Feel is the clearest examp
 | Hover feedback (card lift, button press) | `--dur-fast` + `--ease-smooth` | Gate behind `@media (hover: hover) and (pointer: fine)` — touch devices get no hover state, only active/pressed. **Cards and list rows always lift (`translateY(-2px)` to `-3px`), never scale.** A scale transform grows the element's rendered box past its layout box, which clips visibly inside any `overflow-hidden`/`overflow-x-auto` ancestor (a horizontally-scrollable Kanban column, for instance) — this produced a real, reported bug (`DS-30`). A translateY lift repositions without growing the box, so it never has this problem. Every hoverable card/row in the app uses the same lift distance, duration, and easing — this is one system, not a per-component choice. |
 | Dropdown/popover open | `--dur-fast` + `--ease-spring` | Scale-from-trigger, not a generic fade |
 | Sheet/modal open | `--dur-base` + spring physics (stiffness ~300, damping ~28, matching the existing `modalTransition` token in `animations.ts`) | Slide-from-edge on mobile (Sheet), scale-in on desktop (Modal) — these are different motions for different surfaces, do not use one for both |
-| Page transition | `--dur-base`, opacity-only, no y-axis movement | See §6.11 — this is `BUG-23`'s exact requirement |
+| Page transition | `--dur-base`, opacity-only, no y-axis movement | **⚠ NOT YET IMPLEMENTED (BUG-23 open)** — no `src/app/(app)/template.tsx` exists; page-to-page is a hard cut. See `docs/project/DOCS_NEEDS_CODE.md`. This is `BUG-23`'s exact requirement |
 | Toast enter/exit | `--dur-fast` in, `--dur-slow` out (linger before dismiss reads calmer than a symmetric fade) | |
 | Ambient orb drift | `--dur-very-slow` and slower, looping | Must pause on `document.visibilitychange` (tab hidden) — `PERF-03` |
 
-### 4.3 Spring over duration-based easing for anything that feels "physical"
+### 4.4 Hover magnitude standardization (audit-verified, extends DS-30)
+
+**6 different hover magnitudes currently in codebase** — this is a fragmentation bug, not a design choice:
+
+| Component | Current hover | Magnitude | Status |
+|---|---|---|---|
+| `TaskCard.tsx:233` | `whileHover={{ y: -2 }}` | 2px lift | ✓ Correct per DS-30 |
+| People / Think / Explore cards | `hover:scale-[1.01]` | 1% scale | ✗ Causes cut-border due to `overflow-hidden` in GlassCard |
+| People list row | `hover:scale-[1.005]` | 0.5% scale | ✗ Different from sibling card |
+| Button primary | `hover:-translate-y-[1px]` | 1px lift | ✗ Different from TaskCard's 2px |
+| RitualOverlay close button | `hover:scale-110` | 10% scale | ✗ Way more aggressive |
+| SettingsModal theme swatch | `hover:scale-125` | 25% scale | ✗ Even more aggressive |
+
+**Standardize on `translateY` lift only** — DS-30. Replace all `hover:scale-*` with `whileHover={{ y: -2 }}` (Framer Motion) or `hover:-translate-y-0.5` (CSS). Use the same lift distance (2px), duration (`--dur-fast`), and easing (`--ease-smooth`) for every hoverable card/row. Gate all hover-only visual treatment behind `@media (hover: hover) and (pointer: fine)`. See `docs/project/DOCS_NEEDS_CODE.md`.
+
+### 4.5 Spring over duration-based easing for anything that feels "physical"
 
 Current practitioner consensus (and Framer Motion's own design intent) is that spring physics reads as more natural for anything simulating a physical object (a sheet being dragged, a card settling into place) while duration+cubic-bezier easing is correct for anything simulating a state change (opacity fades, color transitions). Do not use spring physics for opacity-only transitions (it produces an uncanny "overshoot" on a property that has no physical mass) and do not use fixed-duration easing for drag-released motion (it feels stiff). `Sheet.tsx`'s drag-to-dismiss already uses spring correctly per the "do not break" list — use it as the reference implementation when adding a new draggable surface.
 
@@ -215,10 +240,10 @@ This is the section that was missing entirely before this pass, and it is the di
 - "Show Archive" is a **tab** (Active / Archive / Trash), not a standalone toggle button — this is now settled (`DS-24`): Think and Explore both already converged on the tab pattern independently, and Do's separate toggle-button treatment is the one that needs to change to match, not the reverse.
 - **Board view:** columns are Overdue / Today / Upcoming / Someday, each tinted by its `--status-*` token (not a space token — see §1.3), laid out with CSS Grid `auto-fit` so column count degrades from 4-across on desktop to a horizontally-scrollable single-column-at-a-time carousel below `md:`, with visible peek of the next column (never a hard-cut single column with no affordance that more exists).
 - **Today view:** single flat list, grouped by time-of-day if the task has a time, otherwise an "Anytime" section at the bottom.
-- **Calendar view:** see §6.4.1 — this is the page most in need of the rebuild already tracked under `BUG-05`/`CONF-08`.
+- **Calendar view:** see §6.4.1 — **⚠ CONF-08 unresolved, calendar rebuild not started.** Current Calendar view (`src/components/features/calendar/`) is the old flexbox implementation flagged for rebuild. See `docs/project/DOCS_NEEDS_CODE.md`.
 - Every task row (`TaskCard`) is swipeable on touch (complete right, delete left, asymmetric thresholds per `MOB-03`) and has visible inline actions on hover for pointer input — both paths must produce the identical result (same status transition, same undo toast).
 
-#### 6.4.1 Calendar sub-spec (once `CONF-08` is resolved in favor of a rebuild)
+#### 6.4.1 Calendar sub-spec (⚠ SPEC WRITTEN, NOT YET IMPLEMENTED — awaits `CONF-08` resolution)
 
 - **Mobile default is Day view**, not a compressed Week view — a single scrollable column of hour slots, current-time indicator, tap-to-create at any slot opening `TaskAddPanel` with that exact date/time pre-filled (never routed through Quick Capture's NLP parser — this was `BUG-05`'s specific, confirmed defect).
 - **Week/Month are desktop-first views**, built on CSS Grid so header cells and body cells share the same grid definition and cannot desync on horizontal scroll (this is the structural reason a rebuild was recommended over patching the old flexbox layout).
@@ -239,7 +264,7 @@ This is the section that was missing entirely before this pass, and it is the di
 ### 6.7 Explore (`/explore`)
 
 - A single-column reading queue, each item a compact card (thumbnail if present, title, source, saved-date) — **not** glass (§3.4; this is a reading list, treat it like Think's thread body).
-- The Type field (currently a native `<input>` + `<datalist>`, `BUG-25`/`T0-13`) becomes a `Dropdown variant="select"` — this single change is the concrete instance of the broader rule "never use `<datalist>` or native `<select>` anywhere in this app," which belongs in this file precisely so it isn't rediscovered per-component.
+- The Type field (**⚠ still a native `<input>` + `<datalist>` per `ExploreDrawer.tsx:258` — BUG-25/33 NOT YET fixed**) becomes a `Dropdown variant="select"` — this single change is the concrete instance of the broader rule "never use `<datalist>` or native `<select>` anywhere in this app," which belongs in this file precisely so it isn't rediscovered per-component. See `docs/project/DOCS_NEEDS_CODE.md`.
 - 30-day auto-archive is a background/data behavior, not a visual one — the visual difference between "active" and "archived-by-age" Explore items is a `text-meta` label ("Archived · 32 days ago"), not a different card treatment.
 
 ### 6.8 Trash (`/trash`)
@@ -251,7 +276,7 @@ This is the section that was missing entirely before this pass, and it is the di
 ### 6.9 Settings
 
 - A single `Sheet`/modal (not a routed page — this remains the settled decision per the skip list; do not build `/settings` as a route).
-- **Time-based settings are two concepts, not four (resolves `CONF-14`):** a morning ritual time and an evening ritual time, matching `rituals.ts`'s own two-ritual model exactly — the settings UI should mirror what the code actually reasons about. Do not expose a separate "Quiet Hours" setting; that's a notification/do-not-disturb concept, and the domain's own reference point for this app's ritual system (Sunsama) doesn't have one either — it belongs to the OS's notification settings if it's ever needed at all, not to this app.
+- **Time-based settings are two concepts, not four (⚠ `CONF-14` RESOLVED but NOT YET IMPLEMENTED):** a morning ritual time and an evening ritual time, matching `rituals.ts`'s own two-ritual model exactly — the settings UI should mirror what the code actually reasons about. Do not expose a separate "Quiet Hours" setting; that's a notification/do-not-disturb concept, and the domain's own reference point for this app's ritual system (Sunsama) doesn't have one either — it belongs to the OS's notification settings if it's ever needed at all, not to this app. **Current state:** `SettingsModal.tsx:1026,1039,1303,1323` still has 4 `type="time"` inputs (Quiet Start/End + Morning Nudge/Evening Shutdown) and `:1417` has 1 native `<select>` for Auto-Archive Completed (BUG-43). Migration to 2 ritual-time pickers + `Dropdown variant="select"` tracked in `docs/project/DOCS_NEEDS_CODE.md`.
 - **Timezone is auto-detected, not a primary setting:** default from `Intl.DateTimeFormat().resolvedOptions().timeZone` silently; only surface a manual override inside an "Advanced" section for the rare case someone needs it, not alongside the two ritual times.
 - Sectioned with `text-title-md` section headers (Account, Appearance, Notifications, Data), each section a flat list of rows (label left, control right — toggle, `Dropdown`, or button), not individually-cased glass cards per row (that's over-fragmenting a single coherent surface into visual noise).
 - Theme picker shows the three themes (Warm/Navy/Forest) as swatches previewing each theme's actual `--accent`/`--bg-base` pair, not a text-only radio list — a color choice should be shown, not described.
@@ -266,6 +291,8 @@ This is the section that was missing entirely before this pass, and it is the di
 ### 6.11 Page-to-page transitions
 
 Per `BUG-23`: one shared, opacity-only fade (`--dur-base`, no y-axis movement) applied uniformly via a single shared transition wrapper for the `(app)` route group — not a per-page bespoke animation, and not zero animation on some pages and a fade on others.
+
+**⚠ NOT YET IMPLEMENTED (BUG-23 open)** — no `src/app/(app)/template.tsx` exists; page-to-page is a hard cut. See `docs/project/DOCS_NEEDS_CODE.md`.
 
 ---
 
@@ -292,6 +319,37 @@ For each: what it's for, its variants, and the one rule most likely to be violat
 **Badge / Avatar / Toast** — status/identity tagging, person representation (with a guaranteed non-empty fallback — `BUG-10`'s permanent fix), and the one undo/notification mechanism respectively.
 
 ---
+
+## 7.5 Theme × mode readability matrix (audit-verified, July 9, 2026)
+
+**6 theme×mode combos** exist in `globals.css:98-590`. Audit verified each:
+
+| Theme | Dark mode | Light mode |
+|---|---|---|
+| Warm | ✓ High contrast (white `#FFFFFF` on near-black `#0F0A00`, accent `#E5B41E` amber) | **✗ BROKEN — `globals.css:336-420` does NOT override `--text-1/2/3/muted/decorative/on-accent`; they stay at dark-mode `#FFFFFF` → white text on cream `#FBF6EE` = unreadable. ROOT PATTERN 2, P0 bug.** |
+| Navy | ✓ High contrast (white on deep blue-black `#04091A`, accent `#7692FF` periwinkle) | ✓ Correct (dark navy text `#040930` on pale blue `#EEF3FF`, accent `#1B2CC1` deep blue) |
+| Forest | ✓ High contrast (white on deep forest `#080D06`, accent `#EFDD8D` warm yellow) | ✓ Correct (dark green text `#0D1A08` on pale green `#F5F9F0`, accent `#4A5C1E` deep green) |
+
+**Only warm-light is broken.** Navy-light and forest-light correctly override text colors — warm-light is an oversight, not a systemic issue. Fix: copy navy-light's text-override pattern (`globals.css:500-528`). See `docs/project/DOCS_NEEDS_CODE.md`.
+
+### 7.6 Hardcoded hex audit (audit-verified, extends DS-02)
+
+**99 hardcoded hex values** in `.tsx` files break theme switching. Each one is a tokenization ticket.
+
+**Top offenders:**
+
+| File | Count | Examples |
+|---|---|---|
+| `SettingsModal.tsx` | 19 | Various UI accents |
+| `OnboardingBackground.tsx` | 12 | Radial gradient hex (BUG-21 partially open) |
+| `remember/people/[id]/page.tsx` | 10 | Person detail UI |
+| `think/[id]/page.tsx` | 9 | Thread detail UI |
+| `AddPersonPanel.tsx` | 7 | Avatar colors `#3B82F6`/`#10B981`/etc. (intentional user-pickable palette but bypasses theming) |
+| `CaptureModal.tsx` | 5 | `#4ADE80` (locations), `#FBBF24` (inbox) |
+| `PomodoroTimer.tsx` | 3 | `#2DD4BF`/`#818CF8` break-phase colors — should be `--status-upcoming`/`--status-someday` |
+| `CalendarTaskChip.tsx` | 3 | `#ef4444` priority 1 — should be `--status-overdue` or new `--priority-1` token |
+
+**Rule:** Never write a hex value or an inline `style` color in a `.tsx` file. Every color is a `var(--token)` reference. If the color you need has no token, that is a design-system gap — add the token to `globals.css` in the same PR and document it here, do not inline it "just this once." See `docs/project/DOCS_NEEDS_CODE.md` for the full tokenization plan.
 
 ## 8. Responsive and mobile system
 
@@ -335,11 +393,77 @@ Mobile-first here means literally starting each new page's layout at 360–375px
 
 ---
 
+### 8.8 Mobile viewport safety (audit-verified, July 9, 2026)
+
+**7 `h-screen` instances** cause layout jumps on mobile Safari/Chrome when the URL bar shows/hides on scroll. Should be `h-dvh` (dynamic viewport height). `100vh` on mobile includes space the browser chrome may or may not be occupying — the direct mechanism behind "the sheet is taller than the screen" bugs.
+
+**Locations:**
+- `OnboardingBackground.tsx:145,166`
+- `Navigation.tsx:72`
+- `not-found.tsx:5`
+- `OnboardingWizard.tsx:235`
+- `~offline/page.tsx:7`
+- `(auth)/login/page.tsx:61`
+
+**BUG-41:** `Input.tsx` uses `.input` CSS class which inherits `--text-body: 13px`. iOS Safari auto-zooms on inputs <16px on focus. Fix: `@media (max-width: 768px) { .input { font-size: 16px !important; } }`. Vercel's own guideline states this plainly: `<input>` font size must be ≥16px on mobile.
+
+**BUG-36/39:** `Sheet.tsx:58` `drag="y"` on whole sheet surface with no `dragListener={false}` or dedicated handle. Framer Motion's drag recognizer competes with nested button taps. Affects 7 consumers: ConfirmModal, AddPersonPanel, SearchModal, TaskAddPanel, CaptureModal, ExploreDrawer, LocationAddPanel. Fix: dedicated drag handle + `dragListener={false}`. Or adopt Vaul (TOOL-10).
+
+**23 `backdrop-filter` declarations** in `globals.css`, 0 `contain: paint`. Each is a GPU layer; compounds on mobile. See §3.3 blur budget.
+
+See `docs/project/DOCS_NEEDS_CODE.md` for the full mobile-fix plan.
+
 ## 9. Accessibility baseline (cross-reference, not a duplicate)
 
 Full tickets live in `EXECUTION_SPEC.md`'s `A11Y-*` series. The design-relevant summary: 4.5:1 text contrast everywhere (§1.4), 44px touch targets everywhere (§8.2), every icon-only control has an `aria-label`, every dialog traps and returns focus, every realtime UI change has a corresponding `aria-live="polite"` announcement, and color is never the only signal (a status pill carries an icon as well as a color, per `A11Y-09`).
 
 ---
+
+## 9.5 Onboarding flow state (audit-verified, July 9, 2026)
+
+`src/app/onboarding/OnboardingWizard.tsx` — 416 lines, 5 steps (name → struggles → day shape → first capture → tour).
+
+**Current state:**
+- **11 unchecked Supabase mutations** (BUG-38) at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213 (+1). A brand-new user's very first experience could silently fail at any step.
+- **0 skip logic** on steps 1-4 (only step 5 has "Skip tour").
+- **0 resume logic** — closed browser = restart from step 1.
+- **0 progress indicator** (no 5-dots-at-top showing current step).
+- **0 keyboard navigation** (Enter to advance, Backspace to go back — mouse-only).
+- Step transitions use Framer Motion `initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-20}}` per step (good baseline). Step 5 has `scale:0.95` (celebratory feel).
+
+**Spec for fixes:**
+- Add Skip option on every step (sensible defaults: name="Friend", struggles=[], day shape=9am-10pm).
+- Add Resume logic — persist current step to `localStorage` (`presense_onboarding_step`).
+- Fix unchecked mutations — every `await supabase.from(...)` must destructure `{ error }`.
+- Add copy that excites — warmer welcome ("Welcome to your second brain. What should I call you?").
+- Add first-capture delight — animate destination badge (pulse + accent color) to confirm "I understood you."
+- Add progress indicator — 5 dots at top.
+- Add "Why we ask" tooltips for struggles + day shape questions.
+- Add keyboard navigation — Enter to advance, Backspace to go back.
+
+See `docs/project/DOCS_NEEDS_CODE.md`.
+
+## 9.6 Empty-state coverage matrix (audit-verified, July 9, 2026)
+
+**`EmptyState` component** exists at `src/components/ui/EmptyState.tsx` (30 lines) — uses `GlassCard` with `p-12` dashed border.
+
+| Space | Uses `EmptyState`? | Action target correct? | Notes |
+|---|---|---|---|
+| Do (3 instances) | ✓ | ✓ (fixed earlier, BUG-04) | Board / Today / Calendar empty states |
+| Inbox (1) | ✓ | ✓ (documented Quick Capture exception) | "Inbox Zero — nice work" celebratory tone |
+| Home (multiple) | ✓ | n/a | Compact empty sections |
+| People (1) | ✓ | ✓ | Correct |
+| Trash (1) | Different pattern | n/a | "Nothing in trash" — neutral tone |
+| Think | ✗ Hand-rolls `<h3>No threads yet</h3>` at `think/page.tsx:279` | ✗ Opens Quick Capture (BUG-35) | Should open new-thread composer |
+| Explore | ✗ Hand-rolls `<h3>Nothing saved yet</h3>` at `explore/page.tsx:272` | ✗ Opens Quick Capture (BUG-35) | Should open Save-to-Explore panel |
+| Locations | ✗ Hand-rolls `<h3>No locations here</h3>` at `locations/page.tsx:126` | n/a | Should use `EmptyState` (BUG-40) |
+| SearchModal (filtered) | ✗ Hand-rolls "No results" | n/a | Should use `EmptyState` filtered variant |
+
+**0 first-time-user variant** — all empty states are the same regardless of whether it's a brand-new user or an existing user who filtered to empty. A first-time student should see "Welcome to [Space] — here's what to do first" not just "No items."
+
+**EmptyState padding inconsistency:** component hardcodes `p-12`, but Home uses `p-6`/`p-8`. Pick one.
+
+See `docs/project/DOCS_NEEDS_CODE.md` for the migration plan.
 
 ## 10. Adding a new pattern
 
