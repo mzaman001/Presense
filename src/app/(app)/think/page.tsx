@@ -380,9 +380,7 @@ export default function ThinkPage() {
                 </p>
                 <Button
                   variant="primary"
-                  onClick={() =>
-                    useAppStore.getState().setCaptureModalOpen(true)
-                  }
+                  onClick={handleNewThread}
                   className="gap-2"
                 >
                   <UiIcon size={16} icon={Plus} /> New Thought

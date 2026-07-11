@@ -272,7 +272,7 @@ export default function ExplorePage() {
               <h3 className="text-[var(--color-text-1)] font-medium mb-2">Nothing saved yet</h3>
               <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Capture &ldquo;interesting...&rdquo; or paste a URL to save articles, tweets, and links.</p>
               <Button variant="primary" 
-                onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+                onClick={() => setIsAddDrawerOpen(true)}
                 className="gap-2"
               >
                 <UiIcon size={16} icon={Plus} /> Save Link
