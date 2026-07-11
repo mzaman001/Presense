@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
 import { Sheet } from "@/components/ui/Sheet";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { personSchema } from "@/lib/schemas";
@@ -41,6 +42,7 @@ const DEFAULT_RELATIONSHIPS = ["friend", "family", "professor", "colleague", "te
 export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPanelProps) {
   const [color, setColor] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
 
   const { userSettings } = useAppStore();
   const relationships = userSettings?.people_categories || DEFAULT_RELATIONSHIPS;
@@ -51,7 +53,7 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
     reset,
     watch,
     setValue,
-    formState: { errors, isSubmitting, isValid }
+    formState: { errors, isSubmitting, isValid, isDirty }
   } = useForm<PersonFormValues>({
     resolver: zodResolver(personSchema),
     defaultValues: {
@@ -64,6 +66,14 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
   });
 
   const relationshipValue = watch("relationship");
+
+  const handleClose = () => {
+    if (isDirty) {
+      setShowUnsavedWarning(true);
+    } else {
+      onClose();
+    }
+  };
 
   // Ensure initial relationship is valid
   React.useEffect(() => {
@@ -113,7 +123,8 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
   };
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} title="Add Person">
+    <>
+      <Sheet isOpen={isOpen} onClose={handleClose} title="Add Person">
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {errorMsg && (
@@ -250,5 +261,15 @@ export function AddPersonPanel({ isOpen, onClose, onPersonAdded }: AddPersonPane
         </div>
       </form>
     </Sheet>
+    <ConfirmModal
+      isOpen={showUnsavedWarning}
+      onClose={() => setShowUnsavedWarning(false)}
+      onConfirm={() => { setShowUnsavedWarning(false); onClose(); }}
+      title="Discard Changes?"
+      description="You have unsaved changes. Are you sure you want to discard them?"
+      confirmLabel="Discard"
+      confirmDestructive={false}
+    />
+    </>
   );
 }

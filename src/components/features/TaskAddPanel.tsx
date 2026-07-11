@@ -91,7 +91,7 @@ export function TaskAddPanel({
     reset,
     watch,
     setValue,
-    formState: { errors, isSubmitting, isValid },
+    formState: { errors, isSubmitting, isValid, isDirty },
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
@@ -124,6 +124,15 @@ export function TaskAddPanel({
 
   const [saving, setSaving] = useState(false);
   const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+
+  const handleClose = () => {
+    if (isDirty) {
+      setShowUnsavedWarning(true);
+    } else {
+      onClose();
+    }
+  };
 
   const { userSettings } = useAppStore();
 
@@ -494,7 +503,7 @@ export function TaskAddPanel({
     <>
       <Sheet
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleClose}
         title={taskToEdit ? "Edit Task" : "Add Task"}
       >
         <form
@@ -1093,6 +1102,15 @@ export function TaskAddPanel({
         description="This task will leave active views and can be restored from Trash."
         confirmLabel="Move to Trash"
         confirmDestructive
+      />
+      <ConfirmModal
+        isOpen={showUnsavedWarning}
+        onClose={() => setShowUnsavedWarning(false)}
+        onConfirm={() => { setShowUnsavedWarning(false); onClose(); }}
+        title="Discard Changes?"
+        description="You have unsaved changes. Are you sure you want to discard them?"
+        confirmLabel="Discard"
+        confirmDestructive={false}
       />
     </>
   );

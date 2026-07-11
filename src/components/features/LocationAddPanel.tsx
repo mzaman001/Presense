@@ -29,12 +29,13 @@ type LocationFormValues = z.infer<typeof locationSchema>;
 export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit, initialName }: LocationAddPanelProps) {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting, isValid },
+    formState: { errors, isSubmitting, isValid, isDirty },
     setValue
   } = useForm<LocationFormValues>({
     resolver: zodResolver(locationSchema),
@@ -44,6 +45,14 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
     },
     mode: "onChange"
   });
+
+  const handleClose = () => {
+    if (isDirty) {
+      setShowUnsavedWarning(true);
+    } else {
+      onClose();
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -116,7 +125,7 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
 
   return (
     <>
-      <Sheet isOpen={isOpen} onClose={onClose} title={itemToEdit ? "Edit Location" : "Log Location"}>
+      <Sheet isOpen={isOpen} onClose={handleClose} title={itemToEdit ? "Edit Location" : "Log Location"}>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {errorMsg && (
@@ -189,6 +198,15 @@ export function LocationAddPanel({ isOpen, onClose, onLocationAdded, itemToEdit,
         description={`Are you sure you want to delete "${itemToEdit?.item_name}"?`}
         confirmLabel="Delete Location"
         confirmDestructive={true}
+      />
+      <ConfirmModal
+        isOpen={showUnsavedWarning}
+        onClose={() => setShowUnsavedWarning(false)}
+        onConfirm={() => { setShowUnsavedWarning(false); onClose(); }}
+        title="Discard Changes?"
+        description="You have unsaved changes. Are you sure you want to discard them?"
+        confirmLabel="Discard"
+        confirmDestructive={false}
       />
     </>
   );
