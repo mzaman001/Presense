@@ -362,6 +362,7 @@ export function SettingsModal() {
   const [userEmail, setUserEmail] = useState("");
 
   const [debouncedSettings] = useDebounce(settings, 1000);
+  const lastSavedSettingsRef = useRef<string | null>(null);
   const dialogRef = useDialogFocus(isSettingsModalOpen);
   useBodyScrollLock(isSettingsModalOpen);
 
@@ -404,6 +405,13 @@ export function SettingsModal() {
   useEffect(() => {
     if (!initialLoaded) return;
 
+    const currentSettingsStr = JSON.stringify(debouncedSettings);
+    if (lastSavedSettingsRef.current === null) {
+      lastSavedSettingsRef.current = currentSettingsStr;
+      return;
+    }
+    if (lastSavedSettingsRef.current === currentSettingsStr) return;
+
     const save = async () => {
       setSaveStatus("saving");
       const {
@@ -427,6 +435,7 @@ export function SettingsModal() {
         toast.error("Failed to save settings", { description: error.message });
         setSaveStatus("idle");
       } else {
+        lastSavedSettingsRef.current = currentSettingsStr;
         setUserSettings(debouncedSettings as any);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
