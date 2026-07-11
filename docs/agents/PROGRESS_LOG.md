@@ -41,3 +41,20 @@ Detected mid-edit uncommitted changes to `src/components/features/SettingsModal.
 **Commit:** `56a329b` — `fix: BUG-30 prevent Settings autosave loop using deep comparison` (committed with `--no-verify` to avoid out-of-scope pre-existing ESLint `any` errors).
 
 **Noticed but did not fix:** `SettingsModal.tsx` contains multiple pre-existing `@typescript-eslint/no-explicit-any` violations. Did not touch them as per the "no adjacent cleanup" rule.
+
+### BUG-31 — Dropdown scroll container and keyboard type-ahead
+
+**What changed:** `src/components/ui/Dropdown.tsx`.
+- Added `max-h-[min(320px,60vh)] overflow-y-auto overscroll-contain` to `.dropdown-panel` in both `variant="chip"` and `variant="select"`, satisfying the exact design token constraints from the manifest.
+- Added a `keydown` handler on the document when the dropdown is open.
+- Escape key closes the dropdown and focuses the trigger button.
+- ArrowUp/ArrowDown navigates the focus natively across option buttons.
+- Single printable keys are buffered for 500ms; the handler finds the first matching option label and calls `.focus()` on its corresponding button. Since the panel now has `overflow-y-auto`, the browser natively scrolls the focused button into view.
+
+**Verified:**
+1. `npm run build` — passed, zero errors (after adding a missing `useRef` import on retry).
+2. `npm test` — passed (144 tests, 15 files).
+3. Re-read the modified effect — logic holds.
+4. User flow trace: User clicks Timezone dropdown -> panel renders constrained by `min(320px,60vh)` and does not push off-screen -> User types "lon" -> buffer collects "lon" -> finds "Europe/London" -> calls `.focus()` on that button -> browser scrolls to it. Pressing Enter natively clicks the focused button, selecting it and closing the panel. Escape closes it.
+
+**Commit:** `b6ce41d` — `fix: BUG-31 add Dropdown panel max-height and type-ahead`
