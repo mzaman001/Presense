@@ -66,6 +66,17 @@ const TABS = [
   { id: "data", label: "Data", icon: Database },
 ];
 
+const TIME_OPTIONS = Array.from({ length: 96 }).map((_, i) => {
+  const hours = Math.floor(i / 4).toString().padStart(2, "0");
+  const mins = ((i % 4) * 15).toString().padStart(2, "0");
+  const value = `${hours}:${mins}`;
+  const h = Math.floor(i / 4);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  const label = `${h12}:${mins} ${ampm}`;
+  return { value, label };
+});
+
 interface SettingsState {
   [key: string]: unknown;
   display_name?: string;
@@ -1026,35 +1037,6 @@ export function SettingsModal() {
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-label mb-2 block text-[var(--text-3)]">
-                                Quiet Start
-                              </label>
-                              <input
-                                type="time"
-                                value={settings.quiet_start || "22:00"}
-                                onChange={(e) =>
-                                  updateSetting("quiet_start", e.target.value)
-                                }
-                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-label mb-2 block text-[var(--text-3)]">
-                                Quiet End
-                              </label>
-                              <input
-                                type="time"
-                                value={settings.quiet_end || "08:00"}
-                                onChange={(e) =>
-                                  updateSetting("quiet_end", e.target.value)
-                                }
-                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
                           <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
                             <div>
                               <div className="font-medium text-[var(--color-text-1)]">
@@ -1308,13 +1290,12 @@ export function SettingsModal() {
                                   />{" "}
                                   Morning Nudge
                                 </label>
-                                <input
-                                  type="time"
+                                <Dropdown
+                                  variant="select"
                                   value={settings.nudge_time || "10:00"}
-                                  onChange={(e) =>
-                                    updateSetting("nudge_time", e.target.value)
-                                  }
-                                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none"
+                                  onChange={(val) => updateSetting("nudge_time", val)}
+                                  className="w-full"
+                                  options={TIME_OPTIONS}
                                 />
                                 <p className="text-meta mt-2 text-[var(--text-muted)]">
                                   When should we remind you to plan your day?
@@ -1328,16 +1309,12 @@ export function SettingsModal() {
                                   />{" "}
                                   Evening Shutdown
                                 </label>
-                                <input
-                                  type="time"
+                                <Dropdown
+                                  variant="select"
                                   value={settings.shutdown_time || "17:00"}
-                                  onChange={(e) =>
-                                    updateSetting(
-                                      "shutdown_time",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none"
+                                  onChange={(val) => updateSetting("shutdown_time", val)}
+                                  className="w-full"
+                                  options={TIME_OPTIONS}
                                 />
                                 <p className="text-meta mt-2 text-[var(--text-muted)]">
                                   When do you usually finish work?
@@ -1423,18 +1400,19 @@ export function SettingsModal() {
                                       Move done tasks to archive automatically
                                     </p>
                                   </div>
-                                  <select
-                                    className="input !w-auto bg-[var(--color-background)] !px-2 !py-1 !text-xs"
-                                    {...register("auto_archive_days", {
-                                      valueAsNumber: true,
-                                    })}
-                                  >
-                                    <option value={0}>Immediately</option>
-                                    <option value={1}>After 1 day</option>
-                                    <option value={3}>After 3 days</option>
-                                    <option value={7}>After 1 week</option>
-                                    <option value={-1}>Never</option>
-                                  </select>
+                                  <Dropdown
+                                    variant="select"
+                                    value={String(settings.auto_archive_days ?? 7)}
+                                    onChange={(val) => updateSetting("auto_archive_days", Number(val))}
+                                    className="w-40"
+                                    options={[
+                                      { value: "0", label: "Immediately" },
+                                      { value: "1", label: "After 1 day" },
+                                      { value: "3", label: "After 3 days" },
+                                      { value: "7", label: "After 1 week" },
+                                      { value: "-1", label: "Never" },
+                                    ]}
+                                  />
                                 </div>
                                 <div className="h-[1px] bg-[var(--color-border)]" />
                                 <div className="flex items-center justify-between">
