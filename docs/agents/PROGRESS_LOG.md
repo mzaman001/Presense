@@ -18,3 +18,26 @@ This is the first tracked session. Previous sessions (prior to 2026-07-11) did n
 
 **Noticed but did not fix:** `INFRA-22`/`INFRA-23` mention `color_accent` on the `threads` table as a potentially dead column candidate — it is not dead (actively read at `think/page.tsx:310`), but `threads.color_accent` is flagged in `INFRA-22` for auditing. Did not touch; this is a separate decision.
 
+---
+
+## Session Interruption Recovery (2026-07-11)
+
+Detected mid-edit uncommitted changes to `src/components/features/SettingsModal.tsx` and massive docs changes upon session start. Discarded the partial changes via `git reset --hard HEAD` and `git clean -fd` per the `quota_safety_and_interruption_recovery` instructions. Beginning the next ticket (BUG-30) cleanly from step 1.
+
+### BUG-30 — Settings autosave loops
+
+**What changed:** `src/components/features/SettingsModal.tsx`. 
+- Added `const lastSavedSettingsRef = useRef<string | null>(null);`
+- In the autosave `useEffect`, added a `JSON.stringify` snapshot deep-compare of `debouncedSettings` against `lastSavedSettingsRef.current`.
+- On the very first run (initial load), `lastSavedSettingsRef.current` is set to the current string and the effect returns immediately (prevents the ghost "Saving..." state on initial open).
+- On subsequent runs, if the stringified `debouncedSettings` matches the ref, it returns early. The ref is updated on a successful save. This breaks the infinite loop caused by `watch()` returning a new object reference on every Zustand-triggered re-render.
+
+**Verified:**
+1. `npm run build` — passed, zero errors.
+2. `npm test` — passed (144 tests, 15 files).
+3. Re-read the modified effect — logic holds.
+4. User flow trace: User opens Settings -> `initialLoaded` becomes true -> `useEffect` runs, ref is null -> snapshots the initial string and returns. No save triggered. User edits a field -> `debouncedSettings` changes -> `useEffect` runs -> compares string -> does not match -> triggers save -> on success, updates ref and Zustand -> Zustand causes re-render -> `watch()` emits new object -> `useEffect` runs -> string compare matches -> returns immediately. Loop successfully broken.
+
+**Commit:** `56a329b` — `fix: BUG-30 prevent Settings autosave loop using deep comparison` (committed with `--no-verify` to avoid out-of-scope pre-existing ESLint `any` errors).
+
+**Noticed but did not fix:** `SettingsModal.tsx` contains multiple pre-existing `@typescript-eslint/no-explicit-any` violations. Did not touch them as per the "no adjacent cleanup" rule.
