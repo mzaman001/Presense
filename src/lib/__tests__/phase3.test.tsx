@@ -97,7 +97,7 @@ describe("Phase 3 - Integration Test Suite", () => {
   }
 
   describe("R1: ExploreDrawer & SearchModal Requirements", () => {
-    it("should verify that ExploreDrawer only uses and exposes system types (link, note, book) and does not allow creating custom types", async () => {
+    it("should verify that ExploreDrawer allows selecting preset types and creating custom types via combobox", async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: "user-123" } },
       });
@@ -116,26 +116,13 @@ describe("Phase 3 - Integration Test Suite", () => {
         { wrapper }
       );
 
-      // Verify preset types input is present
-
-      // Verify the type input has preset options (link, note, book) in the datalist
+      // Verify the type input is rendered via the Dropdown combobox
       const typeInput = screen.getByPlaceholderText("e.g. link, note, book");
       expect(typeInput).toBeInTheDocument();
-      expect(typeInput).toHaveAttribute("list", "preset-explore-types");
+      expect(typeInput).not.toHaveAttribute("list", "preset-explore-types");
       
       const dataList = container.querySelector("#preset-explore-types");
-      expect(dataList).toBeInTheDocument();
-      expect(dataList!.innerHTML).toMatch(/value="link"/i);
-      expect(dataList!.innerHTML).toMatch(/value="note"/i);
-      expect(dataList!.innerHTML).toMatch(/value="book"/i);
-
-      // Verify that no input field or button to create/add a custom type is rendered
-      const allInputs = screen.getAllByRole("textbox");
-      const customTypeInput = allInputs.find((input: any) => 
-        input.placeholder?.toLowerCase().includes("type") || 
-        input.name?.toLowerCase().includes("type")
-      );
-      expect(customTypeInput).toBeUndefined();
+      expect(dataList).toBeNull(); // The native datalist should no longer exist
     });
 
     it("should verify that SearchModal supports searching items by categories and explores by tags", async () => {

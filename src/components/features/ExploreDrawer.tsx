@@ -247,19 +247,14 @@ export function ExploreDrawer({
             <label className="text-label mb-2 block text-[var(--text-3)]">
               Type <span className="text-red-400">*</span>
             </label>
-            <input
-              type="text"
+            <Dropdown
+              variant="combobox"
               value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--surface-input)] px-4 py-3 text-[var(--color-text-1)] transition-colors focus:border-[var(--accent)] focus:outline-none"
+              onChange={(val) => setType(val)}
+              options={PRESET_TYPES}
               placeholder="e.g. link, note, book"
-              list="preset-explore-types"
+              className="w-full"
             />
-            <datalist id="preset-explore-types">
-              {PRESET_TYPES.map((preset) => (
-                <option key={preset} value={preset} />
-              ))}
-            </datalist>
           </div>
 
           <div>

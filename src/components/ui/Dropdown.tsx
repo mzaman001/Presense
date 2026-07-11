@@ -26,7 +26,7 @@ interface DropdownProps {
   placeholder?: string;
   colors?: Record<string, string>;
   className?: string;
-  variant?: "chip" | "select";
+  variant?: "chip" | "select" | "combobox";
 }
 
 export function Dropdown({
@@ -72,13 +72,19 @@ export function Dropdown({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      
+      if (e.key === "Enter" && variant === "combobox" && document.activeElement?.tagName.toLowerCase() === "input") {
+        e.preventDefault();
+        setIsOpen(false);
+        return;
+      }
 
       if (e.key === "Escape") {
         setIsOpen(false);
         const trigger = (reference.current as HTMLElement)?.querySelector(
-          "button",
+          variant === "combobox" ? "input" : "button",
         );
-        if (trigger) trigger.focus();
+        if (trigger) (trigger as HTMLElement).focus();
         return;
       }
 
@@ -108,7 +114,7 @@ export function Dropdown({
         return;
       }
 
-      if (e.key.length === 1) {
+      if (variant !== "combobox" && e.key.length === 1) {
         e.preventDefault();
         searchBuffer.current += e.key.toLowerCase();
 
@@ -138,7 +144,7 @@ export function Dropdown({
       document.removeEventListener("mousedown", handleMouseDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, reference, floating, options]);
+  }, [isOpen, reference, floating, options, variant]);
 
   const selectedOption = (() => {
     if (!Array.isArray(options)) return { value, label: value };
@@ -241,28 +247,55 @@ export function Dropdown({
 
   return (
     <div className={cn("relative w-full", className)} ref={setReference}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-1)] transition-colors focus:border-[var(--color-accent)] focus:outline-none"
-      >
-        <span
-          className={
-            !value || value === placeholder ? "text-[var(--color-text-3)]" : ""
-          }
-        >
-          {selectedOption.label || placeholder}
-        </span>
-        <m.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <UiIcon
-            className="h-4 w-4 text-[var(--color-text-3)]"
-            icon={ChevronDown}
+      {variant === "combobox" ? (
+        <div className="relative w-full">
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => {
+              onChange(e.target.value);
+              setIsOpen(true);
+            }}
+            onClick={() => setIsOpen(true)}
+            onFocus={() => setIsOpen(true)}
+            placeholder={placeholder}
+            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 pr-10 text-sm text-[var(--color-text-1)] transition-colors focus:border-[var(--color-accent)] focus:outline-none"
           />
-        </m.div>
-      </button>
+          <m.div
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2"
+          >
+            <UiIcon
+              className="h-4 w-4 text-[var(--color-text-3)]"
+              icon={ChevronDown}
+            />
+          </m.div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex w-full items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-1)] transition-colors focus:border-[var(--color-accent)] focus:outline-none"
+        >
+          <span
+            className={
+              !value || value === placeholder ? "text-[var(--color-text-3)]" : ""
+            }
+          >
+            {selectedOption.label || placeholder}
+          </span>
+          <m.div
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <UiIcon
+              className="h-4 w-4 text-[var(--color-text-3)]"
+              icon={ChevronDown}
+            />
+          </m.div>
+        </button>
+      )}
       {mounted && (
         <FloatingPortal>
           <AnimatePresence>
@@ -276,7 +309,32 @@ export function Dropdown({
                 className="dropdown-panel z-[220] max-h-[min(320px,60vh)] min-w-[160px] overflow-y-auto overscroll-contain"
                 style={{ ...floatingStyles, transformOrigin: "top" }}
               >
-                {options.map((opt) => {
+                {(() => {
+                  let filtered = options as Array<string | DropdownOption>;
+                  if (variant === "combobox" && value) {
+                    const query = value.toLowerCase();
+                    filtered = filtered.filter((opt) => {
+                      const optLabel = typeof opt === "string" ? opt : opt.label;
+                      return optLabel.toLowerCase().includes(query);
+                    });
+                    const hasExactMatch = filtered.some((opt) => {
+                      const optLabel = typeof opt === "string" ? opt : opt.label;
+                      return optLabel.toLowerCase() === query;
+                    });
+                    if (!hasExactMatch) {
+                      filtered = [...filtered, { value, label: `Create '${value}'` }];
+                    }
+                  }
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="p-3 text-center text-sm text-[var(--color-text-3)]">
+                        No matches
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((opt) => {
                   const optValue = typeof opt === "string" ? opt : opt.value;
                   const optLabel = typeof opt === "string" ? opt : opt.label;
                   const optColor =
@@ -321,7 +379,7 @@ export function Dropdown({
                       {optLabel}
                     </button>
                   );
-                })}
+                })})()}
               </m.div>
             )}
           </AnimatePresence>
