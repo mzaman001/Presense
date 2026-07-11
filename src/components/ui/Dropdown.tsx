@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,8 @@ export function Dropdown({
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const searchBuffer = useRef("");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const { refs, floatingStyles } = useFloating({
     open: isOpen,
@@ -54,8 +56,11 @@ export function Dropdown({
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: MouseEvent) => {
+    if (!isOpen) {
+      searchBuffer.current = "";
+      return;
+    }
+    const handleMouseDown = (e: MouseEvent) => {
       if (
         reference.current &&
         !(reference.current as Element).contains(e.target as Node) &&
@@ -64,9 +69,76 @@ export function Dropdown({
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [isOpen, reference, floating]);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        const trigger = (reference.current as HTMLElement)?.querySelector(
+          "button",
+        );
+        if (trigger) trigger.focus();
+        return;
+      }
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (floating.current) {
+          const buttons = Array.from(
+            floating.current.querySelectorAll("button"),
+          );
+          const currentIndex = buttons.findIndex(
+            (b) => document.activeElement === b,
+          );
+          let nextIndex = 0;
+          if (e.key === "ArrowDown") {
+            nextIndex =
+              currentIndex >= 0
+                ? Math.min(currentIndex + 1, buttons.length - 1)
+                : 0;
+          } else {
+            nextIndex =
+              currentIndex >= 0
+                ? Math.max(currentIndex - 1, 0)
+                : buttons.length - 1;
+          }
+          if (buttons[nextIndex]) (buttons[nextIndex] as HTMLElement).focus();
+        }
+        return;
+      }
+
+      if (e.key.length === 1) {
+        e.preventDefault();
+        searchBuffer.current += e.key.toLowerCase();
+
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(() => {
+          searchBuffer.current = "";
+        }, 500);
+
+        const opts = options as Array<string | DropdownOption>;
+        const matchIndex = opts.findIndex((opt) => {
+          const label = typeof opt === "string" ? opt : opt.label;
+          return label.toLowerCase().startsWith(searchBuffer.current);
+        });
+
+        if (matchIndex >= 0 && floating.current) {
+          const buttons = floating.current.querySelectorAll("button");
+          if (buttons[matchIndex]) {
+            (buttons[matchIndex] as HTMLElement).focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, reference, floating, options]);
 
   const selectedOption = (() => {
     if (!Array.isArray(options)) return { value, label: value };
@@ -113,7 +185,7 @@ export function Dropdown({
                   animate={{ opacity: 1, scaleY: 1 }}
                   exit={{ opacity: 0, scaleY: 0.9 }}
                   transition={{ duration: 0.18 }}
-                  className="dropdown-panel z-[220] min-w-[160px]"
+                  className="dropdown-panel z-[220] max-h-[min(320px,60vh)] min-w-[160px] overflow-y-auto overscroll-contain"
                   style={{ ...floatingStyles, transformOrigin: "top" }}
                 >
                   {options.map((opt) => {
@@ -201,7 +273,7 @@ export function Dropdown({
                 animate={{ opacity: 1, scaleY: 1 }}
                 exit={{ opacity: 0, scaleY: 0.9 }}
                 transition={{ duration: 0.18 }}
-                className="dropdown-panel z-[220] min-w-[160px]"
+                className="dropdown-panel z-[220] max-h-[min(320px,60vh)] min-w-[160px] overflow-y-auto overscroll-contain"
                 style={{ ...floatingStyles, transformOrigin: "top" }}
               >
                 {options.map((opt) => {
