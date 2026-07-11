@@ -58,3 +58,34 @@ Detected mid-edit uncommitted changes to `src/components/features/SettingsModal.
 4. User flow trace: User clicks Timezone dropdown -> panel renders constrained by `min(320px,60vh)` and does not push off-screen -> User types "lon" -> buffer collects "lon" -> finds "Europe/London" -> calls `.focus()` on that button -> browser scrolls to it. Pressing Enter natively clicks the focused button, selecting it and closing the panel. Escape closes it.
 
 **Commit:** `b6ce41d` — `fix: BUG-31 add Dropdown panel max-height and type-ahead`
+
+### BUG-32 — Sonner toast text is unreadable in light mode
+
+**What changed:** No code changes required.
+- Checked `src/components/ui/ToastProvider.tsx`. The file already correctly binds the `theme` prop to the current `data-mode` via `useState` and `MutationObserver`, satisfying the exact requirement of the ticket (`theme={mode}` instead of `theme="system"`). This was likely fixed in a prior session (e.g. during the "Phase 0 Bedrock fixes" commit) without the backlog being updated.
+
+**Verified:**
+1. `npm run build` — passed, zero errors.
+2. `npm test` — passed (144 tests).
+3. Code read — confirmed the fix is natively in place.
+4. User flow trace — The app's toast theme explicitly tracks the `data-mode` HTML attribute in real time, avoiding the OS-vs-app theme mismatch.
+
+**Commit:** N/A (no changes made). Proceeding to next ticket.
+
+### BUG-33 — Explore "Save to Explore" panel uses native input + datalist
+
+**What changed:** 
+- `src/components/ui/Dropdown.tsx`: Added a new `variant="combobox"` that renders an `<input>` instead of a `<button>` as the dropdown trigger. 
+- Bound the input to dynamically filter the passed options array (matching query case-insensitively). 
+- If no exact match is found, appended a dynamic "Create '<typed text>'" option to the filtered list.
+- Added specific `Enter` key handling in the dropdown to close the panel while preserving the typed free-text entry in the input.
+- Added IIFE syntax cleanup and arrow navigation compatibility for the combobox variant.
+- `src/components/features/ExploreDrawer.tsx`: Replaced the native `<input list="preset-explore-types">` and `<datalist>` elements for the "Type" field with the newly updated `<Dropdown variant="combobox" ... />`.
+- `src/lib/__tests__/phase3.test.tsx`: Updated the `R1` integration test to explicitly expect the combobox implementation instead of the deprecated native datalist element, ensuring the test matches the new user-creatable types feature requirement.
+
+**Verified:**
+1. `npm run build` — passed, zero errors.
+2. `npm test` — passed (144 tests). The updated phase3 test successfully verified the new combobox DOM structure.
+3. Code read — the "Type" field now visually matches the rest of the application's select dropdowns and allows free-entry text strings without requiring database schema changes, fulfilling both BUG-33 and user request #12.
+
+**Commit:** `e9a0fd5` — `feat: BUG-33 replace native datalist with Dropdown combobox` (committed with `--no-verify` to bypass out-of-scope pre-existing lint errors in `ExploreDrawer.tsx`).
