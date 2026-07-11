@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { m, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, useDragControls } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -20,6 +20,7 @@ interface SheetProps {
 export function Sheet({ isOpen, onClose, title, children, className }: SheetProps) {
   const dialogRef = useDialogFocus(isOpen);
   const vp = useVisualViewport();
+  const dragControls = useDragControls();
   useBodyScrollLock(isOpen);
 
   // Calculate keyboard offset for mobile
@@ -56,6 +57,8 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
             <m.div
               ref={dialogRef}
               drag="y"
+              dragControls={dragControls}
+              dragListener={false}
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={0.2}
               onDragEnd={(e, info) => {
@@ -78,8 +81,11 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               aria-modal="true"
               aria-label={typeof title === "string" ? title : undefined}
             >
-              {/* Mobile Drag Handle */}
-              <div className="w-full flex justify-center pt-3 pb-1 md:hidden">
+              {/* Mobile Drag Handle — only this element can initiate swipe-to-dismiss */}
+              <div
+                className="w-full flex justify-center pt-3 pb-1 md:hidden touch-none cursor-grab active:cursor-grabbing"
+                onPointerDown={(e) => dragControls.start(e)}
+              >
                 <div className="w-12 h-1.5 rounded-full bg-[var(--border-strong)] opacity-50" />
               </div>
 
