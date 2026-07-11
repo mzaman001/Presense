@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface LocationItem {
   id: string;
@@ -119,19 +120,16 @@ export default function LocationsPage() {
           <PageSkeleton count={4} type="task" />
         </div>
       ) : items.length === 0 && !search.trim() ? (
-        <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
-          <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-            <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={MapPin} />
-          </div>
-          <h3 className="text-[var(--color-text-1)] font-medium mb-2">No locations here</h3>
-          <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Log an item to remember where you put it.</p>
-          <Button variant="primary" 
-            onClick={() => setShowAdd(true)}
-            className="gap-2 mx-auto"
-          >
-            <UiIcon size={16} icon={Plus} /> Log Item
-          </Button>
-        </GlassCard>
+        <EmptyState
+          icon={MapPin}
+          title="No locations here"
+          description="Log an item to remember where you put it."
+          action={
+            <Button variant="primary" onClick={() => setShowAdd(true)} className="gap-2 mx-auto">
+              <UiIcon size={16} icon={Plus} /> Log Item
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-2">
           {items.map((item, i) => {
