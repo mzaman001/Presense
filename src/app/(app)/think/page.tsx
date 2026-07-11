@@ -1,6 +1,5 @@
 "use client";
 
-
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { m } from "framer-motion";
 import { createClient } from "@/lib/supabase";
@@ -34,16 +33,20 @@ interface Thread {
 export default function ThinkPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const setPrefetchedThread = useAppStore(s => s.setPrefetchedThread);
+  const setPrefetchedThread = useAppStore((s) => s.setPrefetchedThread);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchive, setShowArchive] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredThreads = threads.filter(t => 
-    t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (t.entries && t.entries.some(e => e.text.toLowerCase().includes(searchQuery.toLowerCase())))
+  const filteredThreads = threads.filter(
+    (t) =>
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.entries &&
+        t.entries.some((e) =>
+          e.text.toLowerCase().includes(searchQuery.toLowerCase()),
+        )),
   );
 
   const fetchThreads = useCallback(async () => {
@@ -81,10 +84,16 @@ export default function ThinkPage() {
   };
 
   const handleDailyNote = async () => {
-    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dateStr = new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
     const title = `Daily Note: ${dateStr}`;
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     // Try insert first — the unique index on (user_id, title) prevents duplicates.
@@ -95,7 +104,7 @@ export default function ThinkPage() {
         user_id: user.id,
         title,
         color_accent: "#FBBF24",
-        is_pinned: true
+        is_pinned: true,
       })
       .select("id")
       .single();
@@ -120,17 +129,28 @@ export default function ThinkPage() {
   };
 
   const handleNewThread = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase.from("threads").insert({
-      user_id: user.id,
-      title: "Untitled Thread",
-      color_accent: "var(--accent)",
-      is_pinned: false
-    }).select().single();
+    const { data, error } = await supabase
+      .from("threads")
+      .insert({
+        user_id: user.id,
+        title: "Untitled Thread",
+        color_accent: "#E5B41E",
+        is_pinned: false,
+      })
+      .select()
+      .single();
 
-    if (!error && data) {
+    if (error) {
+      toast.error("Failed to create thread. Please try again.");
+      return;
+    }
+
+    if (data) {
       router.push(`/think/${data.id}`);
     }
   };
@@ -138,34 +158,37 @@ export default function ThinkPage() {
   const togglePin = async (e: React.MouseEvent, thread: Thread) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!thread.is_pinned) {
-      const pinnedCount = threads.filter(t => t.is_pinned).length;
+      const pinnedCount = threads.filter((t) => t.is_pinned).length;
       if (pinnedCount >= 3) {
-        toast.error('You can pin up to 3 threads');
+        toast.error("You can pin up to 3 threads");
         return;
       }
     }
-    
+
     // Optimistic update
-    setThreads(current => {
-      const updated = current.map(t => 
-        t.id === thread.id ? { ...t, is_pinned: !t.is_pinned } : t
+    setThreads((current) => {
+      const updated = current.map((t) =>
+        t.id === thread.id ? { ...t, is_pinned: !t.is_pinned } : t,
       );
       // Re-sort exactly like fetchThreads does
       return updated.sort((a, b) => {
         if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
-        return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
+        return (
+          new Date(b.last_updated).getTime() -
+          new Date(a.last_updated).getTime()
+        );
       });
     });
-    
+
     const { error } = await supabase
       .from("threads")
       .update({ is_pinned: !thread.is_pinned })
       .eq("id", thread.id);
-      
+
     if (error) {
-      toast.error('Failed to update pin status');
+      toast.error("Failed to update pin status");
       fetchThreads(); // revert on error
     }
   };
@@ -173,174 +196,291 @@ export default function ThinkPage() {
   return (
     <LenisProvider>
       <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <p className="text-caption uppercase tracking-widest text-[rgba(255,255,255,0.35)] font-semibold mb-1">Space</p>
-          <div className="flex items-center gap-4">
-            <h1 className="text-[22px] font-medium text-[var(--color-text-1)] tracking-tight">Think</h1>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => { setShowArchive(false); setShowTrash(false); setThreads([]); }}
-                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !showArchive && !showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-              >
-                Active
-              </button>
-              <button 
-                onClick={() => { setShowArchive(true); setShowTrash(false); setThreads([]); }}
-                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showArchive ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-              >
-                Archive
-              </button>
-              <button 
-                onClick={() => { setShowTrash(true); setShowArchive(false); setThreads([]); }}
-                className={cn("text-xs px-3 py-1 rounded-full border transition-colors", showTrash ? "bg-[var(--color-text-1)] text-[var(--color-background)] border-[var(--color-text-1)]" : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]")}
-              >
-                Trash
-              </button>
+        <div className="mb-2 flex items-center justify-between">
+          <div>
+            <p className="text-caption mb-1 font-semibold tracking-widest text-[rgba(255,255,255,0.35)] uppercase">
+              Space
+            </p>
+            <div className="flex items-center gap-4">
+              <h1 className="text-[22px] font-medium tracking-tight text-[var(--color-text-1)]">
+                Think
+              </h1>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowArchive(false);
+                    setShowTrash(false);
+                    setThreads([]);
+                  }}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs transition-colors",
+                    !showArchive && !showTrash
+                      ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                      : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+                  )}
+                >
+                  Active
+                </button>
+                <button
+                  onClick={() => {
+                    setShowArchive(true);
+                    setShowTrash(false);
+                    setThreads([]);
+                  }}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs transition-colors",
+                    showArchive
+                      ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                      : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+                  )}
+                >
+                  Archive
+                </button>
+                <button
+                  onClick={() => {
+                    setShowTrash(true);
+                    setShowArchive(false);
+                    setThreads([]);
+                  }}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs transition-colors",
+                    showTrash
+                      ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                      : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+                  )}
+                >
+                  Trash
+                </button>
+              </div>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <UiIcon
+                size={13}
+                strokeWidth={1.5}
+                className="absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
+                icon={Search}
+              />
+              <input
+                type="text"
+                placeholder="Search threads..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input-search hidden !w-48 md:block"
+              />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={handleDailyNote}
+              className="hidden !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] !text-[#FBBF24] hover:!bg-[rgba(251,191,36,0.2)] sm:flex"
+            >
+              <UiIcon className="h-4 w-4" icon={Sparkles} /> Daily Note
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleNewThread}
+              className="!border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)]"
+            >
+              <UiIcon className="h-4 w-4" icon={Plus} /> New thread
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <ContextualTip
+          id="think_space"
+          title="Thoughts that stay"
+          description="This is the Think space. Create threads for ideas, journals, or long-term thoughts. We will resurface old threads to prompt new insights."
+        />
+
+        <div className="md:hidden">
           <div className="relative">
-            <UiIcon size={13} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" icon={Search} />
-            <input 
-              type="text" 
-              placeholder="Search threads..." 
+            <UiIcon
+              size={13}
+              strokeWidth={1.5}
+              className="absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
+              icon={Search}
+            />
+            <input
+              type="text"
+              placeholder="Search threads..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-search hidden md:block !w-48"
+              className="input-search w-full md:hidden"
             />
           </div>
-          <Button variant="secondary" onClick={handleDailyNote} className="!text-[#FBBF24] !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] hover:!bg-[rgba(251,191,36,0.2)] hidden sm:flex">
-            <UiIcon className="w-4 h-4" icon={Sparkles} /> Daily Note
-          </Button>
-          <Button variant="secondary" onClick={handleNewThread} className="!text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
-            <UiIcon className="w-4 h-4" icon={Plus} /> New thread
-          </Button>
         </div>
-      </div>
 
-      <ContextualTip 
-        id="think_space" 
-        title="Thoughts that stay" 
-        description="This is the Think space. Create threads for ideas, journals, or long-term thoughts. We will resurface old threads to prompt new insights." 
-      />
-
-      <div className="md:hidden">
-        <div className="relative">
-          <UiIcon size={13} strokeWidth={1.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" icon={Search} />
-          <input 
-            type="text" 
-            placeholder="Search threads..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="input-search w-full md:hidden"
-          />
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="py-6">
-          <PageSkeleton count={4} type="card" />
-        </div>
-      ) : (
-        <>
-          {filteredThreads.filter(t => t.stale_prompt).length > 0 && (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <UiIcon className="w-4 h-4 text-[var(--accent)]" icon={Sparkles} />
-                <h2 className="text-sm font-semibold text-[var(--color-text-1)]">Stale Threads</h2>
+        {loading ? (
+          <div className="py-6">
+            <PageSkeleton count={4} type="card" />
+          </div>
+        ) : (
+          <>
+            {filteredThreads.filter((t) => t.stale_prompt).length > 0 && (
+              <div className="mb-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <UiIcon
+                    className="h-4 w-4 text-[var(--accent)]"
+                    icon={Sparkles}
+                  />
+                  <h2 className="text-sm font-semibold text-[var(--color-text-1)]">
+                    Stale Threads
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {filteredThreads
+                    .filter((t) => t.stale_prompt)
+                    .map((thread, i) => (
+                      <m.div
+                        key={thread.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="thread-row-wrapper"
+                      >
+                        <Link
+                          href={`/think/${thread.id}`}
+                          onClick={() => setPrefetchedThread(thread.id, thread)}
+                        >
+                          <GlassCard className="h-full cursor-pointer border-[var(--accent-dim-hover)] bg-[var(--surface-input)] p-4 transition-colors hover:bg-[var(--surface-hover)]">
+                            <div className="flex items-start gap-3">
+                              <div className="w-1 shrink-0 self-stretch rounded-full bg-[var(--accent)]" />
+                              <div>
+                                <p className="mb-1 text-sm font-semibold text-[var(--color-text-1)]">
+                                  {thread.title}
+                                </p>
+                                <p className="text-xs leading-relaxed font-medium text-[var(--accent)]">
+                                  {thread.stale_prompt}
+                                </p>
+                              </div>
+                            </div>
+                          </GlassCard>
+                        </Link>
+                      </m.div>
+                    ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredThreads.filter(t => t.stale_prompt).map((thread, i) => (
-                  <m.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="thread-row-wrapper">
-                    <Link href={`/think/${thread.id}`} onClick={() => setPrefetchedThread(thread.id, thread)}>
-                      <GlassCard className="p-4 bg-[var(--surface-input)] border-[var(--accent-dim-hover)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer h-full">
-                        <div className="flex items-start gap-3">
-                          <div className="w-1 self-stretch rounded-full shrink-0 bg-[var(--accent)]" />
-                          <div>
-                            <p className="text-sm font-semibold text-[var(--color-text-1)] mb-1">{thread.title}</p>
-                            <p className="text-xs text-[var(--accent)] font-medium leading-relaxed">{thread.stale_prompt}</p>
-                          </div>
-                        </div>
-                      </GlassCard>
-                    </Link>
-                  </m.div>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
 
-          {filteredThreads.length === 0 ? (
-            <GlassCard className="p-12 text-center mt-6 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
-              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={Sparkles} />
-              </div>
-              <h3 className="text-[var(--color-text-1)] font-medium mb-2">No threads yet</h3>
-              <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I wonder...&rdquo; to start expanding your ideas.</p>
-              <Button variant="primary" 
-                onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
-                className="gap-2"
-              >
-                <UiIcon size={16} icon={Plus} /> New Thought
-              </Button>
-            </GlassCard>
-          ) : (
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--color-text-1)] mb-3 mt-6">All Threads</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredThreads.map((thread, i) => (
-            <m.div key={thread.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="thread-row-wrapper">
-              <Link href={`/think/${thread.id}`} onClick={() => setPrefetchedThread(thread.id, thread)}>
-                <GlassCard className="p-5 hover:scale-[1.01] transition-transform cursor-pointer h-full group relative">
-                  {!showArchive && !showTrash && (
-                    <button 
-                      onClick={(e) => togglePin(e, thread)}
-                      className={cn(
-                        "absolute right-3 top-3 p-1.5 rounded-lg transition-all",
-                        thread.is_pinned 
-                          ? "opacity-100 text-[var(--accent)] hover:bg-[var(--surface-hover)]" 
-                          : "opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-2)] hover:bg-[var(--color-surface)]"
-                      )}
+            {filteredThreads.length === 0 ? (
+              <GlassCard className="mt-6 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
+                  <UiIcon
+                    className="h-6 w-6 text-[var(--color-text-3)]"
+                    icon={Sparkles}
+                  />
+                </div>
+                <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
+                  No threads yet
+                </h3>
+                <p className="mb-6 max-w-sm text-sm text-[var(--color-text-3)]">
+                  Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I
+                  wonder...&rdquo; to start expanding your ideas.
+                </p>
+                <Button
+                  variant="primary"
+                  onClick={() =>
+                    useAppStore.getState().setCaptureModalOpen(true)
+                  }
+                  className="gap-2"
+                >
+                  <UiIcon size={16} icon={Plus} /> New Thought
+                </Button>
+              </GlassCard>
+            ) : (
+              <div>
+                <h2 className="mt-6 mb-3 text-sm font-semibold text-[var(--color-text-1)]">
+                  All Threads
+                </h2>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {filteredThreads.map((thread, i) => (
+                    <m.div
+                      key={thread.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="thread-row-wrapper"
                     >
-                      <UiIcon size={14} strokeWidth={1.5} className={cn(thread.is_pinned && "fill-current")} icon={Pin} />
-                    </button>
-                  )}
-                  <div className="flex items-start gap-3">
-                    <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: thread.color_accent }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        {!showArchive && !showTrash && thread.is_pinned && <UiIcon className="w-3.5 h-3.5 text-[var(--accent)] fill-current" icon={Pin} />}
-                        <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug pr-6">{thread.title}</p>
-                      </div>
-                      {thread.entries?.length > 0 && (
-                        <p className="text-xs text-[var(--color-text-3)] line-clamp-2 leading-relaxed">
-                          {thread.entries[thread.entries.length - 1]?.text}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between mt-3">
-                        <span className="text-meta text-[var(--color-text-3)]">
-                          {thread.entries?.length ?? 0} entries · Updated {timeAgo(thread.last_updated)}
-                        </span>
-                        {thread.stale_prompt && (
-                          <span className="flex items-center gap-1 text-caption text-[var(--accent)]">
-                            <UiIcon className="w-3 h-3" icon={Sparkles} /> Revisit
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </GlassCard>
-              </Link>
-            </m.div>
-          ))}
+                      <Link
+                        href={`/think/${thread.id}`}
+                        onClick={() => setPrefetchedThread(thread.id, thread)}
+                      >
+                        <GlassCard className="group relative h-full cursor-pointer p-5 transition-transform hover:scale-[1.01]">
+                          {!showArchive && !showTrash && (
+                            <button
+                              onClick={(e) => togglePin(e, thread)}
+                              className={cn(
+                                "absolute top-3 right-3 rounded-lg p-1.5 transition-all",
+                                thread.is_pinned
+                                  ? "text-[var(--accent)] opacity-100 hover:bg-[var(--surface-hover)]"
+                                  : "text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:bg-[var(--color-surface)] hover:text-[var(--text-2)]",
+                              )}
+                            >
+                              <UiIcon
+                                size={14}
+                                strokeWidth={1.5}
+                                className={cn(
+                                  thread.is_pinned && "fill-current",
+                                )}
+                                icon={Pin}
+                              />
+                            </button>
+                          )}
+                          <div className="flex items-start gap-3">
+                            <div
+                              className="w-0.5 shrink-0 self-stretch rounded-full"
+                              style={{ backgroundColor: thread.color_accent }}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="mb-2 flex items-center gap-2">
+                                {!showArchive &&
+                                  !showTrash &&
+                                  thread.is_pinned && (
+                                    <UiIcon
+                                      className="h-3.5 w-3.5 fill-current text-[var(--accent)]"
+                                      icon={Pin}
+                                    />
+                                  )}
+                                <p className="pr-6 text-sm leading-snug font-semibold text-[var(--color-text-1)]">
+                                  {thread.title}
+                                </p>
+                              </div>
+                              {thread.entries?.length > 0 && (
+                                <p className="line-clamp-2 text-xs leading-relaxed text-[var(--color-text-3)]">
+                                  {
+                                    thread.entries[thread.entries.length - 1]
+                                      ?.text
+                                  }
+                                </p>
+                              )}
+                              <div className="mt-3 flex items-center justify-between">
+                                <span className="text-meta text-[var(--color-text-3)]">
+                                  {thread.entries?.length ?? 0} entries ·
+                                  Updated {timeAgo(thread.last_updated)}
+                                </span>
+                                {thread.stale_prompt && (
+                                  <span className="text-caption flex items-center gap-1 text-[var(--accent)]">
+                                    <UiIcon
+                                      className="h-3 w-3"
+                                      icon={Sparkles}
+                                    />{" "}
+                                    Revisit
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </GlassCard>
+                      </Link>
+                    </m.div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+            )}
+          </>
+        )}
+      </div>
     </LenisProvider>
   );
 }
-
