@@ -2,7 +2,7 @@
 
 import { createPortal } from "react-dom";
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
 import {
   Inbox,
   Loader2,
@@ -276,19 +276,19 @@ export default function InboxPage() {
         let routedId: string | null = null;
 
         if (space === "do") {
-          await supabase
-            .from("items")
-            .update({ status: "active" })
-            .eq("id", id);
+          // BUG-38: check error — was fire-and-forget before
+          const { success } = await safeMutate(
+            () =>
+              supabase.from("items").update({ status: "active" }).eq("id", id),
+            "Failed to route to Do",
+          );
+          if (!success) throw new Error("Route to Do failed");
         } else if (space === "remember") {
           const {
             data: { user },
           } = await supabase.auth.getUser();
           if (user) {
-            await supabase
-              .from("items")
-              .update(moveItemToTrashPatch())
-              .eq("id", id);
+            // BUG-38: insert FIRST, trash original only on success
             const { data: inserted, error: insertError } = await supabase
               .from("people")
               .insert({
@@ -308,13 +308,18 @@ export default function InboxPage() {
             if (insertError) throw insertError;
             if (inserted) {
               routedId = inserted.id;
+              await safeMutate(
+                () =>
+                  supabase
+                    .from("items")
+                    .update(moveItemToTrashPatch())
+                    .eq("id", id),
+                "Routed, but failed to remove from Inbox",
+              );
             }
           }
         } else if (space === "explore") {
-          await supabase
-            .from("items")
-            .update(moveItemToTrashPatch())
-            .eq("id", id);
+          // BUG-38: insert FIRST, trash original only on success
           const { data: inserted, error: insertError } = await supabase
             .from("explores")
             .insert({
@@ -329,12 +334,17 @@ export default function InboxPage() {
           if (insertError) throw insertError;
           if (inserted) {
             routedId = inserted.id;
+            await safeMutate(
+              () =>
+                supabase
+                  .from("items")
+                  .update(moveItemToTrashPatch())
+                  .eq("id", id),
+              "Routed, but failed to remove from Inbox",
+            );
           }
         } else if (space === "think") {
-          await supabase
-            .from("items")
-            .update(moveItemToTrashPatch())
-            .eq("id", id);
+          // BUG-38: insert FIRST, trash original only on success
           const { data: inserted, error: insertError } = await supabase
             .from("threads")
             .insert({
@@ -349,16 +359,21 @@ export default function InboxPage() {
           if (insertError) throw insertError;
           if (inserted) {
             routedId = inserted.id;
+            await safeMutate(
+              () =>
+                supabase
+                  .from("items")
+                  .update(moveItemToTrashPatch())
+                  .eq("id", id),
+              "Routed, but failed to remove from Inbox",
+            );
           }
         } else if (space === "location") {
           const {
             data: { user },
           } = await supabase.auth.getUser();
           if (user) {
-            await supabase
-              .from("items")
-              .update(moveItemToTrashPatch())
-              .eq("id", id);
+            // BUG-38: insert FIRST, trash original only on success
             const { data: inserted, error: insertError } = await supabase
               .from("locations")
               .insert({
@@ -372,6 +387,14 @@ export default function InboxPage() {
             if (insertError) throw insertError;
             if (inserted) {
               routedId = inserted.id;
+              await safeMutate(
+                () =>
+                  supabase
+                    .from("items")
+                    .update(moveItemToTrashPatch())
+                    .eq("id", id),
+                "Routed, but failed to remove from Inbox",
+              );
             }
           }
         }
