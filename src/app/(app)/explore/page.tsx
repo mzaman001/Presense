@@ -18,6 +18,7 @@ import { LenisProvider } from "@/components/layout/LenisProvider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 
 interface ExploreItem {
   id: string;
