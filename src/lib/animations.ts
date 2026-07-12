@@ -15,13 +15,8 @@ export const motionTokens = {
     spring: [0.34, 1.56, 0.64, 1] as const,
     smooth: [0.25, 0.46, 0.45, 0.94] as const,
     inOut: [0.4, 0, 0.2, 1] as const,
-  }
+  },
 };
-
-export function useReducedMotion() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
 
 // Page transition variants
 export const pageVariants = {
@@ -85,7 +80,11 @@ export const listItemVariants = {
 
 // Task card swipe delete
 export const swipeDeleteVariants = {
-  exit: { x: -100, opacity: 0, transition: { duration: motionTokens.dur.base } },
+  exit: {
+    x: -100,
+    opacity: 0,
+    transition: { duration: motionTokens.dur.base },
+  },
 };
 
 // Standard transition

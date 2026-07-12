@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Geist } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 
 import "./globals.css";
 import { headers } from "next/headers";
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
 import type { Viewport } from "next";
 
 export const viewport: Viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
-  viewportFit: 'cover'
+  viewportFit: "cover",
 };
 
 import { ToastProvider } from "@/components/ui/ToastProvider";
@@ -44,17 +44,32 @@ import { cn } from "@/lib/utils";
 import { env } from "@/lib/env";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
-
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const headersList = await headers();
-  const nonce = headersList.get('x-nonce') ?? undefined;
+  const nonce = headersList.get("x-nonce") ?? undefined;
 
   return (
-    <html lang="en" suppressHydrationWarning className={cn("h-full", "antialiased", inter.variable, jetbrainsMono.variable, "font-sans", geist.variable)}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={cn(
+        "h-full",
+        "antialiased",
+        inter.variable,
+        jetbrainsMono.variable,
+        "font-sans",
+      )}
+    >
       <head>
-        <link rel="preconnect" href={env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href={env.NEXT_PUBLIC_SUPABASE_URL}
+          crossOrigin="anonymous"
+        />
         <noscript>
           <style>{`
             .no-js-fallback {
@@ -65,7 +80,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             }
           `}</style>
           <div className="no-js-fallback">
-            Presense requires JavaScript to run. Please enable it in your browser settings.
+            Presense requires JavaScript to run. Please enable it in your
+            browser settings.
           </div>
         </noscript>
         <script
@@ -109,14 +125,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-500">
+      <body className="flex min-h-full flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-500">
         <TooltipProvider>
           <WebVitalsReporter />
           <ConnectionStatus />
           <UpdatePrompt />
-          <NuqsAdapter>
-            {children}
-          </NuqsAdapter>
+          <NuqsAdapter>{children}</NuqsAdapter>
         </TooltipProvider>
         <ToastProvider />
       </body>
