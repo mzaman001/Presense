@@ -8,7 +8,7 @@ import React, {
   useRef,
 } from "react";
 import { useAppStore } from "@/store/useAppStore";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
 import {
   X,
   Loader2,
@@ -37,7 +37,6 @@ import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
-import { Sheet } from "@/components/ui/Sheet";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { settingsSchema } from "@/lib/schemas";
@@ -67,7 +66,9 @@ const TABS = [
 ];
 
 const TIME_OPTIONS = Array.from({ length: 96 }).map((_, i) => {
-  const hours = Math.floor(i / 4).toString().padStart(2, "0");
+  const hours = Math.floor(i / 4)
+    .toString()
+    .padStart(2, "0");
   const mins = ((i % 4) * 15).toString().padStart(2, "0");
   const value = `${hours}:${mins}`;
   const h = Math.floor(i / 4);
@@ -394,7 +395,11 @@ export function SettingsModal() {
         .eq("user_id", user.id)
         .single();
       if (data) {
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         reset(data as any);
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setUserSettings(data as any);
       }
       setLoading(false);
@@ -430,15 +435,18 @@ export function SettingsModal() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-       
       const {
         user_id: _,
         created_at: __,
         ...updateData
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } = debouncedSettings as any;
 
       const { error } = await supabase
         .from("user_settings")
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .update(updateData as any)
         .eq("user_id", user.id);
 
@@ -447,6 +455,8 @@ export function SettingsModal() {
         setSaveStatus("idle");
       } else {
         lastSavedSettingsRef.current = currentSettingsStr;
+        /* @todo: Untyped usage justified per TOOL-01 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setUserSettings(debouncedSettings as any);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
@@ -480,12 +490,16 @@ export function SettingsModal() {
 
   const updateSetting = useCallback(
     (key: string, value: unknown) => {
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setValue(key as any, value, { shouldValidate: true, shouldDirty: true });
     },
     [setValue],
   );
 
   const setSettings = useCallback(
+    /* @todo: Untyped usage justified per TOOL-01 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (action: any) => {
       if (typeof action === "function") {
         reset(action(getValues()));
@@ -606,18 +620,52 @@ export function SettingsModal() {
       } = await supabase.auth.getUser();
       if (!user) return;
       // Delete all user data across tables
-      await Promise.all([
-        supabase.from("items").delete().eq("user_id", user.id),
-        supabase.from("people").delete().eq("user_id", user.id),
-        supabase.from("threads").delete().eq("user_id", user.id),
-        supabase.from("explores").delete().eq("user_id", user.id),
-        supabase.from("locations").delete().eq("user_id", user.id),
-        supabase.from("session_logs").delete().eq("user_id", user.id),
-        supabase.from("push_subscriptions").delete().eq("user_id", user.id),
-        supabase.from("user_settings").delete().eq("user_id", user.id),
-        supabase.from("categories").delete().eq("user_id", user.id),
-        supabase.from("ritual_logs").delete().eq("user_id", user.id),
+      const deletions = await Promise.all([
+        safeMutate(
+          () => supabase.from("items").delete().eq("user_id", user.id),
+          "Failed to clear tasks",
+        ),
+        safeMutate(
+          () => supabase.from("people").delete().eq("user_id", user.id),
+          "Failed to clear people",
+        ),
+        safeMutate(
+          () => supabase.from("threads").delete().eq("user_id", user.id),
+          "Failed to clear threads",
+        ),
+        safeMutate(
+          () => supabase.from("explores").delete().eq("user_id", user.id),
+          "Failed to clear explores",
+        ),
+        safeMutate(
+          () => supabase.from("locations").delete().eq("user_id", user.id),
+          "Failed to clear locations",
+        ),
+        safeMutate(
+          () => supabase.from("session_logs").delete().eq("user_id", user.id),
+          "Failed to clear session logs",
+        ),
+        safeMutate(
+          () =>
+            supabase.from("push_subscriptions").delete().eq("user_id", user.id),
+          "Failed to clear subscriptions",
+        ),
+        safeMutate(
+          () => supabase.from("user_settings").delete().eq("user_id", user.id),
+          "Failed to clear settings",
+        ),
+        safeMutate(
+          () => supabase.from("categories").delete().eq("user_id", user.id),
+          "Failed to clear categories",
+        ),
+        safeMutate(
+          () => supabase.from("ritual_logs").delete().eq("user_id", user.id),
+          "Failed to clear ritual logs",
+        ),
       ]);
+      if (!deletions.every((r) => r.success)) {
+        throw new Error("One or more tables could not be cleared");
+      }
       // Delete the auth user via server-side API
       const res = await fetch("/api/account", {
         method: "DELETE",
@@ -831,7 +879,9 @@ export function SettingsModal() {
                               options={
                                 typeof Intl !== "undefined" &&
                                 "supportedValuesOf" in Intl
-                                  ? (Intl as any)
+                                  ? /* @todo: Untyped usage justified per TOOL-01 */
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    (Intl as any)
                                       .supportedValuesOf("timeZone")
                                       .map((tz: string) => ({
                                         value: tz,
@@ -1293,7 +1343,9 @@ export function SettingsModal() {
                                 <Dropdown
                                   variant="select"
                                   value={settings.nudge_time || "10:00"}
-                                  onChange={(val) => updateSetting("nudge_time", val)}
+                                  onChange={(val) =>
+                                    updateSetting("nudge_time", val)
+                                  }
                                   className="w-full"
                                   options={TIME_OPTIONS}
                                 />
@@ -1312,7 +1364,9 @@ export function SettingsModal() {
                                 <Dropdown
                                   variant="select"
                                   value={settings.shutdown_time || "17:00"}
-                                  onChange={(val) => updateSetting("shutdown_time", val)}
+                                  onChange={(val) =>
+                                    updateSetting("shutdown_time", val)
+                                  }
                                   className="w-full"
                                   options={TIME_OPTIONS}
                                 />
@@ -1402,8 +1456,15 @@ export function SettingsModal() {
                                   </div>
                                   <Dropdown
                                     variant="select"
-                                    value={String(settings.auto_archive_days ?? 7)}
-                                    onChange={(val) => updateSetting("auto_archive_days", Number(val))}
+                                    value={String(
+                                      settings.auto_archive_days ?? 7,
+                                    )}
+                                    onChange={(val) =>
+                                      updateSetting(
+                                        "auto_archive_days",
+                                        Number(val),
+                                      )
+                                    }
                                     className="w-40"
                                     options={[
                                       { value: "0", label: "Immediately" },

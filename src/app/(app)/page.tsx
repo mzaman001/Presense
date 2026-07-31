@@ -3,9 +3,8 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Play,
   ArrowRight,
@@ -45,24 +44,6 @@ interface TaskItem {
   completed_at: string | null;
   category: string | null;
   user_id: string;
-}
-
-interface PersonItem {
-  id: string;
-  name: string;
-  next_meeting: string | null;
-}
-
-interface ThreadItem {
-  id: string;
-  title: string;
-  color_accent: string;
-}
-
-interface ExploreItem {
-  id: string;
-  title: string;
-  type: string;
 }
 
 /* @todo: Untyped usage justified per TOOL-01 */
@@ -133,7 +114,7 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
 export default function HomeDashboard() {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
-  const { userSettings, setUserSettings, setActiveTimer } = useAppStore();
+  const { userSettings, setActiveTimer } = useAppStore();
 
   const [taskToEdit, setTaskToEdit] = useState<TaskItem | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
@@ -298,31 +279,54 @@ export default function HomeDashboard() {
     if (!space) return;
     try {
       if (space === "do") {
-        await supabase.from("items").update({ status: "active" }).eq("id", id);
+        const { success } = await safeMutate(
+          () =>
+            supabase.from("items").update({ status: "active" }).eq("id", id),
+          "Failed to route to Do",
+        );
+        if (!success) return;
       } else if (space === "explore") {
         /* @todo: Untyped usage justified per TOOL-01 */
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const item = inboxItems.find((i: any) => i.id === id);
         if (!item) return;
-        await supabase.from("items").delete().eq("id", id);
-        await supabase.from("explores").insert({
-          user_id: item.user_id,
-          title: item.title,
-          type: "other",
-          status: "active",
-        });
+        const { success } = await safeMutate(
+          () =>
+            supabase.from("explores").insert({
+              user_id: item.user_id,
+              title: item.title,
+              type: "other",
+              status: "active",
+            }),
+          "Failed to route to Explore",
+        );
+        if (!success) return;
+        const { success: removed } = await safeMutate(
+          () => supabase.from("items").delete().eq("id", id),
+          "Routed, but failed to remove from Inbox",
+        );
+        if (!removed) return;
       } else if (space === "think") {
         /* @todo: Untyped usage justified per TOOL-01 */
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const item = inboxItems.find((i: any) => i.id === id);
         if (!item) return;
-        await supabase.from("items").delete().eq("id", id);
-        await supabase.from("threads").insert({
-          user_id: item.user_id,
-          title: item.title,
-          status: "active",
-          color_accent: "#2DD4BF",
-        });
+        const { success } = await safeMutate(
+          () =>
+            supabase.from("threads").insert({
+              user_id: item.user_id,
+              title: item.title,
+              status: "active",
+              color_accent: "#2DD4BF",
+            }),
+          "Failed to route to Think",
+        );
+        if (!success) return;
+        const { success: removed } = await safeMutate(
+          () => supabase.from("items").delete().eq("id", id),
+          "Routed, but failed to remove from Inbox",
+        );
+        if (!removed) return;
       }
       toast.success(`Routed to ${space}`);
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -333,7 +337,11 @@ export default function HomeDashboard() {
 
   const dismissInboxItem = async (id: string) => {
     try {
-      await supabase.from("items").update({ status: "deleted" }).eq("id", id);
+      const { success } = await safeMutate(
+        () => supabase.from("items").update({ status: "deleted" }).eq("id", id),
+        "Failed to dismiss",
+      );
+      if (!success) return;
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     } catch {
       toast.error("Failed to dismiss");
@@ -639,7 +647,7 @@ export default function HomeDashboard() {
                           },
                         },
                       });
-                    } catch (error) {
+                    } catch {
                       // Rollback snooze
                       queryClient.setQueryData(
                         ["dashboard"],
