@@ -1,12 +1,11 @@
 "use client";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-
 import React, { useEffect, useState, useCallback } from "react";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Plus, Loader2, Link2, BookOpen, Lightbulb, Trash2 } from "lucide-react";
+import { Plus, Link2, BookOpen, Lightbulb, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -15,10 +14,9 @@ import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { ExploreDrawer } from "@/components/features/ExploreDrawer";
 import { LenisProvider } from "@/components/layout/LenisProvider";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
-import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 
 interface ExploreItem {
   id: string;
@@ -33,22 +31,29 @@ interface ExploreItem {
 }
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
-  link: Link2, book: BookOpen, note: Lightbulb,
+  link: Link2,
+  book: BookOpen,
+  note: Lightbulb,
 };
 const TYPE_COLORS: Record<string, string> = {
-  link: "var(--color-accent)", book: "var(--accent)", note: "#2DD4BF",
+  link: "var(--color-accent)",
+  book: "var(--accent)",
+  note: "#2DD4BF",
 };
 
 const FILTERS = ["All Saved", "Links", "Notes", "Books"];
 const FILTER_MAP: Record<string, string | null> = {
-  "All Saved": null, Links: "link", Notes: "note", Books: "book",
+  "All Saved": null,
+  Links: "link",
+  Notes: "note",
+  Books: "book",
 };
 
-const ExploreItemCard = ({ 
-  item, 
-  setEditItem, 
-  deleteExploreItem, 
-  timeAgo 
+const ExploreItemCard = ({
+  item,
+  setEditItem,
+  deleteExploreItem,
+  timeAgo,
 }: {
   item: ExploreItem;
   setEditItem: (item: ExploreItem) => void;
@@ -70,7 +75,12 @@ const ExploreItemCard = ({
     }
   };
 
-  const mappedType = (item.type === "quote" || item.type === "concept") ? "note" : (["link", "note", "book"].includes(item.type) ? item.type : "note");
+  const mappedType =
+    item.type === "quote" || item.type === "concept"
+      ? "note"
+      : ["link", "note", "book"].includes(item.type)
+        ? item.type
+        : "note";
   const Icon = TYPE_ICONS[mappedType] ?? Lightbulb;
   const color = TYPE_COLORS[mappedType] ?? "#2DD4BF";
   const isUnread = !item.revisited_at;
@@ -82,18 +92,19 @@ const ExploreItemCard = ({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="explore-item-wrapper group relative rounded-2xl overflow-hidden"
+      className="explore-item-wrapper group relative overflow-hidden rounded-2xl"
     >
       {/* Swipe-to-delete reveal layer */}
       <m.div
-        className="absolute inset-0 flex items-center justify-end pr-5 rounded-2xl overflow-hidden"
+        className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-2xl pr-5"
         style={{
-          background: "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
           opacity: deleteOpacity,
         }}
       >
         <m.div style={{ scale: deleteScale }}>
-          <UiIcon className="w-5 h-5 text-red-400" icon={Trash2} />
+          <UiIcon className="h-5 w-5 text-red-400" icon={Trash2} />
         </m.div>
       </m.div>
 
@@ -108,28 +119,49 @@ const ExploreItemCard = ({
       >
         <GlassCard
           onClick={() => setEditItem(item)}
-          className={cn("p-5 hover:scale-[1.01] transition-transform relative group cursor-pointer hover:border-[var(--color-accent)]/30 !rounded-2xl", isUnread && "border-[var(--accent-dim-hover)]")}
+          className={cn(
+            "group relative cursor-pointer !rounded-2xl p-5 transition-transform hover:scale-[1.01] hover:border-[var(--color-accent)]/30",
+            isUnread && "border-[var(--accent-dim-hover)]",
+          )}
         >
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}22` }}>
-              <Icon className="w-4 h-4" style={{ color }} />
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: `${color}22` }}
+            >
+              <Icon className="h-4 w-4" style={{ color }} />
             </div>
-            <div className="flex-1 min-w-0 pr-24">
+            <div className="min-w-0 flex-1 pr-24">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-[var(--color-text-1)] leading-snug">{item.title}</p>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />}
-                  <span className="text-caption font-bold uppercase text-[var(--color-text-3)]">{mappedType}</span>
+                <p className="text-sm leading-snug font-semibold text-[var(--color-text-1)]">
+                  {item.title}
+                </p>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {isUnread && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                  )}
+                  <span className="text-caption font-bold text-[var(--color-text-3)] uppercase">
+                    {mappedType}
+                  </span>
                 </div>
               </div>
               {item.note && item.note !== item.title && (
-                <p className="text-xs text-[rgba(255,255,255,0.45)] mt-1 line-clamp-2">{item.note}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-[rgba(255,255,255,0.45)]">
+                  {item.note}
+                </p>
               )}
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 {item.tags?.map((tag) => (
-                  <span key={tag} className="text-caption text-[rgba(255,255,255,0.35)] bg-[var(--color-surface)] px-2 py-0.5 rounded-full">#{tag}</span>
+                  <span
+                    key={tag}
+                    className="text-caption rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[rgba(255,255,255,0.35)]"
+                  >
+                    #{tag}
+                  </span>
                 ))}
-                <span className="text-meta text-[rgba(255,255,255,0.25)] ml-auto">{timeAgo(item.saved_at)}</span>
+                <span className="text-meta ml-auto text-[rgba(255,255,255,0.25)]">
+                  {timeAgo(item.saved_at)}
+                </span>
               </div>
             </div>
           </div>
@@ -141,7 +173,6 @@ const ExploreItemCard = ({
 
 export default function ExplorePage() {
   const supabase = createClient();
-  const { userSettings, setCaptureModalOpen } = useAppStore();
   const [items, setItems] = useState<ExploreItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All Saved");
@@ -151,8 +182,11 @@ export default function ExplorePage() {
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
 
   const fetchItems = useCallback(async () => {
-    let query = supabase.from("explores").select("*").order("saved_at", { ascending: false });
-    
+    let query = supabase
+      .from("explores")
+      .select("*")
+      .order("saved_at", { ascending: false });
+
     if (showTrash) query = query.eq("status", "deleted");
     else if (showArchive) query = query.eq("status", "archived");
     else query = query.eq("status", "active");
@@ -171,6 +205,7 @@ export default function ExplorePage() {
   }, [supabase, filter, showArchive, showTrash]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchItems();
   }, [fetchItems]);
 
@@ -185,28 +220,33 @@ export default function ExplorePage() {
   };
 
   const deleteExploreItem = async (item: ExploreItem) => {
-    setItems(prev => prev.filter(t => t.id !== item.id));
+    setItems((prev) => prev.filter((t) => t.id !== item.id));
 
     try {
-      const { error } = await supabase.from("explores").update({
-        status: "deleted",
-        deleted_at: new Date().toISOString()
-      }).eq("id", item.id);
+      const { error } = await supabase
+        .from("explores")
+        .update({
+          status: "deleted",
+          deleted_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
 
       if (error) throw error;
       toast.success("Moved to trash", {
         action: {
           label: "Undo",
           onClick: async () => {
-            try {
-              await supabase.from("explores").update({ status: "active", deleted_at: null }).eq("id", item.id);
-              setItems(prev => [item, ...prev]);
-            } catch {
-              toast.error("Failed to restore");
-              fetchItems();
-            }
-          }
-        }
+            const { success } = await safeMutate(
+              () =>
+                supabase
+                  .from("explores")
+                  .update({ status: "active", deleted_at: null })
+                  .eq("id", item.id),
+              "Failed to restore",
+            );
+            if (success) setItems((prev) => [item, ...prev]);
+          },
+        },
       });
     } catch {
       toast.error("Failed to delete");
@@ -217,92 +257,127 @@ export default function ExplorePage() {
   return (
     <LenisProvider>
       <div className="space-y-6">
-      <PageHeader
-        title="Explore"
-        actions={
-          <Button variant="secondary" onClick={() => setIsAddDrawerOpen(true)} className="!text-[var(--accent)] !border-[var(--accent-border)] !bg-[var(--accent-dim)] hover:!bg-[var(--accent-dim-hover)]">
-            <UiIcon className="w-4 h-4" icon={Plus} /> Save item
-          </Button>
-        }
-      >
-        <Tabs value={showTrash ? "trash" : showArchive ? "archive" : "active"} onValueChange={(v) => {
-          setShowArchive(v === "archive");
-          setShowTrash(v === "trash");
-        }}>
-          <TabsList variant="line" className="border-[var(--color-border)]">
-            <TabsTrigger value="active" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Active</TabsTrigger>
-            <TabsTrigger value="archive" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Archive</TabsTrigger>
-            <TabsTrigger value="trash" className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]">Trash</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </PageHeader>
-
-      <div className="flex flex-col gap-6">
-        <div className="space-y-6">
-          <ContextualTip 
-            id="explore_space" 
-            title="Things worth keeping" 
-            description="This is the Explore space. Drop interesting links, quotes, or books here to revisit them later." 
-          />
-
-          {/* Filter pills */}
-          <div className="flex gap-2 flex-wrap">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={cn(
-                  "text-xs px-3 py-1.5 rounded-full border transition-all",
-                  filter === f
-                    ? "bg-[var(--accent)] text-[var(--color-background)] border-[var(--accent)] font-semibold"
-                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]"
-                )}
-              >{f}</button>
-            ))}
-          </div>
-
-          {loading ? (
-            <div className="py-6">
-              <PageSkeleton count={4} type="card" />
-            </div>
-          ) : items.length === 0 ? (
-            <GlassCard className="p-12 text-center flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)]">
-              <div className="w-12 h-12 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
-                <UiIcon className="w-6 h-6 text-[var(--color-text-3)]" icon={Link2} />
-              </div>
-              <h3 className="text-[var(--color-text-1)] font-medium mb-2">Nothing saved yet</h3>
-              <p className="text-sm text-[var(--color-text-3)] max-w-sm mb-6">Capture &ldquo;interesting...&rdquo; or paste a URL to save articles, tweets, and links.</p>
-              <Button variant="primary" 
-                onClick={() => setIsAddDrawerOpen(true)}
-                className="gap-2"
+        <PageHeader
+          title="Explore"
+          actions={
+            <Button
+              variant="secondary"
+              onClick={() => setIsAddDrawerOpen(true)}
+              className="!border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)]"
+            >
+              <UiIcon className="h-4 w-4" icon={Plus} /> Save item
+            </Button>
+          }
+        >
+          <Tabs
+            value={showTrash ? "trash" : showArchive ? "archive" : "active"}
+            onValueChange={(v) => {
+              setShowArchive(v === "archive");
+              setShowTrash(v === "trash");
+            }}
+          >
+            <TabsList variant="line" className="border-[var(--color-border)]">
+              <TabsTrigger
+                value="active"
+                className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]"
               >
-                <UiIcon size={16} icon={Plus} /> Save Link
-              </Button>
-            </GlassCard>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {items.map((item) => (
-                <ExploreItemCard
-                  key={item.id}
-                  item={item}
-                  setEditItem={setEditItem}
-                  deleteExploreItem={deleteExploreItem}
-                  timeAgo={timeAgo}
-                />
+                Active
+              </TabsTrigger>
+              <TabsTrigger
+                value="archive"
+                className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]"
+              >
+                Archive
+              </TabsTrigger>
+              <TabsTrigger
+                value="trash"
+                className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]"
+              >
+                Trash
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </PageHeader>
+
+        <div className="flex flex-col gap-6">
+          <div className="space-y-6">
+            <ContextualTip
+              id="explore_space"
+              title="Things worth keeping"
+              description="This is the Explore space. Drop interesting links, quotes, or books here to revisit them later."
+            />
+
+            {/* Filter pills */}
+            <div className="flex flex-wrap gap-2">
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs transition-all",
+                    filter === f
+                      ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[var(--color-background)]"
+                      : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]",
+                  )}
+                >
+                  {f}
+                </button>
               ))}
             </div>
-          )}
-        </div>
-      </div>
 
-      <ExploreDrawer 
-        item={editItem} 
-        isOpen={!!editItem || isAddDrawerOpen} 
-        onClose={() => { setEditItem(null); setIsAddDrawerOpen(false); }} 
-        onSaved={fetchItems} 
-      />
-    </div>
+            {loading ? (
+              <div className="py-6">
+                <PageSkeleton count={4} type="card" />
+              </div>
+            ) : items.length === 0 ? (
+              <GlassCard className="flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
+                  <UiIcon
+                    className="h-6 w-6 text-[var(--color-text-3)]"
+                    icon={Link2}
+                  />
+                </div>
+                <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
+                  Nothing saved yet
+                </h3>
+                <p className="mb-6 max-w-sm text-sm text-[var(--color-text-3)]">
+                  Capture &ldquo;interesting...&rdquo; or paste a URL to save
+                  articles, tweets, and links.
+                </p>
+                <Button
+                  variant="primary"
+                  onClick={() => setIsAddDrawerOpen(true)}
+                  className="gap-2"
+                >
+                  <UiIcon size={16} icon={Plus} /> Save Link
+                </Button>
+              </GlassCard>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {items.map((item) => (
+                  <ExploreItemCard
+                    key={item.id}
+                    item={item}
+                    setEditItem={setEditItem}
+                    deleteExploreItem={deleteExploreItem}
+                    timeAgo={timeAgo}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <ExploreDrawer
+          item={editItem}
+          isOpen={!!editItem || isAddDrawerOpen}
+          onClose={() => {
+            setEditItem(null);
+            setIsAddDrawerOpen(false);
+          }}
+          onSaved={fetchItems}
+        />
+      </div>
     </LenisProvider>
   );
 }
-

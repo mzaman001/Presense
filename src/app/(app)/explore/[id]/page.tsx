@@ -1,8 +1,18 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, use } from "react";
-import { createClient } from "@/lib/supabase";
-import { ArrowLeft, Loader2, Save, Trash2, Archive, ExternalLink, X, Plus, ChevronDown } from "lucide-react";
+import { createClient, safeMutate } from "@/lib/supabase";
+import {
+  ArrowLeft,
+  Loader2,
+  Save,
+  Trash2,
+  Archive,
+  ExternalLink,
+  X,
+  Plus,
+  ChevronDown,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -11,9 +21,23 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { m, AnimatePresence } from "framer-motion";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
-const PRESET_TYPES = ["link", "quote", "concept", "book", "movie", "article", "course", "podcast", "other"];
+const PRESET_TYPES = [
+  "link",
+  "quote",
+  "concept",
+  "book",
+  "movie",
+  "article",
+  "course",
+  "podcast",
+  "other",
+];
 
-export default function ExploreDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ExploreDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const supabase = createClient();
@@ -22,7 +46,7 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
 
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
-  
+
   // Custom type support
   const [type, setType] = useState("other");
   const [isCustomType, setIsCustomType] = useState(false);
@@ -36,17 +60,21 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
   const [note, setNote] = useState("");
   const [status, setStatus] = useState("active");
   const [linkedThreadId, setLinkedThreadId] = useState<string | null>(null);
-  
-  const [threads, setThreads] = useState<any[]>([]);
+
+  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
   const [isThreadDropdownOpen, setIsThreadDropdownOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const fetchItem = useCallback(async () => {
-    const { data: item } = await supabase.from("explores").select("*").eq("id", id).single();
+    const { data: item } = await supabase
+      .from("explores")
+      .select("*")
+      .eq("id", id)
+      .single();
     if (item) {
       setTitle(item.title);
       setUrl(item.url || "");
-      
+
       if (item.type && PRESET_TYPES.includes(item.type)) {
         setType(item.type);
         setIsCustomType(false);
@@ -62,21 +90,37 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
       setLinkedThreadId(item.linked_thread_id);
 
       if (!item.revisited_at) {
-        supabase.from("explores").update({ revisited_at: new Date().toISOString() }).eq("id", id).then();
+        await safeMutate(
+          () =>
+            supabase
+              .from("explores")
+              .update({ revisited_at: new Date().toISOString() })
+              .eq("id", id),
+          "Failed to mark as revisited",
+        );
       }
     }
 
-    const { data: threadData } = await supabase.from("threads").select("id, title").eq("status", "active");
+    const { data: threadData } = await supabase
+      .from("threads")
+      .select("id, title")
+      .eq("status", "active");
     setThreads(threadData || []);
-    
+
     setLoading(false);
   }, [supabase, id]);
 
-  useEffect(() => { fetchItem(); }, [fetchItem]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchItem();
+  }, [fetchItem]);
 
   // Close dropdowns on outside click
   useEffect(() => {
-    const closeAll = () => { setIsTypeDropdownOpen(false); setIsThreadDropdownOpen(false); };
+    const closeAll = () => {
+      setIsTypeDropdownOpen(false);
+      setIsThreadDropdownOpen(false);
+    };
     document.addEventListener("click", closeAll);
     return () => document.removeEventListener("click", closeAll);
   }, []);
@@ -93,27 +137,32 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(t => t !== tagToRemove));
+    setTags(tags.filter((t) => t !== tagToRemove));
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const finalType = isCustomType ? (customTypeInput.trim() || "other") : type;
-      const { error } = await supabase.from("explores").update({
-        title,
-        url: url || null,
-        type: finalType,
-        note,
-        tags,
-        linked_thread_id: linkedThreadId || null
-      }).eq("id", id);
+      const finalType = isCustomType ? customTypeInput.trim() || "other" : type;
+      const { error } = await supabase
+        .from("explores")
+        .update({
+          title,
+          url: url || null,
+          type: finalType,
+          note,
+          tags,
+          linked_thread_id: linkedThreadId || null,
+        })
+        .eq("id", id);
       if (error) throw error;
       toast.success("Saved");
       router.push("/explore");
     } catch (err: unknown) {
-      toast.error("Failed to save", { description: err instanceof Error ? err.message : "Unknown error" });
+      toast.error("Failed to save", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
       setSaving(false);
     }
   };
@@ -121,47 +170,78 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
   const handleArchive = async () => {
     try {
       const newStatus = status === "archived" ? "active" : "archived";
-      const { error } = await supabase.from("explores").update({ status: newStatus }).eq("id", id);
+      const { error } = await supabase
+        .from("explores")
+        .update({ status: newStatus })
+        .eq("id", id);
       if (error) throw error;
       toast.success(newStatus === "archived" ? "Archived" : "Restored");
       router.push("/explore");
     } catch (err: unknown) {
-      toast.error("Failed to archive", { description: err instanceof Error ? err.message : "Unknown error" });
+      toast.error("Failed to archive", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
     }
   };
 
   const handleDelete = async () => {
     try {
-      const { error } = await supabase.from("explores").update({ status: "deleted" }).eq("id", id);
+      const { error } = await supabase
+        .from("explores")
+        .update({ status: "deleted" })
+        .eq("id", id);
       if (error) throw error;
       toast.success("Deleted (30-day trash)");
       router.push("/explore");
     } catch (err: unknown) {
-      toast.error("Failed to delete", { description: err instanceof Error ? err.message : "Unknown error" });
+      toast.error("Failed to delete", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><UiIcon className="w-6 h-6 animate-spin text-[var(--color-text-3)]" icon={Loader2} /></div>;
+    return (
+      <div className="flex justify-center py-20">
+        <UiIcon
+          className="h-6 w-6 animate-spin text-[var(--color-text-3)]"
+          icon={Loader2}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-20">
+    <div className="mx-auto max-w-2xl space-y-6 pb-20">
       <div className="flex items-center justify-between">
-        <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
-          <UiIcon className="w-4 h-4" icon={ArrowLeft} /> Back to Explore
+        <Link
+          href="/explore"
+          className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] transition-colors hover:text-[var(--color-text-1)]"
+        >
+          <UiIcon className="h-4 w-4" icon={ArrowLeft} /> Back to Explore
         </Link>
         <div className="flex items-center gap-2">
           {url && (
-            <a href={url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
-              <UiIcon className="w-4 h-4" icon={ExternalLink} />
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg bg-[var(--color-surface)] p-2 text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+            >
+              <UiIcon className="h-4 w-4" icon={ExternalLink} />
             </a>
           )}
-          <button onClick={handleArchive} className="p-2 rounded-lg bg-[var(--color-surface)] text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors">
-            <UiIcon className="w-4 h-4" icon={Archive} />
+          <button
+            onClick={handleArchive}
+            className="rounded-lg bg-[var(--color-surface)] p-2 text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+          >
+            <UiIcon className="h-4 w-4" icon={Archive} />
           </button>
-          <button onClick={() => setIsDeleteModalOpen(true)} className="p-2 rounded-lg bg-[rgba(248,113,113,0.1)] text-[#F87171] hover:bg-[rgba(248,113,113,0.2)] transition-colors">
-            <UiIcon className="w-4 h-4" icon={Trash2} />
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="rounded-lg bg-[rgba(248,113,113,0.1)] p-2 text-[#F87171] transition-colors hover:bg-[rgba(248,113,113,0.2)]"
+          >
+            <UiIcon className="h-4 w-4" icon={Trash2} />
           </button>
         </div>
       </div>
@@ -169,58 +249,85 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
       <GlassCard className="p-6">
         <form onSubmit={handleSave} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Title</label>
+            <label className="mb-2 block text-xs font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
+              Title
+            </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] transition-colors"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-1)] transition-colors outline-none focus:border-[var(--accent)]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">URL</label>
+            <label className="mb-2 block text-xs font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
+              URL
+            </label>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] transition-colors"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-1)] transition-colors outline-none focus:border-[var(--accent)]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Type</label>
-              
+              <label className="mb-2 block text-xs font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
+                Type
+              </label>
+
               <div className="relative">
-                <button 
+                <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); setIsTypeDropdownOpen(!isTypeDropdownOpen); setIsThreadDropdownOpen(false); }}
-                  className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsTypeDropdownOpen(!isTypeDropdownOpen);
+                    setIsThreadDropdownOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm text-[var(--color-text-1)] transition-colors hover:border-[var(--accent)]"
                 >
-                  <span className="capitalize">{isCustomType ? (customTypeInput || "Custom") : type}</span>
-                  <UiIcon className="w-4 h-4 text-[var(--color-text-3)]" icon={ChevronDown} />
+                  <span className="capitalize">
+                    {isCustomType ? customTypeInput || "Custom" : type}
+                  </span>
+                  <UiIcon
+                    className="h-4 w-4 text-[var(--color-text-3)]"
+                    icon={ChevronDown}
+                  />
                 </button>
                 <AnimatePresence>
                   {isTypeDropdownOpen && (
-                    <m.div 
-                      initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                      className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5"
+                    <m.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      className="absolute top-full left-0 z-50 mt-2 flex w-full flex-col gap-0.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] p-1 shadow-2xl"
                     >
-                      {PRESET_TYPES.map(preset => (
-                        <button 
-                          key={preset} type="button"
-                          onClick={(e) => { e.stopPropagation(); setType(preset); setIsCustomType(false); setIsTypeDropdownOpen(false); }}
-                          className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] capitalize"
+                      {PRESET_TYPES.map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setType(preset);
+                            setIsCustomType(false);
+                            setIsTypeDropdownOpen(false);
+                          }}
+                          className="rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] capitalize hover:bg-[rgba(255,255,255,0.08)]"
                         >
                           {preset}
                         </button>
                       ))}
                       <div className="my-1 border-t border-[var(--color-border)]" />
-                      <button 
+                      <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); setIsCustomType(true); setIsTypeDropdownOpen(false); }}
-                        className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--accent)] flex items-center gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsCustomType(true);
+                          setIsTypeDropdownOpen(false);
+                        }}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--accent)] hover:bg-[rgba(255,255,255,0.08)]"
                       >
-                        <UiIcon className="w-3 h-3" icon={Plus} /> Custom Type
+                        <UiIcon className="h-3 w-3" icon={Plus} /> Custom Type
                       </button>
                     </m.div>
                   )}
@@ -229,24 +336,34 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
 
               {isCustomType && (
                 <m.input
-                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
                   autoFocus
                   placeholder="Enter custom type..."
                   value={customTypeInput}
                   onChange={(e) => setCustomTypeInput(e.target.value)}
-                  className="w-full mt-3 bg-[var(--color-surface)] border border-[var(--accent)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] transition-colors"
+                  className="mt-3 w-full rounded-lg border border-[var(--accent)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-1)] transition-colors outline-none focus:border-[var(--accent)]"
                 />
               )}
             </div>
-            
+
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Tags</label>
-              <div className="p-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] focus-within:border-[var(--accent)] transition-colors flex flex-wrap gap-2">
-                {tags.map(t => (
-                  <span key={t} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--accent-dim)] text-[var(--accent)] text-xs font-medium">
+              <label className="mb-2 block text-xs font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
+                Tags
+              </label>
+              <div className="flex flex-wrap gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2 transition-colors focus-within:border-[var(--accent)]">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="flex items-center gap-1 rounded-md bg-[var(--accent-dim)] px-2 py-1 text-xs font-medium text-[var(--accent)]"
+                  >
                     {t}
-                    <button type="button" onClick={() => handleRemoveTag(t)} className="hover:text-[var(--color-text-1)] transition-colors">
-                      <UiIcon className="w-3 h-3" icon={X} />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(t)}
+                      className="transition-colors hover:text-[var(--color-text-1)]"
+                    >
+                      <UiIcon className="h-3 w-3" icon={X} />
                     </button>
                   </span>
                 ))}
@@ -255,43 +372,66 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyDown={handleAddTag}
                   placeholder="Add tag and press Enter..."
-                  className="flex-1 min-w-[120px] bg-transparent text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] outline-none"
+                  className="min-w-[120px] flex-1 bg-transparent text-sm text-[var(--color-text-1)] outline-none placeholder:text-[var(--color-text-3)]"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Link to Think Thread</label>
+            <label className="mb-2 block text-xs font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
+              Link to Think Thread
+            </label>
             <div className="relative">
-              <button 
+              <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setIsThreadDropdownOpen(!isThreadDropdownOpen); setIsTypeDropdownOpen(false); }}
-                className="w-full flex items-center justify-between bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] hover:border-[var(--accent)] transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsThreadDropdownOpen(!isThreadDropdownOpen);
+                  setIsTypeDropdownOpen(false);
+                }}
+                className="flex w-full items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm text-[var(--color-text-1)] transition-colors hover:border-[var(--accent)]"
               >
                 <span className="truncate pr-4">
-                  {linkedThreadId ? threads.find(t => t.id === linkedThreadId)?.title || "Unknown Thread" : "-- No Thread Linked --"}
+                  {linkedThreadId
+                    ? threads.find((t) => t.id === linkedThreadId)?.title ||
+                      "Unknown Thread"
+                    : "-- No Thread Linked --"}
                 </span>
-                <UiIcon className="w-4 h-4 text-[var(--color-text-3)] shrink-0" icon={ChevronDown} />
+                <UiIcon
+                  className="h-4 w-4 shrink-0 text-[var(--color-text-3)]"
+                  icon={ChevronDown}
+                />
               </button>
               <AnimatePresence>
                 {isThreadDropdownOpen && (
-                  <m.div 
-                    initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                    className="absolute left-0 top-full mt-2 w-full p-1 rounded-xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar"
+                  <m.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="no-scrollbar absolute top-full left-0 z-50 mt-2 flex max-h-48 w-full flex-col gap-0.5 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] p-1 shadow-2xl"
                   >
-                    <button 
+                    <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setLinkedThreadId(null); setIsThreadDropdownOpen(false); }}
-                      className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-3)]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLinkedThreadId(null);
+                        setIsThreadDropdownOpen(false);
+                      }}
+                      className="rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-3)] hover:bg-[rgba(255,255,255,0.08)]"
                     >
                       -- No Thread Linked --
                     </button>
-                    {threads.map(t => (
-                      <button 
-                        key={t.id} type="button"
-                        onClick={(e) => { e.stopPropagation(); setLinkedThreadId(t.id); setIsThreadDropdownOpen(false); }}
-                        className="text-left px-3 py-2 text-sm rounded-lg hover:bg-[rgba(255,255,255,0.08)] text-[var(--color-text-1)] truncate"
+                    {threads.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLinkedThreadId(t.id);
+                          setIsThreadDropdownOpen(false);
+                        }}
+                        className="truncate rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] hover:bg-[rgba(255,255,255,0.08)]"
                       >
                         {t.title}
                       </button>
@@ -303,21 +443,27 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-2">Notes</label>
+            <label className="mb-2 block text-xs font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
+              Notes
+            </label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={5}
-              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)] resize-none"
+              className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--accent)]"
             />
           </div>
 
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--color-background)] font-semibold hover:bg-[#F59E0B] transition-colors disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--color-background)] transition-colors hover:bg-[#F59E0B] disabled:opacity-50"
           >
-            {saving ? <UiIcon className="w-4 h-4 animate-spin" icon={Loader2} /> : <UiIcon className="w-4 h-4" icon={Save} />}
+            {saving ? (
+              <UiIcon className="h-4 w-4 animate-spin" icon={Loader2} />
+            ) : (
+              <UiIcon className="h-4 w-4" icon={Save} />
+            )}
             Save Changes
           </button>
         </form>

@@ -4,9 +4,18 @@ import { logger } from "@/lib/logger";
 import React, { useEffect, useState, useCallback, use } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { m, AnimatePresence } from "framer-motion";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { ArrowLeft, Loader2, Send, Sparkles, Trash2, Archive, Pin, RefreshCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Send,
+  Sparkles,
+  Trash2,
+  Archive,
+  Pin,
+  RefreshCcw,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -34,17 +43,23 @@ interface Thread {
   is_pinned: boolean;
 }
 
-export default function ThreadDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ThreadDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const supabase = createClient();
-  const prefetchedThreads = useAppStore(s => s.prefetchedThreads);
+  const prefetchedThreads = useAppStore((s) => s.prefetchedThreads);
   const prefetched = prefetchedThreads[id] as Thread | undefined;
   const [thread, setThread] = useState<Thread | null>(prefetched || null);
   const [loading, setLoading] = useState(!prefetched);
   const [newEntry, setNewEntry] = useState("");
   const [saving, setSaving] = useState(false);
-  const [linkedExplores, setLinkedExplores] = useState<any[]>([]);
+  const [linkedExplores, setLinkedExplores] = useState<
+    { id: string; title: string; type: string | null }[]
+  >([]);
 
   const [people, setPeople] = useState<{ id: string; name: string }[]>([]);
   const [showPopover, setShowPopover] = useState(false);
@@ -54,9 +69,14 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     async function fetchPeople() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id);
+      const { data } = await supabase
+        .from("people")
+        .select("id, name")
+        .eq("user_id", user.id);
       if (data && Array.isArray(data)) {
         setPeople(data);
       }
@@ -65,33 +85,37 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   }, [supabase]);
 
   const filteredPeople = React.useMemo(() => {
-    return people.filter(p =>
-      p.name.toLowerCase().includes(popoverSearch.toLowerCase())
+    return people.filter((p) =>
+      p.name.toLowerCase().includes(popoverSearch.toLowerCase()),
     );
   }, [people, popoverSearch]);
 
-  const handleSelectPerson = useCallback((person: { id: string; name: string }) => {
-    if (!textareaRef.current) return;
-    const val = newEntry;
-    const selectionStart = textareaRef.current.selectionStart || 0;
-    const textBeforeCursor = val.slice(0, selectionStart);
-    const textAfterCursor = val.slice(selectionStart);
-    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+  const handleSelectPerson = useCallback(
+    (person: { id: string; name: string }) => {
+      if (!textareaRef.current) return;
+      const val = newEntry;
+      const selectionStart = textareaRef.current.selectionStart || 0;
+      const textBeforeCursor = val.slice(0, selectionStart);
+      const textAfterCursor = val.slice(selectionStart);
+      const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
-    const mentionText = `@[${person.name}](${person.id})`;
-    const newVal = val.slice(0, lastAtIndex) + mentionText + " " + textAfterCursor;
-    setNewEntry(newVal);
-    setShowPopover(false);
+      const mentionText = `@[${person.name}](${person.id})`;
+      const newVal =
+        val.slice(0, lastAtIndex) + mentionText + " " + textAfterCursor;
+      setNewEntry(newVal);
+      setShowPopover(false);
 
-    // Focus textarea and move cursor
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        const cursorPosition = lastAtIndex + mentionText.length + 1;
-        textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
-      }
-    }, 0);
-  }, [newEntry]);
+      // Focus textarea and move cursor
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const cursorPosition = lastAtIndex + mentionText.length + 1;
+          textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
+        }
+      }, 0);
+    },
+    [newEntry],
+  );
 
   const handleInputChange = (val: string) => {
     setNewEntry(val);
@@ -101,7 +125,12 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     const textBeforeCursor = val.slice(0, selectionStart);
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
-    if (lastAtIndex !== -1 && (lastAtIndex === 0 || textBeforeCursor[lastAtIndex - 1] === " " || textBeforeCursor[lastAtIndex - 1] === "\n")) {
+    if (
+      lastAtIndex !== -1 &&
+      (lastAtIndex === 0 ||
+        textBeforeCursor[lastAtIndex - 1] === " " ||
+        textBeforeCursor[lastAtIndex - 1] === "\n")
+    ) {
       const search = textBeforeCursor.slice(lastAtIndex + 1);
       if (!search.includes(" ") && !search.includes("\n")) {
         setShowPopover(true);
@@ -114,7 +143,9 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   };
 
   const getLinkedPeople = (entriesList: ThreadEntry[]) => {
-    const allMentions = entriesList.flatMap(e => extractMentions(e.text || ""));
+    const allMentions = entriesList.flatMap((e) =>
+      extractMentions(e.text || ""),
+    );
     return Array.from(new Set(allMentions));
   };
 
@@ -125,7 +156,9 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         setSelectedIndex((prev) => (prev + 1) % filteredPeople.length);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + filteredPeople.length) % filteredPeople.length);
+        setSelectedIndex(
+          (prev) => (prev - 1 + filteredPeople.length) % filteredPeople.length,
+        );
       } else if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
         handleSelectPerson(filteredPeople[selectedIndex]);
@@ -134,13 +167,13 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         setShowPopover(false);
       }
     } else {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         handleAddEntry(e);
       }
     }
   };
-  
+
   const [deleteThreadOpen, setDeleteThreadOpen] = useState(false);
   const [deleteEntryIndex, setDeleteEntryIndex] = useState<number | null>(null);
 
@@ -149,7 +182,10 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
+      if (
+        colorPickerRef.current &&
+        !colorPickerRef.current.contains(event.target as Node)
+      ) {
         setIsColorPickerOpen(false);
       }
     };
@@ -158,16 +194,27 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
   }, []);
 
   const fetchThread = useCallback(async () => {
-    const { data: threadData } = await supabase.from("threads").select("*").eq("id", id).single();
+    const { data: threadData } = await supabase
+      .from("threads")
+      .select("*")
+      .eq("id", id)
+      .single();
     setThread(threadData as unknown as Thread);
-    
-    const { data: exploresData } = await supabase.from("explores").select("*").eq("linked_thread_id", id).in("status", ["active", "archived"]);
+
+    const { data: exploresData } = await supabase
+      .from("explores")
+      .select("id, title, type")
+      .eq("linked_thread_id", id)
+      .in("status", ["active", "archived"]);
     setLinkedExplores(exploresData || []);
-    
+
     setLoading(false);
   }, [supabase, id]);
 
-  useEffect(() => { fetchThread(); }, [fetchThread]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchThread();
+  }, [fetchThread]);
   useRealtime("threads", fetchThread);
   useRealtime("explores", fetchThread);
 
@@ -175,12 +222,17 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     if (!thread) return;
     try {
       const newPinStatus = !thread.is_pinned;
-      const { error } = await supabase.from("threads").update({ is_pinned: newPinStatus }).eq("id", thread.id);
+      const { error } = await supabase
+        .from("threads")
+        .update({ is_pinned: newPinStatus })
+        .eq("id", thread.id);
       if (error) throw error;
       setThread({ ...thread, is_pinned: newPinStatus });
       toast.success(newPinStatus ? "Thread pinned" : "Thread unpinned");
     } catch (error: unknown) {
-      toast.error("Failed to pin thread", { description: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to pin thread", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   };
 
@@ -188,37 +240,57 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     if (!thread) return;
     setIsColorPickerOpen(false);
     try {
-      const { error } = await supabase.from("threads").update({ color_accent: color }).eq("id", thread.id);
+      const { error } = await supabase
+        .from("threads")
+        .update({ color_accent: color })
+        .eq("id", thread.id);
       if (error) throw error;
       setThread({ ...thread, color_accent: color });
       toast.success("Color updated");
     } catch (error: unknown) {
-      toast.error("Failed to update color", { description: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to update color", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   };
 
   const handleArchive = async () => {
     if (!thread) return;
     try {
-      const newStatus = (thread.status === "archived" || thread.status === "deleted") ? "active" : "archived";
-      const { error } = await supabase.from("threads").update({ status: newStatus }).eq("id", thread.id);
+      const newStatus =
+        thread.status === "archived" || thread.status === "deleted"
+          ? "active"
+          : "archived";
+      const { error } = await supabase
+        .from("threads")
+        .update({ status: newStatus })
+        .eq("id", thread.id);
       if (error) throw error;
-      toast.success(newStatus === "active" ? "Thread restored" : "Thread archived");
+      toast.success(
+        newStatus === "active" ? "Thread restored" : "Thread archived",
+      );
       router.push("/think");
     } catch (error: unknown) {
-      toast.error("Failed to update thread status", { description: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to update thread status", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   };
 
   const handleDelete = async () => {
     if (!thread) return;
     try {
-      const { error } = await supabase.from("threads").update(moveItemToTrashPatch()).eq("id", id);
+      const { error } = await supabase
+        .from("threads")
+        .update(moveItemToTrashPatch())
+        .eq("id", id);
       if (error) throw error;
       toast.success("Moved to trash");
       router.push("/think");
     } catch (err: unknown) {
-      toast.error("Failed to delete", { description: err instanceof Error ? err.message : "Unknown error" });
+      toast.error("Failed to delete", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
     } finally {
       setDeleteThreadOpen(false);
     }
@@ -228,84 +300,122 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     e.preventDefault();
     if (!newEntry.trim() || !thread) return;
     setSaving(true);
-    
+
     try {
-      const entry = { text: newEntry.trim(), created_at: new Date().toISOString() };
+      const entry = {
+        text: newEntry.trim(),
+        created_at: new Date().toISOString(),
+      };
       const updatedEntries = [...(thread.entries || []), entry];
       const linkedPeople = getLinkedPeople(updatedEntries);
-      
-      const { error } = await supabase.from("threads").update({ 
-        entries: updatedEntries,
-        last_updated: new Date().toISOString(),
-        stale_prompt: null, // Clear stale prompt if they revisit
-        linked_people_ids: linkedPeople
-      }).eq("id", thread.id);
+
+      const { error } = await supabase
+        .from("threads")
+        .update({
+          entries: updatedEntries,
+          last_updated: new Date().toISOString(),
+          stale_prompt: null, // Clear stale prompt if they revisit
+          linked_people_ids: linkedPeople,
+        })
+        .eq("id", thread.id);
 
       if (error) throw error;
-      
+
       setThread({ ...thread, entries: updatedEntries, stale_prompt: null });
       setNewEntry("");
       toast.success("Added to thread");
     } catch (error: unknown) {
       logger.error("Think error:", error);
-      toast.error("Failed to save thought", { description: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to save thought", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><UiIcon className="w-6 h-6 animate-spin text-[var(--color-text-3)]" icon={Loader2} /></div>;
+    return (
+      <div className="flex justify-center py-20">
+        <UiIcon
+          className="h-6 w-6 animate-spin text-[var(--color-text-3)]"
+          icon={Loader2}
+        />
+      </div>
+    );
   }
 
   if (!thread) {
-    return <div className="text-center py-20 text-[var(--color-text-3)]">Thread not found.</div>;
+    return (
+      <div className="py-20 text-center text-[var(--color-text-3)]">
+        Thread not found.
+      </div>
+    );
   }
 
   const handleDeleteEntry = async () => {
     if (!thread || deleteEntryIndex === null) return;
     try {
-      const updatedEntries = thread.entries.filter((_, i) => i !== deleteEntryIndex);
+      const updatedEntries = thread.entries.filter(
+        (_, i) => i !== deleteEntryIndex,
+      );
       const linkedPeople = getLinkedPeople(updatedEntries);
-      const { error } = await supabase.from("threads").update({ 
-        entries: updatedEntries as any,
-        linked_people_ids: linkedPeople
-      }).eq("id", thread.id);
+      const { error } = await supabase
+        .from("threads")
+        .update({
+          /* @todo: Untyped usage justified per TOOL-01 */
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          entries: updatedEntries as any,
+          linked_people_ids: linkedPeople,
+        })
+        .eq("id", thread.id);
       if (error) throw error;
       setThread({ ...thread, entries: updatedEntries });
       toast.success("Entry deleted");
     } catch (err: unknown) {
-      toast.error("Failed to delete entry", { description: err instanceof Error ? err.message : "Unknown error" });
+      toast.error("Failed to delete entry", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
     } finally {
       setDeleteEntryIndex(null);
     }
   };
 
   return (
-    <div className="space-y-8 max-w-2xl mx-auto pb-32">
-      <Link href="/think" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors">
-        <UiIcon className="w-4 h-4" icon={ArrowLeft} /> Back to Think
+    <div className="mx-auto max-w-2xl space-y-8 pb-32">
+      <Link
+        href="/think"
+        className="inline-flex items-center gap-2 text-sm text-[var(--color-text-3)] transition-colors hover:text-[var(--color-text-1)]"
+      >
+        <UiIcon className="h-4 w-4" icon={ArrowLeft} /> Back to Think
       </Link>
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="relative pt-1" ref={colorPickerRef}>
-            <button 
+            <button
               type="button"
               onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
-              className="w-1.5 h-10 rounded-full shrink-0 cursor-pointer focus:outline-none"
+              className="h-10 w-1.5 shrink-0 cursor-pointer rounded-full focus:outline-none"
               style={{ backgroundColor: thread.color_accent }}
               title="Change thread accent color"
             />
             {isColorPickerOpen && (
-              <div className="absolute left-0 top-full pt-2 z-50">
-                <div className="flex bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded-xl shadow-xl gap-2">
-                  {["#FBBF24", "#F472B6", "#2DD4BF", "#A78BFA", "#60A5FA", "#F87171"].map(c => (
-                    <button 
-                      key={c} 
+              <div className="absolute top-full left-0 z-50 pt-2">
+                <div className="flex gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] p-2 shadow-xl">
+                  {[
+                    "#FBBF24",
+                    "#F472B6",
+                    "#2DD4BF",
+                    "#A78BFA",
+                    "#60A5FA",
+                    "#F87171",
+                  ].map((c) => (
+                    <button
+                      key={c}
                       type="button"
                       onClick={() => handleColorChange(c)}
-                      className="w-4 h-4 rounded-full border border-[var(--color-border)] hover:scale-110 transition-transform"
+                      className="h-4 w-4 rounded-full border border-[var(--color-border)] transition-transform hover:scale-110"
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -314,17 +424,21 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             )}
           </div>
           <div>
-            <input 
+            <input
               value={thread.title}
               onChange={(e) => setThread({ ...thread, title: e.target.value })}
               onBlur={async (e) => {
                 const newTitle = e.target.value.trim();
                 if (newTitle !== "") {
-                  try {
-                    await supabase.from("threads").update({ title: newTitle }).eq("id", thread.id);
-                  } catch (err) {
-                    toast.error("Failed to rename thread");
-                  }
+                  const { success } = await safeMutate(
+                    () =>
+                      supabase
+                        .from("threads")
+                        .update({ title: newTitle })
+                        .eq("id", thread.id),
+                    "Failed to rename thread",
+                  );
+                  if (!success) return;
                 }
               }}
               onKeyDown={(e) => {
@@ -332,52 +446,80 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
                   e.currentTarget.blur();
                 }
               }}
-              className="text-[26px] font-semibold text-[var(--color-text-1)] tracking-tight leading-snug bg-transparent border-none outline-none w-full hover:bg-[rgba(255,255,255,0.05)] focus:bg-[rgba(255,255,255,0.05)] rounded-lg px-2 -ml-2 py-1 transition-colors placeholder:text-[var(--color-text-3)]"
+              className="-ml-2 w-full rounded-lg border-none bg-transparent px-2 py-1 text-[26px] leading-snug font-semibold tracking-tight text-[var(--color-text-1)] transition-colors outline-none placeholder:text-[var(--color-text-3)] hover:bg-[rgba(255,255,255,0.05)] focus:bg-[rgba(255,255,255,0.05)]"
               placeholder="Thread Title"
             />
             {thread.stale_prompt && (
-              <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 bg-[rgba(45,212,191,0.1)] border border-[rgba(45,212,191,0.2)] rounded-md">
-                <UiIcon className="w-3.5 h-3.5 text-[#2DD4BF]" icon={Sparkles} />
-                <span className="text-xs font-medium text-[#2DD4BF]">{thread.stale_prompt}</span>
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-[rgba(45,212,191,0.2)] bg-[rgba(45,212,191,0.1)] px-3 py-1">
+                <UiIcon
+                  className="h-3.5 w-3.5 text-[#2DD4BF]"
+                  icon={Sparkles}
+                />
+                <span className="text-xs font-medium text-[#2DD4BF]">
+                  {thread.stale_prompt}
+                </span>
               </div>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={handleTogglePin}
-            className={cn("p-2 rounded-lg transition-colors", thread.is_pinned ? "bg-[rgba(45,212,191,0.1)] text-[#2DD4BF]" : "hover:bg-[var(--color-surface)] text-[var(--color-text-3)]")}
+            className={cn(
+              "rounded-lg p-2 transition-colors",
+              thread.is_pinned
+                ? "bg-[rgba(45,212,191,0.1)] text-[#2DD4BF]"
+                : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+            )}
             title={thread.is_pinned ? "Unpin thread" : "Pin thread"}
           >
-            <UiIcon className="w-4 h-4" icon={Pin} />
+            <UiIcon className="h-4 w-4" icon={Pin} />
           </button>
-          <button 
+          <button
             onClick={handleArchive}
-            className="p-2 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-3)] transition-colors"
-            title={thread.status === "archived" || thread.status === "deleted" ? "Restore thread" : "Archive thread"}
+            className="rounded-lg p-2 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)]"
+            title={
+              thread.status === "archived" || thread.status === "deleted"
+                ? "Restore thread"
+                : "Archive thread"
+            }
           >
-            {thread.status === "archived" || thread.status === "deleted" ? <UiIcon className="w-4 h-4" icon={RefreshCcw} /> : <UiIcon className="w-4 h-4" icon={Archive} />}
+            {thread.status === "archived" || thread.status === "deleted" ? (
+              <UiIcon className="h-4 w-4" icon={RefreshCcw} />
+            ) : (
+              <UiIcon className="h-4 w-4" icon={Archive} />
+            )}
           </button>
-          <button 
+          <button
             onClick={() => setDeleteThreadOpen(true)}
-            className="p-2 rounded-lg hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171] transition-colors"
-            title={thread.status === "deleted" ? "Delete permanently" : "Move to trash"}
+            className="rounded-lg p-2 text-[var(--color-text-3)] transition-colors hover:bg-[rgba(248,113,113,0.1)] hover:text-[#F87171]"
+            title={
+              thread.status === "deleted"
+                ? "Delete permanently"
+                : "Move to trash"
+            }
           >
-            <UiIcon className="w-4 h-4" icon={Trash2} />
+            <UiIcon className="h-4 w-4" icon={Trash2} />
           </button>
         </div>
       </div>
 
       {linkedExplores.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wider mb-3">Linked Resources</h3>
+          <h3 className="mb-3 text-xs font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
+            Linked Resources
+          </h3>
           <div className="flex flex-wrap gap-3">
-            {linkedExplores.map(item => (
+            {linkedExplores.map((item) => (
               <Link key={item.id} href={`/explore/${item.id}`}>
-                <GlassCard className="px-4 py-2 flex items-center gap-2 hover:bg-[var(--color-surface)] transition-colors">
-                  <div className="w-2 h-2 rounded-full bg-[#FBBF24]" />
-                  <span className="text-sm text-[var(--color-text-1)] font-medium">{item.title}</span>
-                  <span className="text-caption uppercase text-[var(--color-text-3)] ml-2">{item.type}</span>
+                <GlassCard className="flex items-center gap-2 px-4 py-2 transition-colors hover:bg-[var(--color-surface)]">
+                  <div className="h-2 w-2 rounded-full bg-[#FBBF24]" />
+                  <span className="text-sm font-medium text-[var(--color-text-1)]">
+                    {item.title}
+                  </span>
+                  <span className="text-caption ml-2 text-[var(--color-text-3)] uppercase">
+                    {item.type}
+                  </span>
                 </GlassCard>
               </Link>
             ))}
@@ -396,33 +538,41 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-            <GlassCard className="p-5 border-l-2 border-l-transparent hover:border-l-[#2DD4BF] transition-all group relative">
-              <p className="text-title-sm text-[var(--color-text-1)] leading-relaxed whitespace-pre-wrap pr-8">{entry.text}</p>
-              <div className="flex items-center justify-between mt-3">
-                <p className="text-meta text-[var(--color-text-3)]">
-                  {new Date(entry.created_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+              <GlassCard className="group relative border-l-2 border-l-transparent p-5 transition-all hover:border-l-[#2DD4BF]">
+                <p className="text-title-sm pr-8 leading-relaxed whitespace-pre-wrap text-[var(--color-text-1)]">
+                  {entry.text}
                 </p>
-              </div>
-              <button 
-                onClick={() => setDeleteEntryIndex(i)}
-                className="absolute top-4 right-4 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-[rgba(248,113,113,0.1)] text-[var(--color-text-3)] hover:text-[#F87171]"
-                title="Delete entry"
-              >
-                <UiIcon className="w-4 h-4" icon={Trash2} />
-              </button>
-            </GlassCard>
-          </m.div>
-        ))}
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-meta text-[var(--color-text-3)]">
+                    {new Date(entry.created_at).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDeleteEntryIndex(i)}
+                  className="absolute top-4 right-4 rounded p-1.5 text-[var(--color-text-3)] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[rgba(248,113,113,0.1)] hover:text-[#F87171]"
+                  title="Delete entry"
+                >
+                  <UiIcon className="h-4 w-4" icon={Trash2} />
+                </button>
+              </GlassCard>
+            </m.div>
+          ))}
         </AnimatePresence>
       </div>
 
       {/* Fixed bottom input for thoughts */}
-      <div className="fixed bottom-0 left-0 right-0 md:pl-[220px] p-4 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent z-40">
-        <div className="max-w-2xl mx-auto">
+      <div className="fixed right-0 bottom-0 left-0 z-40 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent p-4 md:pl-[220px]">
+        <div className="mx-auto max-w-2xl">
           <form onSubmit={handleAddEntry} className="relative">
             {showPopover && filteredPeople.length > 0 && (
               <div
-                className="absolute left-0 right-0 bottom-full z-50 mb-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-lg max-h-60 overflow-y-auto"
+                className="absolute right-0 bottom-full left-0 z-50 mb-2 max-h-60 overflow-y-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg"
                 data-testid="mentions-popover"
               >
                 {filteredPeople.map((person, idx) => (
@@ -430,8 +580,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
                     key={person.id}
                     onClick={() => handleSelectPerson(person)}
                     className={cn(
-                      "w-full px-4 py-2 text-left hover:bg-[rgba(255,255,255,0.05)] focus:outline-none text-sm text-[var(--color-text-1)]",
-                      idx === selectedIndex && "bg-[rgba(255,255,255,0.08)]"
+                      "w-full px-4 py-2 text-left text-sm text-[var(--color-text-1)] hover:bg-[rgba(255,255,255,0.05)] focus:outline-none",
+                      idx === selectedIndex && "bg-[rgba(255,255,255,0.08)]",
                     )}
                     type="button"
                   >
@@ -448,12 +598,22 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
               onKeyDown={handleKeyDown}
               minRows={1}
               maxRows={10}
-              className="input !pr-14 !rounded-2xl !py-4 resize-none"
+              className="input resize-none !rounded-2xl !py-4 !pr-14"
             />
             <div className="absolute right-3 bottom-3 flex items-center gap-2">
-              <Kbd className="hidden md:inline-flex bg-transparent border-none text-[var(--color-text-3)]">Cmd+Enter</Kbd>
-              <button type="submit" disabled={!newEntry.trim() || saving} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[rgba(45,212,191,0.15)] text-[#2DD4BF] hover:bg-[rgba(45,212,191,0.25)] transition-colors disabled:opacity-50">
-                {saving ? <UiIcon className="w-4 h-4 animate-spin" icon={Loader2} /> : <UiIcon className="w-4 h-4 ml-0.5" icon={Send} />}
+              <Kbd className="hidden border-none bg-transparent text-[var(--color-text-3)] md:inline-flex">
+                Cmd+Enter
+              </Kbd>
+              <button
+                type="submit"
+                disabled={!newEntry.trim() || saving}
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(45,212,191,0.15)] text-[#2DD4BF] transition-colors hover:bg-[rgba(45,212,191,0.25)] disabled:opacity-50"
+              >
+                {saving ? (
+                  <UiIcon className="h-4 w-4 animate-spin" icon={Loader2} />
+                ) : (
+                  <UiIcon className="ml-0.5 h-4 w-4" icon={Send} />
+                )}
               </button>
             </div>
           </form>
@@ -463,9 +623,17 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         isOpen={deleteThreadOpen}
         onClose={() => setDeleteThreadOpen(false)}
         onConfirm={handleDelete}
-        title={thread.status === "deleted" ? "Delete permanently?" : "Move to Trash?"}
-        description={thread.status === "deleted" ? "This action cannot be undone." : "This thread will be moved to the trash and permanently deleted after 30 days."}
-        confirmLabel={thread.status === "deleted" ? "Delete permanently" : "Move to Trash"}
+        title={
+          thread.status === "deleted" ? "Delete permanently?" : "Move to Trash?"
+        }
+        description={
+          thread.status === "deleted"
+            ? "This action cannot be undone."
+            : "This thread will be moved to the trash and permanently deleted after 30 days."
+        }
+        confirmLabel={
+          thread.status === "deleted" ? "Delete permanently" : "Move to Trash"
+        }
         confirmDestructive
       />
 
