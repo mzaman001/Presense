@@ -406,45 +406,77 @@ export default function InboxPage() {
             onClick: async () => {
               try {
                 if (space === "do") {
-                  await supabase
-                    .from("items")
-                    .update({ status: "inbox" })
-                    .eq("id", id);
+                  await safeMutate(
+                    () =>
+                      supabase
+                        .from("items")
+                        .update({ status: "inbox" })
+                        .eq("id", id),
+                    "Failed to restore to inbox",
+                  );
                 } else if (space === "remember") {
                   if (routedId) {
-                    await supabase.from("people").delete().eq("id", routedId);
+                    await safeMutate(
+                      () => supabase.from("people").delete().eq("id", routedId),
+                      "Failed to undo route",
+                    );
                   }
-                  await supabase
-                    .from("items")
-                    .update({ status: "inbox" })
-                    .eq("id", id);
+                  await safeMutate(
+                    () =>
+                      supabase
+                        .from("items")
+                        .update({ status: "inbox" })
+                        .eq("id", id),
+                    "Failed to restore to inbox",
+                  );
                 } else if (space === "explore") {
                   if (routedId) {
-                    await supabase.from("explores").delete().eq("id", routedId);
+                    await safeMutate(
+                      () =>
+                        supabase.from("explores").delete().eq("id", routedId),
+                      "Failed to undo route",
+                    );
                   }
-                  await supabase
-                    .from("items")
-                    .update({ status: "inbox" })
-                    .eq("id", id);
+                  await safeMutate(
+                    () =>
+                      supabase
+                        .from("items")
+                        .update({ status: "inbox" })
+                        .eq("id", id),
+                    "Failed to restore to inbox",
+                  );
                 } else if (space === "think") {
                   if (routedId) {
-                    await supabase.from("threads").delete().eq("id", routedId);
+                    await safeMutate(
+                      () =>
+                        supabase.from("threads").delete().eq("id", routedId),
+                      "Failed to undo route",
+                    );
                   }
-                  await supabase
-                    .from("items")
-                    .update({ status: "inbox" })
-                    .eq("id", id);
+                  await safeMutate(
+                    () =>
+                      supabase
+                        .from("items")
+                        .update({ status: "inbox" })
+                        .eq("id", id),
+                    "Failed to restore to inbox",
+                  );
                 } else if (space === "location") {
                   if (routedId) {
-                    await supabase
-                      .from("locations")
-                      .delete()
-                      .eq("id", routedId);
+                    await safeMutate(
+                      () =>
+                        supabase.from("locations").delete().eq("id", routedId),
+                      "Failed to undo route",
+                    );
                   }
-                  await supabase
-                    .from("items")
-                    .update({ status: "inbox" })
-                    .eq("id", id);
+                  await safeMutate(
+                    () =>
+                      supabase
+                        .from("items")
+                        .update({ status: "inbox" })
+                        .eq("id", id),
+                    "Failed to restore to inbox",
+                  );
                 }
                 queryClient.setQueryData<InboxItem[]>(
                   ["inbox-tasks"],
