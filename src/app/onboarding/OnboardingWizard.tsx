@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
 import {
   ArrowRight,
   Loader2,
@@ -127,13 +127,18 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from("user_settings").upsert(
-          {
-            user_id: user.id,
-            display_name: name,
-          },
-          { onConflict: "user_id" },
+        const { success } = await safeMutate(
+          () =>
+            supabase.from("user_settings").upsert(
+              {
+                user_id: user.id,
+                display_name: name,
+              },
+              { onConflict: "user_id" },
+            ),
+          "Failed to save your name",
         );
+        if (!success) return;
       }
       setStep(2);
     } catch (e) {
@@ -155,12 +160,17 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        await supabase
-          .from("user_settings")
-          .update({
-            primary_struggles: selectedStruggles,
-          })
-          .eq("user_id", user.id);
+        const { success } = await safeMutate(
+          () =>
+            supabase
+              .from("user_settings")
+              .update({
+                primary_struggles: selectedStruggles,
+              })
+              .eq("user_id", user.id),
+          "Failed to save your struggles",
+        );
+        if (!success) return;
       }
       setStep(3);
     } catch (e) {
@@ -186,15 +196,20 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
 
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-        await supabase
-          .from("user_settings")
-          .update({
-            nudge_time: nudgeTimeStr,
-            quiet_start: sleepTime + ":00",
-            quiet_end: wakeTime + ":00",
-            timezone: timezone,
-          })
-          .eq("user_id", user.id);
+        const { success } = await safeMutate(
+          () =>
+            supabase
+              .from("user_settings")
+              .update({
+                nudge_time: nudgeTimeStr,
+                quiet_start: sleepTime + ":00",
+                quiet_end: wakeTime + ":00",
+                timezone: timezone,
+              })
+              .eq("user_id", user.id),
+          "Failed to save your preferences",
+        );
+        if (!success) return;
       }
       setStep(4);
     } catch (e) {
@@ -220,12 +235,17 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       const item = routedItem || (await routeCapture(captureInput))[0];
       if (item) {
         if (item.destination === "Do" || item.destination === "Inbox") {
-          await supabase.from("items").insert({
-            user_id: user.id,
-            title: item.title,
-            status: item.destination === "Inbox" ? "inbox" : "active",
-            deadline: item.deadline || null,
-          });
+          const { success } = await safeMutate(
+            () =>
+              supabase.from("items").insert({
+                user_id: user.id,
+                title: item.title,
+                status: item.destination === "Inbox" ? "inbox" : "active",
+                deadline: item.deadline || null,
+              }),
+            "Failed to save your thought",
+          );
+          if (!success) return;
         } else if (item.destination.startsWith("Remember")) {
           if (item.type === "person_note") {
             const { data: person } = await supabase
@@ -234,59 +254,85 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
               .eq("name", item.person || item.title.split(" ")[0])
               .maybeSingle();
             if (person) {
-              await supabase
-                .from("people")
-                .update({
-                  notes: [
-                    ...(person.notes ?? []),
-                    {
-                      text: item.title,
-                      created_at: new Date().toISOString(),
-                      tag: "note",
-                    },
-                  ],
-                })
-                .eq("id", person.id);
+              const { success } = await safeMutate(
+                () =>
+                  supabase
+                    .from("people")
+                    .update({
+                      notes: [
+                        ...(person.notes ?? []),
+                        {
+                          text: item.title,
+                          created_at: new Date().toISOString(),
+                          tag: "note",
+                        },
+                      ],
+                    })
+                    .eq("id", person.id),
+                "Failed to save your note",
+              );
+              if (!success) return;
             } else {
-              await supabase.from("people").insert({
+              const { success } = await safeMutate(
+                () =>
+                  supabase.from("people").insert({
+                    user_id: user.id,
+                    name: item.person || item.title.split(" ")[0],
+                    notes: [
+                      {
+                        text: item.title,
+                        created_at: new Date().toISOString(),
+                        tag: "note",
+                      },
+                    ],
+                  }),
+                "Failed to save your note",
+              );
+              if (!success) return;
+            }
+          } else {
+            const { success } = await safeMutate(
+              () =>
+                supabase.from("locations").insert({
+                  user_id: user.id,
+                  item_name:
+                    item.item_name || item.title.split(" ")[0] || "Item",
+                  location_text: item.title,
+                }),
+              "Failed to save your item",
+            );
+            if (!success) return;
+          }
+        } else if (item.destination === "Think") {
+          const { success } = await safeMutate(
+            () =>
+              supabase.from("threads").insert({
                 user_id: user.id,
-                name: item.person || item.title.split(" ")[0],
-                notes: [
+                title: item.title.slice(0, 60),
+                entries: [
                   {
                     text: item.title,
                     created_at: new Date().toISOString(),
-                    tag: "note",
+                    starred: false,
                   },
                 ],
-              });
-            }
-          } else {
-            await supabase.from("locations").insert({
-              user_id: user.id,
-              item_name: item.item_name || item.title.split(" ")[0] || "Item",
-              location_text: item.title,
-            });
-          }
-        } else if (item.destination === "Think") {
-          await supabase.from("threads").insert({
-            user_id: user.id,
-            title: item.title.slice(0, 60),
-            entries: [
-              {
-                text: item.title,
-                created_at: new Date().toISOString(),
-                starred: false,
-              },
-            ],
-          });
+              }),
+            "Failed to save your thought",
+          );
+          if (!success) return;
         } else if (item.destination === "Explore") {
-          await supabase.from("explores").insert({
-            user_id: user.id,
-            title: item.title.slice(0, 100),
-            type: item.url ? "link" : "concept",
-            url: item.url ?? null,
-            note: item.title,
-          });
+          const { success } = await safeMutate(
+            () =>
+              supabase.from("explores").insert({
+                user_id: user.id,
+                title: item.title.slice(0, 100),
+                type: item.url ? "link" : "concept",
+                url: item.url ?? null,
+                note: item.title,
+              }),
+            "Failed to save your item",
+          );
+          if (!success) return;
         }
         toast.success(`Saved to ${item.destination}`);
       }
@@ -306,13 +352,21 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from("user_settings").upsert(
-          {
-            user_id: user.id,
-            onboarding_complete: true,
-          },
-          { onConflict: "user_id" },
+        const { success } = await safeMutate(
+          () =>
+            supabase.from("user_settings").upsert(
+              {
+                user_id: user.id,
+                onboarding_complete: true,
+              },
+              { onConflict: "user_id" },
+            ),
+          "Failed to complete onboarding",
         );
+        if (!success) {
+          setSaving(false);
+          return;
+        }
       }
       router.push("/");
     } catch (e) {
