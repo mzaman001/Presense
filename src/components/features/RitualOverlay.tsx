@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
+import type { Database } from "@/types/database.types";
 import { toast } from "sonner";
 import { m, AnimatePresence } from "framer-motion";
 import {
@@ -22,7 +23,6 @@ import {
 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 // ─── WorkloadBar ──────────────────────────────────────────────────────────────
@@ -274,10 +274,18 @@ export function RitualOverlay({
   }, [onClose, storeSetActiveRitual]);
 
   const [step, setStep] = useState<1 | 2>(1);
-  const [triageTasks, setTriageTasks] = useState<any[]>([]);
-  const [todayTasks, setTodayTasks] = useState<any[]>([]);
-  const [tomorrowTasks, setTomorrowTasks] = useState<any[]>([]);
-  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
+  const [triageTasks, setTriageTasks] = useState<
+    Database["public"]["Tables"]["items"]["Row"][]
+  >([]);
+  const [todayTasks, setTodayTasks] = useState<
+    Database["public"]["Tables"]["items"]["Row"][]
+  >([]);
+  const [tomorrowTasks, setTomorrowTasks] = useState<
+    Database["public"]["Tables"]["items"]["Row"][]
+  >([]);
+  const [completedTasks, setCompletedTasks] = useState<
+    Database["public"]["Tables"]["items"]["Row"][]
+  >([]);
   const [focusMinutes, setFocusMinutes] = useState(0);
   const [reflection, setReflection] = useState("");
   const [loading, setLoading] = useState(false);
@@ -323,10 +331,12 @@ export function RitualOverlay({
       }
       if (activeRitual === "morning" && step === 1 && triageTasks.length > 0) {
         const firstTask = triageTasks[0];
+        /* eslint-disable react-hooks/immutability */
         if (e.key === "Enter" || e.key === "1")
           handleTriageAction(firstTask.id, "today");
         if (e.key === "2") handleTriageAction(firstTask.id, "snooze");
         if (e.key === "3") handleTriageAction(firstTask.id, "backlog");
+        /* eslint-enable react-hooks/immutability */
       }
       if (activeRitual === "morning" && step === 2 && e.key === "Backspace")
         setStep(1);
@@ -348,6 +358,7 @@ export function RitualOverlay({
 
   useEffect(() => {
     if (!activeRitual) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(1);
     const fetchData = async () => {
       setLoading(true);
@@ -367,10 +378,10 @@ export function RitualOverlay({
         if (tasks) {
           const todayStart = new Date().setHours(0, 0, 0, 0);
           /* @todo: Untyped usage justified per TOOL-01 */
-           
+
           setTriageTasks(
             tasks.filter(
-              (t: any) =>
+              (t) =>
                 t.status === "inbox" ||
                 t.status === "overdue" ||
                 (t.status === "active" &&
@@ -379,10 +390,10 @@ export function RitualOverlay({
             ),
           );
           /* @todo: Untyped usage justified per TOOL-01 */
-           
+
           setTodayTasks(
             tasks.filter(
-              (t: any) =>
+              (t) =>
                 t.status === "active" &&
                 t.deadline &&
                 new Date(t.deadline).getTime() >= todayStart &&
@@ -409,29 +420,29 @@ export function RitualOverlay({
           ]);
         setCompletedTasks(completed || []);
         /* @todo: Untyped usage justified per TOOL-01 */
-         
+
         setTriageTasks(
           (incomplete || []).filter(
-            (t: any) =>
+            (t) =>
               t.deadline &&
               new Date(t.deadline).getTime() < todayStart + 86400000,
           ),
         );
         /* @todo: Untyped usage justified per TOOL-01 */
-         
+
         setTomorrowTasks(
           (incomplete || []).filter(
-            (t: any) =>
+            (t) =>
               t.deadline &&
               new Date(t.deadline).getTime() >= todayStart + 86400000 &&
               new Date(t.deadline).getTime() < todayStart + 86400000 * 2,
           ),
         );
         /* @todo: Untyped usage justified per TOOL-01 */
-         
+
         setFocusMinutes(
           (logs || []).reduce(
-            (s: number, l: any) => s + (l.duration_minutes || 0),
+            (s: number, l) => s + (l.duration_minutes || 0),
             0,
           ),
         );
@@ -521,27 +532,10 @@ export function RitualOverlay({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("No user");
 
-      let newStreak = userSettings?.ritual_streak || 0;
-      const lastRitual = userSettings?.last_ritual_date;
-      if (lastRitual) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = yesterday.toLocaleDateString("en-CA");
-        if (lastRitual !== yStr && lastRitual !== todayString) {
-          // Missed a day
-          newStreak = 0;
-        }
-      }
-
-      if (lastRitual !== todayString) {
-        newStreak += 1;
-      }
-
       const { error } = await supabase
         .from("user_settings")
         .update({
           last_ritual_date: todayString,
-          ritual_streak: newStreak,
         })
         .eq("user_id", user.id);
       if (error) throw error;
@@ -552,7 +546,6 @@ export function RitualOverlay({
       if (logError) console.error("Failed to log morning ritual:", logError);
 
       updateUserSetting("last_ritual_date", todayString);
-      updateUserSetting("ritual_streak", newStreak);
       toast.success("Morning planning done — have a focused day!", {
         icon: <UiIcon className="h-4 w-4 text-orange-400" icon={Sun} />,
       });
@@ -627,9 +620,10 @@ export function RitualOverlay({
           .eq("status", "active")
           .limit(1);
         /* @todo: Untyped usage justified per TOOL-01 */
-         
+
         let threadId = "",
-          entries: any[] = [];
+          entries: Database["public"]["Tables"]["threads"]["Row"]["entries"] =
+            [];
         if (existing && existing.length > 0) {
           threadId = existing[0].id;
           entries = existing[0].entries || [];
@@ -667,27 +661,10 @@ export function RitualOverlay({
         }
       }
 
-      let newStreak = userSettings?.ritual_streak || 0;
-      const lastEvening = userSettings?.last_evening_ritual_date;
-      const lastMorning = userSettings?.last_ritual_date;
-      if (lastEvening || lastMorning) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = yesterday.toLocaleDateString("en-CA");
-        const lastDate = lastEvening || lastMorning;
-        if (lastDate !== yStr && lastDate !== todayString) {
-          newStreak = 0;
-        }
-      }
-      if (lastEvening !== todayString && lastMorning !== todayString) {
-        newStreak += 1;
-      }
-
       const { error } = await supabase
         .from("user_settings")
         .update({
           last_evening_ritual_date: todayString,
-          ritual_streak: newStreak,
         })
         .eq("user_id", user.id);
       if (error) throw error;
@@ -698,7 +675,6 @@ export function RitualOverlay({
       if (logError) console.error("Failed to log evening ritual:", logError);
 
       updateUserSetting("last_evening_ritual_date", todayString);
-      updateUserSetting("ritual_streak", newStreak);
       toast.success("Shutdown complete. Rest well.", {
         icon: <UiIcon className="h-4 w-4 text-blue-400" icon={Moon} />,
       });
@@ -1055,7 +1031,8 @@ export function RitualOverlay({
                             className="text-ui mt-1"
                             style={{ color: "var(--text-muted)" }}
                           >
-                            Go back and mark some tasks as "Do Today".
+                            Go back and mark some tasks as &ldquo;Do
+                            Today&rdquo;.
                           </p>
                         </div>
                       </div>
@@ -1071,7 +1048,7 @@ export function RitualOverlay({
                             className="text-meta font-bold tracking-widest uppercase"
                             style={{ color: "var(--text-muted)" }}
                           >
-                            Today's tasks
+                            Today&apos;s tasks
                           </span>
                         </div>
 

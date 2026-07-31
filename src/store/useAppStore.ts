@@ -37,7 +37,6 @@ export interface UserSettings {
   explore_custom_types?: string[];
   last_ritual_date?: string;
   last_evening_ritual_date?: string;
-  ritual_streak?: number;
   shutdown_time?: string;
   daily_capacity_minutes?: number;
   density?: "comfortable" | "compact";

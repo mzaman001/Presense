@@ -17,7 +17,6 @@ import {
   X,
   Check,
   Sparkles,
-  Flame,
   Brain,
   MapPin,
 } from "lucide-react";
@@ -60,21 +59,12 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
     parseInt(shutdownHour) >= 12
       ? `${parseInt(shutdownHour) === 12 ? 12 : parseInt(shutdownHour) - 12} PM`
       : `${parseInt(shutdownHour)} AM`;
-  const streak = userSettings?.ritual_streak || 0;
-
-  const streakBadge =
-    streak > 0 ? (
-      <span className="text-caption ml-1 inline-flex items-center gap-1 rounded-md border border-orange-500/20 bg-orange-500/10 px-1.5 py-0.5 font-bold text-orange-400">
-        <UiIcon className="h-3.5 w-3.5" icon={Flame} /> {streak}
-      </span>
-    ) : null;
 
   if (morningDone && eveningDone) {
     return (
       <div className="text-ui mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--status-done)]/20 bg-[var(--status-done)]/10 px-3 py-1 font-medium text-[var(--status-done)]">
         <UiIcon className="h-3.5 w-3.5" icon={CheckCircle2} /> Day complete —
         Great work today
-        {streakBadge}
       </div>
     );
   }
@@ -88,7 +78,6 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
         />{" "}
         Day planned <span className="mx-1 opacity-50">•</span> Evening review at{" "}
         {shutdownAmPm}
-        {streakBadge}
       </div>
     );
   }
@@ -106,7 +95,6 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
           icon={ArrowRight}
         />
       </button>
-      {streakBadge}
     </div>
   );
 }
