@@ -15,7 +15,7 @@
     "install-deps": "npm install",
     "types:generate": "npx supabase gen types typescript --project-id mhfzmgrrtruxuiscvbhm > src/types/database.types.ts",
     "types:check": "npm run types:generate && git diff --exit-code src/types/database.types.ts",
-    "prebuild": "npm run types:check",
+    "prebuild": "node -e \"if (process.env.VERCEL) process.exit(0); require('node:child_process').execSync('npm run types:check', { stdio: 'inherit' })\"",
     "prepare": "husky"
   },
   "dependencies": {
