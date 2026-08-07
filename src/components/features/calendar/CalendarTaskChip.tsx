@@ -34,7 +34,13 @@ export function CalendarTaskChip({
   isDragging = false,
 }: CalendarTaskChipProps) {
   const userSettings = useAppStore((s) => s.userSettings);
-  const { attributes, listeners, setNodeRef, transform, isDragging: localDragging } = useDraggable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging: localDragging,
+  } = useDraggable({
     id: task.id,
     data: { task },
   });
@@ -52,6 +58,14 @@ export function CalendarTaskChip({
   };
 
   const isBeingDragged = localDragging || isDragging;
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      onEdit?.(task);
+    }
+  };
+  const taskLabel = `Edit task: ${task.title}`;
 
   if (variant === "month") {
     return (
@@ -59,14 +73,18 @@ export function CalendarTaskChip({
         ref={setNodeRef}
         {...listeners}
         {...attributes}
+        role="button"
+        tabIndex={0}
+        aria-label={taskLabel}
         onClick={(e) => {
           e.stopPropagation();
           onEdit?.(task);
         }}
+        onKeyDown={handleKeyDown}
         className={cn(
-          "flex items-center gap-1 px-1.5 py-0.5 rounded text-caption font-medium cursor-grab active:cursor-grabbing truncate w-full select-none",
+          "text-caption flex w-full cursor-grab items-center gap-1 truncate rounded px-1.5 py-0.5 font-medium select-none active:cursor-grabbing",
           "transition-opacity",
-          isBeingDragged ? "opacity-30" : "opacity-100"
+          isBeingDragged ? "opacity-30" : "opacity-100",
         )}
         style={{
           ...draggableStyle,
@@ -76,7 +94,7 @@ export function CalendarTaskChip({
       >
         {priorityColor && (
           <span
-            className="w-1 h-1 rounded-full shrink-0"
+            className="h-1 w-1 shrink-0 rounded-full"
             style={{ backgroundColor: priorityColor }}
           />
         )}
@@ -91,14 +109,18 @@ export function CalendarTaskChip({
         ref={setNodeRef}
         {...listeners}
         {...attributes}
+        role="button"
+        tabIndex={0}
+        aria-label={taskLabel}
         onClick={(e) => {
           e.stopPropagation();
           onEdit?.(task);
         }}
+        onKeyDown={handleKeyDown}
         className={cn(
-          "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium cursor-grab active:cursor-grabbing truncate select-none",
+          "flex cursor-grab items-center gap-1.5 truncate rounded-md px-2 py-1 text-xs font-medium select-none active:cursor-grabbing",
           "transition-opacity",
-          isBeingDragged ? "opacity-30" : "opacity-100"
+          isBeingDragged ? "opacity-30" : "opacity-100",
         )}
         style={{
           ...draggableStyle,
@@ -109,7 +131,7 @@ export function CalendarTaskChip({
       >
         {priorityColor && (
           <span
-            className="w-1.5 h-1.5 rounded-full shrink-0"
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
             style={{ backgroundColor: priorityColor }}
           />
         )}
@@ -128,14 +150,18 @@ export function CalendarTaskChip({
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      role="button"
+      tabIndex={0}
+      aria-label={taskLabel}
       onClick={(e) => {
         e.stopPropagation();
         onEdit?.(task);
       }}
+      onKeyDown={handleKeyDown}
       className={cn(
-        "absolute left-1 right-1 rounded-md px-2 py-1 cursor-grab active:cursor-grabbing overflow-hidden select-none group",
-        "transition-opacity shadow-sm",
-        isBeingDragged ? "opacity-0" : "opacity-100"
+        "group absolute right-1 left-1 cursor-grab overflow-hidden rounded-md px-2 py-1 select-none active:cursor-grabbing",
+        "shadow-sm transition-opacity",
+        isBeingDragged ? "opacity-0" : "opacity-100",
       )}
       style={{
         ...draggableStyle,
@@ -145,17 +171,17 @@ export function CalendarTaskChip({
         borderLeftWidth: "3px",
       }}
     >
-      <p className="text-meta font-semibold text-[var(--color-text-1)] leading-tight truncate">
+      <p className="text-meta truncate leading-tight font-semibold text-[var(--color-text-1)]">
         {task.title}
       </p>
       {timeLabel && (
-        <p className="text-caption text-[var(--color-text-3)] leading-tight mt-0.5">
+        <p className="text-caption mt-0.5 leading-tight text-[var(--color-text-3)]">
           {timeLabel}
         </p>
       )}
       {/* Resize handle visual affordance */}
-      <div className="absolute bottom-0 left-0 right-0 h-[6px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-s-resize">
-        <div className="w-6 h-[2px] rounded-full bg-[rgba(255,255,255,0.3)]" />
+      <div className="absolute right-0 bottom-0 left-0 flex h-[6px] cursor-s-resize items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="h-[2px] w-6 rounded-full bg-[rgba(255,255,255,0.3)]" />
       </div>
     </div>
   );
@@ -171,7 +197,7 @@ export function CalendarTaskChipOverlay({ task }: { task: Task }) {
 
   return (
     <div
-      className="rounded-md px-2 py-1 overflow-hidden shadow-2xl pointer-events-none rotate-1 scale-105"
+      className="pointer-events-none scale-105 rotate-1 overflow-hidden rounded-md px-2 py-1 shadow-2xl"
       style={{
         backgroundColor: `${categoryColor}40`,
         borderLeft: `3px solid ${categoryColor}`,
@@ -181,7 +207,7 @@ export function CalendarTaskChipOverlay({ task }: { task: Task }) {
         minHeight: 40,
       }}
     >
-      <p className="text-meta font-semibold text-[var(--color-text-1)] leading-tight truncate">
+      <p className="text-meta truncate leading-tight font-semibold text-[var(--color-text-1)]">
         {task.title}
       </p>
     </div>

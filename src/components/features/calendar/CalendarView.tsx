@@ -57,7 +57,7 @@ function parseSlotId(id: string): Date | null {
     parseInt(hour),
     parseInt(minute),
     0,
-    0
+    0,
   );
   return isNaN(d.getTime()) ? null : d;
 }
@@ -67,7 +67,15 @@ function parseAllDayId(id: string): Date | null {
   const parts = id.split("-");
   if (parts[0] !== "allday" || parts.length < 4) return null;
   const [, year, month, day] = parts;
-  const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0, 0);
+  const d = new Date(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day),
+    0,
+    0,
+    0,
+    0,
+  );
   return isNaN(d.getTime()) ? null : d;
 }
 
@@ -76,17 +84,39 @@ function parseDateId(id: string): Date | null {
   const parts = id.split("-");
   if (parts[0] !== "date" || parts.length < 4) return null;
   const [, year, month, day] = parts;
-  const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0, 0);
+  const d = new Date(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day),
+    0,
+    0,
+    0,
+    0,
+  );
   return isNaN(d.getTime()) ? null : d;
 }
 
-export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter }: CalendarViewProps) {
+export function CalendarView({
+  tasks,
+  onEditTask,
+  onCreateTaskAt,
+  categoryFilter,
+}: CalendarViewProps) {
   const supabase = React.useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
-  const [subView, setSubView] = useQueryState<CalendarSubView>("subview", parseAsStringEnum<CalendarSubView>(["day", "week", "month"]).withDefault(
-    (typeof window !== "undefined" && (localStorage.getItem("presense_calendar_view") as any)) || 
-    (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "day" : "week")
-  ));
+  const [subView, setSubView] = useQueryState<CalendarSubView>(
+    "subview",
+    parseAsStringEnum<CalendarSubView>(["day", "week", "month"]).withDefault(
+      typeof window !== "undefined" &&
+        window.matchMedia("(max-width: 767px)").matches
+        ? "day"
+        : (typeof window !== "undefined" &&
+            (localStorage.getItem(
+              "presense_calendar_view",
+            ) as CalendarSubView)) ||
+            "week",
+    ),
+  );
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
@@ -101,7 +131,7 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
         distance: 8, // require 8px movement before drag starts (prevents accidental drag on click)
       },
     }),
-    useSensor(KeyboardSensor)
+    useSensor(KeyboardSensor),
   );
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
@@ -137,7 +167,7 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
       const task = tasks.find((t) => t.id === event.active.id);
       setActiveTask(task || null);
     },
-    [tasks]
+    [tasks],
   );
 
   const handleDragEnd = useCallback(
@@ -169,7 +199,7 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
             originalDate.getHours(),
             originalDate.getMinutes(),
             0,
-            0
+            0,
           );
         } else {
           newDeadline = targetDay;
@@ -183,7 +213,9 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
 
       // Optimistic update
       queryClient.setQueryData<Task[]>(["tasks"], (old) =>
-        old?.map((t) => (t.id === taskId ? { ...t, deadline: newDeadlineISO } : t))
+        old?.map((t) =>
+          t.id === taskId ? { ...t, deadline: newDeadlineISO } : t,
+        ),
       );
 
       try {
@@ -201,8 +233,8 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
             onClick: async () => {
               queryClient.setQueryData<Task[]>(["tasks"], (old) =>
                 old?.map((t) =>
-                  t.id === taskId ? { ...t, deadline: previousDeadline } : t
-                )
+                  t.id === taskId ? { ...t, deadline: previousDeadline } : t,
+                ),
               );
               await supabase
                 .from("items")
@@ -217,19 +249,20 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
         // Rollback on error
         queryClient.setQueryData<Task[]>(["tasks"], (old) =>
           old?.map((t) =>
-            t.id === taskId ? { ...t, deadline: previousDeadline } : t
-          )
+            t.id === taskId ? { ...t, deadline: previousDeadline } : t,
+          ),
         );
-        const message = err instanceof Error ? err.message : "Could not reschedule";
+        const message =
+          err instanceof Error ? err.message : "Could not reschedule";
         toast.error("Failed to reschedule", { description: message });
       }
     },
-    [tasks, queryClient, supabase]
+    [tasks, queryClient, supabase],
   );
 
   return (
     <div
-      className="flex-1 min-h-0 flex flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       tabIndex={0}
       onKeyDown={(event) => {
         if (event.key === "t") {
@@ -245,36 +278,36 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
       }}
     >
       {/* Calendar toolbar */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="mb-4 flex shrink-0 items-center justify-between">
         {/* Navigation */}
         <div className="flex items-center gap-2">
           <button
             onClick={navigateToday}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text-2)] hover:bg-[var(--color-surface)] transition-colors"
+            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-surface)]"
           >
             Today
           </button>
           <div className="flex items-center gap-0.5">
             <button
               onClick={navigatePrev}
-              className="p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors"
+              className="rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
             >
               <UiIcon size={16} icon={ChevronLeft} />
             </button>
             <button
               onClick={navigateNext}
-              className="p-1.5 rounded-lg text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface)] transition-colors"
+              className="rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
             >
               <UiIcon size={16} icon={ChevronRight} />
             </button>
           </div>
-          <h2 className="text-sm font-semibold text-[var(--color-text-1)] min-w-[200px]">
+          <h2 className="min-w-[200px] text-sm font-semibold text-[var(--color-text-1)]">
             {getHeaderLabel()}
           </h2>
         </div>
 
         {/* Week / Month toggle */}
-        <div className="flex bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full p-0.5">
+        <div className="flex rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5">
           {(["day", "week", "month"] as CalendarSubView[]).map((v) => (
             <button
               key={v}
@@ -283,10 +316,10 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
                 localStorage.setItem("presense_calendar_view", v);
               }}
               className={cn(
-                "px-4 py-1 text-xs font-semibold rounded-full transition-all capitalize",
+                "rounded-full px-4 py-1 text-xs font-semibold capitalize transition-all",
                 subView === v
                   ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow"
-                  : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
+                  : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]",
               )}
             >
               {v}
@@ -330,9 +363,7 @@ export function CalendarView({ tasks, onEditTask, onCreateTaskAt, categoryFilter
 
         {/* Ghost overlay shown while dragging */}
         <DragOverlay dropAnimation={null}>
-          {activeTask ? (
-            <CalendarTaskChipOverlay task={activeTask} />
-          ) : null}
+          {activeTask ? <CalendarTaskChipOverlay task={activeTask} /> : null}
         </DragOverlay>
       </DndContext>
     </div>
