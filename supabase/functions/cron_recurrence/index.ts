@@ -24,10 +24,11 @@ serve(async (req) => {
 
     // Fetch nudge_time defaults for all users we'll need
     const userIds = [...new Set(recurringTasks.map((t: any) => t.user_id))];
-    const { data: settingsRows } = await supabase
+    const { data: settingsRows, error: settingsError } = await supabase
       .from("user_settings")
       .select("user_id, nudge_time")
       .in("user_id", userIds);
+    if (settingsError) throw settingsError;
 
     const nudgeTimeByUser: Record<string, string> = {};
     for (const row of settingsRows || []) {
@@ -96,7 +97,7 @@ serve(async (req) => {
         if (nextDate) {
           // Better dedup: match on title AND recurrence pattern, not just title alone.
           // This prevents two genuinely different tasks with the same title from colliding.
-          const { data: existing } = await supabase
+          const { data: existing, error: existingError } = await supabase
             .from("items")
             .select("id")
             .eq("user_id", task.user_id)
@@ -104,9 +105,10 @@ serve(async (req) => {
             .eq("recurrence", task.recurrence)
             .eq("status", "active")
             .maybeSingle();
+          if (existingError) throw existingError;
 
           if (!existing) {
-            await supabase.from("items").insert({
+            const { error: insertError } = await supabase.from("items").insert({
               user_id: task.user_id,
               title: task.title,
               category: task.category,
@@ -117,6 +119,7 @@ serve(async (req) => {
               deadline: nextDate.toISOString(),
               status: "active"
             });
+            if (insertError) throw insertError;
             createdCount++;
           }
         }
