@@ -1845,4 +1845,11 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 
 **Deferred by measurement, not by preference:** `PERF-04`/`PERF-08` backdrop-filter — the §26 trace shows no steady-state jank (idle by ~919 ms); revisit when `DS-04` glass consolidation touches those surfaces, or if a future RUM trace implicates them.
 
+**Status — Task 2 (TOOL-18) DONE, committed `a787421` (Aug 8, 2026):**
+- `scripts/seed-test-user.mjs` — idempotent: upserts `perf-test@presense.app` (confirmed email, fixed test password, `user_settings.onboarding_complete=true`), signs in via password grant (works server-side even though the UI is magic-link/Google-only), prints the `@supabase/ssr` session cookie (`sb-<ref>-auth-token` = `base64-` + base64url(JSON session), single chunk, 2.6 KiB) for injection.
+- `tests/authed-do.spec.ts` — injects the cookie, asserts `/do` returns 200, stays on `/do` (not bounced to `/login`), and loads the real `src_app_(app)_do_page_tsx`/`app/(app)/do/page-*` chunk with no login chunk. Passes.
+- `scripts/lighthouse-authed.mjs` — `node scripts/lighthouse-authed.mjs [url]` = seed + cookie-inject + Lighthouse (mobile perf preset) + summary. Windows-safe (npx CLI chokes on inline JSON; uses `--extra-headers=<file>`).
+- **First-ever authed `/do` baseline (mobile perf preset, prod server, Aug 8): perf 29/33, LCP 13.4–14.4 s, TBT 2.63–2.85 s, FCP 2.3–2.7 s, TTFB 1.1–1.5 s, CLS 0.013, unused-javascript ~93 KiB.** This is the real user-facing page the §26 login baseline (perf 89) could never see; subsequent authed measurements use this as the reference, instrumented identically.
+- Note: full-suite `npm test` showed one flaky fail (`challenger.test.tsx` linked_people) that passes in isolation — unrelated to this change, flagged for a human.
+
 **Notes:** Task 3 is subject to Law 7 (stop-and-ask) if the cleanest fix requires touching >3 files or the `@supabase/ssr` provider wiring; technique (optimizePackageImports extension vs. forced splitting vs. auth-only client on public routes) is decided at execution after reading providers. Task 6 requires checking for existing CI files at execution; if none exist, deliver scripts + budget config and defer the runner.
