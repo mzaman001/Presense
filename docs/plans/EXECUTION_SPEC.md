@@ -1835,8 +1835,8 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 
 | # | Ticket | Title | Acceptance criteria (measurable) | Depends on |
 |---|---|---|---|---|
-| 1 | INFRA-21 | Regenerate `database.types.ts` to match live DB | `npm run types:check` passes on clean tree; diff = `ritual_streak` removal only; zero code references (grep) | — |
-| 2 | TOOL-18 | Seed test account + Playwright auth flow | Playwright test logs in and `/do` HTML contains `app/(app)/do/page-*.js` chunk; repeatable session-enabled Lighthouse run succeeds | 1 |
+| 1 | INFRA-21 | Regenerate `database.types.ts` to match live DB | `npm run types:check` passes on clean tree; diff = `ritual_streak` removal only; zero code references (grep) | — | ✅ DONE |
+| 2 | TOOL-18 | Seed test account + Playwright auth flow | Playwright test logs in and `/do` HTML contains `app/(app)/do/page-*.js` chunk; repeatable session-enabled Lighthouse run succeeds | 1 | ✅ DONE |
 | 3 | PERF-10a | Split supabase+zod chunk (5967, 77.8 KiB gz) off public route | Public-route initial gz ≤ 220 KiB; authed chunk count unchanged; login flow traced working | 2 |
 | 4 | PERF-10b | Reclaim measured-unused 115 KiB (5967/5838/4bd1) on login | `unused-javascript` no longer scores 0; initial gz target met | 3 |
 | — | **Checkpoint A** | Re-measure §26.1; ledger update; human review before Phase 4 | numbers recorded in ledger; keep/revert verdicts per rule | 4 |
@@ -1844,6 +1844,8 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 | 6 | PERF-09 | CI bundle-budget + Lighthouse gate | Deliberately over-budget change fails CI; baseline builds pass | 5 |
 
 **Deferred by measurement, not by preference:** `PERF-04`/`PERF-08` backdrop-filter — the §26 trace shows no steady-state jank (idle by ~919 ms); revisit when `DS-04` glass consolidation touches those surfaces, or if a future RUM trace implicates them.
+
+**Status — Task 1 (INFRA-21) DONE, committed `b0a5196` (Aug 8, 2026):** regenerated `database.types.ts` via `npm run types:generate`; diff = exactly the 3 `ritual_streak` removals (column dropped in live DB); zero code references (grep); `npm run build` (incl. prebuild `types:check` gate) and `npm test` (144) pass.
 
 **Status — Task 2 (TOOL-18) DONE, committed `a787421` (Aug 8, 2026):**
 - `scripts/seed-test-user.mjs` — idempotent: upserts `perf-test@presense.app` (confirmed email, fixed test password, `user_settings.onboarding_complete=true`), signs in via password grant (works server-side even though the UI is magic-link/Google-only), prints the `@supabase/ssr` session cookie (`sb-<ref>-auth-token` = `base64-` + base64url(JSON session), single chunk, 2.6 KiB) for injection.
