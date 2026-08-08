@@ -1753,3 +1753,96 @@ This is an acknowledged trade-off: the governance system exists because the proj
 **Recommendation:** Trimming governance should only happen AFTER P0/P1 tickets land and the app is stable. Do not trim this document pre-emptively. The 8 root patterns and 10 quick wins in §24 are the prioritization framework — work through those first, then consider governance reduction once the app is trustworthy for daily use.
 
 The current doc count is 10 md files (post-MD-01/MD-02 consolidation, with `docs/project/DOCS_NEEDS_CODE.md` added as the bridge between docs and code). The audit's "8 governance files" count refers to the pre-`DOCS_NEEDS_CODE.md` state. The new file is intentionally small and focused — it does not add governance overhead, it routes code-fix needs to a single discoverable location.
+
+---
+
+## 26. Addendum 13 — measured performance baseline (Aug 8, 2026 audit)
+
+First-ever measured baseline for PERF-* work. Prior tickets were confirmed open/closed by code reading; none of them had measured numbers behind them. This pass recorded them. All measurements: local prod build (`next build --webpack`), `next start` on localhost, no external traffic. Lighthouse: headless Edge via `CHROME_PATH`; `--preset=perf` (run 1) and `--preset=experimental` (run 2). Interaction trace: Playwright Chromium at 390×844, 3x DPR, CPU throttle 4x, 150ms latency / 1.6Mbps down / 800Kbps up; longtasks via injected `PerformanceObserver`.
+
+**Caveat, stated plainly:** every route is auth-gated by the middleware, so the only publically measurable route is `/login` (all unauthenticated paths serve the same 17-script chunk set — verified identical for `/`, `/do`, `/onboarding`). The Do page — the surface behind the "very laggy" report — cannot be Lighthouse'd or traced without an account. This confirms the RUM gap in Root Pattern 8: the Do page is exactly the route needing real-user monitoring because synthetic access is auth-blocked.
+
+### 26.1 — Lighthouse mobile, `/login`
+
+| Metric | Run 1 (perf preset) | Run 2 (experimental) | Good threshold |
+|---|---|---|---|
+| Performance score | 89 | 87 | ≥ 90 |
+| FCP | 2.1 s | 1.2 s | ≤ 1.8 s |
+| LCP | **2.1 s** | 3.8 s | ≤ 2.5 s |
+| CLS | 0 | 0 | ≤ 0.1 |
+| TBT | **360 ms** | 150 ms | ≤ 200 ms |
+| TTI | 4.0 s | 3.9 s | — |
+| TTFB | 20 ms | 20 ms | — |
+
+Run-to-run spread (LCP 2.1↔3.8s, TBT 150↔360ms) is itself a finding: numbers are not stable, and any future fix must beat this variance or be reverted per §26.5.
+
+`unused-javascript` scores 0: **~115 KiB wasted** on login alone (60.3 KiB chunk 5967, 28.0 KiB 5838, 26.5 KiB 4bd1). `long-tasks` audit: 3 long tasks. `mainthread-work-breakdown` total 1.1–1.2 s.
+
+### 26.2 — Bundle (webpack + bundle analyzer)
+
+Public route initial JS: **17 scripts, 923.1 KiB parsed / 272.9 KiB gzipped — 27% over the 200 KiB gz budget** (Root Pattern 8: no enforced budget in CI).
+
+Largest client chunks:
+
+| Chunk | Parsed | Gzip | Attribution |
+|---|---|---|---|
+| 2923 | 337.1 KiB | 130.0 KiB | `compromise` (NLP) |
+| 5967 | 281.5 KiB | 77.8 KiB | `@supabase` (~113 KiB) + `zod/v4` (~70 KiB) + sonner, postgREST/storage/realtime |
+| 5838 | 221.8 KiB | 60.4 KiB | Next app-router internals |
+| 4bd1 | 195.2 KiB | 61.3 KiB | next/compiled react-dom |
+| framework | 185.3 KiB | 58.4 KiB | Next framework |
+| 9746 | 162.1 KiB | 38.0 KiB | `chrono-node` |
+| main | 134.2 KiB | 39.2 KiB | Next client router |
+
+**`BUG-09` / `PERF-02` closes on measurement.** `compromise` (capture-router.ts:102) and `chrono-node` (capture-router.ts:256, TaskAddPanel.tsx:23) are both dynamic imports, and neither chunk (2923, 9746) appears in the public route's initial 17-script set — the lazy split works at the chunk level, not just in source. Residual (future, not a defect): `compromise`'s 337 KiB parsed chunk is still monolithic.
+
+### 26.3 — Interaction trace (Playwright, CPU 4x)
+
+- Commit 62 ms; networkidle 919–1110 ms; LCP paint at 376 ms.
+- **Longtasks during load: 101 ms @ 231 ms; 226 ms @ 341 ms; 163 ms @ 659 ms.** 490 ms of main-thread blocking inside a sub-second load; the 226 ms bloat at t≈341 ms is a 200 ms+ starvation window on a 4x-emulated mid-tier phone.
+- Fill-email interaction: 425 ms wall-clock, no new longtasks attributed to it.
+- No longtasks after 919 ms → the tab reaches steady-state idle; the felt "lag" is load-phase main-thread starvation plus the unmeasured Do page — not steady-state background work.
+
+### 26.4 — New tickets recorded by this pass
+
+**PERF-09 — Enforce a bundle budget in CI on the public route.** `ANALYZE=true next build --webpack` already produces reports; nothing fails a PR on them. Baseline 272.9 KiB gz vs 200 KiB GA budget. Acceptance: CI gate fails PRs that push any production route over its budgeted number; threshold = current baseline, tool choice deferred. Priority: Medium.
+
+**PERF-10 — Decide whether login's 115 KiB of unused JS is shared fixed-cost or auth-only weight.** The 115 KiB sits in the three largest shared chunks (5967/5838/4bd1) that login downloads; if auth-gated features are the only consumers, split 5967 (supabase+zod bundle, 77.8 KiB gz) further so login doesn't download the full client SDK. Acceptance: public-route initial gz ≤ 220 KiB without adding requests elsewhere. Technique-agnostic; blocked on a measurement path for authed routes.
+
+**PERF-11 — Hold TBT ≤ 200 ms / LCP ≤ 2.5 s on the public route.** TBT measured 360 ms; LCP straddles the line. This ticket is the ledger that judges any future fix against §26.5 instrumentation — no unmeasured wins, no "neutral" keeps.
+
+**INFRA-NEW (candidate BUG ticket) — `npm run build`'s `prebuild` gate is broken on a clean tree.** `types:check` fails identically at HEAD: live Supabase schema dropped `ritual_streak` (CONF-17), committed database.types.ts still has it; regeneration removes exactly 3 lines, diff is otherwise empty, zero code references `ritual_streak`. Any fresh checkout can't `npm run build`. This pass deliberately did NOT commit the regenerated file (not my ticket); flagged here for a human. Priority: High (CI/build red).
+
+**NOTED (not ticketed) — auth-blocked measurement.** Measuring the Do page requires either a seeded test account (Turbo/Playwright flow, TOOL-18 territory) or a RUM layer (Root Pattern 8). Reader of the next PERF ticket shall pick one, not both.
+
+### 26.5 — The ledger (kept + reverted attempts), started with this pass
+
+| Idea | Baseline → Result | Verdict | Why |
+|---|---|---|---|
+| — | none — baseline pass only | — | no fix attempted yet |
+
+The next perf fix must be re-measured exactly as §26.1 (same command, route, throttling), one change at a time. Revert if within run variance (here: LCP swing ≈ ±45%, TBT swing ≈ ±58%), revert if a test goes red, and record it whether kept or reverted — this table is the place where dead perf ideas stay dead.
+
+---
+
+## 27. Addendum 14 — approved execution plan for measured perf work (Aug 8, 2026)
+
+Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. One ticket per session per `docs/agents/EXECUTION_RULES.md` (build + test + commit + stop). Each phase re-measures with the §26.1 instrumentation exactly; inside-variance or red-test results are reverted and recorded in the §26.5 ledger.
+
+**Locked decisions:** (1) INFRA-21 resolved by committing the regenerated `database.types.ts`; (2) authed-route measurement via seeded test account + Playwright flow (TOOL-18 territory); (3) plan persisted here, not `tasks/plan.md` (that filename is stale debris per AGENTS.md).
+
+### Task list
+
+| # | Ticket | Title | Acceptance criteria (measurable) | Depends on |
+|---|---|---|---|---|
+| 1 | INFRA-21 | Regenerate `database.types.ts` to match live DB | `npm run types:check` passes on clean tree; diff = `ritual_streak` removal only; zero code references (grep) | — |
+| 2 | TOOL-18 | Seed test account + Playwright auth flow | Playwright test logs in and `/do` HTML contains `app/(app)/do/page-*.js` chunk; repeatable session-enabled Lighthouse run succeeds | 1 |
+| 3 | PERF-10a | Split supabase+zod chunk (5967, 77.8 KiB gz) off public route | Public-route initial gz ≤ 220 KiB; authed chunk count unchanged; login flow traced working | 2 |
+| 4 | PERF-10b | Reclaim measured-unused 115 KiB (5967/5838/4bd1) on login | `unused-javascript` no longer scores 0; initial gz target met | 3 |
+| — | **Checkpoint A** | Re-measure §26.1; ledger update; human review before Phase 4 | numbers recorded in ledger; keep/revert verdicts per rule | 4 |
+| 5 | PERF-11 | Eliminate the 226 ms @341 ms load longtask | TBT ≤ 200 ms on §26.1 instrumentation; no >200 ms longtask in trace | Checkpoint A |
+| 6 | PERF-09 | CI bundle-budget + Lighthouse gate | Deliberately over-budget change fails CI; baseline builds pass | 5 |
+
+**Deferred by measurement, not by preference:** `PERF-04`/`PERF-08` backdrop-filter — the §26 trace shows no steady-state jank (idle by ~919 ms); revisit when `DS-04` glass consolidation touches those surfaces, or if a future RUM trace implicates them.
+
+**Notes:** Task 3 is subject to Law 7 (stop-and-ask) if the cleanest fix requires touching >3 files or the `@supabase/ssr` provider wiring; technique (optimizePackageImports extension vs. forced splitting vs. auth-only client on public routes) is decided at execution after reading providers. Task 6 requires checking for existing CI files at execution; if none exist, deliver scripts + budget config and defer the runner.
