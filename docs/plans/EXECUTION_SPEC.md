@@ -1820,6 +1820,7 @@ Largest client chunks:
 | Idea | Baseline → Result | Verdict | Why |
 |---|---|---|---|
 | — | none — baseline pass only | — | no fix attempted yet |
+| PERF-10a: login auth via server actions + supabase-free RealtimeStatusContext | Login initial JS gz: 272.9 → 186.9 KiB (analyzer, polyfills excluded; manual gz incl. polyfills 311.9 → 225.3) · Lighthouse perf 89→95, TBT 360→190 ms, unused JS 115→53 KiB · scripts 17→16 · chunk 5967 gone from login, app-only 5041 (68.8 KiB) remains | KEPT (0b73f2b) | ≥31% bundle cut on the only measurable route; authed chunk set unchanged; magic-link traced working; well outside run variance |
 
 The next perf fix must be re-measured exactly as §26.1 (same command, route, throttling), one change at a time. Revert if within run variance (here: LCP swing ≈ ±45%, TBT swing ≈ ±58%), revert if a test goes red, and record it whether kept or reverted — this table is the place where dead perf ideas stay dead.
 
@@ -1837,7 +1838,7 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 |---|---|---|---|---|
 | 1 | INFRA-21 | Regenerate `database.types.ts` to match live DB | `npm run types:check` passes on clean tree; diff = `ritual_streak` removal only; zero code references (grep) | — | ✅ DONE |
 | 2 | TOOL-18 | Seed test account + Playwright auth flow | Playwright test logs in and `/do` HTML contains `app/(app)/do/page-*.js` chunk; repeatable session-enabled Lighthouse run succeeds | 1 | ✅ DONE |
-| 3 | PERF-10a | Split supabase+zod chunk (5967, 77.8 KiB gz) off public route | Public-route initial gz ≤ 220 KiB; authed chunk count unchanged; login flow traced working | 2 |
+| 3 | PERF-10a | Split supabase+zod chunk (5967, 77.8 KiB gz) off public route | Public-route initial gz ≤ 220 KiB; authed chunk count unchanged; login flow traced working | 2 | ✅ DONE |
 | 4 | PERF-10b | Reclaim measured-unused 115 KiB (5967/5838/4bd1) on login | `unused-javascript` no longer scores 0; initial gz target met | 3 |
 | — | **Checkpoint A** | Re-measure §26.1; ledger update; human review before Phase 4 | numbers recorded in ledger; keep/revert verdicts per rule | 4 |
 | 5 | PERF-11 | Eliminate the 226 ms @341 ms load longtask | TBT ≤ 200 ms on §26.1 instrumentation; no >200 ms longtask in trace | Checkpoint A |
@@ -1854,4 +1855,10 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 - **First-ever authed `/do` baseline (mobile perf preset, prod server, Aug 8): perf 29/33, LCP 13.4–14.4 s, TBT 2.63–2.85 s, FCP 2.3–2.7 s, TTFB 1.1–1.5 s, CLS 0.013, unused-javascript ~93 KiB.** This is the real user-facing page the §26 login baseline (perf 89) could never see; subsequent authed measurements use this as the reference, instrumented identically.
 - Note: full-suite `npm test` showed one flaky fail (`challenger.test.tsx` linked_people) that passes in isolation — unrelated to this change, flagged for a human.
 
-**Notes:** Task 3 is subject to Law 7 (stop-and-ask) if the cleanest fix requires touching >3 files or the `@supabase/ssr` provider wiring; technique (optimizePackageImports extension vs. forced splitting vs. auth-only client on public routes) is decided at execution after reading providers. Task 6 requires checking for existing CI files at execution; if none exist, deliver scripts + budget config and defer the runner.
+**Status — Task 3 (PERF-10a) DONE, committed `0b73f2b` (Aug 9, 2026):**
+- Login's magic-link/Google calls moved to server actions (`src/app/(auth)/login/actions.ts` via `supabase-server`) so `@supabase/supabase-js` + `zod` never enter the public-route client bundle; `RealtimeStatusContext` extracted to supabase-free `src/components/providers/realtime-status.tsx` so root-layout `ConnectionStatus` doesn't drag the client in either. Law 7 respected: 2 changed + 2 new files, no `@supabase/ssr` provider wiring touched.
+- **Measured (identical analyzer method to §26.2, polyfills excluded in both): login initial JS gz 272.9 → 186.9 KiB (−31.5%); ≤ 220 KiB target met; 17 → 16 scripts; chunk 5967 gone from login, app-only 5041 (68.8 KiB) remains.** Manual gzip incl. polyfills: 311.9 → 225.3 KiB (same −28%).
+- Lighthouse login: perf 89 → 95, TBT 360 → 190 ms, unused JS 115 → 53 KiB. Authed `/do` chunk set unchanged (authed-do test green); magic-link traced through the server action (`tests/login-trace.spec.ts`). `npm test` 144/144, `npm run build` green. Ledger: §26.5.
+- Note: `RealtimeProvider.tsx` lint error surfaced during commit (eslint-disable for `channelsRef` displaced by the extraction) — fixed with a re-applied disable comment; the `err` unused warning is pre-existing (present at HEAD).
+
+**Notes:** Task 4 (PERF-10b, reclaim the remaining ~53 KiB unused JS on login) is next. Task 6 requires checking for existing CI files at execution; if none exist, deliver scripts + budget config and defer the runner.
