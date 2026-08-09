@@ -1821,6 +1821,7 @@ Largest client chunks:
 |---|---|---|---|
 | — | none — baseline pass only | — | no fix attempted yet |
 | PERF-10a: login auth via server actions + supabase-free RealtimeStatusContext | Login initial JS gz: 272.9 → 186.9 KiB (analyzer, polyfills excluded; manual gz incl. polyfills 311.9 → 225.3) · Lighthouse perf 89→95, TBT 360→190 ms, unused JS 115→53 KiB · scripts 17→16 · chunk 5967 gone from login, app-only 5041 (68.8 KiB) remains | KEPT (0b73f2b) | ≥31% bundle cut on the only measurable route; authed chunk set unchanged; magic-link traced working; well outside run variance |
+| PERF-10b: move app-only providers (Tooltip, NuqsAdapter, ConnectionStatus, UpdatePrompt) from root layout to `(app)/layout.tsx` | Login initial JS gz: 186.9 → 164.2 KiB (analyzer, polyfills excluded; manual incl. polyfills 225.3 → 202.7) · scripts 16→13 · nuqs/Tooltip/ConnectionStatus chunk gone from login entirely · Lighthouse perf 94, TBT 222 ms, LCP 1.94 s · `unused-javascript` now flags only framework chunks (5838 app-router 47%, 4bd1 react-dom 43% — not app-reclaimable) with metricSavings FCP/LCP = 0 ms | KEPT (4e08da9) | −22.7 KiB (−12%) on the measurable route with zero app-level waste left; first Lighthouse run (88/314 ms) was cold-server variance, second run confirms parity with PERF-10a |
 
 The next perf fix must be re-measured exactly as §26.1 (same command, route, throttling), one change at a time. Revert if within run variance (here: LCP swing ≈ ±45%, TBT swing ≈ ±58%), revert if a test goes red, and record it whether kept or reverted — this table is the place where dead perf ideas stay dead.
 
@@ -1839,7 +1840,7 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 | 1 | INFRA-21 | Regenerate `database.types.ts` to match live DB | `npm run types:check` passes on clean tree; diff = `ritual_streak` removal only; zero code references (grep) | — | ✅ DONE |
 | 2 | TOOL-18 | Seed test account + Playwright auth flow | Playwright test logs in and `/do` HTML contains `app/(app)/do/page-*.js` chunk; repeatable session-enabled Lighthouse run succeeds | 1 | ✅ DONE |
 | 3 | PERF-10a | Split supabase+zod chunk (5967, 77.8 KiB gz) off public route | Public-route initial gz ≤ 220 KiB; authed chunk count unchanged; login flow traced working | 2 | ✅ DONE |
-| 4 | PERF-10b | Reclaim measured-unused 115 KiB (5967/5838/4bd1) on login | `unused-javascript` no longer scores 0; initial gz target met | 3 |
+| 4 | PERF-10b | Reclaim measured-unused 115 KiB (5967/5838/4bd1) on login | `unused-javascript` no longer scores 0; initial gz target met | 3 | ✅ DONE |
 | — | **Checkpoint A** | Re-measure §26.1; ledger update; human review before Phase 4 | numbers recorded in ledger; keep/revert verdicts per rule | 4 |
 | 5 | PERF-11 | Eliminate the 226 ms @341 ms load longtask | TBT ≤ 200 ms on §26.1 instrumentation; no >200 ms longtask in trace | Checkpoint A |
 | 6 | PERF-09 | CI bundle-budget + Lighthouse gate | Deliberately over-budget change fails CI; baseline builds pass | 5 |
@@ -1861,4 +1862,10 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 - Lighthouse login: perf 89 → 95, TBT 360 → 190 ms, unused JS 115 → 53 KiB. Authed `/do` chunk set unchanged (authed-do test green); magic-link traced through the server action (`tests/login-trace.spec.ts`). `npm test` 144/144, `npm run build` green. Ledger: §26.5.
 - Note: `RealtimeProvider.tsx` lint error surfaced during commit (eslint-disable for `channelsRef` displaced by the extraction) — fixed with a re-applied disable comment; the `err` unused warning is pre-existing (present at HEAD).
 
-**Notes:** Task 4 (PERF-10b, reclaim the remaining ~53 KiB unused JS on login) is next. Task 6 requires checking for existing CI files at execution; if none exist, deliver scripts + budget config and defer the runner.
+**Status — Task 4 (PERF-10b) DONE, committed `4e08da9` (Aug 9, 2026):**
+- Moved app-only providers from root layout into `(app)/layout.tsx`: `TooltipProvider`, `NuqsAdapter` (only `(app)/do` + CalendarView use `useQueryState`), `ConnectionStatus`, `UpdatePrompt`. Root layout keeps `ToastProvider` (onboarding, which is outside `(app)`, uses sonner) and `WebVitalsReporter` (global observability; it's the login-route telemetry source). 2 files, no `@supabase/ssr` wiring, no invariant touched — same technique family as PERF-10a ("auth-only client on public routes").
+- **Measured (same method as §26.2/PERF-10a, polyfills excluded): login initial JS gz 186.9 → 164.2 KiB (−12%); scripts 16 → 13; the nuqs/Tooltip/ConnectionStatus/UpdatePrompt chunk is gone from login's script set entirely.** Manual gzip incl. polyfills: 225.3 → 202.7 KiB.
+- Lighthouse login (2 runs; first was cold-server variance): perf 88→94, TBT 314→222 ms, LCP 2.29→1.94 s, `unused-javascript` scores 0.5 (was 0 at §26 baseline) and now flags only framework chunks — 5838 (Next app-router internals, 47% wasted) and 4bd1 (react-dom, 43% wasted) — with metricSavings FCP/LCP = 0 ms: nothing left to reclaim at app level.
+- Authed `/do` chunk set unchanged (`authed-do.spec.ts` + `login-trace.spec.ts` pass); `npm test` 144/144; `npm run build` + lint green. Ledger: §26.5.
+
+**Notes:** Checkpoint A (re-measure §26.1, ledger, human review) is next; then Task 5 (PERF-11: the 226 ms load longtask, TBT ≤ 200 ms). Task 6 requires checking for existing CI files at execution; if none exist, deliver scripts + budget config and defer the runner.
