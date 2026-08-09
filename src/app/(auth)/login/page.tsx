@@ -1,50 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import {
   OnboardingBackground,
   PresenseLogo,
 } from "@/components/layout/OnboardingBackground";
-import { getAuthCallbackUrl } from "@/lib/auth-redirect";
+import { sendMagicLink, startGoogleSignIn } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 export default function LoginPage() {
-  const [supabase] = useState<ReturnType<typeof createClient> | null>(() => {
-    try {
-      return createClient();
-    } catch {
-      return null;
-    }
-  });
-
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState<"google" | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [initError] = useState<string | null>(() =>
-    supabase
-      ? null
-      : "Supabase failed to initialize. Restart the dev server after adding .env.local.",
-  );
+
+  const formDataWith = (pairs: Array<[string, string]>) => {
+    const fd = new FormData();
+    pairs.forEach(([k, v]) => fd.append(k, v));
+    return fd;
+  };
 
   const handleGoogle = async () => {
-    if (!supabase)
-      return setError("Supabase not initialized. Check environment variables.");
     setLoading("google");
     setError(null);
     try {
-      const redirectTo = getAuthCallbackUrl(window.location.href);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo },
-      });
-      if (error) {
-        setError(error.message);
-        setLoading(null);
-      }
+      const result = await startGoogleSignIn(
+        formDataWith([["origin", window.location.origin]]),
+      );
+      if (result.error) setError(result.error);
+      else if (result.url) window.location.href = result.url;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to start Google sign-in",
@@ -55,18 +41,17 @@ export default function LoginPage() {
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase)
-      return setError("Supabase not initialized. Check environment variables.");
     if (!email.trim()) return;
     setLoading("email");
     setError(null);
     try {
-      const emailRedirectTo = getAuthCallbackUrl(window.location.href);
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo },
-      });
-      if (error) setError(error.message);
+      const result = await sendMagicLink(
+        formDataWith([
+          ["email", email],
+          ["origin", window.location.origin],
+        ]),
+      );
+      if (result.error) setError(result.error);
       else setEmailSent(true);
     } catch (err) {
       setError(
@@ -92,20 +77,6 @@ export default function LoginPage() {
           boxShadow: "var(--shadow-modal)",
         }}
       >
-        {/* Init error */}
-        {initError && (
-          <div
-            className="mb-5 rounded-[var(--radius-md)] p-3 text-sm font-medium"
-            style={{
-              background: "var(--status-danger-dim)",
-              border: "0.5px solid var(--status-danger-border)",
-              color: "var(--status-danger)",
-            }}
-          >
-            {initError}
-          </div>
-        )}
-
         {/* Logo */}
         <div className="mb-8 flex items-center gap-2.5">
           <PresenseLogo size={28} />
