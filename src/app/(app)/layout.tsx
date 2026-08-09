@@ -27,18 +27,22 @@ export default async function AppLayout({
 }) {
   const supabase = await createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user) {
+  // The proxy (src/proxy.ts) already validated the session via getUser() on
+  // every request, so the layout reads the session from cookies instead of
+  // repeating a ~300ms auth-server round trip.
+  if (!session?.user) {
     redirect("/login");
   }
+  const userId = session.user.id;
 
   // Check if onboarding is complete by looking for user_settings
   const { data: settings } = await supabase
     .from("user_settings")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (!settings || settings.onboarding_complete === false) {
@@ -47,13 +51,13 @@ export default async function AppLayout({
     const { count } = await supabase
       .from("items")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (count && count > 0) {
       await supabase
         .from("user_settings")
         .upsert(
-          { user_id: user.id, onboarding_complete: true },
+          { user_id: userId, onboarding_complete: true },
           { onConflict: "user_id" },
         );
     } else {
