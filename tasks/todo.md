@@ -20,9 +20,9 @@ Status legend: [ ] pending · [~] in progress · [x] done · [X] closed with att
   - Acceptance: script-set gz reduced on all (app) routes + Lighthouse parity-or-better, OR documented close-with-attribution verdict — MET (verdict documented)
 
 ## Checkpoint: PERF-12 close-out (human review)
-- [ ] All acceptance criteria met or closed with attribution — PENDING: PERF-12 verdict (perf ≥ 70, LCP ≤ 4 s not met; TBT met at 440/450 ms) → extend-vs-close decision needed from human
-- [ ] npm test 144/144, npm run build green
-- [ ] Ledger §26.5 rows for every attempt — done for fixes 1–2 + task 4
-- [ ] §28 status paragraphs updated — done for tasks 1–4
-- [ ] Final verdict vs acceptance (perf ≥ 70, LCP ≤ 4 s, TBT ≤ 1 s) — TBT met (440/450 ms), LCP/perf short → decide extend-vs-close
-- [ ] Human reviews before further work
+- [x] All acceptance criteria met or closed with attribution — **PERF-12 CLOSED with attribution (human-approved)**: TBT met; LCP/perf attributed to security boundary + SSR gating + invariant-required shell; verdict in §28
+- [x] npm test 144/144, npm run build green — confirmed at close-out
+- [x] Ledger §26.5 rows for every attempt — fixes 1–2 + task 4 recorded
+- [x] §28 status paragraphs updated — tasks 1–4 + verdict
+- [x] Final verdict vs acceptance (perf ≥ 70, LCP ≤ 4 s, TBT ≤ 1 s) — TBT met (440/450 ms), LCP/perf short, CLOSED with attribution per PERF-11 precedent
+- [x] Human reviews before further work — done; follow-up suggestion: /do rendering-strategy study (not ticketed)

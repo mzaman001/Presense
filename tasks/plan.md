@@ -1,6 +1,6 @@
 # Implementation Plan: PERF-12 task 4 — remaining TTFB + main-thread cost on authed routes
 
-> **Status: COMPLETE (Aug 10, 2026).** Gate 1 chose Option A (leave `user_settings`). Task 4.1 attribution produced the TTFB split (proxy getUser 293–366 ms / layout settings ~300 ms / render ~60 ms) and chunk verdict (shared invariant-required shell). Task 4.2 closed TTFB work with attribution (doc-only). Task 4.3 closed with attribution (no app-level lever). Evidence committed to `docs/plans/EXECUTION_SPEC.md` §28 + §26.5. Remaining for the human: PERF-12 extend-vs-close decision (TBT met; LCP 6.4 s / perf 53–55 short of targets).
+> **Status: COMPLETE (Aug 10, 2026).** Gate 1 chose Option A (leave `user_settings`). Task 4.1 attribution produced the TTFB split (proxy getUser 293–366 ms / layout settings ~300 ms / render ~60 ms) and chunk verdict (shared invariant-required shell). Task 4.2 closed TTFB work with attribution (doc-only). Task 4.3 closed with attribution (no app-level lever). **PERF-12 subsequently CLOSED with attribution (human-approved)** — verdict recorded in `docs/plans/EXECUTION_SPEC.md` §28. Evidence committed alongside §26.5. Suggested follow-up (not ticketed): /do rendering-strategy study.
 
 ## Overview
 
