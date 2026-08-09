@@ -1,0 +1,9 @@
+{
+  "comment": "PERF-09 bundle budgets. Measured with node scripts/check-budgets.mjs against a production build (ANALYZE=true next build --webpack); the only public route is /login (src/proxy.ts gates everything else). Budget = baseline + 0.7 KiB margin (measured 164.3 KiB gz excl. polyfills, 13 scripts, Aug 9 2026). Update deliberately, record the change in EXECUTION_SPEC §26.5.",
+  "routes": [
+    {
+      "path": "/login",
+      "initialGzKiB": 165
+    }
+  ]
+}

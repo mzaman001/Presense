@@ -6,15 +6,19 @@
 // the same way the /login baseline was. Requires the prod server to be
 // running (next start) and CHROME_PATH set to a Chrome/Edge binary.
 //
-// Usage: node scripts/lighthouse-authed.mjs [url]
+// Usage: node scripts/lighthouse-authed.mjs [url] [--budget <file>]
 //   default url: http://localhost:3111/do
+//   --budget: fail the run when a metric/resource exceeds perf-lh-budget.json
 // Output: <repo>/lh-authed-report.json + printed perf score / key metrics
 
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-const url = process.argv[2] ?? "http://localhost:3111/do";
+const argv = process.argv.slice(2);
+const budgetIdx = argv.indexOf("--budget");
+const budgetFile = budgetIdx !== -1 && argv[budgetIdx + 1] ? argv[budgetIdx + 1] : null;
+const url = argv[0] && argv[0] !== "--budget" ? argv[0] : "http://localhost:3111/do";
 const root = process.cwd();
 const outPath = path.join(root, "lh-authed-report.json");
 const headersPath = path.join(root, ".lh-headers.tmp.json");
@@ -48,6 +52,9 @@ const args = [
   `--output-path=${outPath}`,
   "--quiet",
 ];
+if (budgetFile) {
+  args.push(`--budget-path=${path.resolve(budgetFile)}`);
+}
 const lh = spawnSync("cmd", ["/c", ...args], { cwd: root, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 
 fs.rmSync(headersPath, { force: true });

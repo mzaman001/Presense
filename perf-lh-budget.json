@@ -1,0 +1,14 @@
+{
+  "comment": "PERF-09 Lighthouse budget config. Targets from EXECUTION_SPEC: PERF-11 (TBT <= 200 ms, LCP <= 2.5 s) and PERF-10a (public-route initial gz <= 220 KiB). Not CI-wired: Lighthouse needs real Supabase credentials and a seeded session, so this is opt-in via scripts/lighthouse-authed.mjs --budget. Update deliberately, record the change in EXECUTION_SPEC §26.5.",
+  "categories": {
+    "performance": {
+      "metricBudget": [
+        { "metric": "first-contentful-paint", "budget": 2500 },
+        { "metric": "largest-contentful-paint", "budget": 2500 },
+        { "metric": "total-blocking-time", "budget": 200 },
+        { "metric": "cumulative-layout-shift", "budget": 0.1 }
+      ]
+    }
+  },
+  "resourceSizes": [{ "resourceType": "script", "budget": 220 }]
+}
