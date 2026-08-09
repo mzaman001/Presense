@@ -308,7 +308,7 @@ export default function InboxPage() {
             if (insertError) throw insertError;
             if (inserted) {
               routedId = inserted.id;
-              await safeMutate(
+              const { success: trashed } = await safeMutate(
                 () =>
                   supabase
                     .from("items")
@@ -316,6 +316,16 @@ export default function InboxPage() {
                     .eq("id", id),
                 "Routed, but failed to remove from Inbox",
               );
+              if (!trashed) {
+                const destId = routedId;
+                if (destId) {
+                  await safeMutate(
+                    () => supabase.from("people").delete().eq("id", destId),
+                    "Failed to undo route",
+                  );
+                }
+                throw new Error("Failed to remove from Inbox");
+              }
             }
           }
         } else if (space === "explore") {
@@ -334,7 +344,7 @@ export default function InboxPage() {
           if (insertError) throw insertError;
           if (inserted) {
             routedId = inserted.id;
-            await safeMutate(
+            const { success: trashed } = await safeMutate(
               () =>
                 supabase
                   .from("items")
@@ -342,6 +352,16 @@ export default function InboxPage() {
                   .eq("id", id),
               "Routed, but failed to remove from Inbox",
             );
+            if (!trashed) {
+              const destId = routedId;
+              if (destId) {
+                await safeMutate(
+                  () => supabase.from("explores").delete().eq("id", destId),
+                  "Failed to undo route",
+                );
+              }
+              throw new Error("Failed to remove from Inbox");
+            }
           }
         } else if (space === "think") {
           // BUG-38: insert FIRST, trash original only on success
@@ -359,7 +379,7 @@ export default function InboxPage() {
           if (insertError) throw insertError;
           if (inserted) {
             routedId = inserted.id;
-            await safeMutate(
+            const { success: trashed } = await safeMutate(
               () =>
                 supabase
                   .from("items")
@@ -367,6 +387,16 @@ export default function InboxPage() {
                   .eq("id", id),
               "Routed, but failed to remove from Inbox",
             );
+            if (!trashed) {
+              const destId = routedId;
+              if (destId) {
+                await safeMutate(
+                  () => supabase.from("threads").delete().eq("id", destId),
+                  "Failed to undo route",
+                );
+              }
+              throw new Error("Failed to remove from Inbox");
+            }
           }
         } else if (space === "location") {
           const {
@@ -387,7 +417,7 @@ export default function InboxPage() {
             if (insertError) throw insertError;
             if (inserted) {
               routedId = inserted.id;
-              await safeMutate(
+              const { success: trashed } = await safeMutate(
                 () =>
                   supabase
                     .from("items")
@@ -395,6 +425,16 @@ export default function InboxPage() {
                     .eq("id", id),
                 "Routed, but failed to remove from Inbox",
               );
+              if (!trashed) {
+                const destId = routedId;
+                if (destId) {
+                  await safeMutate(
+                    () => supabase.from("locations").delete().eq("id", destId),
+                    "Failed to undo route",
+                  );
+                }
+                throw new Error("Failed to remove from Inbox");
+              }
             }
           }
         }
