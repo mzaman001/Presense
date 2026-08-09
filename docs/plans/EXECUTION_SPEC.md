@@ -1886,3 +1886,20 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 - **Only `/login` is budgeted** — `src/proxy.ts` gates every other route to `/login` (checked at execution). Any future public route must be added to `perf-budgets.json` deliberately.
 - **Lighthouse gate delivered as opt-in, not CI-wired:** `perf-lh-budget.json` (LCP/FCP ≤ 2.5 s, TBT ≤ 200 ms, CLS ≤ 0.1, script ≤ 220 KiB — the §26.4 PERF-11/PERF-10a targets) + `--budget <file>` flag on `scripts/lighthouse-authed.mjs` (appends Lighthouse's `--budget-path`). Not wired into CI because Lighthouse needs real Supabase credentials + a seeded session for the authed route, and §26.1 run variance (LCP ±45%, TBT ±58%) would make a hard CI gate flaky.
 - `npm test` 144/144 green, `npm run build` green. **Flagged (not fixed, per EXECUTION_RULES): `npm run lint` fails at HEAD with 80 pre-existing errors** (react-hooks `set-state-in-effect` + `no-explicit-any` across ~25 files) — untouched by this ticket; candidate for a new ticket.
+
+---
+
+## 28. Addendum 15 — approved execution plan for authed /do perf work (Aug 10, 2026)
+
+Approved by human Aug 10, 2026. Same discipline as §27: one ticket at a time per `docs/agents/EXECUTION_RULES.md`, measure with identical §26.1 instrumentation (authed variant: `scripts/lighthouse-authed.mjs`, seeded test account from TOOL-18), one change at a time, ledger §26.5, revert if within run variance (LCP ±45%, TBT ±58%) or tests go red.
+
+**PERF-12 — Cut authed `/do` transfer + main-thread cost.** The §27 plan measured only the public login route; the real user-facing page has never been optimized. Baseline (Aug 8, TOOL-18, pre-PERF-10a/b): **perf 29/33, LCP 13.4–14.4 s, TBT 2.63–2.85 s, FCP 2.3–2.7 s, TTFB 1.1–1.5 s, CLS 0.013, unused-javascript ~93 KiB.** `/do` initial JS per PERF-09 analyzer: 23 scripts, 232.8 KiB gz (chunk 5041 = 68.8 KiB supabase client, plus 21 app chunks). Priority: High (worst user-facing page). Acceptance: perf ≥ 70, LCP ≤ 4 s, TBT ≤ 1 s on the same authed flow; if a target is unreachable at app level, close with attribution like PERF-11 did.
+
+### Task list
+
+| # | Title | Acceptance criteria (measurable) | Depends on |
+|---|---|---|---|
+| 1 | Re-measure `/do` on HEAD (post PERF-10a/b) | 2 perf-preset runs recorded; compare vs Aug 8 baseline; first fix chosen from attribution | — |
+| 2 | First fix (chosen after task-1 analysis) | measured improvement outside §26.1 run variance; tests green; ledger updated | 1 |
+
+**Notes:** The Aug 8 baseline predates PERF-10a/b (login-bundle changes), but `authed-do.spec.ts` asserts the `/do` chunk set unchanged — task 1 confirms empirically. RUM-vs-seeded-account was settled by TOOL-18 (seeded account; §26.4 NOTED).
