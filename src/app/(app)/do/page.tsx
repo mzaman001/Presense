@@ -14,9 +14,7 @@ import { createClient, safeMutate } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { TaskCard } from "@/components/features/TaskCard";
-import { CalendarView } from "@/components/features/calendar/CalendarView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Clock, Zap, Calendar, Wind, CheckCircle2 } from "lucide-react";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -30,6 +28,24 @@ import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import dynamic from "next/dynamic";
+
+// Heavy, closed-by-default surfaces loaded on demand (same pattern as
+// DynamicModals) so /do's initial bundle and hydration exclude them.
+const TaskAddPanel = dynamic(
+  () =>
+    import("@/components/features/TaskAddPanel").then((m) => ({
+      default: m.TaskAddPanel,
+    })),
+  { ssr: false, loading: () => null },
+);
+const CalendarView = dynamic(
+  () =>
+    import("@/components/features/calendar/CalendarView").then((m) => ({
+      default: m.CalendarView,
+    })),
+  { ssr: false, loading: () => null },
+);
 
 interface Task {
   id: string;
