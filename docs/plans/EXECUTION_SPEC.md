@@ -1841,7 +1841,7 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 | 2 | TOOL-18 | Seed test account + Playwright auth flow | Playwright test logs in and `/do` HTML contains `app/(app)/do/page-*.js` chunk; repeatable session-enabled Lighthouse run succeeds | 1 | ✅ DONE |
 | 3 | PERF-10a | Split supabase+zod chunk (5967, 77.8 KiB gz) off public route | Public-route initial gz ≤ 220 KiB; authed chunk count unchanged; login flow traced working | 2 | ✅ DONE |
 | 4 | PERF-10b | Reclaim measured-unused 115 KiB (5967/5838/4bd1) on login | `unused-javascript` no longer scores 0; initial gz target met | 3 | ✅ DONE |
-| — | **Checkpoint A** | Re-measure §26.1; ledger update; human review before Phase 4 | numbers recorded in ledger; keep/revert verdicts per rule | 4 |
+| — | **Checkpoint A** | Re-measure §26.1; ledger update; human review before Phase 4 | numbers recorded in ledger; keep/revert verdicts per rule | 4 | ✅ DONE |
 | 5 | PERF-11 | Eliminate the 226 ms @341 ms load longtask | TBT ≤ 200 ms on §26.1 instrumentation; no >200 ms longtask in trace | Checkpoint A |
 | 6 | PERF-09 | CI bundle-budget + Lighthouse gate | Deliberately over-budget change fails CI; baseline builds pass | 5 |
 
@@ -1868,4 +1868,6 @@ Approved by human Aug 8, 2026. Sequential phases grounded in the §26 baseline. 
 - Lighthouse login (2 runs; first was cold-server variance): perf 88→94, TBT 314→222 ms, LCP 2.29→1.94 s, `unused-javascript` scores 0.5 (was 0 at §26 baseline) and now flags only framework chunks — 5838 (Next app-router internals, 47% wasted) and 4bd1 (react-dom, 43% wasted) — with metricSavings FCP/LCP = 0 ms: nothing left to reclaim at app level.
 - Authed `/do` chunk set unchanged (`authed-do.spec.ts` + `login-trace.spec.ts` pass); `npm test` 144/144; `npm run build` + lint green. Ledger: §26.5.
 
-**Notes:** Checkpoint A (re-measure §26.1, ledger, human review) is next; then Task 5 (PERF-11: the 226 ms load longtask, TBT ≤ 200 ms). Task 6 requires checking for existing CI files at execution; if none exist, deliver scripts + budget config and defer the runner.
+**Status — Checkpoint A DONE (Aug 9, 2026), §26.1 re-measured on HEAD (`4e08da9`), 2 perf-preset runs:** perf 95/93 (baseline 89/87) · FCP 1.9/1.9 s · LCP 1.9/1.9 s (baseline 2.1/3.8) · TBT 196/258 ms (baseline 360/150) · TTI 3.3/3.4 s · CLS 0 · TTFB 30/25 ms · `unused-javascript` 0.5 (only framework chunks, 0 ms metric savings) · mainthread-work 1.29 s (baseline 1.1–1.2 s) · long-tasks: 3, at 171–176 ms @ ~1.39 s, 241–296 ms @ ~3.0 s, 55–62 ms @ ~3.3 s (baseline: 101/226/163 ms @ 231/341/659 ms). The §26 baseline's 226 ms @ 341 ms longtask is gone from the load path — the remaining ~3.0 s longtask fires after LCP and is the largest. Phase-3 targets (login gz ≤ 220 KiB, unused-javascript off zero) both hold on HEAD.
+
+**Notes:** Task 5 (PERF-11) is next: eliminate the remaining ≥200 ms longtask (currently 241–296 ms @ ~3.0 s, post-LCP — the §26.1 trace's "226 ms @ 341 ms" no longer exists in the load path); acceptance TBT ≤ 200 ms on §26.1 instrumentation. Task 6 requires checking for existing CI files at execution; if none exist, deliver scripts + budget config and defer the runner.
