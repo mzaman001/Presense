@@ -36,13 +36,9 @@ export const viewport: Viewport = {
 };
 
 import { ToastProvider } from "@/components/ui/ToastProvider";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
-import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
 import { WebVitalsReporter } from "@/components/layout/WebVitalsReporter";
 import { cn } from "@/lib/utils";
 import { env } from "@/lib/env";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 export default async function RootLayout({
   children,
@@ -126,12 +122,8 @@ export default async function RootLayout({
         />
       </head>
       <body className="flex min-h-full flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-500">
-        <TooltipProvider>
-          <WebVitalsReporter />
-          <ConnectionStatus />
-          <UpdatePrompt />
-          <NuqsAdapter>{children}</NuqsAdapter>
-        </TooltipProvider>
+        <WebVitalsReporter />
+        {children}
         <ToastProvider />
       </body>
     </html>

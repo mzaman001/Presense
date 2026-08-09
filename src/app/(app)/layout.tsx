@@ -14,6 +14,10 @@ import { redirect } from "next/navigation";
 
 import { MotionProvider } from "@/components/layout/MotionProvider";
 import type { UserSettings } from "@/store/useAppStore";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
+import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 // App layout — shown for all protected (app) pages
 export default async function AppLayout({
@@ -70,17 +74,23 @@ export default async function AppLayout({
       />
       <MotionProvider>
         <QueryProvider>
-          <RealtimeProvider>
-            <AmbientBackground />
-            <MobileTopBar />
-            <Sidebar />
-            <MobileDrawer />
-            {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
-            <DynamicModals />
-            <RitualOverlay />
-            <AppContentWrapper>{children}</AppContentWrapper>
-            <BottomNav />
-          </RealtimeProvider>
+          <TooltipProvider>
+            <RealtimeProvider>
+              <ConnectionStatus />
+              <UpdatePrompt />
+              <AmbientBackground />
+              <MobileTopBar />
+              <Sidebar />
+              <MobileDrawer />
+              {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
+              <DynamicModals />
+              <RitualOverlay />
+              <AppContentWrapper>
+                <NuqsAdapter>{children}</NuqsAdapter>
+              </AppContentWrapper>
+              <BottomNav />
+            </RealtimeProvider>
+          </TooltipProvider>
         </QueryProvider>
       </MotionProvider>
     </>
