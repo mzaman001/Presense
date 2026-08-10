@@ -4,6 +4,8 @@
 **Author:** Claude (Anthropic), acting as external reviewer
 **Status:** Supplementary. This is **not** a replacement for `docs/plans/EXECUTION_SPEC.md` or `docs/project/DOCS_NEEDS_CODE.md` — those remain the canonical backlog per `AGENTS.md`. This document (a) verifies a sample of the July 9, 2026 audit's findings are still live in the codebase as of today, (b) adds findings that audit did not cover — mostly CI/CD hygiene, Supabase-specific security/performance deltas, and observability — verified directly against the files on disk, and (c) grounds recommendations in external, dated, multi-source industry practice for August 2026 rather than a single opinion. A human should triage the items below into `EXECUTION_SPEC.md` with proper ticket IDs; the IDs used here (`SEC2-*`, `OBS-*`, `CI-*`, `PWA2-*`) are provisional and chosen only to avoid colliding with the existing `BUG-*`/`DS-*`/`INFRA-*` numbering.
 
+> **TRIAGED Aug 10, 2026** — all §1 findings are now tickets in `EXECUTION_SPEC.md` §29 (Addendum 16), bridged into `docs/project/DOCS_NEEDS_CODE.md`. Provisional-ID resolution: `PERF-07` → duplicate of existing `INFRA-15` (+ `INFRA-17` covers its index check) — **no new ticket**; `INFRA-15` → `INFRA-23`; `PERF-08` → `PERF-13`. Two §7 ship-blockers are now **stale — do not re-fix**: item 3 (BUG-38) and item 4 (warm-light theme, a false positive) were both closed Aug 10, 2026 (see `EXECUTION_SPEC.md` §24.3/§24.7); §6's "BUG-38 remains unresolved" is likewise superseded (commit `660f5a3`).
+
 **Method:** Every finding below was verified by directly reading the file and line in question on August 8, 2026 — not inferred from the existing docs. Every external best-practice claim is backed by at least two independent, dated sources (listed in §9); where sources disagreed, that's noted rather than silently resolved.
 
 ---
@@ -161,6 +163,8 @@ Beyond `PERF-07` and `INFRA-15` above, cross-checked against multiple current (2
 
 `BUG-38` (37/71 unchecked Supabase mutation errors) is the correct top-priority stability item and remains unresolved as of this pass (spot-checked `src/app/(app)/inbox/page.tsx` — the `dismissInboxItem` pattern described in `DOCS_NEEDS_CODE.md` matches the current code). The one addition this pass makes: **`BUG-38`'s planned fix (a `mutate()` wrapper reporting to "Sentry once TOOL-06 lands") is currently blocked on `OBS-01`.** Sequence these together — build the observability sink first (or simultaneously), or the error-check fix will have nowhere to report to and will degrade back into `console.error` calls nobody watches, which is a milder version of the exact problem being fixed.
 
+> **Update Aug 10, 2026:** BUG-38 has since been **closed** (commit `660f5a3` — full pass, zero error-unchecked mutation sites remain). The OBS-01 sequencing point above is preserved, folded into the `OBS-01` ticket in `EXECUTION_SPEC.md` §29.
+
 ---
 
 ## 7. Release-readiness checklist (condensed, ordered)
@@ -170,8 +174,8 @@ Treat this as a punch list layered on top of the existing Phase 0-5 structure in
 **Ship-blockers (do before any public/production launch):**
 1. Fix `SEC2-01` (rate-limit parameterization) — destructive endpoint currently under-protected.
 2. Stand up `OBS-01` (Sentry or equivalent) — currently zero production visibility.
-3. Finish `BUG-38` migration (silent data loss) — now that #2 gives it somewhere to report.
-4. Fix `ROOT PATTERN 2` (warm-light theme unreadable text) — one of your three theme×mode combinations is currently broken for any user who picks it.
+3. ~~Finish `BUG-38` migration (silent data loss) — now that #2 gives it somewhere to report.~~ **SUPERSEDED Aug 10, 2026** — BUG-38 closed (commit `660f5a3`); the sequencing point stands for future work: its `safeMutate()` reporting contract is the reason OBS-01 is Critical-for-release.
+4. ~~Fix `ROOT PATTERN 2` (warm-light theme unreadable text) — one of your three theme×mode combinations is currently broken for any user who picks it.~~ **SUPERSEDED Aug 10, 2026** — closed as a false positive (text overrides exist since `e6fd96b4`; verified live).
 5. Verify Supabase Dashboard settings against `SEC2-02` (password floor, CAPTCHA, email confirmation, Security Advisor pass) and the Supavisor/PITR items in §4 — these are the "5-minute Dashboard click" items that are easy to forget precisely because they're not code.
 6. Confirm Edge Function invocation auth (last row of §4 table) — silent cron failure is worse than a loud one.
 

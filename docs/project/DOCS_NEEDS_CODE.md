@@ -22,6 +22,24 @@
 
 **Warm-light theme text overrides missing** — ✅ **RESOLVED Aug 10, 2026 — false positive.** The warm-light block (`globals.css:374-381`) has had dark-warm text overrides (`--text-1: #1A0E00`, etc.) since `e6fd96b4` (July 5, 2026, predating the July 9 audit). Verified live via computed styles across `/`, `/do`, `/inbox`, `/think`. See Resolved section below.
 
+### External audit (Aug 8, 2026) — Critical findings (triage: `EXECUTION_SPEC.md` §29)
+
+**SEC2-01 — Account-deletion rate limit is not enforced in production** — OPEN (ticket `SEC2-01`)
+
+- **Files:** `src/lib/rate-limit.ts:26-34`, `src/app/api/account/route.ts:19`, `src/app/api/capture/route.ts:16`
+- **What's wrong:** `checkRateLimit(key, maxRequests, windowMs)` accepts per-call limits, but `getRateLimit()` builds one module-level `Ratelimit` singleton hardcoded to `slidingWindow(100, "60 s")` with `prefix: "rl:capture"` — the per-call arguments are silently ignored whenever Redis is configured (only the never-configured in-memory dev fallback honors them). Account deletion is effectively limited to 100/min shared with capture traffic instead of the intended 3/min.
+- **Fix:** Parameterize `Ratelimit` construction (e.g. `Map<string, Ratelimit>` keyed by caller bucket) so each call site's limit and prefix are honored. Add a regression test asserting a 4th account-delete request within a minute is rejected.
+- **Priority:** P0 (Critical — destructive endpoint under-protected).
+- **Depends on:** None.
+
+**OBS-01 — No production error/performance monitoring is wired up** — OPEN (ticket `OBS-01`)
+
+- **Files:** `src/app/api/telemetry/route.ts:26-33`, `src/lib/logger.ts:1-24`, `package.json`
+- **What's wrong:** Three layers look complete but ship nothing durable: `/api/telemetry` Zod-validates then `console.warn`s and returns 204 (data discarded — ephemeral, unalertable serverless log stream); `logger.ts` is Pino with no transport; `package.json` has no `@sentry/*`. There is currently no way to learn something broke in production except a user reporting it. This also leaves the reporting contracts of `AGENTS.md` invariant #1 and BUG-38's `safeMutate()` with no sink.
+- **Fix:** Adopt Sentry (`@sentry/nextjs`, per TOOL-06) or Vercel Log Drains + Speed Insights/Web Analytics; forward `/api/telemetry` to it instead of `console.warn`; coordinate logger with TOOL-05; add CSP `report-uri`/`report-to` to `src/proxy.ts` (audit §5) once the sink exists.
+- **Priority:** P0 (Critical for release — sequence before any fix whose failure reporting depends on it).
+- **Depends on:** TOOL-06 / TOOL-05 coordination.
+
 ---
 
 ## P1 — High (next 1-2 months, polish + consistency)
@@ -372,6 +390,38 @@
 - **Priority:** P1.
 - **Depends on:** None (each can land independently).
 
+**CI-01 — `eslint.yml` lints nothing and always looks green** — OPEN (ticket `CI-01`)
+
+- **File:** `.github/workflows/eslint.yml:26-40`
+- **What's wrong:** Installs `eslint@8.10.0` fresh each run and lints with `--config .eslintrc.js` — but the repo is ESLint 9 + flat config (`eslint.config.mjs`) and no `.eslintrc.js`/`.eslintrc.json` exists (verified Aug 10, 2026). The step is wrapped in `continue-on-error: true`, so the job always reports success: a second, parallel ESLint "workflow theater" job showing a checkmark in the PR UI while providing zero signal.
+- **Fix:** Delete `eslint.yml` — `ci.yml`'s `npm run lint` is the real gate. If SARIF upload is wanted, add `--format @microsoft/eslint-formatter-sarif` to the existing `ci.yml` lint step against the real config.
+- **Priority:** P1 — 0.5 days.
+- **Depends on:** None.
+
+**CI-02 — `trivy.yml` is unedited template boilerplate, fails before Trivy runs** — OPEN (ticket `CI-02`)
+
+- **File:** `.github/workflows/trivy.yml:20-23`
+- **What's wrong:** `docker build -t docker.io/my-organization/my-app:${{ github.sha }}` is the literal GitHub placeholder and there is no `Dockerfile` anywhere in the repo (Vercel-style Next.js deployment). Every run fails at the `docker build` step.
+- **Fix:** Delete it, or repoint to `trivy fs .` (filesystem/dependency + IaC misconfiguration + secret scanning — no Dockerfile needed, complements `osv-scanner.yml`).
+- **Priority:** P1 — 0.5 days.
+- **Depends on:** None.
+
+**CI-03 — Two unconfigured, redundant static-analysis platforms (SonarCloud + SonarQube)** — OPEN (ticket `CI-03`)
+
+- **Files:** `.github/workflows/sonarcloud.yml:57-58`, `.github/workflows/sonarqube.yml:38`
+- **What's wrong:** `sonar.projectKey` and `sonar.organization`/`sonar.host.url` are blank in both — the jobs fail or silently no-op on every push, and running both platforms is redundant with each other and with `semgrep.yml` (three static-analysis SaaS integrations total; at most one is needed).
+- **Fix:** Keep Semgrep's free OSS tier (already has real rules configured), delete the two Sonar workflow files.
+- **Priority:** P1 — 0.5 days.
+- **Depends on:** None.
+
+**CI-04 — `ci.yml` has no `permissions:` block; first-party Actions not SHA-pinned** — OPEN (ticket `CI-04`)
+
+- **Files:** `.github/workflows/ci.yml` (whole file), all `actions/checkout@v4`/`actions/setup-node@v4` references
+- **What's wrong:** `ci.yml` is the only workflow without a `permissions:` key (inherits the repo default `GITHUB_TOKEN` scope); `checkout`/`setup-node` use mutable tags while the third-party actions are correctly SHA-pinned. Compromised-upstream-action attacks under existing tags are a live 2025-2026 attack class (e.g. `tj-actions/changed-files`, CVE-2025-30066).
+- **Fix:** Add `permissions: contents: read` at the top of `ci.yml` (elevate per-job where needed); pin `checkout`/`setup-node` to full commit SHAs; consider Dependabot `github-actions` updates to keep pins current.
+- **Priority:** P1 — 1 day.
+- **Depends on:** None.
+
 ---
 
 ## P1 — Database (ROOT PATTERN 5 + audit §9.3)
@@ -390,6 +440,42 @@
 - **What's wrong:** Postgres can't cache the function call, re-evaluates per row. Performance issue at scale.
 - **Fix:** Wrap all `auth.uid()` calls in `(select auth.uid())` in new migration. Or wait for Supabase to fix at the platform level.
 - **Priority:** P1 — 1-2 days.
+- **Depends on:** None.
+
+---
+
+## P1 — External audit (Aug 8, 2026) triage: PWA, Edge Functions, build config (tickets in `EXECUTION_SPEC.md` §29)
+
+**PWA2-01 — Maskable icon reuses the "any"-purpose asset; manifest fields missing** — OPEN (ticket `PWA2-01`)
+
+- **File:** `public/manifest.json:9-13`
+- **What's wrong:** The same `icon-192.png`/`icon-512.png` are declared with both `"purpose": "any"` and `"purpose": "maskable"` — Android adaptive-icon launchers crop full-bleed art (subject must sit in the center ~80% safe zone). Manifest also missing `screenshots`, `shortcuts`, `id`, `categories`, `scope`.
+- **Fix:** Generate safe-zone-padded maskable icons at 192/512 (verify with `maskable.app`), keep existing icons as `any`-only, add `screenshots` (one wide + one narrow `form_factor`), `shortcuts` (e.g. "Quick Capture"), `id`, and `scope: "/"`.
+- **Priority:** P1 — 1 day.
+- **Depends on:** None.
+
+**INFRA-23 — Edge Functions: deprecated imports + cron check-then-insert race** — OPEN (ticket `INFRA-23`)
+
+- **Files:** `supabase/functions/cron_cleanup/index.ts:1-2`, `supabase/functions/cron_recurrence/index.ts:1-2, 96-116`
+- **What's wrong:** Both import `serve` from `deno.land/std@0.192.0/http/server.ts` (std is maintenance-mode, deprecated in favor of JSR) and the Supabase client from `esm.sh` (known resolution issues for `@supabase/supabase-js`). `cron_recurrence` does check-then-insert (`maybeSingle()` then insert) with no unique constraint or advisory lock — overlapping invocations (retry, manual trigger) can duplicate a recurring task.
+- **Fix:** Use built-in `Deno.serve` + `npm:@supabase/supabase-js@2`; add a partial unique index on `(user_id, title, recurrence) WHERE status = 'active'` in a new migration and treat insert conflict as success instead of the preceding `select`.
+- **Priority:** P1 — 1-2 days.
+- **Depends on:** None.
+
+**SEC2-02 — Verify Supabase Dashboard security settings against intent before launch** — OPEN (ticket `SEC2-02`, verify-before-launch)
+
+- **File:** `supabase/config.toml` (local CLI config; hosted Dashboard settings must be checked separately)
+- **What's wrong / verify:** `minimum_password_length = 6` with no complexity rules (2026 guidance favors an 8-12 length floor + leaked-password checking); `[auth.captcha]` commented out (no bot protection on public signup); `enable_confirmations = false` (email ownership never verified — may be intentional, must be stated). Plus audit §4 rows: Supavisor/transaction-mode pooling, PITR/backup RPO, and Edge Function invocation auth (`verify_jwt = true` default — confirm cron triggers send a valid Authorization header, or cleanup/recurrence silently 401 forever; tie the "did the cron run" smoke check into OBS-01).
+- **Fix:** 15-minute Security Advisor + Auth → Settings pass; record an explicit, dated decision for every item.
+- **Priority:** P1 — before public launch.
+- **Depends on:** None.
+
+**PERF-13 — `removeConsole` strips `console.error` in production too** — OPEN (ticket `PERF-13`)
+
+- **File:** `next.config.ts:31` — `removeConsole: process.env.NODE_ENV === "production"`
+- **What's wrong:** Boolean `removeConsole` strips every `console.*` call from client bundles in production, including `console.error` — combined with OBS-01, production client errors have no trace anywhere.
+- **Fix:** Change to `removeConsole: { exclude: ["error"] }`; largely moot once OBS-01 lands.
+- **Priority:** P1 — 0.25 days.
 - **Depends on:** None.
 
 ---

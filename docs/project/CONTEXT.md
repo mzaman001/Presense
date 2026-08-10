@@ -440,7 +440,8 @@ Presense-main/
 ├── .husky/pre-commit           # Husky pre-commit hook
 ├── docs/
 │   ├── agents/EXECUTION_RULES.md
-│   ├── plans/EXECUTION_SPEC.md  # 1684 lines, 23 sections, only active backlog
+│   ├── audits/2026-08-08-EXTERNAL-AUDIT.md   # External review — triaged into EXECUTION_SPEC §29 (Aug 10, 2026)
+│   ├── plans/EXECUTION_SPEC.md  # 2001 lines, 29 sections, only active backlog
 │   └── project/{ARCHITECTURE, COMPONENT_MANIFEST, CONTEXT, DESIGN_SYSTEM, DOCS_NEEDS_CODE}.md
 ├── public/                      # icons (icon.svg, icon-192.png, icon-512.png), manifest.json, vercel/next/file/globe/window.svg
 ├── scripts/                     # 6 ad-hoc scripts (2 referenced, 4 dead — see "Dead code" above)
