@@ -24,14 +24,6 @@
 
 ### External audit (Aug 8, 2026) — Critical findings (triage: `EXECUTION_SPEC.md` §29)
 
-**SEC2-01 — Account-deletion rate limit is not enforced in production** — OPEN (ticket `SEC2-01`)
-
-- **Files:** `src/lib/rate-limit.ts:26-34`, `src/app/api/account/route.ts:19`, `src/app/api/capture/route.ts:16`
-- **What's wrong:** `checkRateLimit(key, maxRequests, windowMs)` accepts per-call limits, but `getRateLimit()` builds one module-level `Ratelimit` singleton hardcoded to `slidingWindow(100, "60 s")` with `prefix: "rl:capture"` — the per-call arguments are silently ignored whenever Redis is configured (only the never-configured in-memory dev fallback honors them). Account deletion is effectively limited to 100/min shared with capture traffic instead of the intended 3/min.
-- **Fix:** Parameterize `Ratelimit` construction (e.g. `Map<string, Ratelimit>` keyed by caller bucket) so each call site's limit and prefix are honored. Add a regression test asserting a 4th account-delete request within a minute is rejected.
-- **Priority:** P0 (Critical — destructive endpoint under-protected).
-- **Depends on:** None.
-
 **OBS-01 — No production error/performance monitoring is wired up** — OPEN (ticket `OBS-01`)
 
 - **Files:** `src/app/api/telemetry/route.ts:26-33`, `src/lib/logger.ts:1-24`, `package.json`
@@ -503,6 +495,11 @@
   - `(app)/layout.tsx` server component onboarding auto-complete upsert — checks `error` + `console.error` (server-side; no toast available, so `safeMutate` is not applicable)
 - **One intentional exception (reviewed, kept):** `think/page.tsx` daily-note insert stays fire-and-forget because it is a conflict-fallback pair — on any failure it fetches the existing thread via the unique-index `(user_id, title)`; it never claims success (navigates only on a truthy insert result).
 - **Verification:** repo-wide sweep `rg '\.(insert|update|delete|upsert|rpc)\(' src` → exactly the 27 audited files, none with an error-unchecked mutation; `npm run build` ✓, tests 144/144 ✓. Related: 8 pre-existing `no-explicit-any` errors in `TaskAddPanel.tsx` (chronoCache, people-list cast, chrono callback params, `Record<string, unknown>` payload) were fixed in the same commit because the lint-staged hook blocks commits touching that file.
+
+### SEC2-01 — Account-deletion rate limit not enforced (Aug 10, 2026)
+
+- **Fix (commit `e895df8`):** `rate-limit.ts` now uses a bucket registry — `checkRateLimit(bucket, key, maxRequests, windowMs)` constructs one `Ratelimit` per endpoint with its own `slidingWindow(maxRequests, windowMs)` and `prefix: "rl:<bucket>"`. Call sites: `account` (3/60 s), `capture` (100/60 s), `people-reorder` (30/60 s). The previous singleton hardcoded 100/min + `rl:capture` for everyone, so account deletion shared capture's limit.
+- **Verified:** `rate-limit.test.ts` (7 tests) — 4th account-delete request within a minute rejected; capture counter unaffected by account traffic; window expiry re-allows; fail-closed in production retained; Redis-backed path proven via constructor assertions (per-bucket `slidingWindow(3, "60 s")`, `prefix "rl:account"`, one instance per bucket). Full suite 173/173, build green, lint 0.
 
 ---
 
