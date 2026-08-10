@@ -27,21 +27,7 @@
 
 ### ROOT PATTERN 2 — Warm-Light Theme Broken
 
-**Warm-light theme text overrides missing**
-
-- **File:** `src/app/globals.css:336-420` (warm-light block)
-- **What's wrong:** Overrides `--bg-base` to `#FBF6EE` (cream) but does NOT override `--text-1/2/3/muted/decorative/on-accent` — they stay at dark-mode values (`#FFFFFF`, `rgba(255,255,255,0.72)`, etc.). Result: white text on cream background = completely unreadable. Navy-light (`globals.css:500-528`) and forest-light (`globals.css:558-587`) correctly override these.
-- **Fix:** Copy navy-light's text-override pattern. Add to warm-light block:
-  ```css
-  --text-1: #1F1410;          /* dark warm brown */
-  --text-2: rgba(31,20,16,0.85);
-  --text-3: rgba(31,20,16,0.65);
-  --text-muted: rgba(31,20,16,0.5);
-  --text-on-accent: #FFFFFF;
-  ```
-  (Adjust hex values to match warm theme's color family — verify contrast ≥ 4.5:1 against `#FBF6EE`.)
-- **Priority:** P0 — quick win (<1 day).
-- **Depends on:** None.
+**Warm-light theme text overrides missing** — ✅ **RESOLVED Aug 10, 2026 — false positive.** The warm-light block (`globals.css:374-381`) has had dark-warm text overrides (`--text-1: #1A0E00`, etc.) since `e6fd96b4` (July 5, 2026, predating the July 9 audit). Verified live via computed styles across `/`, `/do`, `/inbox`, `/think`. See Resolved section below.
 
 ---
 
@@ -503,9 +489,14 @@
 
 ## Resolved (move items here as code PRs land)
 
-### BUG-34 — Inbox dismiss error swallowing + inbox routing data loss (both subsets of BUG-38) — Aug 10, 2026
+### ROOT PATTERN 2 — Warm-light theme "broken" (Aug 10, 2026) — false positive, closed
 
-- **Code:** `dismissInboxItem` error check + cache rollback (`a2ce54e`), `safeMutate` adoption (`fd7cb3f`), Undo path (`a3a037e`), routing branches check `safeMutate` on the trash step and roll back the destination row on failure (`a198af9`). `inbox/page.tsx` now has zero unchecked mutations.
+- **Claim (audit July 9):** `globals.css:336-420` overrides `--bg-base` to cream without overriding `--text-*` → white text on cream.
+- **Reality:** the warm-light block's TEXT SYSTEM (`globals.css:374-381`: `--text-1: #1A0E00` dark warm brown, `--text-2/3/muted/decorative` alpha variants, `--text-on-accent: #FFFFFF`) has existed since commit `e6fd96b4` (July 5, 2026 — before the audit; `git blame`-verified).
+- **Verification (Aug 10, 2026):** live computed styles on `/`, `/do`, `/inbox`, `/think` with `data-theme=warm` + `data-mode=light` all resolve `--text-1` to `#1a0e00` on `--bg-base: #fbf6ee`. Screenshot: `%TEMP%\opencode\warm-light-check.png`.
+- **Action taken:** docs corrected (CONTEXT.md matrix + §ROOT PATTERN 2, EXECUTION_SPEC §24.1/§24.2, AGENTS.md §4.2). No code change required.
+
+### BUG-34 — Inbox dismiss error swallowing + inbox routing data loss (both subsets of BUG-38) — Aug 10, 2026
 - **Root cause (found by live reproduction, per the ticket's requirement 3):** the real defect was not in the error handling alone — **migration `005_fix_constraints_and_security.sql` had never been applied to the live Supabase project**, so `items_status_check` rejected `'deleted'` (HTTP 400, code 23514) and every trash write silently failed. UI showed "Dismissed" because of the optimistic cache removal.
 - **DB fix:** all 8 statements of migration 005 applied to production (Aug 10, 2026, human-approved) via session-pooler `supabase db query --db-url`. `people`/`locations` constraints were already correct.
 - **Verified end-to-end:** previously-failing PATCH → 204; live UI dismiss → toast "Dismissed", row `status=deleted`, item present on `/trash` (Playwright). Full suite 144/144.

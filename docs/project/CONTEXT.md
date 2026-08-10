@@ -194,11 +194,11 @@ The app uses **3 themes** with `data-theme` + `data-mode` attributes on `<html>`
 
 | Theme | Dark mode | Light mode |
 |---|---|---|
-| Warm | ✓ High contrast (white on near-black) | **✗ BROKEN — `globals.css:336-420` does NOT override `--text-1/2/3/muted/decorative/on-accent`; they stay at dark-mode `#FFFFFF` → white text on cream `#FBF6EE` = unreadable. ROOT PATTERN 2, P0 bug.** |
+| Warm | ✓ High contrast (white on near-black) | ✓ Correct — dark warm brown `#1A0E00` text on cream `#FBF6EE` (`globals.css:374-381`). The July 9 audit's "BROKEN" claim was stale (text overrides have existed since `e6fd96b4`, July 5); verified live Aug 10, 2026 — see `EXECUTION_SPEC.md` §24.1 root pattern 2. |
 | Navy | ✓ High contrast (white on deep blue-black) | ✓ Correct (dark navy text `#040930` on pale blue `#EEF3FF`) |
 | Forest | ✓ High contrast (white on deep forest) | ✓ Correct (dark green text `#0D1A08` on pale green `#F5F9F0`) |
 
-**Only warm-light is broken.** Navy-light and forest-light correctly override text colors — warm-light is an oversight, not a systemic issue. Fix: copy navy-light's text-override pattern. See `docs/project/DOCS_NEEDS_CODE.md`.
+All three themes override text colors in light mode correctly (warm since July 5, `e6fd96b4`). The audit's warm-light finding was a stale-state artifact — verified correct in live rendering Aug 10, 2026. See `docs/project/DOCS_NEEDS_CODE.md`.
 
 ### Theme name history (3 generations, all in `LEGACY_THEME_MAP`)
 
@@ -264,9 +264,9 @@ These are the highest-impact findings from the July 9, 2026 audit. Each is track
 
 **37 of 71 Supabase mutations (52%) don't check the returned `error`.** Worst offenders: `OnboardingWizard.tsx` (11 unchecked — first-run can silently fail at any step), `think/[id]/page.tsx`, `explore/[id]/page.tsx`, `remember/people/[id]/page.tsx`. (`inbox/page.tsx` was the canonical case — BUG-34 — fully fixed Aug 10, 2026, zero unchecked mutations remain there; the live root cause was migration 005 never applied to production, so `items_status_check` rejected `'deleted'`.) Fix: build `mutate()` wrapper in `src/lib/supabase.ts`, migrate all remaining call sites.
 
-### ROOT PATTERN 2 — Warm-Light Theme Broken (Critical, unreadable)
+### ROOT PATTERN 2 — Warm-Light Theme (RESOLVED — stale audit finding)
 
-`globals.css:336-420` overrides `--bg-base` to `#FBF6EE` (cream) but does NOT override `--text-1/2/3/muted/decorative/on-accent` — they stay at dark-mode `#FFFFFF`. Result: white text on cream = invisible. Navy-light and forest-light correctly override these; only warm-light is broken. Fix: copy navy-light's text-override pattern.
+The audit claimed `globals.css:336-420` overrode `--bg-base` to cream without overriding text colors (white on cream). **Not true in the current build:** the warm-light block has had dark-warm text overrides (`--text-1: #1A0E00`, etc., `globals.css:374-381`) since `e6fd96b4` (July 5, 2026, predates the audit). Verified live Aug 10, 2026: computed styles on `/`, `/do`, `/inbox`, `/think` all render dark text on cream in warm-light. Closed as a false positive — see `EXECUTION_SPEC.md` §24.1.
 
 ### ROOT PATTERN 3 — Mobile Viewport + Form Bugs (High)
 

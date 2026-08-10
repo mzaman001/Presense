@@ -1705,7 +1705,7 @@ This addendum exists to cross-reference the July 9, 2026 complete audit (`Presen
 | Root pattern | Audit name | This document's tickets | Status |
 |---|---|---|---|
 | 1 | Silent Data Loss (Critical, trust-breaking) | BUG-38 + 37/71 unchecked mutations (BUG-34 closed Aug 10, 2026) | Open — P0 |
-| 2 | Theme System Has a Broken Mode (Critical, unreadable) | warm-light `globals.css:336-420` missing `--text-*` overrides | Open — P0 |
+| 2 | Theme System Has a Broken Mode (Critical, unreadable) | warm-light `globals.css:336-420` missing `--text-*` overrides | **CLOSED Aug 10, 2026 — false positive.** Warm-light block has had dark-warm text overrides (`globals.css:374-381`) since `e6fd96b4` (July 5, pre-audit); verified live via computed styles on `/`, `/do`, `/inbox`, `/think`. Audit examined a stale state. |
 | 3 | Mobile Viewport + Form Interaction Bugs (High) | 7 `h-screen` (MOB-05), BUG-36/39 Sheet drag, BUG-41 input 13px | Open — P0/P1 |
 | 4 | Design System Fragmentation (High, polish erosion) | 99 hardcoded hex (DS-02), 6 hover magnitudes (DS-30), 44 raw `<input>` (DS-03), 6 `type="time"` + 1 `<select>` + 1 `<datalist>` (BUG-43/25/33), 3 dashed-border tokens | Open — P1 |
 | 5 | Settings + Schema Bloat (Medium, calm-identity erosion) | 9 unused notification booleans, 4 redundant time fields (CONF-14 decided, NOT implemented), Density (INFRA-20), 4 dead tables, 2 dead columns, `ritual_streak` contradicts CONF-17, `ollama_*` dead plumbing | Open — P1 |
@@ -1723,7 +1723,7 @@ This addendum exists to cross-reference the July 9, 2026 complete audit (`Presen
 6. Fix Think "New thread" to show toast on error (BUG-29)
 7. Add Pomodoro launcher to sidebar header (DS-21)
 8. Replace brand mark with proper SVG (DS-26)
-9. Fix warm-light theme text overrides (Root Pattern 2)
+9. ~~Fix warm-light theme text overrides (Root Pattern 2)~~ — **DONE (verified Aug 10, 2026)** — was a false positive: overrides exist since `e6fd96b4` (July 5)
 10. Remove `ritual_streak` column (new migration)
 
 ### 24.3 — Ticket status reconciliation (audit July 9, 2026 vs this document's §17.3)
