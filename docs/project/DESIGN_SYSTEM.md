@@ -124,11 +124,7 @@ Every glass surface gets a **1px border** at `--elev-*-border` — this is not o
 
 `prefers-reduced-transparency: reduce` must swap every `--elev-*-blur` to `blur(0px)` and raise the corresponding surface to a fully opaque color (not just a higher-opacity translucent one) — this is `DS-14`, already ticketed; this section is why: the current guidance explicitly frames this as "detect the setting and swap to solid, high-contrast surfaces," not "reduce the blur amount." `prefers-reduced-motion: reduce` must remove hover-transform distance entirely (already required by `DS-14`) — the shimmer sweep and any parallax on ambient orbs must also respect this, not just card lift.
 
-**⚠ SPEC WRITTEN, NOT YET IMPLEMENTED (DS-14 open).** Audit (July 9, 2026) confirms:
-- `prefers-reduced-transparency: reduce` has **0 occurrences** in the entire codebase — not handled anywhere.
-- `prefers-reduced-motion: reduce` at `globals.css:775, 1120, 1149-1168` only sets `transition-duration: 0.01ms !important` — does **NOT** remove the `transform` value. A `hover:scale-[1.01]` still scales instantly instead of not scaling. **Setting promises "no movement" but delivers "instant movement."**
-- Fix: remove transform/distance for every hover/interactive animation when reduced-motion is set; add `prefers-reduced-transparency: reduce` branch that disables backdrop blur and ambient orb animation.
-- See `docs/project/DOCS_NEEDS_CODE.md`.
+**STATUS UPDATE (Aug 10, 2026):** the `prefers-reduced-motion` half of `DS-14` is **DONE** — `globals.css:1131-1146` now sets `transform: none !important` for `hover:scale*`/`hover:-translate*`/`active:scale*`/`.glass-card:hover`, so hover distance is removed entirely (0.01ms duration fallbacks remain at `:775`/`:1120`). Still open: `prefers-reduced-transparency: reduce` (**0 occurrences** — not handled anywhere; needs a `globals.css` block disabling backdrop blur + ambient orb animation with opaque surface fallbacks). See `docs/project/DOCS_NEEDS_CODE.md`.
 
 ---
 
@@ -137,7 +133,7 @@ Every glass surface gets a **1px border** at `--elev-*-border` — this is not o
 Three concrete visual references were reviewed directly against this app's own components, not treated as generic mood-board inspiration:
 
 - **Sidebar background** should eventually adopt the same frosted/grain treatment as every other glass surface (§3.0), rather than a flatter fill — a compact vertical icon+label menu over genuine frost, generous radius, even rhythm, is a proven, calm pattern for exactly this kind of navigation.
-- **`Dropdown`'s `select` variant**, once its scroll/type-ahead gap (`BUG-31`) is fixed, should move toward a mode-picker visual: a checkmark on the active row in a simple list, rather than a different indicator style, for consistency with the platform-native pattern this app's own users already know from their phone.
+- **`Dropdown`'s `select` variant**, now that its scroll/type-ahead gap (`BUG-31`) is fixed, should move toward a mode-picker visual: a checkmark on the active row in a simple list, rather than a different indicator style, for consistency with the platform-native pattern this app's own users already know from their phone.
 - **Calendar task chips** (once the calendar rewrite starts) should use a left-border accent color plus an avatar stack, not a fully-filled colored block — calmer and more legible at a glance, and it pairs naturally with `DS-28`'s derived per-space colors, since the border communicates identity without needing to tint the whole chip.
 
 ### 3.8 The discipline principle (why `DS-15`/`DS-17` exist, not just what they enforce)
@@ -161,7 +157,7 @@ Apps praised for calm, cohesive mobile design (How We Feel is the clearest examp
 | Hover feedback (card lift, button press) | `--dur-fast` + `--ease-smooth` | Gate behind `@media (hover: hover) and (pointer: fine)` — touch devices get no hover state, only active/pressed. **Cards and list rows always lift (`translateY(-2px)` to `-3px`), never scale.** A scale transform grows the element's rendered box past its layout box, which clips visibly inside any `overflow-hidden`/`overflow-x-auto` ancestor (a horizontally-scrollable Kanban column, for instance) — this produced a real, reported bug (`DS-30`). A translateY lift repositions without growing the box, so it never has this problem. Every hoverable card/row in the app uses the same lift distance, duration, and easing — this is one system, not a per-component choice. |
 | Dropdown/popover open | `--dur-fast` + `--ease-spring` | Scale-from-trigger, not a generic fade |
 | Sheet/modal open | `--dur-base` + spring physics (stiffness ~300, damping ~28, matching the existing `modalTransition` token in `animations.ts`) | Slide-from-edge on mobile (Sheet), scale-in on desktop (Modal) — these are different motions for different surfaces, do not use one for both |
-| Page transition | `--dur-base`, opacity-only, no y-axis movement | **⚠ NOT YET IMPLEMENTED (BUG-23 open)** — no `src/app/(app)/template.tsx` exists; page-to-page is a hard cut. See `docs/project/DOCS_NEEDS_CODE.md`. This is `BUG-23`'s exact requirement |
+| Page transition | `--dur-base`, opacity-only, no y-axis movement | **✅ DONE (BUG-23 closed Aug 10, 2026)** — `src/app/(app)/template.tsx` exists and renders the shared page transition; spec-verification of the actual fade still pending on next touch |
 | Toast enter/exit | `--dur-fast` in, `--dur-slow` out (linger before dismiss reads calmer than a symmetric fade) | |
 | Ambient orb drift | `--dur-very-slow` and slower, looping | Must pause on `document.visibilitychange` (tab hidden) — `PERF-03` |
 
@@ -264,7 +260,7 @@ This is the section that was missing entirely before this pass, and it is the di
 ### 6.7 Explore (`/explore`)
 
 - A single-column reading queue, each item a compact card (thumbnail if present, title, source, saved-date) — **not** glass (§3.4; this is a reading list, treat it like Think's thread body).
-- The Type field (**⚠ still a native `<input>` + `<datalist>` per `ExploreDrawer.tsx:258` — BUG-25/33 NOT YET fixed**) becomes a `Dropdown variant="select"` — this single change is the concrete instance of the broader rule "never use `<datalist>` or native `<select>` anywhere in this app," which belongs in this file precisely so it isn't rediscovered per-component. See `docs/project/DOCS_NEEDS_CODE.md`.
+- The Type field (**✅ DONE Aug 10, 2026** — the native `<input>` + `<datalist>` is gone; BUG-25/33 CLOSED) is a `Dropdown variant="select"` — this is the concrete instance of the broader rule "never use `<datalist>` or native `<select>` anywhere in this app," which belongs in this file precisely so it isn't rediscovered per-component. See `docs/project/DOCS_NEEDS_CODE.md`.
 - 30-day auto-archive is a background/data behavior, not a visual one — the visual difference between "active" and "archived-by-age" Explore items is a `text-meta` label ("Archived · 32 days ago"), not a different card treatment.
 
 ### 6.8 Trash (`/trash`)
@@ -276,7 +272,7 @@ This is the section that was missing entirely before this pass, and it is the di
 ### 6.9 Settings
 
 - A single `Sheet`/modal (not a routed page — this remains the settled decision per the skip list; do not build `/settings` as a route).
-- **Time-based settings are two concepts, not four (⚠ `CONF-14` RESOLVED but NOT YET IMPLEMENTED):** a morning ritual time and an evening ritual time, matching `rituals.ts`'s own two-ritual model exactly — the settings UI should mirror what the code actually reasons about. Do not expose a separate "Quiet Hours" setting; that's a notification/do-not-disturb concept, and the domain's own reference point for this app's ritual system (Sunsama) doesn't have one either — it belongs to the OS's notification settings if it's ever needed at all, not to this app. **Current state:** `SettingsModal.tsx:1026,1039,1303,1323` still has 4 `type="time"` inputs (Quiet Start/End + Morning Nudge/Evening Shutdown) and `:1417` has 1 native `<select>` for Auto-Archive Completed (BUG-43). Migration to 2 ritual-time pickers + `Dropdown variant="select"` tracked in `docs/project/DOCS_NEEDS_CODE.md`.
+- **Time-based settings are two concepts, not four (✅ UI IMPLEMENTED Aug 10, 2026 — CONF-14 UI collapse done):** a morning ritual time and an evening ritual time, matching `rituals.ts`'s own two-ritual model exactly — the settings UI mirrors what the code actually reasons about. Do not expose a separate "Quiet Hours" setting; that's a notification/do-not-disturb concept, and the domain's own reference point for this app's ritual system (Sunsama) doesn't have one either — it belongs to the OS's notification settings if it's ever needed at all, not to this app. **Current state:** Morning Nudge + Evening Shutdown are `Dropdown variant="select"` pickers (no native `type="time"` or `<select>` remain — BUG-43 CLOSED Aug 10, 2026). **Remaining:** the `quiet_start`/`quiet_end` columns + type fields are still present but unused — schema cleanup migration pending (CONF-14).
 - **Timezone is auto-detected, not a primary setting:** default from `Intl.DateTimeFormat().resolvedOptions().timeZone` silently; only surface a manual override inside an "Advanced" section for the rare case someone needs it, not alongside the two ritual times.
 - Sectioned with `text-title-md` section headers (Account, Appearance, Notifications, Data), each section a flat list of rows (label left, control right — toggle, `Dropdown`, or button), not individually-cased glass cards per row (that's over-fragmenting a single coherent surface into visual noise).
 - Theme picker shows the three themes (Warm/Navy/Forest) as swatches previewing each theme's actual `--accent`/`--bg-base` pair, not a text-only radio list — a color choice should be shown, not described.
@@ -292,7 +288,7 @@ This is the section that was missing entirely before this pass, and it is the di
 
 Per `BUG-23`: one shared, opacity-only fade (`--dur-base`, no y-axis movement) applied uniformly via a single shared transition wrapper for the `(app)` route group — not a per-page bespoke animation, and not zero animation on some pages and a fade on others.
 
-**⚠ NOT YET IMPLEMENTED (BUG-23 open)** — no `src/app/(app)/template.tsx` exists; page-to-page is a hard cut. See `docs/project/DOCS_NEEDS_CODE.md`.
+**✅ DONE (BUG-23 closed Aug 10, 2026)** — `src/app/(app)/template.tsx` exists and renders the shared transition; the audit's "no template.tsx" claim was stale. Spec-verification of the actual fade (opacity-only, `--dur-base`, no y-axis) is still pending on next touch. See `docs/project/DOCS_NEEDS_CODE.md`.
 
 ---
 
@@ -395,9 +391,9 @@ Mobile-first here means literally starting each new page's layout at 360–375px
 
 ### 8.8 Mobile viewport safety (audit-verified, July 9, 2026)
 
-**7 `h-screen` instances** cause layout jumps on mobile Safari/Chrome when the URL bar shows/hides on scroll. Should be `h-dvh` (dynamic viewport height). `100vh` on mobile includes space the browser chrome may or may not be occupying — the direct mechanism behind "the sheet is taller than the screen" bugs.
+**✅ RESOLVED Aug 10, 2026 (stale audit claim):** the **7 `h-screen` instances** listed below were migrated to `h-dvh` (dynamic viewport height) in commit `8c249b6` (July 7, 2026, predating the audit) — `rg 'h-screen|100vh' src` = 0 hits (verified Aug 10, 2026). `100vh` on mobile includes space the browser chrome may or may not be occupying — the direct mechanism behind "the sheet is taller than the screen" bugs; `h-dvh` avoids it. Do not reintroduce `h-screen`/`100vh`.
 
-**Locations:**
+**Historic audit locations (all fixed in `8c249b6`):**
 - `OnboardingBackground.tsx:145,166`
 - `Navigation.tsx:72`
 - `not-found.tsx:5`
@@ -405,9 +401,9 @@ Mobile-first here means literally starting each new page's layout at 360–375px
 - `~offline/page.tsx:7`
 - `(auth)/login/page.tsx:61`
 
-**BUG-41:** `Input.tsx` uses `.input` CSS class which inherits `--text-body: 13px`. iOS Safari auto-zooms on inputs <16px on focus. Fix: `@media (max-width: 768px) { .input { font-size: 16px !important; } }`. Vercel's own guideline states this plainly: `<input>` font size must be ≥16px on mobile.
+**BUG-41 (✅ fixed):** `Input.tsx` uses `.input` CSS class which inherits `--text-body: 13px`. iOS Safari auto-zooms on inputs <16px on focus. **Fixed** — `globals.css:1366-1375` forces the 16px floor on mobile. Do not regress below 16px on touch inputs.
 
-**BUG-36/39:** `Sheet.tsx:58` `drag="y"` on whole sheet surface with no `dragListener={false}` or dedicated handle. Framer Motion's drag recognizer competes with nested button taps. Affects 7 consumers: ConfirmModal, AddPersonPanel, SearchModal, TaskAddPanel, CaptureModal, ExploreDrawer, LocationAddPanel. Fix: dedicated drag handle + `dragListener={false}`. Or adopt Vaul (TOOL-10).
+**BUG-36/39 (✅ fixed):** `Sheet.tsx:58` `drag="y"` on whole sheet surface with no `dragListener={false}` or dedicated handle. Framer Motion's drag recognizer competes with nested button taps. Affected 7 consumers: ConfirmModal, AddPersonPanel, SearchModal, TaskAddPanel, CaptureModal, ExploreDrawer, LocationAddPanel. **Fixed** in `ad79e81` — dedicated drag handle + `dragListener={false}` (Sheet.tsx:59-61). Do not restore whole-surface drag.
 
 **23 `backdrop-filter` declarations** in `globals.css`, 0 `contain: paint`. Each is a GPU layer; compounds on mobile. See §3.3 blur budget.
 

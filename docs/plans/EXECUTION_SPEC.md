@@ -1370,7 +1370,7 @@ This is a direct answer to "did you check everything already in the spec." The h
 | `TOOL-13` Prettier/Husky/lint-staged | Packages installed; **hook configuration and full-repo formatting pass not confirmed** | |
 | `TOOL-15` Floating UI | **DONE** | |
 | `A11Y-01` through `A11Y-09` | **Cannot verify statically with confidence** beyond `A11Y-03` (skip link: confirmed absent, **NOT DONE**) and `A11Y-05`-equivalent live-region (confirmed absent via `aria-live` grep, **NOT DONE**). The rest (label correctness, focus trapping quality, actual screen-reader behavior) require manual testing with real assistive technology, which this review cannot substitute for — do not treat their absence from this table as either done or not done; they are simply unverified by this method. | |
-| `MOB-01` through `MOB-05` | **Cannot verify gesture feel/touch behavior statically.** `MOB-05` (100dvh everywhere) is partially checkable: 6 files still reference `h-screen`/bare `100vh` — **NOT FULLY DONE.** The rest require a real device. | |
+| `MOB-01` through `MOB-05` | **Cannot verify gesture feel/touch behavior statically.** `MOB-05` (100dvh everywhere) is **DONE** — verified Aug 10, 2026: `rg 'h-screen\|100vh' src` = 0 hits; all 6 files migrated in commit `8c249b6` (July 7, 2026). The rest require a real device. | |
 
 ### 17.4 — Direct answers to the questions asked
 
@@ -1400,7 +1400,7 @@ Every ticket previously marked "not re-verified this pass" in §17.3 was checked
 | `BUG-21` onboarding background hardcoded colors | **CONFIRMED — partially hardcoded** | `OnboardingBackground.tsx` correctly uses `var(--accent)`, `var(--bg-base)`, `var(--text-1)`, `var(--surface-modal)`, and `var(--border-strong)` for several elements, but its per-step ambient glow gradients (five steps, each with its own `radial-gradient(...)` using literal hex values like `#E5B41E`, `#EB4233`, `#F0C830`, `#EB6B1E`, `#3B1814`, `#1A0800`) are hardcoded, not tokenized. This does not currently cause a visible bug (onboarding forces the `warm` theme per `BUG-15`'s fix, and the hardcoded hex values happen to already match `warm`'s own palette), but it is fragile and would silently stop matching the theme if onboarding's forced-`warm` behavior is ever relaxed, or if this component is ever reused somewhere theme-aware. Fix priority: Low-Medium, not urgent, but real. |
 | `BUG-04`/`BUG-24` empty-state button targets, audited per-space as promised | **Mixed — 1 of 3 checked spaces is correct** | **Remember/People:** correct — its `EmptyState` action opens `setIsPanelOpen(true)` (the Add Person panel), matching its header button. **Think:** still incorrect — its `EmptyState` action calls `setCaptureModalOpen(true)`, the same defect class as the original Do-page bug, never fixed here. **Explore:** same defect, same fix needed. This is now `BUG-35` (below), not a restatement of `BUG-24` — it's that ticket's audit actually completed, two passes late. |
 | `INFRA-19` single status-writing path through `item-lifecycle.ts` | **Confirmed a real, widespread gap, not a hypothetical one** | Direct string status literals (`"active"`, `"done"`, `"deleted"`, `"archived"`, etc.) written outside `item-lifecycle.ts` were found in nine files: `(app)/page.tsx`, `explore/[id]/page.tsx`, `explore/page.tsx`, `inbox/page.tsx`, `do/page.tsx`, `PomodoroTimer.tsx`, `SettingsModal.tsx`, `TaskAddPanel.tsx`, `RitualOverlay.tsx`. Not every one of these is necessarily wrong (some may be reads/comparisons, not writes — each needs individual review, which is exactly what this ticket already calls for), but the count confirms this is systemic, and directly explains why an isolated bug like `BUG-29`'s ad hoc `threads` insert could exist unnoticed: there was never a single enforced path to check it against. |
-| `MOB-05` `100dvh` migration | **NOT FULLY DONE** | `h-screen` (bare, non-dynamic viewport height) remains in six files: `OnboardingBackground.tsx`, `Navigation.tsx`, `~offline/page.tsx`, `not-found.tsx`, `(auth)/login/page.tsx`, `onboarding/OnboardingWizard.tsx` — notably, the two most viewport-height-sensitive full-bleed screens in the app (login, onboarding) are on the list. |
+| `MOB-05` `100dvh` migration | **DONE** | Verified Aug 10, 2026 — stale audit claim, same failure mode as root pattern 2: commit `8c249b6` (July 7, 2026) already migrated all six named files (`OnboardingBackground.tsx`, `Navigation.tsx`, `~offline/page.tsx`, `not-found.tsx`, `(auth)/login/page.tsx`, `onboarding/OnboardingWizard.tsx`) to `h-dvh`/`min-h-dvh`. Current-state check: `rg 'h-screen\|100vh' src` = 0 hits, 9 `h-dvh` sites. |
 
 ### New ticket from this pass
 
@@ -1582,7 +1582,7 @@ This matters directly: if Presense builds a Todoist/TickTick-style streaks-and-b
 
 - **Priority:** Medium
 - **Requirement:** Per `DESIGN_SYSTEM.md` §6.10's existing note that the login screen is already the app's best current example of glass done right (a single focal glass card over a simple, uncluttered ambient background) — use `DS-29`'s Glassmorphism 2.0 treatment (grain, alpha-gradient fill, specular border) on this exact card first, since it's the highest-visibility single surface in the app and the one already closest to correct. Onboarding's per-step ambient glow (currently the hardcoded-color surface flagged in `BUG-21`) should both be tokenized (per that ticket) and receive the same upgraded glass/grain treatment on its own content card, so the two surfaces feel like one continuous, polished entry experience rather than two different eras of the same design system.
-- **Stability/responsiveness requirement (explicitly asked for alongside "beautiful"):** confirm the login card's layout holds correctly at the narrowest supported viewport (per `DESIGN_SYSTEM.md` §8.7's "start at 360–375px" rule) and that `MOB-05`'s `100dvh` fix (already flagged as incomplete, and specifically still missing from the login route per Addendum 7's file list) lands here as a prerequisite — a "beautiful" login screen that reflows badly on a real phone or jumps around due to `100vh` viewport-height bugs would undercut the visual work, so the stability fix and the beauty upgrade should ship together, in that order.
+- **Stability/responsiveness requirement (explicitly asked for alongside "beautiful"):** confirm the login card's layout holds correctly at the narrowest supported viewport (per `DESIGN_SYSTEM.md` §8.7's "start at 360–375px" rule). `MOB-05`'s `100dvh` prerequisite is satisfied — the login route was migrated in `8c249b6` (verified Aug 10, 2026, zero `h-screen`/`100vh` in src) — so the remaining requirement is only the visual reflow check, not the viewport-height bug fix that Addendum 7 believed was missing.
 - **Acceptance criteria:** Login and onboarding visually share one upgraded glass treatment; both hold their layout correctly from 360px up; neither shows a `100vh`-related jump when a mobile browser's chrome shows/hides.
 - **Depends on:** `DS-29`, `MOB-05` (the login/onboarding files specifically), `BUG-21`.
 
@@ -1707,7 +1707,7 @@ This addendum exists to cross-reference the July 9, 2026 complete audit (`Presen
 |---|---|---|---|
 | 1 | Silent Data Loss (Critical, trust-breaking) | BUG-38 + 37/71 unchecked mutations (BUG-34 closed Aug 10, 2026) | **CLOSED Aug 10, 2026** — BUG-38 full pass landed in `660f5a3`; zero unchecked mutation sites remain (see ticket for the 10 fixed sites + 1 documented intentional exception) |
 | 2 | Theme System Has a Broken Mode (Critical, unreadable) | warm-light `globals.css:336-420` missing `--text-*` overrides | **CLOSED Aug 10, 2026 — false positive.** Warm-light block has had dark-warm text overrides (`globals.css:374-381`) since `e6fd96b4` (July 5, pre-audit); verified live via computed styles on `/`, `/do`, `/inbox`, `/think`. Audit examined a stale state. |
-| 3 | Mobile Viewport + Form Interaction Bugs (High) | 7 `h-screen` (MOB-05), BUG-36/39 Sheet drag, BUG-41 input 13px | Open — P0/P1 |
+| 3 | Mobile Viewport + Form Interaction Bugs (High) | ~~7 `h-screen`~~ (MOB-05 — **CLOSED Aug 10, 2026**, fixed in `8c249b6`), ~~BUG-36/39 Sheet drag~~ (~~**CLOSED Aug 10, 2026**, fixed in `ad79e81`~~), ~~BUG-41 input 13px~~ (~~**CLOSED Aug 10, 2026**, fixed in `globals.css:1366-1375`~~) | **CLOSED Aug 10, 2026** — all three verified fixed; see §24.7 sweep record |
 | 4 | Design System Fragmentation (High, polish erosion) | 99 hardcoded hex (DS-02), 6 hover magnitudes (DS-30), 44 raw `<input>` (DS-03), 6 `type="time"` + 1 `<select>` + 1 `<datalist>` (BUG-43/25/33), 3 dashed-border tokens | Open — P1 |
 | 5 | Settings + Schema Bloat (Medium, calm-identity erosion) | 9 unused notification booleans, 4 redundant time fields (CONF-14 decided, NOT implemented), Density (INFRA-20), 4 dead tables, 2 dead columns, `ritual_streak` contradicts CONF-17, `ollama_*` dead plumbing | Open — P1 |
 | 6 | Missing Industry-Standard Flows (Strategic, competitive gap) | No calendar, no native apps, no AI, no semantic search, no command palette (DS-08), no weekly review (FEAT-01), no recurring task UI, no snooze UI, no linked-people UI, no bulk actions, no drag-between-spaces, no password reset, no magic link resend | Open — P2 |
@@ -1716,12 +1716,12 @@ This addendum exists to cross-reference the July 9, 2026 complete audit (`Presen
 
 ### 24.2 — The 10 quick wins (audit §11(b), <1 day each)
 
-1. Replace 7 `h-screen` with `h-dvh` (MOB-05)
-2. Fix Sonner `theme="system"` → bind to `data-mode` (BUG-32)
-3. Set input font-size 16px on mobile (BUG-41)
-4. Add skip-to-content link (A11Y-03)
+1. ~~Replace 7 `h-screen` with `h-dvh` (MOB-05)~~ — **DONE** — verified fixed in commit `8c249b6` (July 7, 2026); zero `h-screen`/`100vh` in src (checked Aug 10, 2026)
+2. ~~Fix Sonner `theme="system"` → bind to `data-mode` (BUG-32)~~ — **DONE** — ToastProvider binds `theme` to `data-mode` via MutationObserver (verified Aug 10, 2026)
+3. ~~Set input font-size 16px on mobile (BUG-41)~~ — **DONE** — `globals.css:1366-1375` "T5-3: iOS input zoom fix" 16px floor on mobile (verified Aug 10, 2026)
+4. ~~Add skip-to-content link (A11Y-03)~~ — **DONE** — `(app)/layout.tsx` (verified Aug 10, 2026)
 5. ~~Fix `dismissInboxItem` error check (BUG-34)~~ — **DONE (Aug 10, 2026)**, incl. live-DB constraint fix (migration 005 was never applied to production)
-6. Fix Think "New thread" to show toast on error (BUG-29)
+6. ~~Fix Think "New thread" to show toast on error (BUG-29)~~ — **DONE** — `think/page.tsx` `handleNewThread` toasts on error (verified Aug 10, 2026)
 7. Add Pomodoro launcher to sidebar header (DS-21)
 8. Replace brand mark with proper SVG (DS-26)
 9. ~~Fix warm-light theme text overrides (Root Pattern 2)~~ — **DONE (verified Aug 10, 2026)** — was a false positive: overrides exist since `e6fd96b4` (July 5)
@@ -1729,9 +1729,9 @@ This addendum exists to cross-reference the July 9, 2026 complete audit (`Presen
 
 ### 24.3 — Ticket status reconciliation (audit July 9, 2026 vs this document's §17.3)
 
-**Resolved tickets confirmed by audit:** BUG-01 (hover sidebar), BUG-03 (dropdown portal, re-fixed after regression), BUG-06/07 (themes = warm/navy/forest), BUG-10 (profile row fallback), BUG-15 (theme leaks via localStorage), BUG-26 (chrono duplicate import), BUG-27 (dropdown portal regression re-fixed), PERF-01 (unmemoized Do-page handlers), PERF-07 (refetchOnWindowFocus), TOOL-07 (content-visibility wiring), TOOL-03 (React Hook Form in SettingsModal), TOOL-15 (Floating UI adopted in Dropdown/Popover). **Resolved since the audit:** BUG-34 (inbox dismiss — Aug 10, 2026, see ticket; root cause was migration 005 never applied live), BUG-38 (unchecked mutations — Aug 10, 2026, full pass, see ticket).
+**Resolved tickets confirmed by audit:** BUG-01 (hover sidebar), BUG-03 (dropdown portal, re-fixed after regression), BUG-06/07 (themes = warm/navy/forest), BUG-10 (profile row fallback), BUG-15 (theme leaks via localStorage), BUG-26 (chrono duplicate import), BUG-27 (dropdown portal regression re-fixed), PERF-01 (unmemoized Do-page handlers), PERF-07 (refetchOnWindowFocus), TOOL-07 (content-visibility wiring), TOOL-03 (React Hook Form in SettingsModal), TOOL-15 (Floating UI adopted in Dropdown/Popover). **Resolved since the audit:** BUG-34 (inbox dismiss — Aug 10, 2026, see ticket; root cause was migration 005 never applied live), BUG-38 (unchecked mutations — Aug 10, 2026, full pass, see ticket). **Resolved since the audit, verified in code Aug 10, 2026 (see §24.7 sweep record):** MOB-05, BUG-41, BUG-36/39, BUG-32, BUG-29, BUG-35/37, BUG-40, BUG-23, BUG-25/33, BUG-43, BUG-30, BUG-31, DS-14, A11Y-03, ROOT PATTERN 7 error/loading files.
 
-**Open tickets confirmed by audit:** BUG-02 (ritual stale time — audit does not explicitly confirm, may still be open), BUG-08 (archive/delete inconsistency — in progress via item-lifecycle.ts, not fully verified), BUG-09 (capture modal lag — partially resolved, dynamic imports applied), BUG-11 (Settings scroll on Think/Explore — not verified), BUG-23 (page transitions — NOT implemented, no template.tsx), BUG-25/33 (Explore datalist — NOT fixed), BUG-29 (New thread silent fail — open), BUG-30 (Settings autosave loop — open), BUG-31 (Dropdown scroll/type-ahead — open), BUG-32 (Sonner toast theme — open), BUG-35/37/40 (empty states — open), BUG-36/39 (Sheet drag — open, ROOT PATTERN 3), BUG-41 (input 13px — open), BUG-42 (no beforeunload — open), BUG-43 (native select/time — open), BUG-44 (no pointer delete — open). DS-14 (reduced motion/transparency — NOT implemented). DS-28 (OKLCH — spec only). DS-29 (Glassmorphism 2.0 — spec only). DS-30 (translateY lift — partially violated, 6 hover magnitudes). FEAT-01 (Weekly Review — not started).
+**Open tickets confirmed by audit:** BUG-02 (ritual stale time — audit does not explicitly confirm, may still be open), BUG-08 (archive/delete inconsistency — in progress via item-lifecycle.ts, not fully verified), BUG-09 (capture modal lag — partially resolved, dynamic imports applied), BUG-11 (Settings scroll on Think/Explore — not verified), BUG-42 (no beforeunload — verified open Aug 10, 2026), BUG-44 (no pointer delete — open). ROOT PATTERN 4 (hardcoded hex — 136 in `.tsx` as of Aug 10, 2026, was 99 at audit), DS-30 (translateY lift — partially violated, 6 hover magnitudes still present). ROOT PATTERN 7 partial: `ModalErrorBoundary` missing from AddPersonPanel, LocationAddPanel, ExploreDrawer, TaskAddPanel, PomodoroTimer. DS-28 (OKLCH — spec only). DS-29 (Glassmorphism 2.0 — spec only). FEAT-01 (Weekly Review — not started).
 
 ### 24.4 — New audit findings not previously tracked in this document
 
@@ -1749,6 +1749,29 @@ Per the audit's final verdict: **"What is Presense's competitive positioning?"**
 3. **"Solo dev's personal tool, shared publicly"** — accept current scope, focus on data integrity + design polish, don't pursue strategic features. Honest positioning.
 
 Each path implies a different roadmap. Pick one before pursuing Strategic-tier items (P2).
+
+### 24.7 — Verification sweep: audit tickets already fixed in code but still documented as open (Aug 10, 2026)
+
+Same failure mode as root patterns 1 & 2: the July-9 audit and later passes examined states that no longer exist. A read-only sweep verified each ticket against current code with command evidence. **No code was changed for any row below.**
+
+| Ticket | Audit claim | Current state (verified Aug 10, 2026) | Evidence |
+|---|---|---|---|
+| MOB-05 (100dvh) | 6 files still `h-screen` | **Fixed** | Commit `8c249b6` (July 7); `rg 'h-screen\|100vh' src` = 0 hits, 9 `h-dvh`/`min-h-dvh` sites |
+| BUG-41 (input 13px) | iOS auto-zoom | **Fixed** | `globals.css:1366-1375` "T5-3: iOS input zoom fix" — `max(16px, var(--text-body-lg))` floor on mobile |
+| BUG-36/39 (Sheet drag) | `drag="y"` swallows taps, 7 consumers | **Fixed** | `Sheet.tsx:59-61` — dedicated drag handle + `dragListener={false}` (commit `ad79e81`) |
+| BUG-32 (Sonner theme) | `theme="system"` | **Fixed** | `ToastProvider.tsx` binds `theme` to `data-mode` + MutationObserver |
+| BUG-29 (new-thread fail) | silent fail | **Fixed** | `think/page.tsx:148-151` `toast.error` on insert error; `color_accent` real hex `#E5B41E` (audit's §17.4 open question answered) |
+| BUG-35/37 (empty-state buttons) | open CaptureModal | **Fixed** | Zero `setCaptureModalOpen` in `think/page.tsx`/`explore/page.tsx`; both use `handleNewThread` |
+| BUG-40 (Locations empty state) | hand-rolled `<h3>` | **Fixed** | `locations/page.tsx:123` uses `EmptyState` |
+| BUG-23 (page transitions) | no `template.tsx` | **Fixed** | `src/app/(app)/template.tsx` exists |
+| BUG-25/33 + BUG-43 (datalist/select/time) | 6 native `type="time"` + 1 `<select>` + 1 `<datalist>` | **Fixed** | `rg '<datalist\|<select\|type="time"' src` = 0 hits |
+| BUG-30 (autosave loop) | loops forever | **Fixed** | `SettingsModal.tsx:425-429` `lastSavedSettingsRef` guard + `useDebounce(settings, 1000)` |
+| BUG-31 (dropdown type-ahead) | no scroll/type-ahead | **Fixed** | `Dropdown.tsx:43-121` key-buffer type-ahead |
+| DS-14 (reduced motion) | transform not stripped | **Fixed** | `globals.css:1131-1146` strips `hover:scale`/`hover:-translate`/etc. (`transform: none !important`) |
+| A11Y-03 (skip link) | absent | **Fixed** | `(app)/layout.tsx` sr-only skip-to-content link |
+| ROOT PATTERN 7 (error/loading) | 5 routes missing `error.tsx`/`loading.tsx` | **Fixed** | 5 `error.tsx` + 5 `loading.tsx` at `(app)`, `do`, `explore`, `remember`, `think` — leaf routes (`inbox`, `trash`, `[id]` pages) now inherit |
+
+**Still open after the sweep:** BUG-42 (beforeunload — zero hits), ROOT PATTERN 4 (136 hardcoded hex in `.tsx`, was 99), DS-30 (6 hover magnitudes), ROOT PATTERN 7 partial (`ModalErrorBoundary` only in CaptureModal/SearchModal/SettingsModal), BUG-02/08/09/11 (unverified — audit itself was unsure), DS-28/29, FEAT-01, ROOT PATTERN 5/6/8.
 
 ---
 

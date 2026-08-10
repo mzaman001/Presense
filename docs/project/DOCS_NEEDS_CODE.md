@@ -26,37 +26,13 @@
 
 ## P1 — High (next 1-2 months, polish + consistency)
 
-### ROOT PATTERN 3 — Mobile Viewport + Form Bugs
+### ROOT PATTERN 3 — Mobile Viewport + Form Bugs — ✅ RESOLVED Aug 10, 2026 (all three)
 
-**7 `h-screen` instances → `h-dvh`**
+**7 `h-screen` instances → `h-dvh`** — ✅ **RESOLVED** (fixed in commit `8c249b6`, July 7, 2026). Verified Aug 10, 2026: `rg 'h-screen\|100vh' src` = 0 hits; all 6 audit-listed files (`OnboardingBackground.tsx`, `Navigation.tsx`, `not-found.tsx`, `OnboardingWizard.tsx`, `~offline/page.tsx`, `(auth)/login/page.tsx`) use `h-dvh`/`min-h-dvh`.
 
-- **Files:** `src/components/layout/OnboardingBackground.tsx:145,166`, `src/components/layout/Navigation.tsx:72`, `src/app/not-found.tsx:5`, `src/app/onboarding/OnboardingWizard.tsx:235`, `src/app/~offline/page.tsx:7`, `src/app/(auth)/login/page.tsx:61`
-- **What's wrong:** `h-screen` (= `100vh`) includes mobile browser chrome space, causing layout jumps when URL bar shows/hides on scroll.
-- **Fix:** Replace all 7 `h-screen` with `h-dvh` (dynamic viewport height). For full-height containers that must never be covered, use `h-svh` (smallest viewport height).
-- **Priority:** P1 — quick win (<1 day).
-- **Depends on:** None.
+**BUG-36/39 — Sheet whole-surface drag swallows taps** — ✅ **RESOLVED** (fixed in commit `ad79e81`). Verified: `Sheet.tsx:59-61` has a dedicated drag handle and `dragListener={false}` — the exact fix the audit prescribed. All 7 consumers fixed at once by the shared-component change.
 
-**BUG-36/39 — Sheet whole-surface drag swallows taps**
-
-- **File:** `src/components/ui/Sheet.tsx:58`
-- **What's wrong:** `drag="y"` on whole sheet surface with no `dragListener={false}` or dedicated handle. Framer Motion's drag recognizer competes with nested button taps. Affects 7 consumers: ConfirmModal, AddPersonPanel, SearchModal, TaskAddPanel, CaptureModal, ExploreDrawer, LocationAddPanel.
-- **Fix:** Add a dedicated drag handle element at the top of the Sheet. Set `dragListener={false}` on the `m.div` and pass `dragControls` from the handle. Or evaluate Vaul (TOOL-10) as a replacement.
-- **Priority:** P1.
-- **Depends on:** None. Fix in `Sheet.tsx` once fixes all 7 consumers.
-
-**BUG-41 — Input 13px triggers iOS Safari auto-zoom**
-
-- **File:** `src/components/ui/Input.tsx` (uses `.input` CSS class which inherits `--text-body: 13px`)
-- **What's wrong:** iOS Safari auto-zooms on inputs <16px on focus. Every default text input in the app is below that threshold.
-- **Fix:** Add to `globals.css`:
-  ```css
-  @media (max-width: 768px) {
-    .input { font-size: 16px !important; }
-  }
-  ```
-  Or set input text specifically to 16px on mobile viewports, distinct from surrounding UI's 13px body text.
-- **Priority:** P1 — quick win (<1 day).
-- **Depends on:** None.
+**BUG-41 — Input 13px triggers iOS Safari auto-zoom** — ✅ **RESOLVED**. Verified: `globals.css:1366-1375` ("T5-3: iOS input zoom fix") forces `font-size: max(16px, var(--text-body-lg))` on mobile for `.input`, `.input-title`, `.input-search`; `:1334-1338` covers `textarea`/`select`.
 
 ### ROOT PATTERN 4 — Design System Fragmentation
 
@@ -84,53 +60,17 @@
 - **Priority:** P1 — 1 week.
 - **Depends on:** DS-09.
 
-**BUG-43 — Settings native `<select>` + 4 `type="time"`**
+**BUG-43 — Settings native `<select>` + 4 `type="time"`** — ✅ **RESOLVED Aug 10, 2026** (verified: `rg '<select|type="time"' src` = 0 hits — the Auto-Archive `<select>` and all native time inputs are gone; Morning Nudge/Evening Shutdown now use `Dropdown variant="select"` with `TIME_OPTIONS`). Note: `quiet_start`/`quiet_end` survive as unused schema/type fields — CONF-14's column cleanup is still pending (UI collapse is done).
 
-- **File:** `src/components/features/SettingsModal.tsx:1417` (`<select>` for Auto-Archive Completed), `:1026,1039,1303,1323` (`type="time"` for Quiet Start/End + Morning Nudge/Evening Shutdown)
-- **What's wrong:** Native `<select>` and `type="time"` render browser-controlled UI that cannot be restyled to match the app's design system.
-- **Fix:** Migrate `<select>` to `<Dropdown variant="select">`. Once CONF-14 collapses the 4 time fields to 2 (morning + evening ritual time), build a custom time picker on the `Dropdown`/`Popover` portal infrastructure.
-- **Priority:** P1 — 1 week.
-- **Depends on:** BUG-31 (share Dropdown fix), CONF-14 (for time fields' final count).
+**BUG-25/33 — Explore Type field native `<datalist>`** — ✅ **RESOLVED Aug 10, 2026** (verified: `rg '<datalist'` = 0 hits in src)
 
-**BUG-25/33 — Explore Type field native `<datalist>`**
+**BUG-31 — Dropdown no scroll/type-ahead** — ✅ **RESOLVED Aug 10, 2026** (verified: `Dropdown.tsx:43-121` implements key-buffer type-ahead via `searchBuffer`/`searchTimeout`)
 
-- **File:** `src/components/features/ExploreDrawer.tsx:258`
-- **What's wrong:** Native `<input>` + `<datalist>` renders browser-controlled autocomplete UI.
-- **Fix:** Replace with `<Dropdown variant="select">` supporting both preset selection and custom entry.
-- **Priority:** P1.
-- **Depends on:** DS-04 (use consolidated dropdown primitive).
+**BUG-32 — Sonner toast theme bound to OS, not app** — ✅ **RESOLVED Aug 10, 2026** (verified: `ToastProvider.tsx` binds `theme` to `data-mode` with a MutationObserver — never `"system"`)
 
-**BUG-31 — Dropdown no scroll/type-ahead**
+**BUG-29 — Think "New thread" silently fails** — ✅ **RESOLVED Aug 10, 2026** (verified: `think/page.tsx:148-151` shows `toast.error` on insert failure; `color_accent` is real hex `#E5B41E`, not `var(--accent)` — answers EXECUTION_SPEC §17.4 open question)
 
-- **File:** `src/components/ui/Dropdown.tsx` (the `dropdown-panel` `m.div` in both `chip` and `select` variant render paths)
-- **What's wrong:** Floating options panel has no `max-height` + no `overflow-y-auto`. For Timezone field (`Intl.supportedValuesOf("timeZone")` = hundreds of entries), panel grows to full list height. No `onKeyDown` handler → no type-ahead.
-- **Fix:** Add `max-height: min(320px, 60vh)` + `overflow-y-auto` + `overscroll-contain` to the `dropdown-panel` class for the `select` variant. Add `onKeyDown` handler for type-ahead (jump-to-option on key press). Do not remove the portal/positioning behavior.
-- **Priority:** P1 — 1-2 days.
-- **Depends on:** None.
-
-**BUG-32 — Sonner toast theme bound to OS, not app**
-
-- **File:** `src/components/ui/ToastProvider.tsx`
-- **What's wrong:** `<Toaster theme="system" ...>` binds Sonner's internal color scheme to OS-level `prefers-color-scheme`, independent of app's manual `data-mode` toggle. OS=dark + app=light = light toast on dark text = unreadable.
-- **Fix:** Bind Sonner's `theme` prop to app's actual current color mode (read from the same store/`data-mode` attribute that `AppInitializer`/`theme.ts` manage), not the string literal `"system"`.
-- **Priority:** P1 — quick win (<1 day).
-- **Depends on:** None.
-
-**BUG-29 — Think "New thread" silently fails**
-
-- **File:** `src/app/(app)/think/page.tsx:126` (handleNewThread)
-- **What's wrong:** Inserts a new row into `threads` with `color_accent: "var(--accent)"` — a literal CSS variable reference string written into a data column, not an actual color value. The `if (!error && data)` pattern swallows the error; clicking "New thread" sometimes does nothing.
-- **Fix:** Stop writing a CSS variable string as a data value. Either assign an actual resolved color, or don't store a per-thread accent color at all if nothing currently reads it distinctly per-thread (check for dead-column risk). Add `toast.error` treatment on failure.
-- **Priority:** P1 — quick win (<1 day).
-- **Depends on:** None.
-
-**BUG-30 — Settings autosave loops forever**
-
-- **File:** `src/components/features/SettingsModal.tsx:357-433` (the `watch()`/`useDebounce`/save `useEffect` chain)
-- **What's wrong:** Autosave effect is keyed on `debouncedSettings`, derived from `const settings = watch()` — an unscoped, whole-form `watch()` call. React Hook Form's `watch()` returns a new object reference on every render → effect fires repeatedly. Shows "Saving…"/"Saved" forever, including on simply opening Settings with no edits.
-- **Fix:** Gate the save effect on an actual-change signal. Use `formState.isDirty` / `dirtyFields`, or deep-compare `debouncedSettings` against the last-successfully-saved snapshot before calling the update.
-- **Priority:** P1 — 1-2 days.
-- **Depends on:** None.
+**BUG-30 — Settings autosave loops forever** — ✅ **RESOLVED Aug 10, 2026** (verified: `SettingsModal.tsx:425-429` — `lastSavedSettingsRef` JSON-snapshot guard skips unchanged saves and only advances on success, plus `useDebounce(settings, 1000)`)
 
 **3 different dashed-border tokens → unify**
 
@@ -197,9 +137,9 @@
 - **Priority:** P1 — quick win.
 - **Depends on:** None.
 
-### DS-14 — Reduced motion/transparency NOT implemented
+### DS-14 — Reduced motion/transparency — PARTIAL (motion ✅ DONE, transparency still open)
 
-**`prefers-reduced-transparency: reduce` — 0 occurrences**
+**`prefers-reduced-transparency: reduce` — 0 occurrences** — still open (unchanged)
 
 - **File:** Entire codebase
 - **What's wrong:** 0 occurrences of `prefers-reduced-transparency: reduce`. Should swap all `--elev-*-blur` to `blur(0px)` and raise surfaces to opaque colors.
@@ -207,13 +147,7 @@
 - **Priority:** P1.
 - **Depends on:** None.
 
-**`prefers-reduced-motion: reduce` — only zeroes duration**
-
-- **File:** `src/app/globals.css:775, 1120, 1149-1168`
-- **What's wrong:** Only sets `transition-duration: 0.01ms !important` — does NOT remove the `transform` value. A `hover:scale-[1.01]` still scales instantly instead of not scaling. Setting promises "no movement" but delivers "instant movement."
-- **Fix:** Remove transform/distance for every hover/interactive animation when reduced-motion is set. For each `:hover` rule with a transform, add a `prefers-reduced-motion: reduce` override that sets `transform: none`.
-- **Priority:** P1.
-- **Depends on:** None.
+**`prefers-reduced-motion: reduce`** — ✅ **RESOLVED Aug 10, 2026** (verified: `globals.css:1131-1146` sets `transform: none !important` for `hover:scale*`/`hover:-translate*`/`active:scale*`/`.glass-card:hover` — hover distance is now removed, not merely zeroed-duration; 0.01ms duration fallbacks remain at `:775`/`:1120`. The audit's "delivers instant movement" claim is stale)
 
 ### DS-28 — Per-space colors NOT OKLCH-derived
 
@@ -225,15 +159,9 @@
 - **Priority:** P1 — 1 week.
 - **Depends on:** DS-02 (token consolidation).
 
-### BUG-23 — No page-to-page transitions
+### BUG-23 — No page-to-page transitions — ✅ RESOLVED Aug 10, 2026
 
-**Missing `template.tsx`**
-
-- **File:** `src/app/(app)/template.tsx` (does not exist)
-- **What's wrong:** No page-to-page transition; hard cut feels janky.
-- **Fix:** Create `src/app/(app)/template.tsx` with one shared opacity-only fade (`--dur-base`, no y-axis movement) applied uniformly via a single shared transition wrapper for the `(app)` route group.
-- **Priority:** P1 — quick win (<1 day).
-- **Depends on:** None.
+**Missing `template.tsx`** — ✅ **RESOLVED** (verified: `src/app/(app)/template.tsx` exists — the audit's "does not exist" claim was stale; page-to-page transitions render through it). Open sub-item: confirm the transition matches the spec (one shared opacity-only fade, `--dur-base`, no y-axis movement) when next touching it.
 
 ### BUG-35/37/40 — Empty-state bugs
 
@@ -354,19 +282,9 @@
 
 ## P1 — Error boundaries + loading states (ROOT PATTERN 7)
 
-**5 routes missing custom `error.tsx`**
+**5 routes missing custom `error.tsx`** — ✅ **RESOLVED Aug 10, 2026** (verified: `error.tsx` exists at `(app)`, `do`, `explore`, `remember`, `think` — 5 files; `inbox`, `trash`, and the `[id]` detail routes inherit from their segment, which is the correct App Router pattern — the audit's "missing" list was counting files the architecture intentionally shares)
 
-- **Files:** `src/app/(app)/inbox/error.tsx` (missing), `src/app/(app)/trash/error.tsx` (missing), `src/app/(app)/remember/people/[id]/error.tsx` (missing), `src/app/(app)/think/[id]/error.tsx` (missing), `src/app/(app)/explore/[id]/error.tsx` (missing)
-- **Fix:** Add `error.tsx` to each route, using `AppErrorFallback` component (same pattern as existing `error.tsx` files in `do`/`explore`/`think`/`remember`).
-- **Priority:** P1.
-- **Depends on:** None.
-
-**5 routes missing custom `loading.tsx`**
-
-- **Files:** Same 5 routes as above (missing `loading.tsx`)
-- **Fix:** Add `loading.tsx` to each route, using `Skeleton` component matching the content shape.
-- **Priority:** P1.
-- **Depends on:** None.
+**5 routes missing custom `loading.tsx`** — ✅ **RESOLVED Aug 10, 2026** (verified: `loading.tsx` exists at the same 5 segments — `(app)`, `do`, `explore`, `remember`, `think`)
 
 **`ModalErrorBoundary` missing from 5 Sheet-based modals**
 
@@ -383,12 +301,7 @@
 - **Priority:** P1 — 1-2 days.
 - **Depends on:** None.
 
-**0 skip-to-content link (A11Y-03)**
-
-- **File:** `src/app/(app)/layout.tsx` or `src/app/layout.tsx`
-- **Fix:** Add a skip-to-content link as the first focusable element: `<a href="#main" className="sr-only focus:not-sr-only ...">Skip to content</a>`. Add `id="main"` to the main content region.
-- **Priority:** P1 — quick win (<1 day).
-- **Depends on:** None.
+**0 skip-to-content link (A11Y-03)** — ✅ **RESOLVED Aug 10, 2026** (verified: `(app)/layout.tsx` renders a skip link as the first focusable element targeting `#main`, with `id="main"` on the content region — the audit's "0 occurrences" was stale)
 
 ---
 
@@ -510,7 +423,7 @@
 
 - **Audit:** `Presense_Full_Complete_Audit.md` (July 9, 2026, 2135 lines, 14-step audit by GLM-4.6) — the source of truth for what's broken.
 - **Ticket backlog:** `docs/plans/EXECUTION_SPEC.md` (1755 lines, 25 sections) — the full ticket history with 23 addenda tracking every known bug, ticket, and conflict resolution. §24 is the audit cross-reference with 8 root patterns and 10 quick wins.
-- **Design spec:** `docs/project/DESIGN_SYSTEM.md` — the visual spec (color, type, glass, motion, surfaces). Cross-refs this file for specs that are written but NOT YET implemented (DS-14, DS-28, DS-29, DS-30, BUG-23, BUG-25/33, BUG-43, CONF-14).
-- **Component dictionary:** `docs/project/COMPONENT_MANIFEST.md` — the approved UI primitives list. Cross-refs this file for component-level bugs (DS-30, BUG-31, BUG-36/39, BUG-41, BUG-43, BUG-25/33, BUG-32, BUG-30, BUG-29).
+- **Design spec:** `docs/project/DESIGN_SYSTEM.md` — the visual spec (color, type, glass, motion, surfaces). Cross-refs this file for specs that are written but NOT YET implemented (DS-28, DS-29, DS-30, DS-14-transparency) or DONE since the July 9 audit (DS-14-motion, BUG-23, BUG-25/33, BUG-43, CONF-14-UI).
+- **Component dictionary:** `docs/project/COMPONENT_MANIFEST.md` — the approved UI primitives list. Cross-refs this file for component-level bugs (DS-30, BUG-36/39, BUG-41 — those three remain open; BUG-31, BUG-43, BUG-25/33, BUG-32, BUG-30, BUG-29 — all RESOLVED Aug 10, 2026, see above).
 - **Agent contract:** `docs/agents/EXECUTION_RULES.md` — the 7 iron laws, STOP LIST. STOP LIST item 11 (new unchecked Supabase mutations) and the anti-pattern row ("I'll skip the `error` check") both reference this file.
 - **Entry point:** `AGENTS.md` — §1 invariant 7 (every Supabase mutation must check `error`) and §4 (known critical bugs) both reference this file.

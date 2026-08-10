@@ -1,76 +1,51 @@
-# Implementation Plan: PERF-12 task 4 — remaining TTFB + main-thread cost on authed routes
-
-> **Status: COMPLETE (Aug 10, 2026).** Gate 1 chose Option A (leave `user_settings`). Task 4.1 attribution produced the TTFB split (proxy getUser 293–366 ms / layout settings ~300 ms / render ~60 ms) and chunk verdict (shared invariant-required shell). Task 4.2 closed TTFB work with attribution (doc-only). Task 4.3 closed with attribution (no app-level lever). **PERF-12 subsequently CLOSED with attribution (human-approved)** — verdict recorded in `docs/plans/EXECUTION_SPEC.md` §28. Evidence committed alongside §26.5. Suggested follow-up (not ticketed): /do rendering-strategy study.
+# Implementation Plan: MOB-05 close-out + stale-open ticket verification sweep
 
 ## Overview
 
-PERF-12 fixes 1 (getSession, `c611f4e`) and 2 (lazy TaskAddPanel/CalendarView, `235a234`) are done. Remaining measured gap on authed `/do`: **TTFB 0.62 s warm** (Lighthouse 640/660 ms) and **LCP 6.4–6.7 s** with ~4.4 s of main-thread work. This plan breaks down the two remaining cost centers into small, gated tasks:
+The user asked to start work on MOB-05 (replace `h-screen` with `h-dvh`). Read-only verification shows **MOB-05 is already fixed** — commit `8c249b6` (July 7, 2026) migrated exactly the 6 files the July-9 audit lists as offenders; `rg 'h-screen|100vh' src` returns **zero hits** today (9 `h-dvh`/`min-h-dvh` sites verified). The audit examined a stale state — the same failure mode already closed for ROOT PATTERN 2 (warm-light) and BUG-38's counts.
 
-1. **~300 ms layout `user_settings` round trip** — the last big server-latency item in TTFB.
-2. **Shared chunk `0cau6ws9nif22` (233 KB raw, ~64 KiB gz, ~1.43 s eval)** — present in the initial script set of EVERY `(app)` route (`/`, `/inbox`, `/explore`, `/do` verified), i.e. app-shell code that cannot be lazy-loaded per-route.
+A bounded verification sweep of the other P0/P1 quick wins found the same pattern is widespread: BUG-41 (16px input floor, `globals.css:1366-1375`), BUG-36/39 (Sheet `dragListener={false}`, `ad79e81`), BUG-32 (ToastProvider `data-mode` binding), BUG-29 (`handleNewThread` error toast + real hex), BUG-35 (empty-state buttons use `handleNewThread`), BUG-23 (`template.tsx` exists), BUG-25/33 + BUG-43 (zero `<datalist>`/`<select>`/`type="time"` in src), A11Y-03 (skip link in `(app)/layout.tsx`) are all **already implemented but still documented as open**.
 
-Because both items are shared/security-adjacent infrastructure, the plan is measure-first with **two explicit human decision gates**; option "close with attribution" (PERF-11 precedent) is always on the table.
+Work = verify-and-close in docs (no code changes), then re-verify what is genuinely open before picking the next code ticket.
 
-## Architecture Decisions (with evidence)
+## Architecture Decisions
 
-- **TTFB attribution (measured this session):** warm TTFB 0.62 s ≈ proxy `getUser()` (~300 ms auth-server round trip, `src/proxy.ts:99-101`, runs in middleware before every request) + layout `user_settings` (~300 ms, `(app)/layout.tsx:42-46`) + SSR render (~60 ms, probed in fix 1). Both DB/auth round trips are serial and latency-bound (Supabase RTT ~150 ms each leg).
-- **Proxy `getUser()` is the security boundary** — it verifies token revocation server-side per request. Replacing it with cookie-local `getSession()` (as done in the layout) would accept revoked sessions until JWT expiry. **Default: DO NOT change.** Any proposal to touch it needs explicit human sign-off (security decision).
-- **The layout `user_settings` fetch cannot be trimmed by columns** — onboarding gating (`onboarding_complete`, redirect logic at layout.tsx:48-66) is SSR-critical and one round trip regardless of selected columns. The full row also seeds `AppInitializer` (`initialSettings`, store seed). It is latency-bound, not size-bound.
-- **Theme first paint is already effect-based** (`AppInitializer.tsx:63-83` applies `applyDocumentTheme` in a post-hydration `useEffect`; SSR settings only seed the store). So a client-side reconcile (React Query already exists with 5-min `staleTime`, `QueryProvider.tsx`) can correct a stale SSR seed without a visible theme regression — this is what makes a TTL-cache option viable.
-- **Turbopack is the default prod build** (measured script sets are turbopack chunks). Manual `webpack.config` `splitChunks` does NOT apply to turbopack builds, so "split chunk 0cau6ws9nif22" via config is **not an app lever**. The only app-level levers are import restructuring (barrel decoupling, moving heavy modules out of the layout entry). Whether that applies depends on the module map from Task 4.1.
-- **Law 7 (stop-and-ask):** any option that touches layout/provider wiring or exceeds 3 files needs human approval — built into the gates below.
-- All perf changes must be re-measured identically to §26.1 (2 authed Lighthouse runs + deterministic HTML script-set method) and recorded in §26.5, kept only if outside variance or deterministic, reverted otherwise.
+- **Verify-then-close, one commit per ticket** (MOB-05 precedent: root patterns 1 & 2 were closed the same way Aug 10, 2026). Each close-out cites the fixing commit + the verification command that proves it.
+- **No code changes** unless a sweep check contradicts current code state (then that becomes a genuine code ticket instead).
+- **Per-rule doc discipline**: EXECUTION_SPEC §17.3/§18/§24 rows, DOCS_NEEDS_CODE (move to Resolved), CONTEXT.md, AGENTS.md §4, DESIGN_SYSTEM stale bullets — only stale statuses edited, historical audit text (docs/audits/*) left untouched.
+- **Scope discipline (Law 7):** the sweep is read-only and bounded to the P0/P1 quick-win list; anything not verified stays "unverified", never assumed. A genuinely-open ticket is proposed at the checkpoint for human approval, not started unilaterally.
 
 ## Task List
 
-### Phase 1: Attribution (no code changes)
+### Phase 1: MOB-05 close-out (docs only)
+- [ ] **Task 1: Verify MOB-05 current state** (XS, read-only) — DONE in planning: `rg 'h-screen|100vh' src` → 0 hits; all 6 audit-listed files use `h-dvh`/`min-h-dvh` (verified line-by-line); fixing commit `8c249b6` identified.
+- [ ] **Task 2: MOB-05 doc close-out** (S, 5 docs files, no code)
+  - Acceptance: no stale "7 h-screen / NOT FULLY DONE / 6 files still reference h-screen" text remains in living docs; each updated spot cites `8c249b6` + the zero-hit rg proof.
+  - Files: `docs/plans/EXECUTION_SPEC.md` (§17.3 row 1373, §18 row 1403, §24.1 row 1710, §24.2 quick win #1, §24.3, DS-29 dependency note ~1585), `docs/project/CONTEXT.md` (~273), `docs/project/DOCS_NEEDS_CODE.md` (~31-40 → Resolved section), `AGENTS.md` (§4.3 item 3), `docs/project/DESIGN_SYSTEM.md` (~398).
+  - Verification: `rg -n 'h-screen|NOT FULLY DONE'` in living docs → only intentional historical mentions; `npm run build` + `npm test` unaffected (docs-only, but run anyway per rules).
 
-- [ ] **Task 4.1: Re-attribute remaining TTFB + map chunk 0cau6ws9nif22** (XS, read-only + temp probes, all reverted)
-  - Probe (temp, reverted) the exact split: middleware `getUser()` vs layout `user_settings` vs render on warm server.
-  - Rebuild `ANALYZE=true npx next build --webpack` and map the shared shell modules (reuse `map-do-chunks.cjs`); determine whether 0cau6ws9nif22 is lib-merge (framer-motion/date-fns etc. — not app-reclaimable) or app code with a barrel-import culprit (reclaimable).
-  - Record evidence table in §28 (no commit of code; doc-only note or commit if desired).
-  - **Acceptance:** measured split table (proxy / layout / render, ms) + chunk module map with verdict (reclaimable vs framework-chunking) + recomputed per-route script-set total.
+### Checkpoint: MOB-05 closed
+- [ ] Docs-only commit `docs: MOB-05 close-out — verified fixed in 8c249b6, zero h-screen remains`
+- [ ] Human reviews before proceeding
 
-### Gate 1 (human): choose TTFB option
-- **A. Leave `user_settings` as-is** — close TTFB work with attribution (remaining ~300 ms is the price of SSR onboarding gating; TTFB 0.62 s is already 2.4× better than baseline 1.47 s).
-- **B. Server TTL cache** (`unstable_cache` keyed by user, `revalidate: 2–5 s`) + client reconcile via React Query so a stale SSR seed self-corrects ~300 ms after mount. Files: `src/lib/` new cache helper, `(app)/layout.tsx`, `AppInitializer.tsx` (or a small settings query hook), possibly `useAppStore` — **3–5 files, layout/provider-adjacent → requires Law 7 approval**. Risk: settings save (SettingsModal writes client-side, no invalidation channel) shows stale theme/values for ≤TTL on immediate reload; mitigated by client reconcile + short TTL.
-- **C. Move onboarding gating + settings entirely client-side** — REJECTED by default: onboarding redirect becomes post-hydration (flash/redirect-loop UX regression) and loses SSR gating; listed for completeness only.
+### Phase 2: Stale-open verification sweep (read-only)
+- [ ] **Task 3: Verify each remaining P0/P1 quick-win against current code** (S, read-only) — record a status table: BUG-41, BUG-36/39, BUG-32, BUG-29, BUG-35, BUG-23, BUG-25/33, BUG-43, A11Y-03 (each already spot-verified in planning; re-confirm with command evidence), plus genuinely-unknown: BUG-02, BUG-08, BUG-09, BUG-11, BUG-30, BUG-31, BUG-42 (verified open — no `beforeunload`), DS-14, DS-30, ROOT PATTERN 7 (error/loading files, ModalErrorBoundary), ROOT PATTERN 4 (hardcoded hex count).
+  - Acceptance: every item gets a `FIXED (commit/line evidence)` or `OPEN` or `UNVERIFIED` verdict; table lands in the sweep report.
+- [ ] **Task 4: Doc close-out for each verified-fixed ticket** (M, ~5-9 docs files total, one commit per ticket — grouped only for tickets sharing a single audit row where the row is one edit)
+  - Acceptance: no living-doc "open" status remains for a code-verified-fixed ticket; EXECUTION_SPEC §24.1 rows and §24.2 quick wins reflect reality.
 
-### Phase 2: Execute chosen TTFB option
-
-- [ ] **Task 4.2: Implement TTFB option** (S–M per gate: A = doc-only close; B = 3–5 files)
-  - A: record verdict in §26.5 + §28, no code.
-  - B: cache helper + layout wiring + client reconcile; verify settings-save → reload correctness manually.
-  - **Acceptance:** warm curl TTFB ≤ 0.35 s (from 0.62) for B; settings change reflects on reload within ~1 s (manual check); onboarding redirect flow unchanged (seeded test account + fresh account check); `npm test` 144/144; build green.
-  - **Verification:** 2 authed Lighthouse runs A/B; ledger §26.5 row; §28 status.
-
-### Phase 3: Main-thread chunk
-
-- [ ] **Task 4.3: Address shared chunk 0cau6ws9nif22 based on 4.1 mapping** (S)
-  - If module map shows a heavy barrel-import pulled into layout scope: decouple it (move to page-level or direct imports), re-measure.
-  - If lib-merge/framework chunking: **close with attribution** (like PERF-11) — chunking is not an app lever under turbopack.
-  - **Acceptance:** either script-set gz reduced on all (app) routes with 2×Lighthouse parity-or-better, or a documented close-with-attribution verdict.
-  - **Verification:** 2 authed Lighthouse runs on `/do` + script-set totals; ledger §26.5; §28 status.
-
-### Checkpoint: PERF-12 close-out
-- [ ] All tasks' acceptance criteria met or closed with attribution
-- [ ] `npm test` 144/144, `npm run build` green
-- [ ] Ledger §26.5 has rows for every attempt (kept or reverted)
-- [ ] §28 status paragraphs updated
-- [ ] Final PERF-12 verdict vs acceptance (perf ≥ 70, LCP ≤ 4 s, TBT ≤ 1 s) — likely: TBT target met (440/450 ms), LCP and perf still short → decide extend-vs-close with human
-- [ ] Review with human before proceeding to any further work
+### Checkpoint: sweep done
+- [ ] All close-out commits in, build + tests green (144/144)
+- [ ] Genuinely-open list presented to human with recommendation for next code ticket (candidates: BUG-42 beforeunload guard, BUG-30 autosave loop, BUG-31 dropdown type-ahead, DS-30 hover standardization)
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| TTL cache shows stale theme/settings after save on immediate reload | Med (UX complaint) | Short TTL (2–5 s) + client reconcile via existing React Query (5-min staleTime already in place); manual verification in 4.2 |
-| Touching layout/provider wiring breaks onboarding redirect gating | High (redirect loop regression) | Keep server-side gating logic untouched in option B; regression-check onboarding in 4.2 acceptance |
-| Chunk surgery attempt breaks shared shell across all routes | High | Measure-first (4.1 mapping); default to close-with-attribution (PERF-11 precedent); turbopack chunking is not app-configurable |
-| Proxy getUser → getSession would weaken session revocation | High (security) | Explicit non-goal; any change needs separate human security sign-off |
-| LCP/perf targets (≤4 s / ≥70) unreachable at app level | Med | Attribution-first approach; PERF-12 may close like PERF-11 with evidence (LCP 13.4 → 6.4 s = −52% already, deterministic bundle cuts) |
+| A sweep "verify" misses a real open bug in a file I close out | Med | Only close tickets whose fixing commit/rule I can cite line-exactly; everything else stays OPEN/UNVERIFIED |
+| Doc edits drift from the "one copy" rule (AGENTS.md §2) | Med | Edit only the single canonical copies listed in AGENTS.md; grep before/after for duplicates |
+| Scope creep into a full re-audit | Med | Sweep is bounded to the named quick-win/ticket list; results table, then stop at the human gate |
 
-## Open Questions (for Gate 1 + Checkpoint)
-1. **TTFB option: A (leave) or B (TTL cache + client reconcile)?** B is the only real lever for the last ~300 ms but is Law 7-adjacent and adds staleness complexity. Recommendation: **A** unless TTFB < 0.5 s is a hard goal — the remaining cost is bounded and B's risk/benefit is marginal.
-2. Is the 1.43 s shared-chunk eval acceptable if mapping shows it's lib-merge (framework chunking)? (Recommendation: yes — close with attribution.)
-3. If PERF-12 close-out shows LCP ~6.4 s with only framework/main-thread cost left, is that acceptable for closing PERF-12 with attribution, or should a follow-up ticket (e.g., client-side rendering strategy for /do) be opened? (Recommendation: close PERF-12, open follow-up ticket.)
+## Open Questions
+
+- After the sweep, which genuinely-open ticket should be next? (recommendation offered at checkpoint; BUG-42 beforeunload guard is the only verified-open P1 quick win so far)

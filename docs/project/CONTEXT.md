@@ -268,11 +268,11 @@ These are the highest-impact findings from the July 9, 2026 audit. Each is track
 
 The audit claimed `globals.css:336-420` overrode `--bg-base` to cream without overriding text colors (white on cream). **Not true in the current build:** the warm-light block has had dark-warm text overrides (`--text-1: #1A0E00`, etc., `globals.css:374-381`) since `e6fd96b4` (July 5, 2026, predates the audit). Verified live Aug 10, 2026: computed styles on `/`, `/do`, `/inbox`, `/think` all render dark text on cream in warm-light. Closed as a false positive — see `EXECUTION_SPEC.md` §24.1.
 
-### ROOT PATTERN 3 — Mobile Viewport + Form Bugs (High)
+### ROOT PATTERN 3 — Mobile Viewport + Form Bugs (High) — ✅ CLOSED Aug 10, 2026
 
-- **7 `h-screen` instances** cause layout jumps on mobile Safari/Chrome when URL bar shows/hides. Should be `h-dvh`. Locations: `OnboardingBackground.tsx:145,166`, `Navigation.tsx:72`, `not-found.tsx:5`, `OnboardingWizard.tsx:235`, `~offline/page.tsx:7`, `(auth)/login/page.tsx:61`.
-- **BUG-36/39:** `Sheet.tsx:58` whole-surface `drag="y"` swallows taps on nested buttons across 7 consumers.
-- **BUG-41:** `Input.tsx` uses `.input` CSS class inheriting `--text-body: 13px` → iOS Safari auto-zooms on focus. Must be ≥16px on mobile.
+- **~~7 `h-screen` instances~~** cause layout jumps on mobile Safari/Chrome when URL bar shows/hides. **Fixed** in commit `8c249b6` (July 7, 2026) — all 6 audit-listed files (`OnboardingBackground.tsx`, `Navigation.tsx`, `not-found.tsx`, `OnboardingWizard.tsx`, `~offline/page.tsx`, `(auth)/login/page.tsx`) use `h-dvh`/`min-h-dvh`; `rg 'h-screen|100vh' src` = 0 hits (verified Aug 10, 2026).
+- **~~BUG-36/39:~~** `Sheet.tsx:58` whole-surface `drag="y"` swallows taps. **Fixed** in `ad79e81` — dedicated drag handle + `dragListener={false}` (Sheet.tsx:59-61).
+- **~~BUG-41:~~** `Input.tsx` 13px iOS auto-zoom. **Fixed** — `globals.css:1366-1375` forces 16px floor on mobile.
 
 ### ROOT PATTERN 4 — Design System Fragmentation (High, polish erosion)
 
@@ -292,14 +292,14 @@ The audit claimed `globals.css:336-420` overrode `--bg-base` to cream without ov
 
 No calendar integration, no native mobile/desktop apps, no AI features (despite `ollama_*` plumbing), no semantic search, no command palette (Cmd+K opens CaptureModal, not a command palette — DS-08 not started), no weekly review (FEAT-01 not started), no recurring task UI (despite `recurrence` column + `cron_recurrence` edge function), no snooze UI (despite `snoozed_until` column), no linked-people UI from TaskAddPanel (despite `linked_people_ids` column), no bulk actions, no drag-between-spaces, no password reset UI, no magic link resend UI.
 
-### ROOT PATTERN 7 — Incomplete Error Boundaries + Loading States (Medium)
+### ROOT PATTERN 7 — Incomplete Error Boundaries + Loading States (Medium) — partially fixed
 
-- 5 routes missing custom `error.tsx`: `inbox`, `trash`, `remember/people/[id]`, `think/[id]`, `explore/[id]`.
-- 5 routes missing custom `loading.tsx`: same set.
-- `ModalErrorBoundary` used in 3 modals (SearchModal, CaptureModal, SettingsModal) — missing from AddPersonPanel, LocationAddPanel, ExploreDrawer, TaskAddPanel, PomodoroTimer.
+- ~~5 routes missing custom `error.tsx`~~ — **Fixed**: `error.tsx` exists at `(app)`, `do`, `explore`, `remember`, `think` (verified Aug 10, 2026); `inbox`, `trash`, `[id]` routes inherit from their segment.
+- ~~5 routes missing custom `loading.tsx`~~ — **Fixed**: same 5 segments (verified Aug 10, 2026).
+- `ModalErrorBoundary` used in 3 modals (CaptureModal, SearchModal, SettingsModal) — **still missing** from AddPersonPanel, LocationAddPanel, ExploreDrawer, TaskAddPanel, PomodoroTimer.
 - 0 `aria-live` regions (realtime changes invisible to screen readers).
-- 0 `beforeunload`/`isDirty` guards (BUG-42 — accidental close loses form data).
-- 0 skip-to-content link (A11Y-03).
+- 0 `beforeunload`/`isDirty` guards (BUG-42 — accidental close loses form data; verified still open Aug 10, 2026).
+- ~~0 skip-to-content link (A11Y-03)~~ — **Fixed** (`(app)/layout.tsx`).
 - `/api/telemetry` endpoint only does `console.warn` — black hole in production (TOOL-06 / Sentry not installed).
 
 ### ROOT PATTERN 8 — CI/CD Has Minimum Viable Gates (Medium)
@@ -326,20 +326,20 @@ Fix plan: add skip + resume + error-checking + progress indicator + keyboard nav
 ### Empty states
 
 - **5 spaces use `EmptyState` component**: Do (3 instances), Inbox (1, "Inbox Zero" celebratory tone), Home (multiple), People (1), Trash (1, via different pattern).
-- **3 spaces hand-roll** their own empty states (don't use `EmptyState`): Think (`think/page.tsx:279` — bare `<h3>No threads yet</h3>`), Explore (`explore/page.tsx:272` — bare `<h3>Nothing saved yet</h3>`), Locations (`locations/page.tsx:126` — bare `<h3>No locations here</h3>`).
+- **3 spaces hand-roll** their own empty states (don't use `EmptyState`): Think (`think/page.tsx:279` — bare `<h3>No threads yet</h3>`), Explore (`explore/page.tsx:272` — bare `<h3>Nothing saved yet</h3>`), Locations (~~hand-rolled~~ — **fixed Aug 10, 2026**: uses `EmptyState` at `locations/page.tsx:123`, BUG-40).
 - **0 first-time-user variant** — all empty states are the same regardless of whether it's a brand-new user or an existing user who filtered to empty.
-- **Think + Explore empty-state buttons open wrong target** (BUG-35/37) — both call `useAppStore.getState().setCaptureModalOpen(true)` instead of their own creator.
+- ~~Think + Explore empty-state buttons open wrong target (BUG-35/37)~~ — **fixed Aug 10, 2026** (verified): both call `handleNewThread`, not `setCaptureModalOpen`.
 - **1 filtered empty state**: SearchModal "No results" (hand-rolled, not using `EmptyState`).
 
-Fix plan: migrate Think/Explore/Locations to `EmptyState`, fix targets, add first-time-user variant. See `docs/project/DOCS_NEEDS_CODE.md`.
+Fix plan (remaining): migrate Think/Explore to `EmptyState` (still hand-rolled), add first-time-user variant. See `docs/project/DOCS_NEEDS_CODE.md`.
 
 ---
 
 ## Motion safety for mobile (audit-verified)
 
-### `prefers-reduced-motion: reduce` — DS-14 NOT implemented
+### `prefers-reduced-motion: reduce` — ✅ DONE Aug 10, 2026 (DS-14)
 
-`globals.css:775, 1120, 1149-1168` only sets `transition-duration: 0.01ms !important` — does NOT remove the `transform` value. A `hover:scale-[1.01]` still scales instantly instead of not scaling. **Setting promises "no movement" but delivers "instant movement."** Fix: remove transform/distance for every hover/interactive animation when reduced-motion is set.
+`globals.css:1131-1146` now removes hover-transform distance entirely (`transform: none !important` for `hover:scale*`, `hover:-translate*`, `active:scale*`, `.glass-card:hover`, etc.), plus 0.01ms duration fallbacks at `:775`/`:1120`. The audit's "delivers instant movement" claim is stale — verified in code Aug 10, 2026. Remaining DS-14 gap: `prefers-reduced-transparency` (0 occurrences) still unimplemented.
 
 ### `prefers-reduced-transparency: reduce` — 0 occurrences in codebase
 
@@ -361,9 +361,9 @@ Touch devices get no hover state, only active/pressed. Do not inherit half-worki
 
 Defined in both `src/hooks/useReducedMotion.ts` AND `src/lib/animations.ts:21`. Pick one. See `docs/project/DOCS_NEEDS_CODE.md`.
 
-### No `template.tsx` for page transitions (BUG-23)
+### `template.tsx` for page transitions (BUG-23) — ✅ DONE Aug 10, 2026
 
-`src/app/(app)/template.tsx` does not exist — page-to-page is a hard cut. Should be one shared opacity-only fade (`--dur-base`, no y-axis movement) applied uniformly via a single shared transition wrapper. See `docs/project/DOCS_NEEDS_CODE.md`.
+`src/app/(app)/template.tsx` exists (verified Aug 10, 2026 — the audit's "does not exist" claim was stale). Verify the actual transition matches the spec (one shared opacity-only fade, `--dur-base`, no y-axis movement) when next touching it.
 
 ---
 

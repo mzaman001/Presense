@@ -1,28 +1,24 @@
-# Task List — PERF-12 task 4 (remaining TTFB + main-thread cost)
+# Task List — MOB-05 close-out + stale-open verification sweep
 
-Status legend: [ ] pending · [~] in progress · [x] done · [X] closed with attribution (no code)
+Status legend: [ ] pending · [~] in progress · [x] done
 
-## Phase 1: Attribution (read-only, temp probes reverted)
-- [x] Task 4.1: Re-attribute TTFB split (proxy getUser vs layout user_settings vs render) + map chunk 0cau6ws9nif22 via webpack ANALYZE rebuild → evidence table in §28
-  - Acceptance: measured ms split + chunk module map with reclaimable-vs-framework verdict — MET: getUser 293–366 ms / settings ~300 ms / render ~60 ms; shell = invariant providers + supabase, not reclaimable per-route
+## Phase 1: MOB-05 close-out (docs only)
+- [x] Task 1: Verify MOB-05 current state (read-only) — `rg 'h-screen|100vh' src` = 0 hits; all 6 audit-listed files on `h-dvh`/`min-h-dvh`; fixing commit `8c249b6` (July 7, 2026)
+- [x] Task 2: MOB-05 doc close-out — EXECUTION_SPEC (§17.3, §18, §24.1, §24.2 #1, §24.3, DS-29 note), CONTEXT.md, DOCS_NEEDS_CODE.md → Resolved, AGENTS.md §4.3, DESIGN_SYSTEM.md
+  - Acceptance: zero stale "h-screen"/"NOT FULLY DONE" text in living docs; every spot cites `8c249b6` + proof
+  - Verify: rg sweep + npm run build + npm test
 
-## Gate 1 (human): TTFB option — A leave / B TTL cache + client reconcile / C client-only (rejected)
-- [x] Human decides A or B → **Option A chosen (recommendation adopted)**
-- [x] If B: Law 7 approval — N/A (A chosen)
+## Checkpoint: MOB-05 closed
+- [x] Commit `docs: MOB-05 close-out — verified fixed in 8c249b6, zero h-screen remains` (with sweep close-outs — see Phase 2)
+- [x] Human approved: "commit and push anything left with accurate comments and notes"
 
-## Phase 2: Execute TTFB option
-- [x] Task 4.2: Option A — doc-only close with attribution (no code); ledger §26.5 row + §28 status added
-  - Acceptance (A): verdict recorded, no code touched — MET
-  - Verify: N/A (no code; 144/144 unaffected)
+## Phase 2: Stale-open verification sweep (read-only)
+- [x] Task 3: Verify each quick-win ticket against current code → status table (FIXED-with-evidence / OPEN / UNVERIFIED)
+  - Pre-verified in planning: BUG-41 (globals.css:1366-1375 16px floor), BUG-36/39 (Sheet.tsx:61 dragListener={false}, ad79e81), BUG-32 (ToastProvider data-mode + MutationObserver), BUG-29 (think/page.tsx:148-151 error toast, real hex), BUG-35 (no setCaptureModalOpen in think/explore), BUG-23 (template.tsx exists), BUG-25/33+BUG-43 (no datalist/select/type=time in src), A11Y-03 (skip link in (app)/layout.tsx), BUG-42 (OPEN — no beforeunload)
+  - Still to verify: BUG-02, BUG-08, BUG-09, BUG-11, BUG-30, BUG-31, DS-14, DS-30, ROOT PATTERN 7 (error/loading.tsx + ModalErrorBoundary), ROOT PATTERN 4 (hex count)
+- [x] Task 4: Doc close-outs for each verified-fixed ticket — EXECUTION_SPEC §24.7 sweep record + quick-win rows, CONTEXT.md, DOCS_NEEDS_CODE (BUG-43/25-33/31/32/29/30, DS-14, BUG-23, ROOT PATTERN 7 error/loading, A11Y-03, cross-refs), AGENTS.md §4.3/4, DESIGN_SYSTEM.md (§3.6, §4.2, §6.7, §6.9, §6.11, §8.8)
+  - Note: CONF-14 = UI collapse DONE, `quiet_start`/`quiet_end` schema cleanup still pending
 
-## Phase 3: Main-thread shared chunk
-- [x] Task 4.3: Decouple barrel-import culprit if map shows one; else close with attribution → **CLOSED: shared shell is invariant-required providers + supabase; turbopack merging not app-configurable; no app-level lever**
-  - Acceptance: script-set gz reduced on all (app) routes + Lighthouse parity-or-better, OR documented close-with-attribution verdict — MET (verdict documented)
-
-## Checkpoint: PERF-12 close-out (human review)
-- [x] All acceptance criteria met or closed with attribution — **PERF-12 CLOSED with attribution (human-approved)**: TBT met; LCP/perf attributed to security boundary + SSR gating + invariant-required shell; verdict in §28
-- [x] npm test 144/144, npm run build green — confirmed at close-out
-- [x] Ledger §26.5 rows for every attempt — fixes 1–2 + task 4 recorded
-- [x] §28 status paragraphs updated — tasks 1–4 + verdict
-- [x] Final verdict vs acceptance (perf ≥ 70, LCP ≤ 4 s, TBT ≤ 1 s) — TBT met (440/450 ms), LCP/perf short, CLOSED with attribution per PERF-11 precedent
-- [x] Human reviews before further work — done; follow-up suggestion: /do rendering-strategy study (not ticketed)
+## Checkpoint: sweep done
+- [ ] All close-out commits in; build + tests green (144/144)
+- [ ] Genuinely-open list + next-ticket recommendation presented to human
