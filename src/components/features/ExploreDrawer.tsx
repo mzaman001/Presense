@@ -20,6 +20,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 interface ExploreDrawerProps {
   /* @todo: Untyped usage justified per TOOL-01 */
@@ -31,6 +32,17 @@ interface ExploreDrawerProps {
 }
 
 const PRESET_TYPES = ["link", "note", "book"];
+
+// BUG-42: plain-state form — snapshot at open, compare at close so the
+// close/beforeunload guards catch edits to any field.
+interface ExploreBaseline {
+  title: string;
+  url: string;
+  note: string;
+  type: string;
+  tags: string[];
+  linkedThreadId: string | null;
+}
 
 export function ExploreDrawer({
   item,
@@ -51,19 +63,49 @@ export function ExploreDrawer({
 
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+  const baselineRef = useRef<ExploreBaseline | null>(null);
 
   // Dropdown states
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
 
   const [isThreadDropdownOpen, setIsThreadDropdownOpen] = useState(false);
-  const [threads, setThreads] = useState<any[]>([]);
+  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
 
   const typeDropdownRef = useRef<HTMLDivElement>(null);
   const threadDropdownRef = useRef<HTMLDivElement>(null);
 
+  const currentSnapshot = (): ExploreBaseline => ({
+    title,
+    url,
+    note,
+    type,
+    tags,
+    linkedThreadId,
+  });
+
+  const baselineDirty = () =>
+    baselineRef.current !== null &&
+    JSON.stringify(currentSnapshot()) !== JSON.stringify(baselineRef.current);
+  // BUG-42: baseline compare-at-close intentionally reads the ref during render
+  // eslint-disable-next-line react-hooks/refs
+  const dirty = baselineDirty();
+  useUnsavedGuard(dirty);
+
+  const handleClose = () => {
+    if (dirty) {
+      setShowUnsavedWarning(true);
+    } else {
+      onClose();
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
+      let nextType = "link";
       if (item) {
+        // Intentional: populate fields on open (pre-existing pattern)
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTitle(item.title || "");
         setUrl(item.url || "");
         setNote(item.note || "");
@@ -71,12 +113,19 @@ export function ExploreDrawer({
         setLinkedThreadId(item.linked_thread_id || null);
 
         if (PRESET_TYPES.includes(item.type)) {
-          setType(item.type);
-        } else if (item.type === "quote" || item.type === "concept") {
-          setType("note");
+          nextType = item.type;
         } else {
-          setType("note");
+          nextType = "note";
         }
+        setType(nextType);
+        baselineRef.current = {
+          title: item.title || "",
+          url: item.url || "",
+          note: item.note || "",
+          type: nextType,
+          tags: item.tags || [],
+          linkedThreadId: item.linked_thread_id || null,
+        };
       } else {
         setTitle("");
         setUrl("");
@@ -84,16 +133,24 @@ export function ExploreDrawer({
         setType("link");
         setTags([]);
         setLinkedThreadId(null);
+        baselineRef.current = {
+          title: "",
+          url: "",
+          note: "",
+          type: "link",
+          tags: [],
+          linkedThreadId: null,
+        };
       }
 
       // Fetch threads
       /* @todo: Untyped usage justified per TOOL-01 */
-       
+
       supabase
         .from("threads")
         .select("id, title")
         .eq("status", "active")
-        .then(({ data }: { data: any }) => {
+        .then(({ data }: { data: { id: string; title: string }[] | null }) => {
           setThreads(data || []);
         });
     }
@@ -227,7 +284,7 @@ export function ExploreDrawer({
     <>
       <Sheet
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleClose}
         title={item ? "Edit Explore Item" : "Save to Explore"}
       >
         <div className="space-y-6">
@@ -392,6 +449,18 @@ export function ExploreDrawer({
           confirmDestructive
         />
       )}
+      <ConfirmModal
+        isOpen={showUnsavedWarning}
+        onClose={() => setShowUnsavedWarning(false)}
+        onConfirm={() => {
+          setShowUnsavedWarning(false);
+          onClose();
+        }}
+        title="Discard Changes?"
+        description="You have unsaved changes. Are you sure you want to discard them?"
+        confirmLabel="Discard"
+        confirmDestructive={false}
+      />
     </>
   );
 }

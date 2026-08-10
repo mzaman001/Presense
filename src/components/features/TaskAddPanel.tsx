@@ -2,7 +2,7 @@
 import { Input } from "../ui/Input";
 import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { m, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -37,6 +37,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 interface TaskEditData {
   id: string;
@@ -54,6 +55,20 @@ interface TaskEditData {
 }
 
 type TaskFormValues = z.infer<typeof taskSchema>;
+
+// BUG-42: plain-state fields not tracked by RHF's isDirty. Snapshot at open,
+// compare at close, so close/beforeunload guards don't miss edits to them.
+interface ManualSnapshot {
+  subtasks: { id: string; text: string; completed: boolean }[];
+  timeEstimate: number | null;
+  linkedPeopleIds: string[];
+  freq: string;
+  days: string[];
+  customRRule: string;
+  customInterval: number;
+  customFreq: string;
+  startDate: string;
+}
 
 const DEFAULT_DO_CATEGORIES = ["work", "study", "personal", "errand", "health"];
 
@@ -126,9 +141,30 @@ export function TaskAddPanel({
   const [saving, setSaving] = useState(false);
   const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+  const manualBaselineRef = useRef<ManualSnapshot | null>(null);
+
+  const manualSnapshot = (): ManualSnapshot => ({
+    subtasks,
+    timeEstimate,
+    linkedPeopleIds,
+    freq,
+    days,
+    customRRule,
+    customInterval,
+    customFreq,
+    startDate,
+  });
+
+  const manualDirty = () =>
+    manualBaselineRef.current !== null &&
+    JSON.stringify(manualSnapshot()) !==
+      JSON.stringify(manualBaselineRef.current);
+
+  const dirty = isDirty || manualDirty();
+  useUnsavedGuard(dirty);
 
   const handleClose = () => {
-    if (isDirty) {
+    if (dirty) {
       setShowUnsavedWarning(true);
     } else {
       onClose();
@@ -152,7 +188,7 @@ export function TaskAddPanel({
     if (!categoriesList.includes(name)) {
       const newList = [...categoriesList, name];
       setCategoriesList(newList);
-      setValue("category", name, { shouldValidate: true });
+      setValue("category", name, { shouldValidate: true, shouldDirty: true });
 
       const supabase = createClient();
       const {
@@ -176,7 +212,7 @@ export function TaskAddPanel({
         useAppStore.getState().setUserSettings(updatedSettings);
       }
     } else {
-      setValue("category", name, { shouldValidate: true });
+      setValue("category", name, { shouldValidate: true, shouldDirty: true });
     }
     setNewCategoryName("");
     setIsAddingCategory(false);
@@ -277,28 +313,36 @@ export function TaskAddPanel({
         setSubtasks(taskToEdit.subtasks || []);
         setLinkedPeopleIds(taskToEdit.linked_people_ids || []);
 
+        let nextFreq = "Does not repeat";
+        let nextDays: string[] = [];
+        let nextCustomRRule = "";
+        let nextCustomInterval = 1;
+        let nextCustomFreq = "WEEKLY";
         if (taskToEdit.recurrence) {
-          if (taskToEdit.recurrence === "FREQ=DAILY") setFreq("Daily");
-          else if (taskToEdit.recurrence === "FREQ=MONTHLY") setFreq("Monthly");
+          if (taskToEdit.recurrence === "FREQ=DAILY") nextFreq = "Daily";
+          else if (taskToEdit.recurrence === "FREQ=MONTHLY")
+            nextFreq = "Monthly";
           else if (taskToEdit.recurrence.includes("FREQ=WEEKLY")) {
-            setFreq("Weekly");
+            nextFreq = "Weekly";
             const match = taskToEdit.recurrence.match(/BYDAY=([A-Z,]+)/);
-            if (match) setDays(match[1].split(","));
+            if (match) nextDays = match[1].split(",");
           } else if (taskToEdit.recurrence.includes("INTERVAL=")) {
-            setFreq("Custom");
-            setCustomRRule(taskToEdit.recurrence);
-            // Try to parse interval and freq
+            nextFreq = "Custom";
+            nextCustomRRule = taskToEdit.recurrence;
             const matchInterval = taskToEdit.recurrence.match(/INTERVAL=(\d+)/);
-            if (matchInterval) setCustomInterval(parseInt(matchInterval[1]));
+            if (matchInterval) nextCustomInterval = parseInt(matchInterval[1]);
             const matchFreq = taskToEdit.recurrence.match(/FREQ=([A-Z]+)/);
-            if (matchFreq) setCustomFreq(matchFreq[1]);
+            if (matchFreq) nextCustomFreq = matchFreq[1];
           } else {
-            setFreq("Custom");
-            setCustomRRule(taskToEdit.recurrence);
+            nextFreq = "Custom";
+            nextCustomRRule = taskToEdit.recurrence;
           }
-        } else {
-          setFreq("Does not repeat");
         }
+        setFreq(nextFreq);
+        setDays(nextDays);
+        setCustomRRule(nextCustomRRule);
+        setCustomInterval(nextCustomInterval);
+        setCustomFreq(nextCustomFreq);
 
         if (taskToEdit.deadline) {
           const d = new Date(taskToEdit.deadline);
@@ -307,14 +351,28 @@ export function TaskAddPanel({
           setParsedDeadline(null);
         }
 
+        let nextStartDate = "";
         if (taskToEdit.start_date) {
           const d = new Date(taskToEdit.start_date);
           setParsedStartDate(d);
-          setStartDate(format(d, "yyyy-MM-dd'T'HH:mm"));
+          nextStartDate = format(d, "yyyy-MM-dd'T'HH:mm");
+          setStartDate(nextStartDate);
         } else {
           setParsedStartDate(null);
           setStartDate("");
         }
+
+        manualBaselineRef.current = {
+          subtasks: taskToEdit.subtasks || [],
+          timeEstimate: taskToEdit.time_estimate || null,
+          linkedPeopleIds: taskToEdit.linked_people_ids || [],
+          freq: nextFreq,
+          days: nextDays,
+          customRRule: nextCustomRRule,
+          customInterval: nextCustomInterval,
+          customFreq: nextCustomFreq,
+          startDate: nextStartDate,
+        };
       } else {
         reset({
           title: "",
@@ -336,6 +394,17 @@ export function TaskAddPanel({
         setTimeEstimate(null);
         setSubtasks([]);
         setLinkedPeopleIds([]);
+        manualBaselineRef.current = {
+          subtasks: [],
+          timeEstimate: null,
+          linkedPeopleIds: [],
+          freq: "Does not repeat",
+          days: [],
+          customRRule: "",
+          customInterval: 1,
+          customFreq: "WEEKLY",
+          startDate: "",
+        };
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -364,10 +433,11 @@ export function TaskAddPanel({
         setParsedDeadline(d);
         setValue("deadline", format(d, "yyyy-MM-dd'T'HH:mm"), {
           shouldValidate: true,
+          shouldDirty: true,
         });
       } else {
         setParsedDeadline(null);
-        setValue("deadline", "", { shouldValidate: true });
+        setValue("deadline", "", { shouldValidate: true, shouldDirty: true });
       }
     }
   };
@@ -376,10 +446,13 @@ export function TaskAddPanel({
     setIsManualDate(true);
     if (e.target.value) {
       setParsedDeadline(new Date(e.target.value));
-      setValue("deadline", e.target.value, { shouldValidate: true });
+      setValue("deadline", e.target.value, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
     } else {
       setParsedDeadline(null);
-      setValue("deadline", "", { shouldValidate: true });
+      setValue("deadline", "", { shouldValidate: true, shouldDirty: true });
     }
   };
 
@@ -401,7 +474,7 @@ export function TaskAddPanel({
       d.setHours(9, 0, 0, 0);
     } else if (type === "none") {
       setParsedDeadline(null);
-      setValue("deadline", "", { shouldValidate: true });
+      setValue("deadline", "", { shouldValidate: true, shouldDirty: true });
       return;
     }
     setParsedDeadline(d);
@@ -903,7 +976,7 @@ export function TaskAddPanel({
                       setValue(
                         "priority",
                         priorityValue === p.val ? null : p.val,
-                        { shouldValidate: true },
+                        { shouldValidate: true, shouldDirty: true },
                       )
                     }
                     className={`rounded-full border px-4 py-2 text-xs font-bold transition-all ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
@@ -1003,6 +1076,7 @@ export function TaskAddPanel({
                       onClick={() =>
                         setValue("category", isActive ? "" : cat, {
                           shouldValidate: true,
+                          shouldDirty: true,
                         })
                       }
                       style={{
