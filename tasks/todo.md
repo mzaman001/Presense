@@ -1,27 +1,25 @@
-# Task List — BUG-42 unsaved-changes warning
+# Task List — SEC2-01 rate limiter parameterization
 
 Status legend: [ ] pending · [~] in progress · [x] done
 
-## Phase 1: Foundation
-- [x] Task 1: `useUnsavedGuard(isDirty)` hook (`src/hooks/useUnsavedGuard.ts`) — beforeunload add/remove while dirty; test `src/hooks/__tests__/useUnsavedGuard.test.tsx` (5/5 pass)
-  - Acceptance: `rg 'beforeunload' src` → only the hook; dirty → defaultPrevented, clean → not
-  - Verify: `npx vitest run src/hooks` + `npm run build`
+## Phase 1: Implementation
+- [x] Task 1: Parameterize `rate-limit.ts` — bucket registry (`Map<string, Ratelimit>`), `slidingWindow(maxRequests, windowMs)` + `prefix: "rl:<bucket>"` per bucket; signature `checkRateLimit(bucket, key, maxRequests, windowMs)`; in-memory key `${bucket}:${key}`; one dev-warn. Call sites: account `("account", user.id, 3, 60_000)`, capture `("capture", user.id, 100, 60_000)`, people/reorder `("people-reorder", user.id, 30, 60_000)`
+  - Note: v2 `slidingWindow` rejects bare-number windows — formatted as `Duration` string (`"60 s"`)
+  - Verify: `npx tsc --noEmit` clean + focused vitest green + `npm run build` ✓
 
-## Checkpoint: hook + test green
-- [x] `npm test` (145+), `npm run build`
+## Checkpoint: implementation compiles
+- [x] `npx tsc --noEmit` clean; existing rate-limit/account tests green
 
-## Phase 2: Panel guards (Tasks 2-5 independent)
-- [x] Task 2: TaskAddPanel — snapshot baseline of non-RHF fields (subtasks, timeEstimate, linkedPeopleIds, freq, days, customRRule, customInterval, customFreq, startDate) at open; handleClose warns if `isDirty || snapshotDiffers`; wire hook; extend phase4 tests
-  - Extra: `shouldDirty: true` added to all 10 user-driven `setValue` sites (category chips/add, priority chips, deadline picker/manual/quick) — `setValue` does not mark RHF dirty by default
-- [x] Task 3: AddPersonPanel — baseline snapshot of all fields + `color` at open (after relationship fix-up); handleClose warns on diff; wire hook; extend test
-  - Rework: RHF destructured `isDirty` is non-reactive for unwatched fields (component only re-rendered on `watch("relationship")`) — replaced with value-baseline compare via `watch` subscriptions
-- [x] Task 4: LocationAddPanel — baseline snapshot of itemName/locationText at open; wire hook; extend test
-  - Rework: same reactivity bug as Task 3 (no fields were watched at all — guard silently broken); baseline-compare now deterministic
-- [x] Task 5: ExploreDrawer — baseline snapshot of title/url/note/type/tags/linkedThreadId at open (add + edit); handleClose + "Discard Changes?" ConfirmModal; reset baseline after save/delete; wire hook; extend phase4 tests
+## Phase 2: Regression tests
+- [x] Task 2: Extend `rate-limit.test.ts` (7 tests) — in-memory: 4th account request in 60s rejected / capture unaffected / expiry re-allows / fail-closed in prod; Redis-path (mocked): per-bucket constructor args (`slidingWindow(3, "60 s")`, `prefix "rl:account"`), one instance per bucket; lazy-init kept
 
-## Checkpoint: BUG-42 complete
-- [x] `npm test` green (167/167), `npm run build` green, `npx tsc --noEmit` clean
-- [x] `rg 'beforeunload' src` → hook only (`useUnsavedGuard.ts`; test file references it to assert listener behavior); `rg 'showUnsavedWarning' src` → 4 panels
-- [x] Manual sweep (human, passed Aug 10, 2026): 4 panels — dirty-close prompts / clean-close silent / save-then-close silent
-- [x] Commit `fix: BUG-42 ...` (`3e555a0`) + docs close-out (`docs: BUG-42 close-out ...` — EXECUTION_SPEC ticket + §24.3/§24.7 + root-pattern-7 row, DOCS_NEEDS_CODE, CONTEXT.md)
-- [x] Push after human review (pushed Aug 10, 2026: `3e555a0`, `5227bee`, `bbfd700`)
+## Checkpoint: focused tests green
+- [x] `npx vitest run src/lib/__tests__/rate-limit.test.ts` green (7/7); lint 0 errors on all 5 touched files
+
+## Phase 3: Full verification + close-out
+- [x] Task 3: `npm test` 173/173, `npm run build` exit 0; commit `e895df8` `fix: SEC2-01 rate limiter parameterized per bucket — account-delete 3/min enforced`
+- [x] Task 4: Docs close-out — EXECUTION_SPEC §29 SEC2-01 → ✅ CLOSED (commit + evidence); DOCS_NEEDS_CODE moved to Resolved; audit §7 item 1 + §4 table row annotated DONE (commit `bc30065`)
+
+## Checkpoint: SEC2-01 complete
+- [x] `rg "SEC2-01"` docs → closed-status/historical references only
+- [ ] Push after human review (`e895df8`, `bc30065`)
