@@ -22,6 +22,6 @@ Status legend: [ ] pending · [~] in progress · [x] done
 ## Checkpoint: BUG-42 complete
 - [x] `npm test` green (167/167), `npm run build` green, `npx tsc --noEmit` clean
 - [x] `rg 'beforeunload' src` → hook only (`useUnsavedGuard.ts`; test file references it to assert listener behavior); `rg 'showUnsavedWarning' src` → 4 panels
-- [ ] Manual sweep (human): 4 panels — dirty-close prompts / clean-close silent / save-then-close silent
+- [x] Manual sweep (human, passed Aug 10, 2026): 4 panels — dirty-close prompts / clean-close silent / save-then-close silent
 - [x] Commit `fix: BUG-42 ...` (`3e555a0`) + docs close-out (`docs: BUG-42 close-out ...` — EXECUTION_SPEC ticket + §24.3/§24.7 + root-pattern-7 row, DOCS_NEEDS_CODE, CONTEXT.md)
 - [ ] Push after human review
