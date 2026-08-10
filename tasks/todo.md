@@ -24,4 +24,4 @@ Status legend: [ ] pending · [~] in progress · [x] done
 - [x] `rg 'beforeunload' src` → hook only (`useUnsavedGuard.ts`; test file references it to assert listener behavior); `rg 'showUnsavedWarning' src` → 4 panels
 - [x] Manual sweep (human, passed Aug 10, 2026): 4 panels — dirty-close prompts / clean-close silent / save-then-close silent
 - [x] Commit `fix: BUG-42 ...` (`3e555a0`) + docs close-out (`docs: BUG-42 close-out ...` — EXECUTION_SPEC ticket + §24.3/§24.7 + root-pattern-7 row, DOCS_NEEDS_CODE, CONTEXT.md)
-- [ ] Push after human review
+- [x] Push after human review (pushed Aug 10, 2026: `3e555a0`, `5227bee`, `bbfd700`)
