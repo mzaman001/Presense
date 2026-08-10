@@ -262,7 +262,7 @@ These are the highest-impact findings from the July 9, 2026 audit. Each is track
 
 ### ROOT PATTERN 1 — Silent Data Loss (Critical, trust-breaking)
 
-**37 of 71 Supabase mutations (52%) don't check the returned `error`.** Worst offenders: `OnboardingWizard.tsx` (11 unchecked — first-run can silently fail at any step), `think/[id]/page.tsx`, `explore/[id]/page.tsx`, `remember/people/[id]/page.tsx`, `inbox/page.tsx` (BUG-34: `dismissInboxItem` removes from cache before write, never checks write result, then unconditional `toast.success`). **Inbox routing** (`inbox/page.tsx:392,400,408`) deletes original then creates new — if create fails after delete, original is lost. Fix: build `mutate()` wrapper in `src/lib/supabase.ts`, migrate all 37 call sites.
+**37 of 71 Supabase mutations (52%) don't check the returned `error`.** Worst offenders: `OnboardingWizard.tsx` (11 unchecked — first-run can silently fail at any step), `think/[id]/page.tsx`, `explore/[id]/page.tsx`, `remember/people/[id]/page.tsx`. (`inbox/page.tsx` was the canonical case — BUG-34 — fully fixed Aug 10, 2026, zero unchecked mutations remain there; the live root cause was migration 005 never applied to production, so `items_status_check` rejected `'deleted'`.) Fix: build `mutate()` wrapper in `src/lib/supabase.ts`, migrate all remaining call sites.
 
 ### ROOT PATTERN 2 — Warm-Light Theme Broken (Critical, unreadable)
 

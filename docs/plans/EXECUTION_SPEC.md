@@ -1267,6 +1267,13 @@ Direct re-investigation, prompted by the user reporting the item still disappear
 - **Acceptance criteria:** Dismissing an inbox item either (a) results in the item appearing in `/trash` with a `deleted_at` timestamp, confirmed by actually checking the trash page after dismissing, not just by the absence of an error — or (b) shows a visible, specific error toast and restores the item to the Inbox view. Silently disappearing into neither state is no longer possible.
 - **This supersedes the §16.1 note that treated #15 as already correct.** That note is wrong and is retracted by this entry.
 
+- **RESOLVED (Aug 10, 2026)** — full fix, verified end-to-end against live production:
+  - **Code:** `dismissInboxItem`'s error check + cache rollback (`a2ce54e`), `safeMutate` adoption (`fd7cb3f`), Undo path (`a3a037e`), and the routing-to-destination branches now check `safeMutate`'s result on the trash-original step, deleting the just-created destination row and throwing on failure so the cache rollback + `toast.error` fire (`a198af9`). `inbox/page.tsx` now has **zero unchecked mutations** (verified site-by-site).
+  - **Requirement 3's answer (the real root cause):** reproducing the dismiss live surfaced **HTTP 400 `23514 … violates check constraint "items_status_check"`** — the live database's constraint was the pre-005 version (`'active','done','overdue','archived','inbox'`), i.e. **`supabase/migrations/005_fix_constraints_and_security.sql` was never applied to the live Supabase project** (the direct IPv6 endpoint also being refused hinted at a production DB that had never been migrated via the CLI). The UI showed the item vanish + a "Dismissed" toast only because of the optimistic cache removal; the row stayed `inbox` forever. This also silently broke the routing branches' trash step for the same reason.
+  - **DB fix applied live (Aug 10, 2026, human-approved):** migration 005's eight statements run against the production DB via `supabase db query --db-url` (session pooler) — `items`/`explores`/`threads` status checks + the two `user_settings` defaults. `people`/`locations` status checks (migration `20260704120000`) were confirmed already correct live.
+  - **Verification:** direct PATCH `{"status":"deleted"}` (the previously-failing call) now returns 204; seeded item dismissed from the live UI (Playwright) → toast "Dismissed", row `status=deleted`, item present on `/trash`. Test artifacts and seeded row removed afterwards. Full suite 144/144.
+  - **Remaining recommendation (not ticketed):** migrate production DBs via the CLI (`supabase db push`) or at minimum verify `supabase_migrations.schema_migrations` vs `supabase/migrations/` after any manual application, so drift like this cannot recur undetected.
+
 ### 17.2 — Conflict resolutions, grounded in this domain specifically
 
 Every conflict below was researched against this app's own explicit points of reference (Sunsama, since `CLAUDE.md`/`ARCHITECTURE.md` already direct this project to study it specifically for its ritual system) and the closest comparable personal task/productivity tools (Todoist, Things 3), rather than generic software-design opinion. Each resolution states the specific evidence it's based on, not just a preference.
@@ -1331,7 +1338,7 @@ This is a direct answer to "did you check everything already in the spec." The h
 | `BUG-30` Settings autosave loop | **NOT DONE** (new this pass) | |
 | `BUG-31` Dropdown scroll/position/type-ahead | **NOT DONE** (new this pass) | |
 | `BUG-32` Sonner theme binding | **NOT DONE** (new this pass) | |
-| `BUG-34` Inbox dismiss error swallowing | **NOT DONE** (new this pass, corrects prior error) | |
+| `BUG-34` Inbox dismiss error swallowing | **DONE** (Aug 10, 2026) | Code fix `a198af9` (+ `a2ce54e`/`fd7cb3f`/`a3a037e`); root cause was migration 005 never applied live → `items_status_check` rejected `'deleted'`; constraint fixed on production; verified end-to-end. See ticket for full write-up. |
 | `DS-01` space colors distinct | **DONE** (values) / **PARTIAL** (application breadth — see `CONF-13`'s resolution) | |
 | `DS-02` hardcoded hex removal | **NOT DONE — 96 occurrences remain**, more than the prior pass's count, meaning new code is still introducing them faster than old ones are being migrated | |
 | `DS-03` raw `<input>` migration | **NOT DONE — 14 remain** | |
@@ -1697,7 +1704,7 @@ This addendum exists to cross-reference the July 9, 2026 complete audit (`Presen
 
 | Root pattern | Audit name | This document's tickets | Status |
 |---|---|---|---|
-| 1 | Silent Data Loss (Critical, trust-breaking) | BUG-34, BUG-38 + 37/71 unchecked mutations | Open — P0 |
+| 1 | Silent Data Loss (Critical, trust-breaking) | BUG-38 + 37/71 unchecked mutations (BUG-34 closed Aug 10, 2026) | Open — P0 |
 | 2 | Theme System Has a Broken Mode (Critical, unreadable) | warm-light `globals.css:336-420` missing `--text-*` overrides | Open — P0 |
 | 3 | Mobile Viewport + Form Interaction Bugs (High) | 7 `h-screen` (MOB-05), BUG-36/39 Sheet drag, BUG-41 input 13px | Open — P0/P1 |
 | 4 | Design System Fragmentation (High, polish erosion) | 99 hardcoded hex (DS-02), 6 hover magnitudes (DS-30), 44 raw `<input>` (DS-03), 6 `type="time"` + 1 `<select>` + 1 `<datalist>` (BUG-43/25/33), 3 dashed-border tokens | Open — P1 |
@@ -1712,7 +1719,7 @@ This addendum exists to cross-reference the July 9, 2026 complete audit (`Presen
 2. Fix Sonner `theme="system"` → bind to `data-mode` (BUG-32)
 3. Set input font-size 16px on mobile (BUG-41)
 4. Add skip-to-content link (A11Y-03)
-5. Fix `dismissInboxItem` error check (BUG-34)
+5. ~~Fix `dismissInboxItem` error check (BUG-34)~~ — **DONE (Aug 10, 2026)**, incl. live-DB constraint fix (migration 005 was never applied to production)
 6. Fix Think "New thread" to show toast on error (BUG-29)
 7. Add Pomodoro launcher to sidebar header (DS-21)
 8. Replace brand mark with proper SVG (DS-26)
@@ -1721,9 +1728,9 @@ This addendum exists to cross-reference the July 9, 2026 complete audit (`Presen
 
 ### 24.3 — Ticket status reconciliation (audit July 9, 2026 vs this document's §17.3)
 
-**Resolved tickets confirmed by audit:** BUG-01 (hover sidebar), BUG-03 (dropdown portal, re-fixed after regression), BUG-06/07 (themes = warm/navy/forest), BUG-10 (profile row fallback), BUG-15 (theme leaks via localStorage), BUG-26 (chrono duplicate import), BUG-27 (dropdown portal regression re-fixed), PERF-01 (unmemoized Do-page handlers), PERF-07 (refetchOnWindowFocus), TOOL-07 (content-visibility wiring), TOOL-03 (React Hook Form in SettingsModal), TOOL-15 (Floating UI adopted in Dropdown/Popover).
+**Resolved tickets confirmed by audit:** BUG-01 (hover sidebar), BUG-03 (dropdown portal, re-fixed after regression), BUG-06/07 (themes = warm/navy/forest), BUG-10 (profile row fallback), BUG-15 (theme leaks via localStorage), BUG-26 (chrono duplicate import), BUG-27 (dropdown portal regression re-fixed), PERF-01 (unmemoized Do-page handlers), PERF-07 (refetchOnWindowFocus), TOOL-07 (content-visibility wiring), TOOL-03 (React Hook Form in SettingsModal), TOOL-15 (Floating UI adopted in Dropdown/Popover). **Resolved since the audit:** BUG-34 (inbox dismiss — Aug 10, 2026, see ticket; root cause was migration 005 never applied live).
 
-**Open tickets confirmed by audit:** BUG-02 (ritual stale time — audit does not explicitly confirm, may still be open), BUG-08 (archive/delete inconsistency — in progress via item-lifecycle.ts, not fully verified), BUG-09 (capture modal lag — partially resolved, dynamic imports applied), BUG-11 (Settings scroll on Think/Explore — not verified), BUG-23 (page transitions — NOT implemented, no template.tsx), BUG-25/33 (Explore datalist — NOT fixed), BUG-29 (New thread silent fail — open), BUG-30 (Settings autosave loop — open), BUG-31 (Dropdown scroll/type-ahead — open), BUG-32 (Sonner toast theme — open), BUG-34 (Inbox dismiss — open, ROOT PATTERN 1), BUG-35/37/40 (empty states — open), BUG-36/39 (Sheet drag — open, ROOT PATTERN 3), BUG-38 (unchecked mutations — open, 37/71, ROOT PATTERN 1), BUG-41 (input 13px — open), BUG-42 (no beforeunload — open), BUG-43 (native select/time — open), BUG-44 (no pointer delete — open). DS-14 (reduced motion/transparency — NOT implemented). DS-28 (OKLCH — spec only). DS-29 (Glassmorphism 2.0 — spec only). DS-30 (translateY lift — partially violated, 6 hover magnitudes). FEAT-01 (Weekly Review — not started).
+**Open tickets confirmed by audit:** BUG-02 (ritual stale time — audit does not explicitly confirm, may still be open), BUG-08 (archive/delete inconsistency — in progress via item-lifecycle.ts, not fully verified), BUG-09 (capture modal lag — partially resolved, dynamic imports applied), BUG-11 (Settings scroll on Think/Explore — not verified), BUG-23 (page transitions — NOT implemented, no template.tsx), BUG-25/33 (Explore datalist — NOT fixed), BUG-29 (New thread silent fail — open), BUG-30 (Settings autosave loop — open), BUG-31 (Dropdown scroll/type-ahead — open), BUG-32 (Sonner toast theme — open), BUG-35/37/40 (empty states — open), BUG-36/39 (Sheet drag — open, ROOT PATTERN 3), BUG-38 (unchecked mutations — open, 37/71, ROOT PATTERN 1), BUG-41 (input 13px — open), BUG-42 (no beforeunload — open), BUG-43 (native select/time — open), BUG-44 (no pointer delete — open). DS-14 (reduced motion/transparency — NOT implemented). DS-28 (OKLCH — spec only). DS-29 (Glassmorphism 2.0 — spec only). DS-30 (translateY lift — partially violated, 6 hover magnitudes). FEAT-01 (Weekly Review — not started).
 
 ### 24.4 — New audit findings not previously tracked in this document
 

@@ -14,28 +14,16 @@
 
 **BUG-38 — 37 of 71 Supabase mutations don't check `error`**
 
-- **Files:** `src/app/onboarding/OnboardingWizard.tsx` (11 unchecked at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213, +1), `src/app/(app)/think/[id]/page.tsx`, `src/app/(app)/explore/[id]/page.tsx`, `src/app/(app)/explore/page.tsx`, `src/app/(app)/remember/people/[id]/page.tsx`, `src/app/(app)/inbox/page.tsx` (4 unchecked incl. BUG-34), `src/app/(app)/do/page.tsx`, `src/app/(app)/page.tsx` (Home, 6 mutations), `src/components/features/PomodoroTimer.tsx`, `src/components/features/TaskAddPanel.tsx`, `src/components/features/CaptureModal.tsx`
+- **Files:** `src/app/onboarding/OnboardingWizard.tsx` (11 unchecked at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213, +1), `src/app/(app)/think/[id]/page.tsx`, `src/app/(app)/explore/[id]/page.tsx`, `src/app/(app)/explore/page.tsx`, `src/app/(app)/remember/people/[id]/page.tsx`, `src/app/(app)/do/page.tsx`, `src/app/(app)/page.tsx` (Home, 6 mutations), `src/components/features/PomodoroTimer.tsx`, `src/components/features/TaskAddPanel.tsx`, `src/components/features/CaptureModal.tsx`. (`src/app/(app)/inbox/page.tsx` no longer violates — all 4 of its unchecked mutations were fixed as BUG-34, Aug 10, 2026; see Resolved section.)
 - **What's wrong:** Supabase-js resolves normally with `{data: null, error: {...}}` on DB errors — does NOT throw. `try/catch` only catches network/JS errors. 37 of 71 mutations don't destructure/check `error`, so the UI shows success (optimistic update + `toast.success`) while the DB write silently failed. A brand-new user's very first onboarding experience could silently fail at any step.
 - **Fix:** Build a `mutate()` wrapper in `src/lib/supabase.ts` that checks `error`, reports to error tracker (`/api/telemetry` → Sentry once TOOL-06 lands), shows `toast.error` with real message, returns `{success, data, error}`. Migrate all 37 unchecked call sites to use it. Do NOT hand-add `if (error)` checks 37 times with 37 different toast messages — use the wrapper.
 - **Priority:** P0 — single highest-value fix per audit final verdict.
 - **Depends on:** None. Can start immediately.
 - **Acceptance criteria:** Every Supabase mutation in the app either succeeds visibly or fails visibly — there is no third state (silently do neither). `OnboardingWizard.tsx` specifically is tested end-to-end with a deliberately-broken write to confirm the wizard now surfaces the failure.
 
-**BUG-34 — `dismissInboxItem` data loss (subset of BUG-38)**
+**BUG-34 — `dismissInboxItem` data loss (subset of BUG-38)** — ✅ **RESOLVED Aug 10, 2026** — see Resolved section below.
 
-- **File:** `src/app/(app)/inbox/page.tsx:455-465`
-- **What's wrong:** `dismissInboxItem` removes item from React Query cache, then `await supabase.from("items").update(moveItemToTrashPatch()).eq("id", id)` with no `{error}` destructure, then unconditional `toast.success("Dismissed")`. If DB write fails, item is gone from Inbox, never reaches Trash.
-- **Fix:** Destructure `{ error }` from the Supabase call. On error, restore the item to cache and show `toast.error`. Or use the `mutate()` wrapper from BUG-38.
-- **Priority:** P0 — canonical example of BUG-38.
-- **Depends on:** BUG-38 (or standalone fix).
-
-**Inbox routing data loss (subset of BUG-38)**
-
-- **File:** `src/app/(app)/inbox/page.tsx:392,400,408`
-- **What's wrong:** Routing an Inbox item to People/Explore/Think does `.delete()` on original item THEN `.insert()` on destination. If insert fails after delete, original is lost.
-- **Fix:** Reverse the order (insert first, then delete original on success). Or use a Postgres function (RPC) that does both in a single transaction. Or use the `mutate()` wrapper with explicit error handling that restores the original on insert failure.
-- **Priority:** P0.
-- **Depends on:** BUG-38 (or standalone fix).
+**Inbox routing data loss (subset of BUG-38)** — ✅ **RESOLVED Aug 10, 2026** — see Resolved section below.
 
 ### ROOT PATTERN 2 — Warm-Light Theme Broken
 
@@ -515,7 +503,13 @@
 
 ## Resolved (move items here as code PRs land)
 
-_None yet — this file was created during the July 9, 2026 docs merger pass. As code PRs resolve items above, move them here with the PR number and date._
+### BUG-34 — Inbox dismiss error swallowing + inbox routing data loss (both subsets of BUG-38) — Aug 10, 2026
+
+- **Code:** `dismissInboxItem` error check + cache rollback (`a2ce54e`), `safeMutate` adoption (`fd7cb3f`), Undo path (`a3a037e`), routing branches check `safeMutate` on the trash step and roll back the destination row on failure (`a198af9`). `inbox/page.tsx` now has zero unchecked mutations.
+- **Root cause (found by live reproduction, per the ticket's requirement 3):** the real defect was not in the error handling alone — **migration `005_fix_constraints_and_security.sql` had never been applied to the live Supabase project**, so `items_status_check` rejected `'deleted'` (HTTP 400, code 23514) and every trash write silently failed. UI showed "Dismissed" because of the optimistic cache removal.
+- **DB fix:** all 8 statements of migration 005 applied to production (Aug 10, 2026, human-approved) via session-pooler `supabase db query --db-url`. `people`/`locations` constraints were already correct.
+- **Verified end-to-end:** previously-failing PATCH → 204; live UI dismiss → toast "Dismissed", row `status=deleted`, item present on `/trash` (Playwright). Full suite 144/144.
+- **Follow-up recommended (not ticketed):** run production migrations via `supabase db push` or reconcile `supabase_migrations.schema_migrations` after manual application so drift cannot recur.
 
 ---
 
