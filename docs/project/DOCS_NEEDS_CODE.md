@@ -198,6 +198,7 @@
 - **Fix:** For each form, track dirty/unsaved state (React Hook Form's `formState.isDirty`, already available where RHF is adopted). Prompt before closing the sheet/navigating away if dirty.
 - **Priority:** P1 — 1-2 days.
 - **Depends on:** None.
+- **Status:** ✅ **RESOLVED Aug 10, 2026** — commit `3e555a0` (`fix: BUG-42 unsaved-changes guard`): `useUnsavedGuard` hook (`src/hooks/useUnsavedGuard.ts`) + guards in all 4 Sheet-based forms (TaskAddPanel, AddPersonPanel, LocationAddPanel, ExploreDrawer) covering every close path and `beforeunload`. **Implementation note (read before any future dirty-tracking work):** RHF's destructured `formState.isDirty` only refreshes when the component re-renders (unwatched fields never trigger it), and `setValue()` does not mark dirty unless `shouldDirty: true` is passed — verified by isolated probes during this fix. The panels therefore compare a `watch`-subscribed field-value snapshot against a baseline captured at open (`JSON.stringify` diff at close time) instead of relying on `isDirty`; TaskAddPanel's user-driven `setValue` sites pass `shouldDirty: true`. Beforeunload is registered only while dirty. See `EXECUTION_SPEC.md` BUG-42 for full details and scoped-out items (SettingsModal autosave debounce, CaptureModal, in-app client navigation).
 
 ### BUG-44 — No pointer-accessible delete on People/Explore/Think
 

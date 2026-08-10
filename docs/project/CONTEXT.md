@@ -73,12 +73,12 @@ Presense is a personal productivity web app for a solo user — a second brain t
 | Routes in `src/app` | 21 | 11 in `(app)`, 1 in `(auth)/login`, 1 onboarding, 1 offline, 1 not-found, 1 global-error, 4 API routes, 1 auth callback |
 | Components total | 52 | 11 features (incl. 4 calendar), 12 layout, 22 UI primitives (audit count; ZIP has 28 files in `ui/`), 1 provider |
 | Lib modules | 15 | 1082 lines total; `capture-router.ts` largest at 313 lines |
-| Hooks | 9 | 329 lines total; `useRealtime.ts` largest at 137 lines |
+| Hooks | 10 | 303 lines total; `useRealtime.ts` largest at 137 lines; `useUnsavedGuard.ts` added BUG-42 (Aug 10, 2026) |
 | Store | 1 | `useAppStore.ts` (116 lines) |
 | Type files | 2 | `database.types.ts` (733 lines, generated), `calendar.ts` (14 lines) |
 | Supabase migrations | 25 | dual naming: `001_`–`009_` then timestamped `20260628…` |
 | Edge functions | 2 | `cron_cleanup` (30-day hard-delete), `cron_recurrence` (recurring task generation) |
-| Test files | 15 | 2740 lines total; `phase4.test.tsx` largest at 850 lines; 144 tests pass |
+| Test files | 16 | 2742 lines total; `phase4.test.tsx` largest at 1021 lines; 167 tests pass (Aug 10, 2026) |
 | Playwright specs | 2 | `sanity.spec.ts` (9 lines), `realtime.spec.ts` (92 lines) |
 | GitHub workflows | 8 | ci, eslint, osv-scanner, semgrep, sonarcloud, sonarqube, trivy |
 | Coverage thresholds | 50% lines / 50% functions / 40% branches | low — flagged in audit |
@@ -298,7 +298,7 @@ No calendar integration, no native mobile/desktop apps, no AI features (despite 
 - ~~5 routes missing custom `loading.tsx`~~ — **Fixed**: same 5 segments (verified Aug 10, 2026).
 - `ModalErrorBoundary` used in 3 modals (CaptureModal, SearchModal, SettingsModal) — **still missing** from AddPersonPanel, LocationAddPanel, ExploreDrawer, TaskAddPanel, PomodoroTimer.
 - 0 `aria-live` regions (realtime changes invisible to screen readers).
-- 0 `beforeunload`/`isDirty` guards (BUG-42 — accidental close loses form data; verified still open Aug 10, 2026).
+- ~~0 `beforeunload`/`isDirty` guards (BUG-42 — accidental close loses form data)~~ — **Fixed Aug 10, 2026** (commit `3e555a0`): `useUnsavedGuard` hook + guards in all 4 Sheet-based forms (TaskAddPanel, AddPersonPanel, LocationAddPanel, ExploreDrawer). Note: RHF's destructured `isDirty` is non-reactive for unwatched fields and `setValue` never marks dirty without `shouldDirty: true` — panels use baseline-snapshot comparison instead. See `EXECUTION_SPEC.md` BUG-42.
 - ~~0 skip-to-content link (A11Y-03)~~ — **Fixed** (`(app)/layout.tsx`).
 - `/api/telemetry` endpoint only does `console.warn` — black hole in production (TOOL-06 / Sentry not installed).
 
@@ -452,7 +452,7 @@ Presense-main/
 │   │   ├── layout/              # 12 layout components (Navigation, MobileTopBar, MobileDrawer, AmbientBackground, OnboardingBackground, LenisProvider, MotionProvider, QueryProvider, AppContentWrapper, AppInitializer, DynamicModals, WebVitalsReporter)
 │   │   ├── providers/           # 1 provider (RealtimeProvider + test)
 │   │   └── ui/                  # 28 UI primitives (see COMPONENT_MANIFEST.md)
-│   ├── hooks/                   # 9 hooks (useReducedMotion, useHaptics, useIsTouch, useMediaQuery, useBodyScrollLock, useDialogFocus, useRealtime, useRealtimeStatus, useVisualViewport)
+│   ├── hooks/                   # 10 hooks (useUnsavedGuard added Aug 10, 2026 — BUG-42)
 │   ├── lib/                     # 15 lib modules + __tests__/ (13 test files)
 │   ├── store/useAppStore.ts     # Zustand store
 │   ├── types/                   # database.types.ts (generated), calendar.ts
