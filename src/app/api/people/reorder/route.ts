@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!(await checkRateLimit(user.id, 30, 60_000))) {
+    if (!(await checkRateLimit("people-reorder", user.id, 30, 60_000))) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 

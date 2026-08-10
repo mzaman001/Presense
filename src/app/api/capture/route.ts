@@ -1,37 +1,39 @@
 import { logger } from "@/lib/logger";
-import { createClient } from '@/lib/supabase-server';
-import { routeCapture } from '@/lib/capture-router';
-import { checkRateLimit } from '@/lib/rate-limit';
-import { NextResponse } from 'next/server';
-import { captureSchema } from '@/lib/schemas';
+import { createClient } from "@/lib/supabase-server";
+import { routeCapture } from "@/lib/capture-router";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { NextResponse } from "next/server";
+import { captureSchema } from "@/lib/schemas";
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!await checkRateLimit(user.id, 100, 60_000)) {
-      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    if (!(await checkRateLimit("capture", user.id, 100, 60_000))) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     const parsed = captureSchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid input', details: parsed.error.flatten().fieldErrors },
-        { status: 400 }
+        { error: "Invalid input", details: parsed.error.flatten().fieldErrors },
+        { status: 400 },
       );
     }
     const { text, settings } = parsed.data;
 
     // Fetch user's known people for name matching
     const { data: people } = await supabase
-      .from('people')
-      .select('name')
-      .eq('user_id', user.id);
+      .from("people")
+      .select("name")
+      .eq("user_id", user.id);
 
     const knownPeople = people?.map((p) => p.name) ?? [];
 
@@ -40,7 +42,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    logger.error('Capture error:', error);
-    return NextResponse.json({ error: 'Failed to process capture' }, { status: 500 });
+    logger.error("Capture error:", error);
+    return NextResponse.json(
+      { error: "Failed to process capture" },
+      { status: 500 },
+    );
   }
 }
