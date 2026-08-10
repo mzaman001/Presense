@@ -20,5 +20,5 @@ Status legend: [ ] pending · [~] in progress · [x] done
   - Note: CONF-14 = UI collapse DONE, `quiet_start`/`quiet_end` schema cleanup still pending
 
 ## Checkpoint: sweep done
-- [ ] All close-out commits in; build + tests green (144/144)
+- [x] All close-out commits in; build + tests green (144/144)
 - [ ] Genuinely-open list + next-ticket recommendation presented to human
