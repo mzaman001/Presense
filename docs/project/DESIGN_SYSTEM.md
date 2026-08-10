@@ -424,7 +424,7 @@ Full tickets live in `EXECUTION_SPEC.md`'s `A11Y-*` series. The design-relevant 
 `src/app/onboarding/OnboardingWizard.tsx` — 416 lines, 5 steps (name → struggles → day shape → first capture → tour).
 
 **Current state:**
-- **11 unchecked Supabase mutations** (BUG-38) at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213 (+1). A brand-new user's very first experience could silently fail at any step.
+- **All mutation sites error-checked** (BUG-38 closed Aug 10, 2026 — the audit's "11 unchecked at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213" count was stale).
 - **0 skip logic** on steps 1-4 (only step 5 has "Skip tour").
 - **0 resume logic** — closed browser = restart from step 1.
 - **0 progress indicator** (no 5-dots-at-top showing current step).
@@ -434,7 +434,7 @@ Full tickets live in `EXECUTION_SPEC.md`'s `A11Y-*` series. The design-relevant 
 **Spec for fixes:**
 - Add Skip option on every step (sensible defaults: name="Friend", struggles=[], day shape=9am-10pm).
 - Add Resume logic — persist current step to `localStorage` (`presense_onboarding_step`).
-- Fix unchecked mutations — every `await supabase.from(...)` must destructure `{ error }`.
+- ~~Fix unchecked mutations~~ — **DONE (BUG-38, Aug 10, 2026)**: every mutation checks `error` (via `safeMutate()` wrapper or direct destructure; server components log).
 - Add copy that excites — warmer welcome ("Welcome to your second brain. What should I call you?").
 - Add first-capture delight — animate destination badge (pulse + accent color) to confirm "I understood you."
 - Add progress indicator — 5 dots at top.

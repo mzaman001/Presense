@@ -12,14 +12,7 @@
 
 ### ROOT PATTERN 1 — Silent Data Loss
 
-**BUG-38 — 37 of 71 Supabase mutations don't check `error`**
-
-- **Files:** `src/app/onboarding/OnboardingWizard.tsx` (11 unchecked at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213, +1), `src/app/(app)/think/[id]/page.tsx`, `src/app/(app)/explore/[id]/page.tsx`, `src/app/(app)/explore/page.tsx`, `src/app/(app)/remember/people/[id]/page.tsx`, `src/app/(app)/do/page.tsx`, `src/app/(app)/page.tsx` (Home, 6 mutations), `src/components/features/PomodoroTimer.tsx`, `src/components/features/TaskAddPanel.tsx`, `src/components/features/CaptureModal.tsx`. (`src/app/(app)/inbox/page.tsx` no longer violates — all 4 of its unchecked mutations were fixed as BUG-34, Aug 10, 2026; see Resolved section.)
-- **What's wrong:** Supabase-js resolves normally with `{data: null, error: {...}}` on DB errors — does NOT throw. `try/catch` only catches network/JS errors. 37 of 71 mutations don't destructure/check `error`, so the UI shows success (optimistic update + `toast.success`) while the DB write silently failed. A brand-new user's very first onboarding experience could silently fail at any step.
-- **Fix:** Build a `mutate()` wrapper in `src/lib/supabase.ts` that checks `error`, reports to error tracker (`/api/telemetry` → Sentry once TOOL-06 lands), shows `toast.error` with real message, returns `{success, data, error}`. Migrate all 37 unchecked call sites to use it. Do NOT hand-add `if (error)` checks 37 times with 37 different toast messages — use the wrapper.
-- **Priority:** P0 — single highest-value fix per audit final verdict.
-- **Depends on:** None. Can start immediately.
-- **Acceptance criteria:** Every Supabase mutation in the app either succeeds visibly or fails visibly — there is no third state (silently do neither). `OnboardingWizard.tsx` specifically is tested end-to-end with a deliberately-broken write to confirm the wizard now surfaces the failure.
+**BUG-38 — 37 of 71 Supabase mutations don't check `error`** — ✅ **RESOLVED Aug 10, 2026** — full pass landed in commit `660f5a3`; see Resolved section below. Summary: all 27 mutation-bearing files audited; 10 genuinely-unchecked sites fixed (`TaskAddPanel.tsx` `handleAddCategory`, `CalendarView.tsx` reschedule Undo, `RitualOverlay.tsx` ×7, `(app)/layout.tsx` server upsert — server variant checks `error` + `console.error` since no toast is available server-side); final repo-wide sweep confirms zero error-unchecked mutation sites remain. One intentional exception documented: `think/page.tsx` daily-note insert is a conflict-fallback pair (unique-index fetch) that never claims success in UI. The audit's 37/71 count and 10-file offender list were stale — most sites had already been migrated during BUG-34-era incremental work.
 
 **BUG-34 — `dismissInboxItem` data loss (subset of BUG-38)** — ✅ **RESOLVED Aug 10, 2026** — see Resolved section below.
 
@@ -294,7 +287,7 @@
 
 ### Onboarding skip + resume + error-checking
 
-**File:** `src/app/onboarding/OnboardingWizard.tsx` (416 lines, 5 steps, 11 unchecked mutations)
+**File:** `src/app/onboarding/OnboardingWizard.tsx` (416 lines, 5 steps; all mutations error-checked — BUG-38, Aug 10, 2026)
 - **0 skip on steps 1-4** (only step 5 has "Skip tour")
 - **0 resume logic** — closed browser = restart from step 1
 - **0 progress indicator** (no 5-dots-at-top)
@@ -303,7 +296,7 @@
 **Fix:**
 1. Add Skip option on every step (sensible defaults: name="Friend", struggles=[], day shape=9am-10pm).
 2. Add Resume logic — persist current step to `localStorage` (`presense_onboarding_step`). On reload, resume from saved step.
-3. Fix 11 unchecked mutations (see BUG-38 above).
+3. ~~Fix unchecked mutations~~ — **DONE (BUG-38, Aug 10, 2026)**.
 4. Add copy that excites — warmer welcome ("Welcome to your second brain. What should I call you?").
 5. Add first-capture delight — animate destination badge (pulse + accent color) to confirm "I understood you."
 6. Add progress indicator — 5 dots at top.
@@ -501,6 +494,15 @@
 - **DB fix:** all 8 statements of migration 005 applied to production (Aug 10, 2026, human-approved) via session-pooler `supabase db query --db-url`. `people`/`locations` constraints were already correct.
 - **Verified end-to-end:** previously-failing PATCH → 204; live UI dismiss → toast "Dismissed", row `status=deleted`, item present on `/trash` (Playwright). Full suite 144/144.
 - **Follow-up recommended (not ticketed):** run production migrations via `supabase db push` or reconcile `supabase_migrations.schema_migrations` after manual application so drift cannot recur.
+
+### BUG-38 — Unchecked Supabase mutations, full pass (Aug 10, 2026)
+- **What was actually left to fix:** the July 9 audit's "37 of 71" count and 10-file offender list were stale — incremental BUG-34-era work had already migrated most sites. A line-by-line audit of all 27 mutation-bearing files found exactly **10 genuinely-unchecked sites**, fixed in commit `660f5a3`:
+  - `TaskAddPanel.tsx` `handleAddCategory` — `user_settings` update (optimistic category list was committed to state before the DB result was known; now rolls back on failure via `safeMutate`)
+  - `CalendarView.tsx` reschedule Undo — items update (now reverts optimistic deadline on failure)
+  - `RitualOverlay.tsx` ×7 — triage Undo, estimate change, carry-over Undo, evening reflection insert + update, morning + evening skip (all `safeMutate`; the two try/catch sites were replaced since `try/catch` cannot catch Supabase's normal-resolution `{error}`)
+  - `(app)/layout.tsx` server component onboarding auto-complete upsert — checks `error` + `console.error` (server-side; no toast available, so `safeMutate` is not applicable)
+- **One intentional exception (reviewed, kept):** `think/page.tsx` daily-note insert stays fire-and-forget because it is a conflict-fallback pair — on any failure it fetches the existing thread via the unique-index `(user_id, title)`; it never claims success (navigates only on a truthy insert result).
+- **Verification:** repo-wide sweep `rg '\.(insert|update|delete|upsert|rpc)\(' src` → exactly the 27 audited files, none with an error-unchecked mutation; `npm run build` ✓, tests 144/144 ✓. Related: 8 pre-existing `no-explicit-any` errors in `TaskAddPanel.tsx` (chronoCache, people-list cast, chrono callback params, `Record<string, unknown>` payload) were fixed in the same commit because the lint-staged hook blocks commits touching that file.
 
 ---
 

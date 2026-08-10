@@ -139,7 +139,7 @@ src/app/
 ├── onboarding/
 │   ├── layout.tsx
 │   ├── page.tsx
-│   └── OnboardingWizard.tsx            # 416 lines, 5 steps, 11 unchecked mutations (BUG-38)
+│   └── OnboardingWizard.tsx            # 416 lines, 5 steps (all mutations error-checked — BUG-38, Aug 10, 2026)
 ├── auth/callback/route.ts              # OAuth code exchange → /onboarding or /login?error
 ├── api/
 │   ├── account/route.ts                # Server-only, uses SUPABASE_SERVICE_ROLE_KEY for auth.admin.deleteUser
@@ -252,7 +252,7 @@ All three themes override text colors in light mode correctly (warm since July 5
 8. **`Sheet` component handles mobile modals.** Drag-to-dismiss, `useVisualViewport` for keyboard avoidance, `useDialogFocus` for focus trapping. **Known bug (BUG-36/39):** `Sheet.tsx:58` `drag="y"` on whole surface swallows taps on nested buttons across 7 consumers (ConfirmModal, AddPersonPanel, SearchModal, TaskAddPanel, CaptureModal, ExploreDrawer, LocationAddPanel). Fix: dedicated drag handle + `dragListener={false}`. See `docs/project/DOCS_NEEDS_CODE.md`.
 9. **Sidebar is hover-expand.** `w-[80px]` collapsed, `hover:w-[248px]` expanded, `focus-within:w-[248px]` for keyboard. No click-toggle, no pinning. See `AGENTS.md` invariant 4. (CONF-05 retroactively resolved: pure hover, no pin.)
 10. **Button system is `Button.tsx` only.** The old `.btn-*` CSS classes are deleted. All buttons use the `<Button>` component with `variant` and `size` props. See `docs/project/COMPONENT_MANIFEST.md` for the full list of approved primitives.
-11. **Every Supabase mutation must check `error`.** Supabase-js resolves normally with `{data: null, error: {...}}` on DB errors — `try/catch` does NOT catch this. **Currently violated by 37 of 71 existing call sites (BUG-38, ROOT PATTERN 1)** — see `docs/project/DOCS_NEEDS_CODE.md` for the `mutate()` wrapper migration plan. New code MUST check `error`; existing violations are being migrated incrementally.
+11. **Every Supabase mutation must check `error`.** Supabase-js resolves normally with `{data: null, error: {...}}` on DB errors — `try/catch` does NOT catch this. **✅ CLOSED Aug 10, 2026 (BUG-38)** — all 27 mutation-bearing files audited; the final 10 unchecked sites were migrated to `safeMutate()` (commit `660f5a3`); zero error-unchecked mutation sites remain (one intentional exception: `think/page.tsx` daily-note insert is a conflict-fallback pair that never claims success). New code MUST still check `error` — do not regress.
 
 ---
 
@@ -260,9 +260,9 @@ All three themes override text colors in light mode correctly (warm since July 5
 
 These are the highest-impact findings from the July 9, 2026 audit. Each is tracked in `docs/plans/EXECUTION_SPEC.md` with a ticket ID and in `docs/project/DOCS_NEEDS_CODE.md` with a code-fix plan.
 
-### ROOT PATTERN 1 — Silent Data Loss (Critical, trust-breaking)
+### ROOT PATTERN 1 — Silent Data Loss (Critical, trust-breaking) — ✅ CLOSED Aug 10, 2026
 
-**37 of 71 Supabase mutations (52%) don't check the returned `error`.** Worst offenders: `OnboardingWizard.tsx` (11 unchecked — first-run can silently fail at any step), `think/[id]/page.tsx`, `explore/[id]/page.tsx`, `remember/people/[id]/page.tsx`. (`inbox/page.tsx` was the canonical case — BUG-34 — fully fixed Aug 10, 2026, zero unchecked mutations remain there; the live root cause was migration 005 never applied to production, so `items_status_check` rejected `'deleted'`.) Fix: build `mutate()` wrapper in `src/lib/supabase.ts`, migrate all remaining call sites.
+**37 of 71 Supabase mutations (52%) didn't check the returned `error`** at audit time. Worst offenders were `OnboardingWizard.tsx` (11 unchecked — first-run could silently fail at any step), `think/[id]/page.tsx`, `explore/[id]/page.tsx`, `remember/people/[id]/page.tsx`. (`inbox/page.tsx` was the canonical case — BUG-34 — fully fixed Aug 10, 2026; the live root cause was migration 005 never applied to production, so `items_status_check` rejected `'deleted'`.) **CLOSED Aug 10, 2026:** BUG-38 full pass (commit `660f5a3`) — all 27 mutation-bearing files audited line-by-line; the last 10 unchecked sites (`TaskAddPanel` addCategory, `CalendarView` undo, `RitualOverlay` ×7, `(app)/layout` server upsert) migrated to `safeMutate()`/server-side error checks; repo-wide sweep confirms zero violations. New code MUST still check `error`.
 
 ### ROOT PATTERN 2 — Warm-Light Theme (RESOLVED — stale audit finding)
 
@@ -314,7 +314,7 @@ CI runs lint + typecheck + test + build (4 steps) + 7 security scans (osv-scanne
 
 `src/app/onboarding/OnboardingWizard.tsx` — 5 steps: name → struggles → day shape → first capture → tour.
 
-- **11 unchecked Supabase mutations** (BUG-38) at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213 (+1) — a brand-new user's very first experience could silently fail at any step.
+- **All 10 mutation sites error-checked** (BUG-38, Aug 10, 2026 — the audit's "11 unchecked at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213" count was stale; the migration had already landed during BUG-34-era work). A brand-new user's first experience can no longer silently fail.
 - **0 skip logic** on steps 1-4 (only step 5 has "Skip tour").
 - **0 resume logic** — closed browser = restart from step 1. `(app)/layout.tsx:30-46` auto-completes onboarding if items exist (partial workaround, not real resume).
 - **0 progress indicator** (no 5-dots-at-top showing current step).

@@ -154,7 +154,7 @@ fix: T0-1 add morningDone check before evening ritual trigger
 | "This CSS class looks unused, I'll delete it" | It might be used dynamically | Grep first. If unsure, leave it. |
 | "The ticket says 'consider' so I'll do it" | "Consider" means optional | Skip optional items unless told |
 | "I'll make env.ts throw on missing vars" | THIS CRASHED THE ENTIRE SITE | env.ts must NEVER throw at runtime. Also covers: removing the `.catch()` wrapper from `@t3-oss/env-nextjs` in `env.ts`, or configuring `@t3-oss/env-nextjs` in its default (throwing) mode. |
-| "I'll skip the `error` check on this Supabase mutation, it's just a quick update" | Silent data loss — 37 of 71 existing mutations already have this bug (BUG-38, ROOT PATTERN 1), don't add a 38th. The user sees a success toast while the DB write silently failed. | Always destructure `{ error }` and check it. Once `mutate()` wrapper lands (see `docs/project/DOCS_NEEDS_CODE.md`), use that instead. |
+| "I'll skip the `error` check on this Supabase mutation, it's just a quick update" | Silent data loss — this exact bug shipped once (BUG-34: user saw a success toast while the DB write silently failed). BUG-38 (Aug 10, 2026) migrated all 27 mutation files to error-checked code; don't reintroduce it. | Always destructure `{ error }` and check it. Client: use `safeMutate(mutationFn, errorLabel)` from `src/lib/supabase.ts`. Server components: no toast — check `error` and log. |
 | "I'll delete template.tsx, it's unused" | Deletion is irreversible | Never delete without grepping + confirming |
 
 ---

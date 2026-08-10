@@ -179,7 +179,7 @@ Changing any of these requires a line in the PR description reading `Invariant-c
 4. `Navigation.tsx` sidebar = pure hover-expand rail (`w-[80px] hover:w-[248px] focus-within:w-[248px]`). No click-toggle, no pinning.
 5. `MotionProvider` keeps `LazyMotion features={domMax} strict`. `RealtimeProvider` ref-counted, debounced (5s) shared channels — no per-component subscriptions.
 6. Never drop a database column in a migration. Never remove `auth.uid() = user_id` from an RLS policy. Never delete a file under `src/components/ui/` or `supabase/migrations/`.
-7. Every Supabase mutation (`.insert()`, `.update()`, `.delete()`) must check returned `error` before telling the user it succeeded. **Currently violated by 37 of 71 existing call sites (BUG-38, ROOT PATTERN 1)** — see `docs/project/DOCS_NEEDS_CODE.md` for the `mutate()` wrapper migration plan.
+7. Every Supabase mutation (`.insert()`, `.update()`, `.delete()`) must check returned `error` before telling the user it succeeded. **✅ BUG-38 CLOSED Aug 10, 2026** — all 27 mutation-bearing files audited, final 10 unchecked sites migrated to `safeMutate()` (commit `660f5a3`); zero error-unchecked mutation sites remain. New code MUST still check `error` (standard wrapper: `safeMutate(mutationFn, errorLabel)` in `src/lib/supabase.ts`; server components check `error` and log).
 
 ## Database (verified)
 
