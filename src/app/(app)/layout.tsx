@@ -54,12 +54,20 @@ export default async function AppLayout({
       .eq("user_id", userId);
 
     if (count && count > 0) {
-      await supabase
+      // BUG-38: server-side — no toast available, but still check the error
+      const { error } = await supabase
         .from("user_settings")
         .upsert(
           { user_id: userId, onboarding_complete: true },
           { onConflict: "user_id" },
         );
+      if (error) {
+        console.error(
+          "[layout] failed to auto-complete onboarding for",
+          userId,
+          error,
+        );
+      }
     } else {
       redirect("/onboarding");
     }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/useAppStore";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
 import type { Database } from "@/types/database.types";
 import { toast } from "sonner";
 import { m, AnimatePresence } from "framer-motion";
@@ -495,10 +495,21 @@ export function RitualOverlay({
             if (action === "today")
               setTodayTasks((prev) => prev.filter((t) => t.id !== taskId));
             setTriageTasks((prev) => [task, ...prev]);
-            await supabase
-              .from("items")
-              .update({ status: task.status, deadline: task.deadline })
-              .eq("id", taskId);
+            // BUG-38: check error before claiming the undo succeeded
+            const { success } = await safeMutate(
+              () =>
+                supabase
+                  .from("items")
+                  .update({ status: task.status, deadline: task.deadline })
+                  .eq("id", taskId),
+              "Failed to undo",
+            );
+            if (!success) {
+              if (action === "today")
+                setTodayTasks((prev) => [...prev, { ...task, ...payload }]);
+              setTriageTasks((prev) => prev.filter((t) => t.id !== taskId));
+              return;
+            }
             markMutation("items");
           },
         },
@@ -510,18 +521,26 @@ export function RitualOverlay({
 
   const handleEstimateChange = async (taskId: string, minutes: number) => {
     const val = Math.max(0, minutes);
+    const previousEstimate =
+      todayTasks.find((t) => t.id === taskId)?.time_estimate ?? null;
     setTodayTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, time_estimate: val } : t)),
     );
-    try {
-      await supabase
-        .from("items")
-        .update({ time_estimate: val })
-        .eq("id", taskId);
-      markMutation("items");
-    } catch {
-      toast.error("Failed to update estimate");
+    // BUG-38: safeMutate checks the DB error (try/catch alone does not)
+    const { success } = await safeMutate(
+      () =>
+        supabase.from("items").update({ time_estimate: val }).eq("id", taskId),
+      "Failed to update estimate",
+    );
+    if (!success) {
+      setTodayTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, time_estimate: previousEstimate } : t,
+        ),
+      );
+      return;
     }
+    markMutation("items");
   };
 
   const handleFinishMorning = async () => {
@@ -580,15 +599,20 @@ export function RitualOverlay({
           onClick: async () => {
             if (task) {
               setTriageTasks((prev) => [task, ...prev]);
-              try {
-                await supabase
-                  .from("items")
-                  .update({ deadline: task.deadline })
-                  .eq("id", taskId);
-                markMutation("items");
-              } catch {
-                toast.error("Failed to undo");
+              // BUG-38: check error before claiming the undo succeeded
+              const { success } = await safeMutate(
+                () =>
+                  supabase
+                    .from("items")
+                    .update({ deadline: task.deadline })
+                    .eq("id", taskId),
+                "Failed to undo",
+              );
+              if (!success) {
+                setTriageTasks((prev) => prev.filter((t) => t.id !== taskId));
+                return;
               }
+              markMutation("items");
             }
           },
         },
@@ -628,7 +652,7 @@ export function RitualOverlay({
           threadId = existing[0].id;
           entries = existing[0].entries || [];
         } else {
-          const { data: ins } = await supabase
+          const { data: ins, error: insError } = await supabase
             .from("threads")
             .insert({
               user_id: user.id,
@@ -639,12 +663,14 @@ export function RitualOverlay({
             })
             .select("*")
             .single();
+          if (insError) throw insError;
           if (ins) {
             threadId = ins.id;
           }
         }
         if (threadId) {
-          await supabase
+          // BUG-38: check error before showing the success toast
+          const { error: updError } = await supabase
             .from("threads")
             .update({
               entries: [
@@ -657,6 +683,7 @@ export function RitualOverlay({
               last_updated: new Date().toISOString(),
             })
             .eq("id", threadId);
+          if (updError) throw updError;
           markMutation("threads");
         }
       }
@@ -693,17 +720,28 @@ export function RitualOverlay({
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
+      // BUG-38: check error before claiming the skip succeeded
       if (activeRitual === "morning") {
-        await supabase
-          .from("user_settings")
-          .update({ last_ritual_date: todayString })
-          .eq("user_id", user.id);
+        const { success } = await safeMutate(
+          () =>
+            supabase
+              .from("user_settings")
+              .update({ last_ritual_date: todayString })
+              .eq("user_id", user.id),
+          "Failed to skip ritual",
+        );
+        if (!success) return;
         updateUserSetting("last_ritual_date", todayString);
       } else {
-        await supabase
-          .from("user_settings")
-          .update({ last_evening_ritual_date: todayString })
-          .eq("user_id", user.id);
+        const { success } = await safeMutate(
+          () =>
+            supabase
+              .from("user_settings")
+              .update({ last_evening_ritual_date: todayString })
+              .eq("user_id", user.id),
+          "Failed to skip ritual",
+        );
+        if (!success) return;
         updateUserSetting("last_evening_ritual_date", todayString);
       }
     }

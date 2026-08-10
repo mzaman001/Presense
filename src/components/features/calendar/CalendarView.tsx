@@ -25,7 +25,7 @@ import {
 import { WeekView } from "./WeekView";
 import { MonthView } from "./MonthView";
 import { CalendarTaskChipOverlay } from "./CalendarTaskChip";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
@@ -236,10 +236,22 @@ export function CalendarView({
                   t.id === taskId ? { ...t, deadline: previousDeadline } : t,
                 ),
               );
-              await supabase
-                .from("items")
-                .update({ deadline: previousDeadline })
-                .eq("id", taskId);
+              const { success } = await safeMutate(
+                () =>
+                  supabase
+                    .from("items")
+                    .update({ deadline: previousDeadline })
+                    .eq("id", taskId),
+                "Failed to undo reschedule",
+              );
+              if (!success) {
+                queryClient.setQueryData<Task[]>(["tasks"], (old) =>
+                  old?.map((t) =>
+                    t.id === taskId ? { ...t, deadline: newDeadlineISO } : t,
+                  ),
+                );
+                return;
+              }
               toast.success("Reschedule undone");
             },
           },

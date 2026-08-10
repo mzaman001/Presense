@@ -14,11 +14,12 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
 import { Avatar } from "@/components/ui/Avatar";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase";
+import { createClient, safeMutate } from "@/lib/supabase";
+import type { Database } from "@/types/database.types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
-let chronoCache: any = null;
-async function getChrono() {
+let chronoCache: typeof import("chrono-node") | null = null;
+async function getChrono(): Promise<typeof import("chrono-node")> {
   if (!chronoCache) {
     const chrono = await import("chrono-node");
     const { registerCustomParsers } = await import("@/lib/chrono-custom");
@@ -138,7 +139,6 @@ export function TaskAddPanel({
 
   useEffect(() => {
     if (isOpen) {
-       
       setCategoriesList(userSettings?.do_categories || DEFAULT_DO_CATEGORIES);
     }
   }, [isOpen, userSettings?.do_categories]);
@@ -159,12 +159,20 @@ export function TaskAddPanel({
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        // Update userSettings in DB
+        // BUG-38: check error before committing the new category to state
+        const { success } = await safeMutate(
+          () =>
+            supabase
+              .from("user_settings")
+              .update({ do_categories: newList })
+              .eq("user_id", user.id),
+          "Failed to save category",
+        );
+        if (!success) {
+          setCategoriesList(categoriesList);
+          return;
+        }
         const updatedSettings = { ...userSettings, do_categories: newList };
-        await supabase
-          .from("user_settings")
-          .update({ do_categories: newList })
-          .eq("user_id", user.id);
         useAppStore.getState().setUserSettings(updatedSettings);
       }
     } else {
@@ -236,7 +244,15 @@ export function TaskAddPanel({
         .select("id, name, initials, color")
         .eq("user_id", userData.user.id)
         .order("name");
-      if (data) setPeopleList(data as any);
+      if (data)
+        setPeopleList(
+          data.map((p) => ({
+            id: p.id,
+            name: p.name,
+            initials: p.initials ?? "",
+            color: p.color ?? "",
+          })),
+        );
     }
     if (isOpen) {
       fetchPeople();
@@ -336,15 +352,13 @@ export function TaskAddPanel({
         } else {
           // Multiple results: combine their text and re-parse to merge date+time
           // e.g. "tomorrow" + "at 9pm" → "tomorrow at 9pm" → single correct result
-          const combined = parsedResults.map((r: any) => r.text).join(" ");
+          const combined = parsedResults.map((r) => r.text).join(" ");
           const merged = chrono.parse(combined);
           d =
             merged.length > 0 && merged[0].start
               ? merged[0].start.date()
               : parsedResults
-                  .reduce((a: any, b: any) =>
-                    a.start.date() > b.start.date() ? a : b,
-                  )
+                  .reduce((a, b) => (a.start.date() > b.start.date() ? a : b))
                   .start.date();
         }
         setParsedDeadline(d);
@@ -425,7 +439,7 @@ export function TaskAddPanel({
           const chrono = await getChrono();
           const parsedResults = chrono.parse(finalTitle);
           if (parsedResults && parsedResults.length > 0) {
-            parsedResults.forEach((r: any) => {
+            parsedResults.forEach((r) => {
               finalTitle = finalTitle.replace(r.text, "");
             });
             finalTitle = finalTitle.replace(/\s+/g, " ").trim();
@@ -439,7 +453,7 @@ export function TaskAddPanel({
           }
         }
 
-        const payload: Record<string, unknown> = {
+        const payload: Database["public"]["Tables"]["items"]["Insert"] = {
           user_id: user.id,
           title: finalTitle || data.title.trim(),
           first_step: data.first_step?.trim() || null,
@@ -469,11 +483,11 @@ export function TaskAddPanel({
         if (taskToEdit) {
           const res = await supabase
             .from("items")
-            .update(payload as any)
+            .update(payload)
             .eq("id", taskToEdit.id);
           error = res.error;
         } else {
-          const res = await supabase.from("items").insert(payload as any);
+          const res = await supabase.from("items").insert(payload);
           error = res.error;
         }
 
@@ -1106,7 +1120,10 @@ export function TaskAddPanel({
       <ConfirmModal
         isOpen={showUnsavedWarning}
         onClose={() => setShowUnsavedWarning(false)}
-        onConfirm={() => { setShowUnsavedWarning(false); onClose(); }}
+        onConfirm={() => {
+          setShowUnsavedWarning(false);
+          onClose();
+        }}
         title="Discard Changes?"
         description="You have unsaved changes. Are you sure you want to discard them?"
         confirmLabel="Discard"
