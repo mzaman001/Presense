@@ -407,7 +407,7 @@
 - **Depends on:** None.
 - **Follow-up (needs human):** confirm `SEMGREP_APP_TOKEN`/`SEMGREP_DEPLOYMENT_ID` secrets exist in GitHub repo settings.
 
-**CI-04 — `ci.yml` has no `permissions:` block; first-party Actions not SHA-pinned** — OPEN (ticket `CI-04`)
+**CI-04 — `ci.yml` has no `permissions:` block; first-party Actions not SHA-pinned** — ✅ **RESOLVED Aug 12, 2026** (see Resolved section below)
 
 - **Files:** `.github/workflows/ci.yml` (whole file), all `actions/checkout@v4`/`actions/setup-node@v4` references
 - **What's wrong:** `ci.yml` is the only workflow without a `permissions:` key (inherits the repo default `GITHUB_TOKEN` scope); `checkout`/`setup-node` use mutable tags while the third-party actions are correctly SHA-pinned. Compromised-upstream-action attacks under existing tags are a live 2025-2026 attack class (e.g. `tj-actions/changed-files`, CVE-2025-30066).
@@ -521,6 +521,11 @@
 
 - **Fix:** `sonarcloud.yml` + `sonarqube.yml` deleted (both had blank `-Dsonar.projectKey=`/`-Dsonar.organization=` — fail/no-op on every push); `semgrep.yml` kept as the single static-analysis platform per the ticket.
 - **Verified:** exactly one static-analysis workflow remains; workflow directory now 3 files (ci, osv-scanner, semgrep). Follow-up recorded: human must confirm `SEMGREP_APP_TOKEN`/`SEMGREP_DEPLOYMENT_ID` secrets are set, or decide semgrep's fallback mode.
+
+### CI-04 — CI hardening: permissions + SHA pins (Aug 12, 2026)
+
+- **Fix:** `ci.yml` gained `permissions: contents: read` (no per-job elevation needed); `actions/checkout` → `11d5960a…` and `actions/setup-node` → `49933ea5…` (resolved from official `v4` tags via GitHub API) in `ci.yml` + `semgrep.yml`; `osv-scanner.yml` already compliant.
+- **Verified:** `rg "@v[0-9]" .github/workflows` → 0 hits. Dependabot `github-actions` not added — decision: solo repo, manual pin refresh at upgrade time.
 
 ---
 
