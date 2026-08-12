@@ -390,7 +390,7 @@
 - **Priority:** P1 — 0.5 days.
 - **Depends on:** None.
 
-**CI-02 — `trivy.yml` is unedited template boilerplate, fails before Trivy runs** — OPEN (ticket `CI-02`)
+**CI-02 — `trivy.yml` is unedited template boilerplate, fails before Trivy runs** — ✅ **RESOLVED Aug 12, 2026** (deleted — decision recorded in `EXECUTION_SPEC.md` §29; see Resolved section below)
 
 - **File:** `.github/workflows/trivy.yml:20-23`
 - **What's wrong:** `docker build -t docker.io/my-organization/my-app:${{ github.sha }}` is the literal GitHub placeholder and there is no `Dockerfile` anywhere in the repo (Vercel-style Next.js deployment). Every run fails at the `docker build` step.
@@ -510,6 +510,11 @@
 
 - **Fix:** `.github/workflows/eslint.yml` deleted — it installed `eslint@8.10.0` fresh each run, lints with `--config .eslintrc.js` (doesn't exist; repo is ESLint 9 + flat `eslint.config.mjs`), wrapped in `continue-on-error: true` (always green, fake checkmark in PR UI).
 - **Verified:** `ci.yml` step "Lint" (`npm run lint`) confirmed as the real gate; `rg -l "\.eslintrc"` (excluding `docs/`) → 0 hits; workflow directory now 6 files. SARIF upload decision recorded: not added — `semgrep.yml` + `osv-scanner.yml` already feed the GitHub Security tab.
+
+### CI-02 — `trivy.yml` template boilerplate (Aug 12, 2026)
+
+- **Fix (decision: delete, recorded in `EXECUTION_SPEC.md` §29):** `.github/workflows/trivy.yml` removed. The `docker build` step against a nonexistent `Dockerfile` could never succeed; `trivy fs .` would duplicate `osv-scanner.yml`'s dependency-CVE coverage with its remaining value (secrets, IaC misconfig) already provided by `semgrep.yml` + GitHub native secret scanning; no IaC exists in this repo to scan.
+- **Verified:** workflow directory now 5 files (ci, osv-scanner, semgrep, sonarcloud, sonarqube).
 
 ---
 

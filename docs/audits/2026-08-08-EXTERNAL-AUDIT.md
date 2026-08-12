@@ -50,6 +50,7 @@ These are concrete, file:line-cited, independently reproducible from the reposit
 - **File:** `.github/workflows/trivy.yml:20-23`
 - **What's wrong:** `docker build -t docker.io/my-organization/my-app:${{ github.sha }} .` — `my-organization/my-app` is the literal GitHub-provided placeholder, and there is no `Dockerfile` anywhere in this repository (this is a Vercel-style Next.js deployment, not a container deployment — confirmed by the absence of any `Dockerfile`, `docker-compose.yml`, or container references elsewhere in the repo). Every run of this workflow fails at the `docker build` step before Trivy ever runs.
 - **Fix:** Either delete it, or repoint it at what actually matters for this stack: `trivy fs .` (filesystem/dependency + IaC misconfiguration scan) instead of `trivy image`, which needs no Dockerfile and directly complements `osv-scanner.yml` (which already covers dependency CVEs) by adding secret-scanning and misconfiguration checks Trivy does that OSV-Scanner doesn't.
+- **✅ DONE Aug 12, 2026 (decision: delete):** `trivy.yml` removed; recorded rationale — cannot ever succeed (no `Dockerfile`), `trivy fs .` would duplicate `osv-scanner.yml` dependency coverage, remaining value already provided by `semgrep.yml` + native secret scanning, and no IaC to scan; consistent with this audit's own "3 real checks > 7 decorative ones".
 
 ### CI-03 — Two unconfigured, redundant static-analysis platforms [Low-Medium]
 
