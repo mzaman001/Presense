@@ -524,7 +524,7 @@
 
 ### CI-04 — CI hardening: permissions + SHA pins (Aug 12, 2026)
 
-- **Fix:** `ci.yml` gained `permissions: contents: read` (no per-job elevation needed); `actions/checkout` → `11d5960a…` and `actions/setup-node` → `49933ea5…` (resolved from official `v4` tags via GitHub API) in `ci.yml` + `semgrep.yml`; `osv-scanner.yml` already compliant.
+- **Fix:** `ci.yml` gained `permissions: contents: read` (no per-job elevation needed); `actions/checkout` → `11d5960a…`, `actions/setup-node` → `49933ea5…`, `github/codeql-action/upload-sarif` → `c3400c2f…` (all resolved from official tags via GitHub API) in `ci.yml` + `semgrep.yml`; `osv-scanner.yml` already compliant.
 - **Verified:** `rg "@v[0-9]" .github/workflows` → 0 hits. Dependabot `github-actions` not added — decision: solo repo, manual pin refresh at upgrade time.
 
 ---
