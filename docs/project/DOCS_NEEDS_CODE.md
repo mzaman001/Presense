@@ -345,7 +345,7 @@
 
 ## P1 — CI/CD gaps (ROOT PATTERN 8)
 
-**`/api/telemetry` is a black hole**
+**`/api/telemetry` is a black hole** — ✅ **RESOLVED Aug 12, 2026** as OBS-01 (commit `83a95e1`): route forwards `client-error`/`web-vital` to Sentry via `captureMessage`; see OBS-01 entry in the Resolved section below.
 
 - **File:** `src/app/api/telemetry/route.ts:38` (`console.warn("[telemetry]", parsed.data)`)
 - **What's wrong:** Errors go to stdout, not a log drain, not an error tracker. In production, invisible.

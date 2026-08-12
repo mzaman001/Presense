@@ -221,8 +221,9 @@ Changing any of these requires a line in the PR description reading `Invariant-c
 ## Logging & Error Tracking
 
 - **`src/lib/logger.ts`** — 27-line stub using Pino (good — structured logging) but `browser: { asObject: true }` only, no transport configured. Browser logs stay in console, server logs go to stdout.
-- **`src/instrumentation-client.ts:25,33`** — global `window.addEventListener("error")` + `unhandledrejection` handlers. Both report to `/api/telemetry`. Good baseline.
-- **`/api/telemetry` endpoint** (`src/app/api/telemetry/route.ts:38`) validates with Zod but only does `console.warn("[telemetry]", parsed.data)` — goes to stdout, not a log drain, not an error tracker. **In production, this is effectively a black hole.**
+- **`src/instrumentation-client.ts`** — client Sentry init (Next 16 client instrumentation, auto-loaded) — browser SDK auto-captures `window error`/`unhandledrejection`; exports `onRouterTransitionStart` (OBS-01, Aug 12, 2026).
+- **`/api/telemetry` endpoint** (`src/app/api/telemetry/route.ts`) validates with Zod then forwards to Sentry — `client-error` → `captureMessage` (error level), `web-vital` → `captureMessage` (info level); returns 204. No longer a black hole (OBS-01, Aug 12, 2026). API-route catch blocks (`account`/`capture`/`people/reorder`) call `Sentry.captureException`; the CSP in `proxy.ts` appends a `report-uri` derived from `NEXT_PUBLIC_SENTRY_DSN`. All Sentry init is DSN-gated — absent DSN = safe no-op.
+- **`src/sentry.server.config.ts` / `src/sentry.edge.config.ts`** — DSN-gated Sentry init for the Node and edge runtimes (auto-registered by `withSentryConfig`).
 - **`ModalErrorBoundary`** used in 3 modals (SearchModal, CaptureModal, SettingsModal). **Missing from**: AddPersonPanel, LocationAddPanel, ExploreDrawer, TaskAddPanel, PomodoroTimer (verify if Sheet-based modals need it).
 - **`AppErrorFallback`** used in 6 `error.tsx` files: `(app)`, `do`, `explore`, `think`, `remember`, `global-error`.
 - **5 routes missing custom `error.tsx`**: `inbox`, `trash`, `remember/people/[id]`, `think/[id]`, `explore/[id]`
