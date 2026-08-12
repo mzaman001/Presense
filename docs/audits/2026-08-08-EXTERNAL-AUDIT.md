@@ -57,6 +57,7 @@ These are concrete, file:line-cited, independently reproducible from the reposit
 - **Files:** `.github/workflows/sonarcloud.yml:57-58`, `.github/workflows/sonarqube.yml:38`
 - **What's wrong:** Both `-Dsonar.projectKey=` and `-Dsonar.organization=`/`-Dsonar.host.url=` are blank in both files — both workflows run and fail (or silently no-op depending on the action's handling of missing config) on every push to `main`. Running both SonarCloud (SaaS) and SonarQube (self-hosted/CE) side-by-side is also redundant — they solve the same problem. Combined with `semgrep.yml` (a third static-analysis tool, but that one requires `SEMGREP_APP_TOKEN`/`SEMGREP_DEPLOYMENT_ID` secrets that may or may not be set) this repo is carrying **three** static-analysis SaaS integrations, at most one of which needs to exist for a solo/small-team open-source project.
 - **Fix:** Pick one static-analysis platform (Semgrep's free OSS tier is the lowest-friction of the three and already has real rules configured via `semgrep-action`), configure it, delete the other two workflow files. Fewer, working CI jobs beat more, decorative ones — every red/skipped check trains contributors to ignore CI status.
+- **✅ DONE Aug 12, 2026:** both Sonar workflows deleted (blank keys confirmed); `semgrep.yml` kept as the single static-analysis platform. Follow-up recorded: verify `SEMGREP_APP_TOKEN`/`SEMGREP_DEPLOYMENT_ID` secrets are set, or semgrep will fail on every push.
 
 ### CI-04 — No top-level `permissions:` block on `ci.yml`; Actions not pinned to commit SHA [Medium]
 

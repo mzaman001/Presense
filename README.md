@@ -210,7 +210,7 @@ Themes are applied via `data-theme` + `data-mode` attributes on `<html>`. `src/l
 
 ```text
 Presense-main/
-├── .github/workflows/          # 5 CI workflows (ci, osv-scanner, semgrep, sonarcloud, sonarqube)
+├── .github/workflows/          # 3 CI workflows (ci, osv-scanner, semgrep)
 ├── .husky/pre-commit           # Husky pre-commit hook (eslint --fix + prettier --write + tsc --noEmit)
 ├── docs/
 │   ├── agents/EXECUTION_RULES.md       # The contract for AI coding agents (7 iron laws, STOP LIST)

@@ -398,13 +398,14 @@
 - **Priority:** P1 — 0.5 days.
 - **Depends on:** None.
 
-**CI-03 — Two unconfigured, redundant static-analysis platforms (SonarCloud + SonarQube)** — OPEN (ticket `CI-03`)
+**CI-03 — Two unconfigured, redundant static-analysis platforms (SonarCloud + SonarQube)** — ✅ **RESOLVED Aug 12, 2026** (both deleted; Semgrep kept — see Resolved section below)
 
 - **Files:** `.github/workflows/sonarcloud.yml:57-58`, `.github/workflows/sonarqube.yml:38`
 - **What's wrong:** `sonar.projectKey` and `sonar.organization`/`sonar.host.url` are blank in both — the jobs fail or silently no-op on every push, and running both platforms is redundant with each other and with `semgrep.yml` (three static-analysis SaaS integrations total; at most one is needed).
 - **Fix:** Keep Semgrep's free OSS tier (already has real rules configured), delete the two Sonar workflow files.
 - **Priority:** P1 — 0.5 days.
 - **Depends on:** None.
+- **Follow-up (needs human):** confirm `SEMGREP_APP_TOKEN`/`SEMGREP_DEPLOYMENT_ID` secrets exist in GitHub repo settings.
 
 **CI-04 — `ci.yml` has no `permissions:` block; first-party Actions not SHA-pinned** — OPEN (ticket `CI-04`)
 
@@ -515,6 +516,11 @@
 
 - **Fix (decision: delete, recorded in `EXECUTION_SPEC.md` §29):** `.github/workflows/trivy.yml` removed. The `docker build` step against a nonexistent `Dockerfile` could never succeed; `trivy fs .` would duplicate `osv-scanner.yml`'s dependency-CVE coverage with its remaining value (secrets, IaC misconfig) already provided by `semgrep.yml` + GitHub native secret scanning; no IaC exists in this repo to scan.
 - **Verified:** workflow directory now 5 files (ci, osv-scanner, semgrep, sonarcloud, sonarqube).
+
+### CI-03 — Redundant SonarCloud + SonarQube workflows (Aug 12, 2026)
+
+- **Fix:** `sonarcloud.yml` + `sonarqube.yml` deleted (both had blank `-Dsonar.projectKey=`/`-Dsonar.organization=` — fail/no-op on every push); `semgrep.yml` kept as the single static-analysis platform per the ticket.
+- **Verified:** exactly one static-analysis workflow remains; workflow directory now 3 files (ci, osv-scanner, semgrep). Follow-up recorded: human must confirm `SEMGREP_APP_TOKEN`/`SEMGREP_DEPLOYMENT_ID` secrets are set, or decide semgrep's fallback mode.
 
 ---
 
