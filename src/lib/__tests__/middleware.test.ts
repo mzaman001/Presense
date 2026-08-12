@@ -1,28 +1,49 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { proxy } from "@/proxy";
+import { proxy, cspReportUri } from "@/proxy";
 
 // Set required environment variables for the middleware
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "mock-anon-key";
 
-// Mock env module to prevent throwing at import time
+// Mock env module to prevent throwing at import time.
+// Getters read process.env lazily so tests can flip values between requests.
 vi.mock("@/lib/env", () => ({
   env: {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
-    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+    get NEXT_PUBLIC_SUPABASE_URL() {
+      return (
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "https://example.supabase.co"
+      );
+    },
+    get NEXT_PUBLIC_SUPABASE_ANON_KEY() {
+      return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "mock-anon-key";
+    },
+    get SUPABASE_SERVICE_ROLE_KEY() {
+      return process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    },
+    get UPSTASH_REDIS_REST_URL() {
+      return process.env.UPSTASH_REDIS_REST_URL || "";
+    },
+    get UPSTASH_REDIS_REST_TOKEN() {
+      return process.env.UPSTASH_REDIS_REST_TOKEN || "";
+    },
+    get NEXT_PUBLIC_SENTRY_DSN() {
+      return process.env.NEXT_PUBLIC_SENTRY_DSN || "";
+    },
   },
 }));
+
+// Recorded response headers for CSP assertions
+const headerStore = new Map<string, string>();
 
 // Define mock actions and response structures
 const mockRedirect = vi.fn((url) => ({
   status: 307,
   headers: {
-    set: vi.fn(),
-    get: vi.fn(() => typeof url === "string" ? url : url.toString()),
+    set: vi.fn((key: string, value: string) => {
+      headerStore.set(key, value);
+    }),
+    get: vi.fn((key: string) => headerStore.get(key) ?? ""),
   },
   url: typeof url === "string" ? url : url.toString(),
   cookies: {
@@ -34,7 +55,10 @@ const mockRedirect = vi.fn((url) => ({
 const mockNext = vi.fn(() => ({
   status: 200,
   headers: {
-    set: vi.fn(),
+    set: vi.fn((key: string, value: string) => {
+      headerStore.set(key, value);
+    }),
+    get: vi.fn((key: string) => headerStore.get(key) ?? ""),
   },
   cookies: {
     getAll: vi.fn(() => []),
@@ -98,6 +122,7 @@ describe("Edge Auth Middleware Routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreateServerClientConfig = null;
+    headerStore.clear();
   });
 
   describe("Unauthenticated requests", () => {
@@ -124,8 +149,16 @@ describe("Edge Auth Middleware Routing", () => {
     it("copies cookies set by Supabase to the redirect response", async () => {
       mockGetUser.mockImplementation(async () => {
         mockCreateServerClientConfig.cookies.setAll([
-          { name: "sb-access-token", value: "token123", options: { path: "/" } },
-          { name: "sb-refresh-token", value: "refresh123", options: { path: "/" } },
+          {
+            name: "sb-access-token",
+            value: "token123",
+            options: { path: "/" },
+          },
+          {
+            name: "sb-refresh-token",
+            value: "refresh123",
+            options: { path: "/" },
+          },
         ]);
         return { data: { user: null } };
       });
@@ -135,8 +168,16 @@ describe("Edge Auth Middleware Routing", () => {
 
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
-      expect(res.cookies.set).toHaveBeenCalledWith("sb-access-token", "token123", { path: "/" });
-      expect(res.cookies.set).toHaveBeenCalledWith("sb-refresh-token", "refresh123", { path: "/" });
+      expect(res.cookies.set).toHaveBeenCalledWith(
+        "sb-access-token",
+        "token123",
+        { path: "/" },
+      );
+      expect(res.cookies.set).toHaveBeenCalledWith(
+        "sb-refresh-token",
+        "refresh123",
+        { path: "/" },
+      );
     });
   });
 
@@ -162,9 +203,65 @@ describe("Edge Auth Middleware Routing", () => {
     });
   });
 
+  describe("CSP report-uri (Sentry)", () => {
+    it("derives the security endpoint from an EU DSN", () => {
+      expect(
+        cspReportUri(
+          "https://3b802d3cf21ac6b135bbde1081dc639d@o4511896684789760.ingest.de.sentry.io/4511896692850768",
+        ),
+      ).toBe(
+        "https://o4511896684789760.ingest.de.sentry.io/api/4511896692850768/security/?sentry_key=3b802d3cf21ac6b135bbde1081dc639d",
+      );
+    });
+
+    it("derives the security endpoint from a US DSN", () => {
+      expect(
+        cspReportUri("https://abc123@o450000.ingest.sentry.io/450000"),
+      ).toBe(
+        "https://o450000.ingest.sentry.io/api/450000/security/?sentry_key=abc123",
+      );
+    });
+
+    it("returns an empty string for missing or malformed DSNs", () => {
+      expect(cspReportUri(undefined)).toBe("");
+      expect(cspReportUri("")).toBe("");
+      expect(cspReportUri("not-a-dsn")).toBe("");
+      expect(cspReportUri("http://abc@o123.ingest.sentry.io/456")).toBe("");
+    });
+
+    it("omits report-uri from the CSP when no DSN is configured", async () => {
+      delete process.env.NEXT_PUBLIC_SENTRY_DSN;
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      const req = createMockRequest("/do");
+      await proxy(req);
+
+      expect(headerStore.get("Content-Security-Policy")).not.toContain(
+        "report-uri",
+      );
+    });
+
+    it("appends report-uri to the CSP derived from the DSN when configured", async () => {
+      process.env.NEXT_PUBLIC_SENTRY_DSN =
+        "https://3b802d3cf21ac6b135bbde1081dc639d@o4511896684789760.ingest.de.sentry.io/4511896692850768";
+      try {
+        mockGetUser.mockResolvedValue({ data: { user: null } });
+        const req = createMockRequest("/do");
+        await proxy(req);
+
+        expect(headerStore.get("Content-Security-Policy")).toContain(
+          "report-uri https://o4511896684789760.ingest.de.sentry.io/api/4511896692850768/security/?sentry_key=3b802d3cf21ac6b135bbde1081dc639d",
+        );
+      } finally {
+        delete process.env.NEXT_PUBLIC_SENTRY_DSN;
+      }
+    });
+  });
+
   describe("Exception handling", () => {
     it("redirects to /login when supabase.auth.getUser() throws an error on a protected path", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       mockGetUser.mockRejectedValue(new Error("Supabase connection failed"));
       const req = createMockRequest("/do");
       const res = await proxy(req);
@@ -177,7 +274,9 @@ describe("Edge Auth Middleware Routing", () => {
     });
 
     it("returns original response when supabase.auth.getUser() throws an error on the /login path", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       mockGetUser.mockRejectedValue(new Error("Supabase connection failed"));
       const req = createMockRequest("/login");
       const res = await proxy(req);

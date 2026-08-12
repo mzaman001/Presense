@@ -11,14 +11,30 @@ function generateNonce(): string {
 type CookieToSet = {
   name: string;
   value: string;
-  options?: Parameters<ReturnType<typeof NextResponse.next>["cookies"]["set"]>[2];
+  options?: Parameters<
+    ReturnType<typeof NextResponse.next>["cookies"]["set"]
+  >[2];
 };
+
+const sentryDsnRe = /^https:\/\/([^@]+)@o(\d+)\.(ingest\.[^/]+)\/(\d+)$/;
+
+// Verbatim derivation of Sentry's CSP violation reporting endpoint from the DSN.
+// Returns "" when the DSN is absent or malformed so the CSP stays byte-identical.
+export function cspReportUri(dsn: string | null | undefined): string {
+  if (!dsn) return "";
+  const match = sentryDsnRe.exec(dsn);
+  if (!match) return "";
+  const [, key, orgId, ingestHost, projectId] = match;
+  return `https://o${orgId}.${ingestHost}/api/${projectId}/security/?sentry_key=${key}`;
+}
 
 function buildCspHeader(nonce: string): string {
   const isDev = process.env.NODE_ENV === "development";
   const scriptSrc = isDev
     ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
     : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+
+  const reportUri = cspReportUri(env.NEXT_PUBLIC_SENTRY_DSN);
 
   return [
     "default-src 'self'",
@@ -32,6 +48,7 @@ function buildCspHeader(nonce: string): string {
     "form-action 'self'",
     "frame-ancestors 'none'",
     "upgrade-insecure-requests",
+    ...(reportUri ? [`report-uri ${reportUri}`] : []),
   ].join("; ");
 }
 
@@ -44,7 +61,7 @@ function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
 function securedNextResponse(
   requestHeaders: Headers,
   cspHeader: string,
-  cookiesToSet: CookieToSet[]
+  cookiesToSet: CookieToSet[],
 ) {
   const response = NextResponse.next({
     request: { headers: requestHeaders },
@@ -58,7 +75,7 @@ function securedRedirectResponse(
   request: NextRequest,
   pathname: string,
   cspHeader: string,
-  cookiesToSet: CookieToSet[]
+  cookiesToSet: CookieToSet[],
 ) {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
@@ -76,7 +93,11 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set("Content-Security-Policy", cspHeader);
 
   let cookiesToSet: CookieToSet[] = [];
-  let supabaseResponse = securedNextResponse(requestHeaders, cspHeader, cookiesToSet);
+  let supabaseResponse = securedNextResponse(
+    requestHeaders,
+    cspHeader,
+    cookiesToSet,
+  );
 
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
@@ -87,12 +108,18 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(newCookies) {
-          newCookies.forEach(({ name, value }) => request.cookies.set(name, value));
+          newCookies.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
           cookiesToSet = newCookies;
-          supabaseResponse = securedNextResponse(requestHeaders, cspHeader, cookiesToSet);
+          supabaseResponse = securedNextResponse(
+            requestHeaders,
+            cspHeader,
+            cookiesToSet,
+          );
         },
       },
-    }
+    },
   );
 
   try {
@@ -101,10 +128,16 @@ export async function proxy(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     const pathname = request.nextUrl.pathname.toLowerCase();
-    const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/auth");
+    const isAuthRoute =
+      pathname.startsWith("/login") || pathname.startsWith("/auth");
 
     if (!user && !isAuthRoute) {
-      return securedRedirectResponse(request, "/login", cspHeader, cookiesToSet);
+      return securedRedirectResponse(
+        request,
+        "/login",
+        cspHeader,
+        cookiesToSet,
+      );
     }
 
     if (user && isAuthRoute) {
@@ -113,12 +146,22 @@ export async function proxy(request: NextRequest) {
   } catch (error) {
     console.error("Proxy auth check failed:", error);
 
-    const isLoginRoute = request.nextUrl.pathname.toLowerCase().startsWith("/login");
+    const isLoginRoute = request.nextUrl.pathname
+      .toLowerCase()
+      .startsWith("/login");
     if (!isLoginRoute) {
       try {
-        return securedRedirectResponse(request, "/login", cspHeader, cookiesToSet);
+        return securedRedirectResponse(
+          request,
+          "/login",
+          cspHeader,
+          cookiesToSet,
+        );
       } catch (redirectError) {
-        console.error("Failed to redirect to login in proxy error handler:", redirectError);
+        console.error(
+          "Failed to redirect to login in proxy error handler:",
+          redirectError,
+        );
         return supabaseResponse;
       }
     }

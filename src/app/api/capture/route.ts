@@ -4,6 +4,7 @@ import { routeCapture } from "@/lib/capture-router";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { captureSchema } from "@/lib/schemas";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: Request) {
   try {
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
+    Sentry.captureException(error);
     logger.error("Capture error:", error);
     return NextResponse.json(
       { error: "Failed to process capture" },

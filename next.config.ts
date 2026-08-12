@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { spawnSync } from "node:child_process";
 import withSerwistInit from "@serwist/next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const revision =
   spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" }).stdout ??
@@ -65,4 +66,6 @@ const analyze = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-export default analyze(withSerwist(nextConfig));
+export default withSentryConfig(analyze(withSerwist(nextConfig)), {
+  silent: !process.env.CI,
+});

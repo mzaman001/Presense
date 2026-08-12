@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { accountDeleteSchema } from "@/lib/schemas";
+import * as Sentry from "@sentry/nextjs";
 
 export async function DELETE(request: Request) {
   try {
@@ -68,6 +69,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    Sentry.captureException(error);
     logger.error("[account] Error:", error);
     return NextResponse.json(
       { error: "Failed to delete account. Please contact support." },

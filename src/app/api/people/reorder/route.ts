@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { reorderSchema } from "@/lib/schemas";
 import { logger } from "@/lib/logger";
 import type { Database } from "@/types/database.types";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(req: Request) {
   try {
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    Sentry.captureException(error);
     logger.error("[people/reorder] Error:", error);
     return NextResponse.json(
       { error: "Failed to reorder people" },
