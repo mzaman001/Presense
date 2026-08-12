@@ -81,7 +81,7 @@ Presense is a personal productivity web app for a solo user — a second brain t
 | Edge functions | 2 | `cron_cleanup` (30-day hard-delete), `cron_recurrence` (recurring task generation) |
 | Test files | 16 | 2742 lines total; `phase4.test.tsx` largest at 1021 lines; 181 tests pass (Aug 12, 2026) |
 | Playwright specs | 2 | `sanity.spec.ts` (9 lines), `realtime.spec.ts` (92 lines) |
-| GitHub workflows | 8 | ci, eslint, osv-scanner, semgrep, sonarcloud, sonarqube, trivy |
+| GitHub workflows | 6 | ci, osv-scanner, semgrep, sonarcloud, sonarqube, trivy (eslint.yml deleted — CI-01, Aug 12, 2026) |
 | Coverage thresholds | 50% lines / 50% functions / 40% branches | low — flagged in audit |
 
 ---
@@ -437,7 +437,7 @@ Defined in both `src/hooks/useReducedMotion.ts` AND `src/lib/animations.ts:21`. 
 
 ```
 Presense-main/
-├── .github/workflows/          # 8 CI workflows (ci, eslint, osv-scanner, semgrep, sonarcloud, sonarqube, trivy) — all .yml, no .md
+├── .github/workflows/          # 6 CI workflows (ci, osv-scanner, semgrep, sonarcloud, sonarqube, trivy) — all .yml, no .md
 ├── .husky/pre-commit           # Husky pre-commit hook
 ├── docs/
 │   ├── agents/EXECUTION_RULES.md

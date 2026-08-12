@@ -382,7 +382,7 @@
 - **Priority:** P1.
 - **Depends on:** None (each can land independently).
 
-**CI-01 — `eslint.yml` lints nothing and always looks green** — OPEN (ticket `CI-01`)
+**CI-01 — `eslint.yml` lints nothing and always looks green** — ✅ **RESOLVED Aug 12, 2026** (workflow deleted; `ci.yml`'s `npm run lint` verified as the real gate — see Resolved section below)
 
 - **File:** `.github/workflows/eslint.yml:26-40`
 - **What's wrong:** Installs `eslint@8.10.0` fresh each run and lints with `--config .eslintrc.js` — but the repo is ESLint 9 + flat config (`eslint.config.mjs`) and no `.eslintrc.js`/`.eslintrc.json` exists (verified Aug 10, 2026). The step is wrapped in `continue-on-error: true`, so the job always reports success: a second, parallel ESLint "workflow theater" job showing a checkmark in the PR UI while providing zero signal.
@@ -505,6 +505,11 @@
 
 - **Fix (commit `83a95e1`):** Sentry (`@sentry/nextjs@10.70.0`) wired end-to-end, DSN-gated. Client init in `src/instrumentation-client.ts` (Next 16 auto-loads it — it was a **live** pipeline to the discarding telemetry route, so it was repurposed, not deleted; manual error listeners removed — the browser SDK auto-captures `window error`/`unhandledrejection`), plus `sentry.server.config.ts` / `sentry.edge.config.ts`; `withSentryConfig(analyze(withSerwist(nextConfig)))`; `NEXT_PUBLIC_SENTRY_DSN` in `env.ts` (`.catch()` pattern) + `.env.example`. `/api/telemetry` forwards (`client-error` → `captureMessage` error level; `web-vital` → info; Zod/400/204 kept). Explicit `Sentry.captureException` in the `account`/`capture`/`people/reorder` catch blocks. CSP `report-uri` derived from the DSN in `src/proxy.ts` (EU ingest host preserved; byte-identical without DSN).
 - **Verified:** `telemetry-route.test.ts` 5 tests (both kinds + invalid payload/JSON), `middleware.test.ts` 12 tests (EU/US DSN → security endpoint; absent + present end-to-end), full suite 181/181 sequential, build green ×2, lint-staged 0. Follow-ups: source-map uploads (`SENTRY_AUTH_TOKEN`), account `deleteUser` error-branch capture candidate, sampling/replay tuning after first production week.
+
+### CI-01 — `eslint.yml` workflow theater (Aug 12, 2026)
+
+- **Fix:** `.github/workflows/eslint.yml` deleted — it installed `eslint@8.10.0` fresh each run, lints with `--config .eslintrc.js` (doesn't exist; repo is ESLint 9 + flat `eslint.config.mjs`), wrapped in `continue-on-error: true` (always green, fake checkmark in PR UI).
+- **Verified:** `ci.yml` step "Lint" (`npm run lint`) confirmed as the real gate; `rg -l "\.eslintrc"` (excluding `docs/`) → 0 hits; workflow directory now 6 files. SARIF upload decision recorded: not added — `semgrep.yml` + `osv-scanner.yml` already feed the GitHub Security tab.
 
 ---
 
