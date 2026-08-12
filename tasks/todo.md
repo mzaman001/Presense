@@ -1,25 +1,27 @@
-# Task List — SEC2-01 rate limiter parameterization
+# Task List — OBS-01 Sentry error/performance sink
 
 Status legend: [ ] pending · [~] in progress · [x] done
 
-## Phase 1: Implementation
-- [x] Task 1: Parameterize `rate-limit.ts` — bucket registry (`Map<string, Ratelimit>`), `slidingWindow(maxRequests, windowMs)` + `prefix: "rl:<bucket>"` per bucket; signature `checkRateLimit(bucket, key, maxRequests, windowMs)`; in-memory key `${bucket}:${key}`; one dev-warn. Call sites: account `("account", user.id, 3, 60_000)`, capture `("capture", user.id, 100, 60_000)`, people/reorder `("people-reorder", user.id, 30, 60_000)`
-  - Note: v2 `slidingWindow` rejects bare-number windows — formatted as `Duration` string (`"60 s"`)
-  - Verify: `npx tsc --noEmit` clean + focused vitest green + `npm run build` ✓
+## Phase 1: Foundation
+- [x] Task 1: DONE — `@sentry/nextjs@10.70.0` installed; `src/instrumentation-client.ts` REPURPOSED (not dead — Next 16 auto-loads it, proven in `.next` bundle): Sentry.init (DSN-gated) + `onRouterTransitionStart` export, manual error listeners removed (SDK auto-captures); `src/sentry.server.config.ts` + `src/sentry.edge.config.ts` (DSN-gated); `withSentryConfig(analyze(withSerwist(nextConfig)), { silent: !CI })`; `NEXT_PUBLIC_SENTRY_DSN` in env.ts (`.catch`) + `.env.example` placeholder + `.env.local` real DSN (EU ingest)
+  - Gate: build green — passed TWICE (turbopack + withSentryConfig compose fine; no fallback needed); no "ACTION REQUIRED" after hook added
+  - Verify: `npm test` baseline pending (runs at Task 5)
 
-## Checkpoint: implementation compiles
-- [x] `npx tsc --noEmit` clean; existing rate-limit/account tests green
+## Checkpoint: SDK foundation
+- [x] Build green (turbopack) ×2, tsc clean, no DSN → no crash (all init DSN-gated)
 
-## Phase 2: Regression tests
-- [x] Task 2: Extend `rate-limit.test.ts` (7 tests) — in-memory: 4th account request in 60s rejected / capture unaffected / expiry re-allows / fail-closed in prod; Redis-path (mocked): per-bucket constructor args (`slidingWindow(3, "60 s")`, `prefix "rl:account"`), one instance per bucket; lazy-init kept
+## Phase 2: Capture wiring
+- [x] Task 2: DONE — telemetry route forwards: `client-error` → `captureMessage(level "error")`, `web-vital` → `captureMessage(level "info")` with context extras; Zod/400/204 kept; `telemetry-route.test.ts` 5/5 (mocked `@sentry/nextjs`; both kinds + invalid payload/json)
+- [x] Task 3: DONE — `Sentry.captureException(error)` added to catch blocks in `account`, `capture`, `people/reorder` routes; `auth/callback` has no try/catch (Supabase returns errors, doesn't throw) → skipped per plan; full suite 176/176 (16 files) green after edits
+- [x] Task 4: DONE — `cspReportUri(dsn)` exported from `src/proxy.ts` (regex parse; preserves EU `ingest.de.sentry.io` host); `buildCspHeader` appends `report-uri https://o<org>.ingest.<host>/api/<proj>/security/?sentry_key=<key>` when DSN set, byte-identical otherwise; `middleware.test.ts` 12/12 — helper unit cases (EU/US/invalid) + absent/present e2e via lazy-getter env mock (repo convention from account-route.test.ts; naive factory captured env at import-hoist time → swapped to getters)
 
-## Checkpoint: focused tests green
-- [x] `npx vitest run src/lib/__tests__/rate-limit.test.ts` green (7/7); lint 0 errors on all 5 touched files
+## Checkpoint: capture wiring
+- [x] Focused tests green (telemetry 5/5, middleware 12/12); full suite 181/181 sequential; build green
 
 ## Phase 3: Full verification + close-out
-- [x] Task 3: `npm test` 173/173, `npm run build` exit 0; commit `e895df8` `fix: SEC2-01 rate limiter parameterized per bucket — account-delete 3/min enforced`
-- [x] Task 4: Docs close-out — EXECUTION_SPEC §29 SEC2-01 → ✅ CLOSED (commit + evidence); DOCS_NEEDS_CODE moved to Resolved; audit §7 item 1 + §4 table row annotated DONE (commit `bc30065`)
+- [x] Task 5: DONE — full suite 181/181 sequential (`challenger.test.tsx` flaky only under file-parallelism; passes standalone ×2 — pre-existing, noted as follow-up), build exit 0, lint-staged 0; committed `83a95e1` `fix: OBS-01 Sentry wired - telemetry forwards, API 500s captured, CSP report-uri, DSN-gated` (15 files)
+- [x] Task 6: DONE — EXECUTION_SPEC §29 OBS-01 → ✅ CLOSED (TOOL-06 satisfied; TOOL-05 unchanged w/ decision; follow-ups listed); DOCS_NEEDS_CODE OBS-01 → RESOLVED + entry in Resolved; CONTEXT.md stack row/sentinels/comments/tree; README Error Tracking row; audit §3/§5/§7 DONE annotations (commit pending)
 
-## Checkpoint: SEC2-01 complete
-- [x] `rg "SEC2-01"` docs → closed-status/historical references only
-- [ ] Push after human review (`e895df8`, `bc30065`)
+## Checkpoint: OBS-01 complete
+- [ ] `rg "OBS-01" docs` → closed-status only; no doc claims telemetry is a black hole (run after docs commit)
+- [ ] Push both commits after human review; follow-ups recorded (source maps, account deleteUser branch, sampling/replay tuning, challenger flake)

@@ -174,7 +174,8 @@ graph TD
 | **Toasts** | [sonner 2.0](https://sonner.emilkowal.ski/) | Toast notifications via `ToastProvider.tsx` |
 | **Drag-and-Drop** | [@dnd-kit 6.x/10.x](https://dndkit.com/) | Do Board columns, People reorder |
 | **Env Validation** | [@t3-oss/env-nextjs 0.13](https://env.t3.gg/) | Type-safe env access with `.catch()` wrapper (never throws — invariant #1) |
-| **Logging** | [Pino 10.3](https://github.com/pinojs/pino) | Structured logging (currently a stub — transport not configured) |
+| **Logging** | [Pino 10.3](https://github.com/pinojs/pino) | Structured server logs (transport still a stub — error *reporting* now covered by Sentry instead, see next row) |
+| **Error Tracking** | [Sentry 10.70](https://sentry.io/) (`@sentry/nextjs`) | DSN-gated client/server/edge capture; `/api/telemetry` forwards web-vitals + client errors; API-route 500s captured; CSP `report-uri` (OBS-01, Aug 2026) |
 | **Rate Limiting** | [Upstash Redis + Ratelimit](https://upstash.com/) | `/api/capture` endpoint rate limiting |
 | **Testing** | [Vitest 4.1](https://vitest.dev/) + [Playwright 1.61](https://playwright.dev/) | 144 unit/integration tests pass; 2 Playwright E2E specs |
 

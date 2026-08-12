@@ -33,6 +33,7 @@ Presense is a personal productivity web app for a solo user — a second brain t
 | Rate limiting | Upstash Redis + Ratelimit | 1.38.0 / 2.0.8 |
 | Env validation | `@t3-oss/env-nextjs` (non-throwing `.catch()` config) | 0.13.11 |
 | Logging | Pino + `pino-pretty` | 10.3.1 |
+| Error/Perf monitoring | `@sentry/nextjs` | 10.70.0 | DSN-gated client/server/edge init; telemetry forwards; CSP `report-uri` (OBS-01, Aug 12, 2026) |
 | Icons | Lucide React | 1.17.0 |
 | Drag-and-drop | `@dnd-kit/{core,sortable,utilities}` | 6.x / 10.x / 3.x |
 | Testing | Vitest + Playwright | 4.1.9 / 1.61.1 |
@@ -78,7 +79,7 @@ Presense is a personal productivity web app for a solo user — a second brain t
 | Type files | 2 | `database.types.ts` (733 lines, generated), `calendar.ts` (14 lines) |
 | Supabase migrations | 25 | dual naming: `001_`–`009_` then timestamped `20260628…` |
 | Edge functions | 2 | `cron_cleanup` (30-day hard-delete), `cron_recurrence` (recurring task generation) |
-| Test files | 16 | 2742 lines total; `phase4.test.tsx` largest at 1021 lines; 167 tests pass (Aug 10, 2026) |
+| Test files | 16 | 2742 lines total; `phase4.test.tsx` largest at 1021 lines; 181 tests pass (Aug 12, 2026) |
 | Playwright specs | 2 | `sanity.spec.ts` (9 lines), `realtime.spec.ts` (92 lines) |
 | GitHub workflows | 8 | ci, eslint, osv-scanner, semgrep, sonarcloud, sonarqube, trivy |
 | Coverage thresholds | 50% lines / 50% functions / 40% branches | low — flagged in audit |
@@ -145,7 +146,7 @@ src/app/
 │   ├── account/route.ts                # Server-only, uses SUPABASE_SERVICE_ROLE_KEY for auth.admin.deleteUser
 │   ├── capture/route.ts                # NLP routing server endpoint (rate-limited)
 │   ├── people/reorder/route.ts         # DnD reorder
-│   └── telemetry/route.ts              # Error tracking endpoint (currently console.warn — black hole)
+│   └── telemetry/route.ts              # Error tracking endpoint — forwards client-error/web-vital to Sentry (OBS-01, Aug 12, 2026)
 └── ~offline/page.tsx                   # PWA offline fallback (tilde prefix is Next 16 convention)
 ```
 
@@ -228,10 +229,10 @@ All three themes override text colors in light mode correctly (warm since July 5
 | `src/lib/env.ts` | Environment variable access via `@t3-oss/env-nextjs` with `.catch(() => logAndReturnEmpty(...))` — NEVER throws | Before touching env code |
 | `src/lib/supabase.ts` | Browser Supabase client | Before touching client queries |
 | `src/lib/supabase-server.ts` | Server Supabase client | Before touching server queries |
-| `src/lib/logger.ts` | Pino logger (27-line stub — no transport configured; browser logs stay in console, server logs to stdout) | Before touching logging |
+| `src/lib/logger.ts` | Pino logger (27-line stub — no transport configured; browser logs stay in console, server logs to stdout; Sentry covers error context since OBS-01, Aug 12, 2026 — log-drain remains TOOL-05) | Before touching logging |
 | `src/lib/rate-limit.ts` | Upstash Redis rate limiting — silently returns `null` in production if env vars absent (TOOL-08) | Before touching rate limiting |
 | `src/proxy.ts` | Next.js 16 proxy (middleware) — CSP nonce, auth, cookie forwarding via `cookiesToSet` array | Before touching middleware |
-| `src/instrumentation-client.ts` | Global `window.error` + `unhandledrejection` handlers → `/api/telemetry` | Before touching error tracking |
+| `src/instrumentation-client.ts` | Client Sentry init (Next 16 client instrumentation, auto-loaded) — browser SDK auto-captures `window error`/`unhandledrejection`; exports `onRouterTransitionStart` (OBS-01, Aug 12, 2026) | Before touching error tracking |
 | `src/store/useAppStore.ts` | Zustand store (UI state, settings, modals) | Before touching global state |
 | `src/components/providers/RealtimeProvider.tsx` | Shared Supabase Realtime channels — ref-counted, 5-second teardown debounce | Before touching realtime |
 | `src/components/layout/MotionProvider.tsx` | LazyMotion + MotionConfig wrapper (`features={domMax} strict`) | Before touching animation |
@@ -300,7 +301,7 @@ No calendar integration, no native mobile/desktop apps, no AI features (despite 
 - 0 `aria-live` regions (realtime changes invisible to screen readers).
 - ~~0 `beforeunload`/`isDirty` guards (BUG-42 — accidental close loses form data)~~ — **Fixed Aug 10, 2026** (commit `3e555a0`): `useUnsavedGuard` hook + guards in all 4 Sheet-based forms (TaskAddPanel, AddPersonPanel, LocationAddPanel, ExploreDrawer). Note: RHF's destructured `isDirty` is non-reactive for unwatched fields and `setValue` never marks dirty without `shouldDirty: true` — panels use baseline-snapshot comparison instead. See `EXECUTION_SPEC.md` BUG-42.
 - ~~0 skip-to-content link (A11Y-03)~~ — **Fixed** (`(app)/layout.tsx`).
-- `/api/telemetry` endpoint only does `console.warn` — black hole in production (TOOL-06 / Sentry not installed).
+- ~~`/api/telemetry` endpoint only does `console.warn` — black hole in production (TOOL-06 / Sentry not installed).~~ **FIXED Aug 12, 2026 (OBS-01, commit `83a95e1`)** — forwards `client-error`/`web-vital` to Sentry (`captureMessage`); API-route catch blocks `captureException`; CSP `report-uri` derived from the DSN in `proxy.ts`.
 
 ### ROOT PATTERN 8 — CI/CD Has Minimum Viable Gates (Medium)
 
@@ -457,7 +458,9 @@ Presense-main/
 │   ├── lib/                     # 15 lib modules + __tests__/ (13 test files)
 │   ├── store/useAppStore.ts     # Zustand store
 │   ├── types/                   # database.types.ts (generated), calendar.ts
-│   ├── instrumentation-client.ts # Global error handlers
+│   ├── instrumentation-client.ts # Client Sentry init (Next 16 client instrumentation — OBS-01, Aug 12, 2026)
+│   ├── sentry.server.config.ts   # DSN-gated Sentry init (Node runtime)
+│   ├── sentry.edge.config.ts     # DSN-gated Sentry init (edge runtime)
 │   └── proxy.ts                 # Next 16 middleware (proxy, not middleware)
 ├── supabase/
 │   ├── config.toml

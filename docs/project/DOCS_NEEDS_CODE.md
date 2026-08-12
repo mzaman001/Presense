@@ -24,7 +24,7 @@
 
 ### External audit (Aug 8, 2026) — Critical findings (triage: `EXECUTION_SPEC.md` §29)
 
-**OBS-01 — No production error/performance monitoring is wired up** — OPEN (ticket `OBS-01`)
+**OBS-01 — No production error/performance monitoring is wired up** — ✅ **RESOLVED Aug 12, 2026** (commit `83a95e1`; see Resolved section below)
 
 - **Files:** `src/app/api/telemetry/route.ts:26-33`, `src/lib/logger.ts:1-24`, `package.json`
 - **What's wrong:** Three layers look complete but ship nothing durable: `/api/telemetry` Zod-validates then `console.warn`s and returns 204 (data discarded — ephemeral, unalertable serverless log stream); `logger.ts` is Pino with no transport; `package.json` has no `@sentry/*`. There is currently no way to learn something broke in production except a user reporting it. This also leaves the reporting contracts of `AGENTS.md` invariant #1 and BUG-38's `safeMutate()` with no sink.
@@ -500,6 +500,11 @@
 
 - **Fix (commit `e895df8`):** `rate-limit.ts` now uses a bucket registry — `checkRateLimit(bucket, key, maxRequests, windowMs)` constructs one `Ratelimit` per endpoint with its own `slidingWindow(maxRequests, windowMs)` and `prefix: "rl:<bucket>"`. Call sites: `account` (3/60 s), `capture` (100/60 s), `people-reorder` (30/60 s). The previous singleton hardcoded 100/min + `rl:capture` for everyone, so account deletion shared capture's limit.
 - **Verified:** `rate-limit.test.ts` (7 tests) — 4th account-delete request within a minute rejected; capture counter unaffected by account traffic; window expiry re-allows; fail-closed in production retained; Redis-backed path proven via constructor assertions (per-bucket `slidingWindow(3, "60 s")`, `prefix "rl:account"`, one instance per bucket). Full suite 173/173, build green, lint 0.
+
+### OBS-01 — No production error/performance monitoring (Aug 12, 2026)
+
+- **Fix (commit `83a95e1`):** Sentry (`@sentry/nextjs@10.70.0`) wired end-to-end, DSN-gated. Client init in `src/instrumentation-client.ts` (Next 16 auto-loads it — it was a **live** pipeline to the discarding telemetry route, so it was repurposed, not deleted; manual error listeners removed — the browser SDK auto-captures `window error`/`unhandledrejection`), plus `sentry.server.config.ts` / `sentry.edge.config.ts`; `withSentryConfig(analyze(withSerwist(nextConfig)))`; `NEXT_PUBLIC_SENTRY_DSN` in `env.ts` (`.catch()` pattern) + `.env.example`. `/api/telemetry` forwards (`client-error` → `captureMessage` error level; `web-vital` → info; Zod/400/204 kept). Explicit `Sentry.captureException` in the `account`/`capture`/`people/reorder` catch blocks. CSP `report-uri` derived from the DSN in `src/proxy.ts` (EU ingest host preserved; byte-identical without DSN).
+- **Verified:** `telemetry-route.test.ts` 5 tests (both kinds + invalid payload/JSON), `middleware.test.ts` 12 tests (EU/US DSN → security endpoint; absent + present end-to-end), full suite 181/181 sequential, build green ×2, lint-staged 0. Follow-ups: source-map uploads (`SENTRY_AUTH_TOKEN`), account `deleteUser` error-branch capture candidate, sampling/replay tuning after first production week.
 
 ---
 

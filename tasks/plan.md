@@ -1,113 +1,116 @@
-# Implementation Plan: BUG-42 — Unsaved-changes warning
+# Implementation Plan: OBS-01 — Wire a real production error/performance sink
+
+> **✅ COMPLETE Aug 12, 2026 — commit `83a95e1` (`fix: OBS-01 Sentry wired — telemetry forwards, API 500s captured, CSP report-uri, DSN-gated`).**
+> Deltas from this plan, recorded at execution: (1) plan-mode's "`instrumentation-client.ts` is imported nowhere / dead" claim was **wrong** — Next 16 auto-loads it as client instrumentation (proven present in the `.next` client bundle), so the file was **repurposed** as the client init site (per current SDK v10 docs naming) instead of deleted; (2) SDK v10 naming is `instrumentation-client.ts` + `sentry.server.config.ts` + `sentry.edge.config.ts` — no `sentry.client.config.ts`; (3) Turbopack + `withSentryConfig` compose cleanly, so the documented fallback to `@sentry/browser`+`@sentry/node` was **not** needed; (4) all init files `release` from `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` fallback `"development"`. Full suite 181/181 sequential; `npm run build` green ×2; lint-staged 0 errors.
 
 ## Overview
 
-The audit ticket (EXECUTION_SPEC `BUG-42`, verified still open Aug 10, 2026: zero `beforeunload` hits) asks for a dirty-form guard before closing a sheet or navigating away. Read-only planning found the ticket is **partially implemented already**: TaskAddPanel, AddPersonPanel, and LocationAddPanel each have a `handleClose` + "Discard Changes?" `ConfirmModal` wired to `Sheet`'s `onClose`, and every Sheet close path (X button, backdrop, Escape, drag-dismiss — `Sheet.tsx:35,51,66,99`) routes through it.
-
-What is **genuinely missing**:
-
-1. **`beforeunload` — 0 occurrences repo-wide.** Browser refresh / tab close / back-out while a dirty sheet is open loses data with no prompt.
-2. **ExploreDrawer — no guard at all.** Plain `useState` form (title, url, note, type, tags, linkedThreadId); `onClose` passes straight through to `Sheet` (`ExploreDrawer.tsx:230`).
-3. **RHF `isDirty` blind spots.** TaskAddPanel's non-RHF fields — `subtasks`, `timeEstimate`, `linkedPeopleIds`, `freq`/`days`/`customRRule`/`customInterval`, `startDate` — and AddPersonPanel's `color` are plain state; edits to them never set `isDirty`, so the existing close guard silently misses them (LocationAddPanel is fully covered: both fields are RHF-registered).
+`EXECUTION_SPEC` §29 `OBS-01` (Critical for release): no layer ships error/telemetry data anywhere durable. Verified in plan mode: `/api/telemetry` Zod-validates then `console.warn`s and returns 204 (data discarded); `logger.ts` is Pino with no transport; `package.json` has no Sentry. **Bonus finding:** `src/instrumentation-client.ts` (window `error`/`unhandledrejection` handlers → `/api/telemetry`) is **imported nowhere** — grep across `src` returns zero references — so client errors have never been captured at all. `WebVitalsReporter.tsx` (root layout) does POST web vitals to `/api/telemetry`, which then discards them. Plan: adopt **Sentry** (the sink named by `BUG-38`'s `safeMutate()` "report to Sentry once TOOL-06 lands" contract and by `TOOL-06`/`OBS-01`), wire the telemetry endpoint + API-route catch blocks + client to it, DSN-gated so the app never crashes or breaks when the DSN is absent (invariant #1 culture).
 
 ## Architecture Decisions
 
-- **`useUnsavedGuard(isDirty)` hook** (new, `src/hooks/`) registers a `beforeunload` listener only while dirty (add/remove in effect, legacy `preventDefault() + returnValue = ""` pattern). Per-panel wiring, no global store plumbing.
-- **Snapshot-compare at close time** for non-RHF fields, not per-change state wiring: capture a baseline ref of the plain-state fields when the sheet opens (same effect that resets the form), compare at close. Zero new `onChange` churn, and it naturally excludes transient state like `newCategoryName`.
-- **Sheet-close guard stays local per panel** (existing pattern): `handleClose` checks combined dirty (RHF `isDirty` OR snapshot-diff), shows the existing "Discard Changes?" `ConfirmModal` pattern. Successful saves already call `onClose()` directly, so no false warnings.
-- **`beforeunload` only covers browser-level unload.** In-app Next.js client-side navigation while a sheet is open unmounts the sheet without firing it — accepted limitation for this ticket (noted in Risks; a router-level guard is a separate decision).
-- No code changes to `Sheet.tsx` (its close contract is fine), no changes to `ConfirmModal`.
+- **Sentry via `@sentry/nextjs` (primary), not a hand-rolled pipeline.** One SDK wires client + server + edge, auto-instruments App Router route handlers (unhandled throws are captured without per-route code), and the ticket + `TOOL-06` both name it. **Documented fallback:** if `withSentryConfig` breaks the Turbopack build (Sentry's webpack-plugin lineage + Next 16 + Serwist's config wrapper — the highest-risk integration point), switch to `@sentry/browser` + `@sentry/node` with manual `Sentry.init` in a small `src/lib/sentry.ts`; every capture site below already calls the SDK explicitly, so the fallback changes only the init/wiring, not the call sites. Vercel Log Drains rejected: no grouping/alerting, and the BUG-38 contract literally says "Sentry".
+- **DSN-gated, never-throwing:** `NEXT_PUBLIC_SENTRY_DSN` goes in `env.ts`'s client block with the same `.catch(() => logAndReturnEmpty(...))` pattern (invariant #1). When absent, `Sentry.init` no-ops and capture calls are safe no-ops. No DSN = exactly today's behavior, plus nothing crashes.
+- **`/api/telemetry` stays the intake point and forwards:** keeps the existing Zod schema + 204 contract (WebVitalsReporter and any future beacons keep working); `client-error` → `captureMessage(level: "error", context)`, `web-vital` → `captureMessage(level: "info")` (Sentry's own web-vitals capture in the browser SDK may duplicate some vitals — accepted, noted; dedupe later if noisy).
+- **API routes: explicit `captureException` in existing try/catch blocks.** Our routes swallow errors (`catch { logger.error(...); return 500 }`), so automatic instrumentation alone won't see them. The 4 try/catch routes get one line each: `account`, `capture`, `people/reorder`, and `auth/callback` if it has a catch (checked at execution).
+- **Client wiring replaces the dead file:** create `sentry.client.config.ts` (SDK convention, auto-injected by `withSentryConfig`) and **delete `src/instrumentation-client.ts`** — it is dead code (zero references; not under `ui/`, not a migration, safe per invariant #6) and its job is superseded by the browser SDK's automatic `window error`/`unhandledrejection` capture. CONTEXT.md lists it — update CONTEXT.
+- **CSP `report-uri` (audit §5):** in `src/proxy.ts`, when the DSN is set, derive the Sentry security-endpoint URL from it (`https://o<org>.ingest.sentry.io/api/<project>/security/?sentry_key=<key>`) and append `report-uri` to `buildCspHeader`'s output; absent DSN → no directive (proxy stays deterministic).
+- **`logger.ts` (TOOL-05) deliberately unchanged:** Pino stays for local/structured server logs; OBS-01 does not add a log-drain transport. Decision recorded in the OBS-01 close-out: Sentry captures errors/context; a separate log-drain is `TOOL-05`'s scope, to be evaluated against Sentry breadcrumbs (per TOOL-05's own "do not stand up two overlapping systems" requirement).
+- **Release tag:** pass `release: <git sha>` (reuse the `revision` pattern from `next.config.ts`) + `environment: process.env.NODE_ENU` in init files so events group by deploy.
 
 ## Task List
 
-### Phase 1: Foundation
+### Phase 1: Foundation — SDK install + init
 
-- [ ] **Task 1: `useUnsavedGuard` hook + test** (XS, 2 files)
-  - **Description:** New hook `src/hooks/useUnsavedGuard.ts` — `useUnsavedGuard(isDirty: boolean)`: while `isDirty`, add a `beforeunload` listener that calls `e.preventDefault()` and sets `e.returnValue = ""` (legacy-compat so the browser shows the prompt); remove on `false`/unmount. Follows existing hook style (`useMediaQuery`-like, no `motion`).
+- [ ] **Task 1: Install `@sentry/nextjs`, create init files, wrap config, env plumbing** (M, ~5 files)
+  - **Description:** `npm i @sentry/nextjs`. Create `sentry.client.config.ts` and `sentry.server.config.ts` (DSN-gated `Sentry.init`, `release` from git sha, `environment`); wrap `next.config.ts` with `withSentryConfig` (`withSentryConfig(analyze(withSerwist(nextConfig)))`). Add `NEXT_PUBLIC_SENTRY_DSN` to `env.ts` client block with the `.catch` pattern and to `.env.example`. Delete dead `src/instrumentation-client.ts`.
   - **Acceptance criteria:**
-    - [ ] `rg 'beforeunload' src` shows exactly the hook file (all panels route through it)
-    - [ ] Listener present while dirty, removed when not / on unmount (assertable via dispatched `beforeunload` `defaultPrevented`)
+    - [ ] `npm run build` (Turbopack) green with the SDK wrapped in config — the riskiest step, verified first; if it breaks, execute the documented fallback (`@sentry/browser` + `@sentry/node`, manual `src/lib/sentry.ts` init) and record why in the PR
+    - [ ] `npx tsc --noEmit` clean; env.ts still never throws with no DSN set
+    - [ ] `rg "instrumentation-client" src` → 0 hits (file deleted)
   - **Verification:**
-    - [ ] New test passes: `npx vitest run src/hooks` (jsdom; `renderHook` + `window.dispatchEvent(new Event("beforeunload", { cancelable: true }))`)
-    - [ ] `npm run build` succeeds
+    - [ ] `npm run build`; `npx tsc --noEmit`; `npm test` (baseline suite unchanged)
+    - [ ] Manual: start dev with no DSN → app loads, zero console errors from Sentry
   - **Dependencies:** None
-  - **Files likely touched:** `src/hooks/useUnsavedGuard.ts` (new), `src/hooks/__tests__/useUnsavedGuard.test.tsx` (new)
+  - **Files likely touched:** `package.json` + lockfile, `sentry.client.config.ts` (new), `sentry.server.config.ts` (new), `next.config.ts`, `src/lib/env.ts`, `.env.example`, deleted `src/instrumentation-client.ts`
+  - **Estimated scope:** Medium (5-7 files incl. lockfile)
+
+### Checkpoint: SDK foundation
+- [ ] Build green (turbopack), tsc clean, full suite still green, no DSN → no crash
+
+### Phase 2: Capture wiring
+
+- [ ] **Task 2: `/api/telemetry` forwards to Sentry instead of `console.warn`** (S, 2 files)
+  - **Description:** Replace `console.warn("[telemetry]", parsed.data)` with per-kind capture: `client-error` → `Sentry.captureMessage(message, { level: "error" })` with stack/source/path in `contexts`; `web-vital` → `Sentry.captureMessage(name, { level: "info" })` with value/rating/path. Keep Zod validation, 400s, and 204. New test `src/app/api/__tests__/telemetry-route.test.ts`: mock `@sentry/nextjs`; assert `captureMessage` called with `level: "error"` for a `client-error` payload and `level: "info"` for a `web-vital` payload; 400 on invalid payload; 204 with no DSN still works (capture no-ops).
+  - **Acceptance criteria:**
+    - [ ] No `console.warn` remains in `telemetry/route.ts` (`rg "console.warn.*telemetry"` → 0)
+    - [ ] Both payload kinds reach `Sentry.captureMessage` with correct levels (tested); invalid payloads still 400; valid → 204
+  - **Verification:**
+    - [ ] `npx vitest run src/app/api/__tests__/telemetry-route.test.ts`; `npx tsc --noEmit`
+  - **Dependencies:** Task 1
+  - **Files likely touched:** `src/app/api/telemetry/route.ts`, `src/app/api/__tests__/telemetry-route.test.ts` (new)
   - **Estimated scope:** Small (2 files)
 
-### Checkpoint: hook + test green
-- [ ] `npm test` passes (expect 145+ tests), `npm run build` succeeds
-
-### Phase 2: Panel guards (independent — parallelizable)
-
-- [ ] **Task 2: TaskAddPanel — cover non-RHF fields** (S, 1 file)
-  - **Description:** In the existing `isOpen` reset effect (`TaskAddPanel.tsx:262-342`), also snapshot `subtasks`, `timeEstimate`, `linkedPeopleIds`, `freq`, `days`, `customRRule`, `customInterval`, `startDate` into a `useRef` baseline (reset on every open). `handleClose` (line 130) becomes: warn if `isDirty || snapshotDiffers()`. Wire `useUnsavedGuard(isDirty || snapshotDiffers())`. Delete-confirm and save paths already call `onClose()` directly — untouched.
+- [ ] **Task 3: `captureException` in the API-route catch blocks** (S, 4-5 files)
+  - **Description:** Add `Sentry.captureException(error)` alongside `logger.error(...)` in the catch blocks of `account/route.ts`, `capture/route.ts`, `people/reorder/route.ts`, and `auth/callback/route.ts` (if it has a try/catch). No response-shape changes. Existing route tests (e.g. `account-route.test.ts`) must stay green — if a test file mocks the route module, add `@sentry/nextjs` to the mock list as needed.
   - **Acceptance criteria:**
-    - [ ] Adding a subtask / time estimate / linked person / repeat setting, then closing → "Discard Changes?" modal appears
-    - [ ] Opening with no edits → closes without prompt (both add and edit modes)
-    - [ ] Browser refresh while dirty → native leave prompt; clean state → no prompt
+    - [ ] Every `catch (error) { logger.error` block in the 4 routes also calls `Sentry.captureException` (`rg -c "captureException" src/app/api` → ≥ 4)
+    - [ ] All existing API-route tests pass unchanged in behavior
   - **Verification:**
-    - [ ] `npm test` (extend `src/lib/__tests__/phase4.test.tsx` TaskAddPanel block: edit subtask state, click close button, assert Discard modal)
-    - [ ] `npm run build`
-    - [ ] Manual: /do → Add Task → type title → add subtask → close → prompt; Cancel keeps sheet open
+    - [ ] `npx vitest run src/app/api` (or the routes' test files); `npm run build`
   - **Dependencies:** Task 1
-  - **Files likely touched:** `src/components/features/TaskAddPanel.tsx`, `src/lib/__tests__/phase4.test.tsx`
-  - **Estimated scope:** Medium (2 files)
+  - **Files likely touched:** `src/app/api/{account,capture,people/reorder}/route.ts`, `src/app/auth/callback/route.ts`, possibly one test file
+  - **Estimated scope:** Small (4-5 files)
 
-- [ ] **Task 3: AddPersonPanel — cover `color`** (XS, 1 file)
-  - **Description:** Snapshot `color` (plain state, line 43) into a ref alongside the `isOpen` reset effect (line 79); `handleClose` (line 70) warns if `isDirty || color !== baseline`. Wire `useUnsavedGuard`. The relationship fix-up in the open effect must not count as user dirt (it runs at open, before any baseline snapshot is taken — verify ordering: snapshot after fix-up).
+- [ ] **Task 4: CSP `report-uri` → Sentry security endpoint when DSN set** (XS-S, 1 file)
+  - **Description:** In `src/proxy.ts`, parse `NEXT_PUBLIC_SENTRY_DSN` (`https://<key>@o<org>.ingest.sentry.io/<project>`) into the Sentry security-report endpoint URL; when present, append `report-uri <url>` (and keep the directive list otherwise unchanged); when absent, the CSP string is byte-identical to today.
   - **Acceptance criteria:**
-    - [ ] Choosing an avatar color then closing → prompt; picking the same color (re-click) → no prompt
-    - [ ] No edits → no prompt
+    - [ ] With DSN set, `buildCspHeader` output contains `report-uri` pointing at the derived ingest URL; without DSN, output identical to current
+    - [ ] CSP tests (if any exist for proxy) pass; otherwise covered by unit test on `buildCspHeader` if it's exported — if not exported, verify via a focused test that imports proxy's helper after exporting it
   - **Verification:**
-    - [ ] `npm test` (phase3/phase4 AddPersonPanel coverage — extend with color-then-close case)
-    - [ ] `npm run build`
-    - [ ] Manual: /remember/people → Add Person → pick a color → close → prompt
+    - [ ] `npx vitest run src/proxy` (or proxy test file); `npx tsc --noEmit`
   - **Dependencies:** Task 1
-  - **Files likely touched:** `src/components/features/AddPersonPanel.tsx`, one test file
-  - **Estimated scope:** Small (2 files)
+  - **Files likely touched:** `src/proxy.ts` (+ its test if one exists)
+  - **Estimated scope:** XS-S (1-2 files)
 
-- [ ] **Task 4: LocationAddPanel — beforeunload only** (XS, 1 file)
-  - **Description:** Both fields are RHF-registered; close guard already complete. Add `useUnsavedGuard(isDirty)` only. No snapshot needed.
+### Checkpoint: capture wiring
+- [ ] Focused tests green; tsc clean; build green
+
+### Phase 3: Full verification + close-out
+
+- [ ] **Task 5: Full suite + build + commit** (XS, 0 files)
+  - **Description:** Full `npm test`, `npm run build`, lint on staged files, then commit `fix: OBS-01 Sentry wired — telemetry forwards, API 500s captured, CSP report-uri, DSN-gated`. Human reviews before push.
   - **Acceptance criteria:**
-    - [ ] Browser refresh while fields edited → native prompt; clean → none
-  - **Verification:**
-    - [ ] `npm run build`, `npm test`
-    - [ ] Manual: /remember/locations → Log Location → type → refresh → prompt
-  - **Dependencies:** Task 1
-  - **Files likely touched:** `src/components/features/LocationAddPanel.tsx`
-  - **Estimated scope:** XS (1 file)
+    - [ ] `npm test` green (173+ new), `npm run build` exit 0, lint 0 errors on touched files
+  - **Verification:** as above
+  - **Dependencies:** Tasks 2-4
+  - **Estimated scope:** XS
 
-- [ ] **Task 5: ExploreDrawer — full guard (close + beforeunload)** (S, 1-2 files)
-  - **Description:** ExploreDrawer has no dirty concept. Snapshot baseline of `title, url, note, type, tags, linkedThreadId` in the `isOpen` effect (line 64) for both add and edit mode (edit baseline = item values). Add `showUnsavedWarning` state, `handleClose` wrapper (`dirty = JSON-diff(current, baseline)` → ConfirmModal "Discard Changes?", else `onClose`), wire `handleClose` to `Sheet`, reset baseline after successful `handleSave` (and after delete). Wire `useUnsavedGuard(dirty)`.
+- [ ] **Task 6: Docs close-out** (S, 4-5 files)
+  - **Description:** `EXECUTION_SPEC.md` §29 `OBS-01` → ✅ CLOSED (commit + evidence; note `TOOL-06`/`INFRA-01` error-tracking requirement satisfied by this ticket, `TOOL-05` unchanged with the recorded decision). `DOCS_NEEDS_CODE.md`: move `OBS-01` to Resolved; mark the pre-existing "/api/telemetry is a black hole" entry Resolved; leave the `logger.ts` entry open (TOOL-05) with a cross-note. `CONTEXT.md`: telemetry/logger/error-handler rows + ROOT PATTERN 7's "black hole" bullet; delete the `instrumentation-client.ts` row (file removed). `README.md`: replace the "Logging — stub" line. Audit doc §7 item 2 → DONE annotation.
   - **Acceptance criteria:**
-    - [ ] Typing a note (or title/url/type/tags/thread link) then closing via X, backdrop, Escape, or drag → prompt; confirm discards, cancel keeps sheet open
-    - [ ] Opening untouched in both add and edit mode → no prompt
-    - [ ] After successful save → close never prompts
-  - **Verification:**
-    - [ ] `npm test` (extend phase4 with ExploreDrawer: type note, close, assert modal; save, close, assert none)
-    - [ ] `npm run build`
-    - [ ] Manual: /explore → Save to Explore → type note → close → prompt; Save → close → none
-  - **Dependencies:** Task 1
-  - **Files likely touched:** `src/components/features/ExploreDrawer.tsx`, one test file
-  - **Estimated scope:** Medium (2 files)
+    - [ ] `rg "OBS-01" docs` → closed-status references only; no doc claims telemetry is a black hole
+  - **Verification:** grep across `docs/`
+  - **Dependencies:** Task 5
+  - **Files likely touched:** `docs/plans/EXECUTION_SPEC.md`, `docs/project/DOCS_NEEDS_CODE.md`, `docs/project/CONTEXT.md`, `README.md`, `docs/audits/2026-08-08-EXTERNAL-AUDIT.md`
+  - **Estimated scope:** Small (5 files)
 
-### Checkpoint: BUG-42 complete
-- [ ] `npm test` green (144 baseline + new tests), `npm run build` green
-- [ ] `rg 'beforeunload' src` → exactly `src/hooks/useUnsavedGuard.ts`; `rg 'showUnsavedWarning' src` → the 4 guarded panels
-- [ ] Manual sweep: each of the 4 panels — dirty-close prompts, clean-close silent, save-then-close silent
-- [ ] Commit `fix: BUG-42 unsaved-changes guard — beforeunload hook + ExploreDrawer + non-RHF field coverage` (+ doc close-out commit `docs: BUG-42 close-out ...` updating EXECUTION_SPEC ticket, §24.3/§24.7 rows, DOCS_NEEDS_CODE, CONTEXT.md, AGENTS.md §4.6-if-touched) — human reviews before pushing
+### Checkpoint: OBS-01 complete
+- [ ] All tasks done; commit + docs commit pushed after human review
+- [ ] Remaining follow-ups recorded, not done here: Sentry source-map upload, Sentry release dashboard wiring, `TOOL-05` log-drain decision
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| `beforeunload` fires on every navigation in some browsers / is ignored by others (modern Chrome shows no custom text) | Low — prompt is browser-styled, may not appear in some contexts | Standard legacy pattern (`returnValue` + `preventDefault`); only registered while dirty, so it never fires spuriously |
-| Baseline snapshot drift: field changed programmatically (e.g., chrono auto-fill sets `deadline` — RHF, covered; `setParsedDeadline` isn't part of the manual snapshot) | Med — false prompts or missed prompts | Snapshot only the named plain-state fields, taken at open after all reset logic; RHF fields left to `isDirty`. Task 2 acceptance includes "open with no edits → no prompt" for both modes |
-| AddPersonPanel relationship fix-up (open effect) counts as dirt | Low | Snapshot taken after the fix-up runs; verify ordering in Task 3 |
-| In-app Next.js client navigation unmounts sheets without `beforeunload` | Med (known limitation) | Documented in plan + ticket close-out; router-level guard is a follow-up decision, out of BUG-42 scope |
+| `withSentryConfig` breaks the Turbopack build (Sentry webpack-plugin lineage, double-wrapped config with Serwist, Next 16) | High — blocks everything | Task 1 gates on a green `npm run build` immediately after install; documented fallback to `@sentry/browser` + `@sentry/node` with identical call sites |
+| No DSN available (Sentry account/credentials) | Med — code lands inert | DSN-gated design: everything ships and no-ops safely; human adds the DSN to Vercel env + local `.env` later; nothing crashes either way |
+| SDK bundle cost on the measured login route (PERF-09 budget gate at 165 KiB gz) | Med | `@sentry/nextjs` client only ships when `NEXT_PUBLIC_SENTRY_DSN` is set at build time (SDK behavior); budget gate in CI will catch a breach — if it does, lazy-init via dynamic import and re-measure per §26.1 |
+| Double-reporting (manual telemetry beacons + SDK auto-capture) | Low | `client-error` beacons stop existing once the dead file is deleted; web-vitals duplication (beacon + SDK) accepted and noted |
+| `removeConsole` (PERF-13, open) strips `console.*` in prod — Sentry unaffected | Low | Sentry captures programmatically, not via console; no dependency |
+| CI `npm run lint` catches pre-existing errors in files I touch (lint-staged blocks commits) | Med | Same as previous tickets: fix or targeted-disable with justification, keep 0 errors on staged files |
 
-## Open Questions (resolved Aug 10, 2026 — human-approved scoping)
+## Open Questions
 
-- ~~SettingsModal debounced-autosave loss window (close within 1s drops pending save)~~ → **Separate follow-up ticket** (noted as ticket candidate in report; flush-on-close is a distinct concern from dirty-guarding).
-- ~~CaptureModal in-progress text loss~~ → **Out of scope** (capture is designed to be instant; audit didn't name it).
-- ~~In-app Next.js client-side navigation while a sheet is open~~ → **Out of scope**; documented limitation — `beforeunload` covers browser-level unload only; router-level guard is a follow-up decision.
+- **Sentry account/DSN:** I will not create a Sentry account. The code is DSN-gated; whoever owns deployment adds `NEXT_PUBLIC_SENTRY_DSN` to Vercel + `.env`. If the human has a DSN ready, provide it before Task 5's verification so the manual check ("error appears in tracker") can be real; otherwise the unit tests + code review stand in, matching SEC2-01's precedent.
+- **`@sentry/nextjs` vs fallback:** decided in Architecture Decisions (primary + documented fallback) — no separate approval needed unless the human objects.
