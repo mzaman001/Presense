@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    removeConsole: { exclude: ["error"] },
   },
   turbopack: {},
   async headers() {
