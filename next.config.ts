@@ -14,6 +14,11 @@ const withSerwist = withSerwistInit({
   disable: process.env.NODE_ENV !== "production",
 });
 
+const sentryRelease =
+  process.env.SENTRY_RELEASE ||
+  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
+  "development";
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -67,5 +72,9 @@ const analyze = withBundleAnalyzer({
 });
 
 export default withSentryConfig(analyze(withSerwist(nextConfig)), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  release: { name: sentryRelease },
   silent: !process.env.CI,
 });
