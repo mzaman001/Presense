@@ -1,0 +1,2 @@
+[auth]
+token=env:SENTRY_AUTH_TOKEN

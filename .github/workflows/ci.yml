@@ -29,6 +29,13 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-key
+          # Sentry release + source-map upload (OBS-02, Aug 13, 2026):
+          # withSentryConfig skips the upload silently when SENTRY_AUTH_TOKEN is
+          # absent, so these may stay empty until the secrets are added.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_RELEASE: ${{ github.sha }}
       - name: Bundle budget gate (PERF-09)
         run: |
           ANALYZE=true npx next build --webpack
