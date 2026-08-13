@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useContext, useEffect, useRef } from "react";
+import { QueryClientContext } from "@tanstack/react-query";
 import { useDebouncedCallback } from "use-debounce";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 import { logger } from "@/lib/logger";
-import { useRealtimeContext } from "@/components/providers/RealtimeProvider";
+import { RealtimeContext } from "@/components/providers/RealtimeProvider";
 
 export interface UseRealtimeOptions {
   /* @todo: Untyped usage justified per TOOL-01 */
@@ -16,22 +16,10 @@ export interface UseRealtimeOptions {
 export function useRealtime(
   table: string,
   onUpdate?: () => void,
-  options?: UseRealtimeOptions
+  options?: UseRealtimeOptions,
 ) {
-  let queryClient: ReturnType<typeof useQueryClient> | null = null;
-  try {
-    queryClient = useQueryClient();
-  } catch (e) {
-    // Suppress error if QueryClient is not available (e.g. in standalone tests)
-  }
-
-  // Try to consume useRealtimeContext()
-  let context: ReturnType<typeof useRealtimeContext> | undefined = undefined;
-  try {
-    context = useRealtimeContext();
-  } catch (e) {
-    // context is not present (fallback path for tests)
-  }
+  const queryClient = useContext(QueryClientContext);
+  const context = useContext(RealtimeContext);
 
   const onUpdateRef = useRef(onUpdate);
 
@@ -47,7 +35,7 @@ export function useRealtime(
 
     try {
       if (queryClient) {
-        const mapping: Record<string, any[][]> = {
+        const mapping: Record<string, string[][]> = {
           items: [["tasks"], ["inbox-tasks"], ["dashboard"]],
           people: [["people_minimal"], ["people"], ["dashboard"]],
           threads: [["threads"], ["dashboard"]],
@@ -95,7 +83,9 @@ export function useRealtime(
   useEffect(() => {
     if (context) return;
 
-    logger.warn(`[Realtime] RealtimeContext is null, falling back to standalone subscription for ${table}`);
+    logger.warn(
+      `[Realtime] RealtimeContext is null, falling back to standalone subscription for ${table}`,
+    );
     const supabase = createClient();
     /* @todo: Untyped usage justified per TOOL-01 */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,9 +100,14 @@ export function useRealtime(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (payload: any) => {
             const lastMutations = useAppStore.getState().lastMutations || {};
-            const lastMutationAt = Math.max(lastMutations[table] || 0, lastMutations["_global"] || 0);
+            const lastMutationAt = Math.max(
+              lastMutations[table] || 0,
+              lastMutations["_global"] || 0,
+            );
             if (Date.now() - lastMutationAt < 500) {
-              logger.info(`[Realtime] Ignoring echo on ${table} due to recent local mutation`);
+              logger.info(
+                `[Realtime] Ignoring echo on ${table} due to recent local mutation`,
+              );
               return;
             }
             // Gate visibility INSIDE the callback, not in the effect deps
@@ -120,7 +115,7 @@ export function useRealtime(
 
             logger.info(`[Realtime] Update on ${table}:`, payload);
             debouncedUpdate(payload);
-          }
+          },
         )
         .subscribe();
     } catch (e) {
@@ -134,4 +129,3 @@ export function useRealtime(
     };
   }, [table, context, debouncedUpdate]);
 }
-
