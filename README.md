@@ -2,13 +2,18 @@
   <img src="public/icon.svg" alt="Presense" width="96" />
   <h1>Presense</h1>
   <p>A personal task, note, and relationship organizer with natural-language capture, realtime sync, and a calm, warm design. Self-hosted on Supabase.</p>
+  <p>
+    <a href="https://presense-kohl.vercel.app/"><b>Live demo</b></a> ·
+    <a href="https://github.com/mzaman001/Presense/issues">Issues</a> ·
+    <a href="docs/plans/EXECUTION_SPEC.md">Roadmap</a>
+  </p>
 </div>
 
 ## What it is
 
 Presense is a single-user web app that organizes four kinds of things in four spaces: **Do** for tasks, **Think** for threads of notes, **Remember** for people and locations, and **Explore** for a reading queue. Captures come in through one command (Ctrl+K), get parsed client-side for dates and people, and are routed to the right space automatically. Deleted items go to a global trash and are purged after 30 days. Nothing is sent to an LLM API — all parsing runs in the browser.
 
-<!-- Screenshot placeholder — uncomment and point at a real screenshot, e.g. docs/assets/screenshot-home.png -->
+<!-- Screenshot placeholder — add real screenshots to docs/assets/ and uncomment, e.g.: -->
 <!-- <p align="center"><img src="docs/assets/screenshot-home.png" alt="Presense home dashboard" width="900"/></p> -->
 
 ## Key features
@@ -63,6 +68,6 @@ Open work is tracked in [`docs/plans/EXECUTION_SPEC.md`](docs/plans/EXECUTION_SP
 
 Presense has a strict one-ticket-at-a-time development contract, written for both humans and AI agents. Before opening a PR, read [`AGENTS.md`](AGENTS.md) (the entry point) and [`docs/agents/EXECUTION_RULES.md`](docs/agents/EXECUTION_RULES.md) (the rules: one ticket per session, build + test after every change, conventional commits, status records in `EXECUTION_SPEC.md`). Pick an unblocked ticket from the spec, create a branch named after the ticket ID, and open a PR.
 
----
+## License
 
-*Two housekeeping items: (1) this README has a screenshot placeholder — add one or two real screenshots (the home dashboard and do board are the strongest candidates) and uncomment the image reference above; (2) the repository has no `LICENSE` file, so no license badge is shown — add an MIT `LICENSE` file at the repo root if you intend to publish under MIT (the previous README advertised MIT).*
+Licensed under the [MIT License](LICENSE).
