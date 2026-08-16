@@ -25,6 +25,11 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
+// INFRA-19: all status writes on entity tables go through item-lifecycle.ts
+import {
+  completeTaskPatch,
+  uncompleteTaskPatch,
+} from "@/lib/item-lifecycle";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
@@ -293,7 +298,7 @@ export default function DoPage() {
       try {
         const { error } = await supabase
           .from("items")
-          .update({ status: "done", completed_at: new Date().toISOString() })
+          .update(completeTaskPatch())
           .eq("id", id);
         if (error) throw error;
 
@@ -305,7 +310,7 @@ export default function DoPage() {
                 () =>
                   supabase
                     .from("items")
-                    .update({ status: "active", completed_at: null })
+                    .update(uncompleteTaskPatch())
                     .eq("id", id),
                 "Failed to restore task",
               );
@@ -335,7 +340,7 @@ export default function DoPage() {
         () =>
           supabase
             .from("items")
-            .update({ status: "active", completed_at: null })
+            .update(uncompleteTaskPatch())
             .eq("id", id),
         "Failed to restore task",
       );

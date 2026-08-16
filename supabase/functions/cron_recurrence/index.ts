@@ -145,7 +145,6 @@ serve(async (req) => {
               ifthen_trigger: task.ifthen_trigger,
               recurrence: task.recurrence,
               deadline: nextDate.toISOString(),
-              status: "active",
             });
             if (insertError) throw insertError;
             createdCount++;

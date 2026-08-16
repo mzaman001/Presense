@@ -28,6 +28,12 @@ import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+// INFRA-19: all status writes on entity tables go through item-lifecycle.ts
+import {
+  completeTaskPatch,
+  activateItemPatch,
+  moveItemToTrashPatch,
+} from "@/lib/item-lifecycle";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { Button } from "@/components/ui/button";
@@ -263,7 +269,7 @@ export default function HomeDashboard() {
     try {
       const { error } = await supabase
         .from("items")
-        .update({ status: "done", completed_at: new Date().toISOString() })
+        .update(completeTaskPatch())
         .eq("id", id);
       if (error) throw error;
       toast.success("Task completed");
@@ -281,7 +287,7 @@ export default function HomeDashboard() {
       if (space === "do") {
         const { success } = await safeMutate(
           () =>
-            supabase.from("items").update({ status: "active" }).eq("id", id),
+            supabase.from("items").update(activateItemPatch()).eq("id", id),
           "Failed to route to Do",
         );
         if (!success) return;
@@ -296,7 +302,6 @@ export default function HomeDashboard() {
               user_id: item.user_id,
               title: item.title,
               type: "other",
-              status: "active",
             }),
           "Failed to route to Explore",
         );
@@ -316,7 +321,6 @@ export default function HomeDashboard() {
             supabase.from("threads").insert({
               user_id: item.user_id,
               title: item.title,
-              status: "active",
               color_accent: "#2DD4BF",
             }),
           "Failed to route to Think",
@@ -338,7 +342,10 @@ export default function HomeDashboard() {
   const dismissInboxItem = async (id: string) => {
     try {
       const { success } = await safeMutate(
-        () => supabase.from("items").update({ status: "deleted" }).eq("id", id),
+        // INFRA-19: dismiss = trash with deleted_at; a bare status: "deleted"
+        // write would break the trash contract (retention purge + restore rely
+        // on deleted_at being set).
+        () => supabase.from("items").update(moveItemToTrashPatch()).eq("id", id),
         "Failed to dismiss",
       );
       if (!success) return;

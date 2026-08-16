@@ -6,6 +6,8 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { ArrowLeft, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import { restoreItemPatch } from "@/lib/item-lifecycle";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -114,10 +116,9 @@ export default function TrashPage() {
               : item.__type === "person"
                 ? "people"
                 : "locations";
-      const statusToRestore = "active";
       const { error } = await supabase
         .from(table)
-        .update({ status: statusToRestore, deleted_at: null })
+        .update(restoreItemPatch())
         .eq("id", item.id);
       if (error) throw error;
       setItems(items.filter((i) => i.id !== item.id));

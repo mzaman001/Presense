@@ -25,6 +25,11 @@ import {
 import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import {
+  activateItemWithDeadlinePatch,
+  revertItemPatch,
+} from "@/lib/item-lifecycle";
 
 // ─── WorkloadBar ──────────────────────────────────────────────────────────────
 function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
@@ -477,15 +482,16 @@ export function RitualOverlay({
 
     setTriageTasks((prev) => prev.filter((t) => t.id !== taskId));
     const now = new Date();
+    // INFRA-19: status transition through item-lifecycle; the deadline math
+    // stays here (scheduling, not lifecycle state).
     const payload =
       action === "today"
-        ? { status: "active", deadline: now.toISOString() }
+        ? activateItemWithDeadlinePatch(now.toISOString())
         : action === "snooze"
-          ? {
-              status: "active",
-              deadline: new Date(now.getTime() + 86400000).toISOString(),
-            }
-          : { status: "active", deadline: null };
+          ? activateItemWithDeadlinePatch(
+              new Date(now.getTime() + 86400000).toISOString(),
+            )
+          : activateItemWithDeadlinePatch(null);
 
     if (action === "today")
       setTodayTasks((prev) => [...prev, { ...task, ...payload }]);
@@ -515,7 +521,7 @@ export function RitualOverlay({
               () =>
                 supabase
                   .from("items")
-                  .update({ status: task.status, deadline: task.deadline })
+                  .update(revertItemPatch(task.status, task.deadline))
                   .eq("id", taskId),
               "Failed to undo",
             );

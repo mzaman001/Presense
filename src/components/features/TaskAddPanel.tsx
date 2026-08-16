@@ -34,7 +34,11 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
-import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import {
+  moveItemToTrashPatch,
+  newTaskInsert,
+} from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
@@ -535,13 +539,18 @@ export function TaskAddPanel({
           start_date: parsedStartDate ? parsedStartDate.toISOString() : null,
           recurrence: finalRecurrence,
           category: data.category || "work",
-          status: "active",
           priority: data.priority ?? 4,
           time_estimate: timeEstimate,
           notes: data.notes?.trim() || null,
           subtasks: subtasks.filter((st) => st.text.trim() !== ""),
           linked_people_ids: linkedPeopleIds,
         };
+
+        // INFRA-19: the status field on a new task is owned by the
+        // lifecycle module — hand-write never happens.
+        const insertPayload = taskToEdit
+          ? payload
+          : newTaskInsert(payload);
 
         if (taskToEdit && taskToEdit.deadline !== payload.deadline) {
           payload.notification_sent_72h = false;
@@ -560,7 +569,9 @@ export function TaskAddPanel({
             .eq("id", taskToEdit.id);
           error = res.error;
         } else {
-          const res = await supabase.from("items").insert(payload);
+          const res = await supabase
+            .from("items")
+            .insert(insertPayload);
           error = res.error;
         }
 

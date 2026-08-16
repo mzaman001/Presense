@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import React, { useEffect, useState, useCallback } from "react";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient, safeMutate } from "@/lib/supabase";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Plus, Link2, BookOpen, Lightbulb, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -230,10 +232,7 @@ export default function ExplorePage() {
     try {
       const { error } = await supabase
         .from("explores")
-        .update({
-          status: "deleted",
-          deleted_at: new Date().toISOString(),
-        })
+        .update(moveItemToTrashPatch())
         .eq("id", item.id);
 
       if (error) throw error;
@@ -245,7 +244,7 @@ export default function ExplorePage() {
               () =>
                 supabase
                   .from("explores")
-                  .update({ status: "active", deleted_at: null })
+                  .update(restoreItemPatch())
                   .eq("id", item.id),
               "Failed to restore",
             );

@@ -10,6 +10,8 @@ import React, {
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient, safeMutate } from "@/lib/supabase";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import {
   X,
   Loader2,
@@ -584,8 +586,11 @@ export function SettingsModal() {
       } = await supabase.auth.getUser();
       if (!user) return;
       const { error } = await supabase
+        // INFRA-19: clear-completed = trash with deleted_at, per lifecycle
+        // vocabulary; the stale completed_at is cleared too so a later
+        // restore doesn't rank as done in the archive view.
         .from("items")
-        .update({ status: "deleted", deleted_at: new Date().toISOString() })
+        .update({ ...moveItemToTrashPatch(), completed_at: null })
         .eq("user_id", user.id)
         .eq("status", "done");
       if (error) throw error;

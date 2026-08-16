@@ -24,7 +24,12 @@ import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Kbd } from "@/components/ui/Kbd";
 import { useAppStore } from "@/store/useAppStore";
-import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import {
+  moveItemToTrashPatch,
+  archiveThreadPatch,
+  restoreItemPatch,
+} from "@/lib/item-lifecycle";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ThreadEntry {
@@ -257,17 +262,21 @@ export default function ThreadDetailPage({
   const handleArchive = async () => {
     if (!thread) return;
     try {
-      const newStatus =
-        thread.status === "archived" || thread.status === "deleted"
-          ? "active"
-          : "archived";
+      // INFRA-19: distinct named transitions instead of a computed status
+      // string; a trashed thread is un-trashed via restoreItemPatch.
+      const patch =
+        thread.status === "archived"
+          ? restoreItemPatch("active")
+          : thread.status === "deleted"
+            ? restoreItemPatch("active")
+            : archiveThreadPatch();
       const { error } = await supabase
         .from("threads")
-        .update({ status: newStatus })
+        .update(patch)
         .eq("id", thread.id);
       if (error) throw error;
       toast.success(
-        newStatus === "active" ? "Thread restored" : "Thread archived",
+        patch.status === "archived" ? "Thread archived" : "Thread restored",
       );
       router.push("/think");
     } catch (error: unknown) {

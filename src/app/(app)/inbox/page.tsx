@@ -21,7 +21,12 @@ import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+// INFRA-19: all status writes on entity tables go through item-lifecycle.ts
+import {
+  moveItemToTrashPatch,
+  activateItemPatch,
+  restoreItemPatch,
+} from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
@@ -283,7 +288,7 @@ export default function InboxPage() {
           // BUG-38: check error — was fire-and-forget before
           const { success } = await safeMutate(
             () =>
-              supabase.from("items").update({ status: "active" }).eq("id", id),
+              supabase.from("items").update(activateItemPatch()).eq("id", id),
             "Failed to route to Do",
           );
           if (!success) throw new Error("Route to Do failed");
@@ -335,14 +340,13 @@ export default function InboxPage() {
           // BUG-38: insert FIRST, trash original only on success
           const { data: inserted, error: insertError } = await supabase
             .from("explores")
-            .insert({
-              user_id: item.user_id,
-              title: item.title,
-              type: "other",
-              status: "active",
-            })
-            .select("id")
-            .single();
+              .insert({
+                user_id: item.user_id,
+                title: item.title,
+                type: "other",
+              })
+              .select("id")
+              .single();
 
           if (insertError) throw insertError;
           if (inserted) {
@@ -370,14 +374,13 @@ export default function InboxPage() {
           // BUG-38: insert FIRST, trash original only on success
           const { data: inserted, error: insertError } = await supabase
             .from("threads")
-            .insert({
-              user_id: item.user_id,
-              title: item.title,
-              status: "active",
-              color_accent: "#2DD4BF",
-            })
-            .select("id")
-            .single();
+              .insert({
+                user_id: item.user_id,
+                title: item.title,
+                color_accent: "#2DD4BF",
+              })
+              .select("id")
+              .single();
 
           if (insertError) throw insertError;
           if (inserted) {
@@ -452,7 +455,7 @@ export default function InboxPage() {
                     () =>
                       supabase
                         .from("items")
-                        .update({ status: "inbox" })
+                        .update(restoreItemPatch("inbox"))
                         .eq("id", id),
                     "Failed to restore to inbox",
                   );
@@ -467,7 +470,7 @@ export default function InboxPage() {
                     () =>
                       supabase
                         .from("items")
-                        .update({ status: "inbox" })
+                        .update(restoreItemPatch("inbox"))
                         .eq("id", id),
                     "Failed to restore to inbox",
                   );
@@ -483,7 +486,7 @@ export default function InboxPage() {
                     () =>
                       supabase
                         .from("items")
-                        .update({ status: "inbox" })
+                        .update(restoreItemPatch("inbox"))
                         .eq("id", id),
                     "Failed to restore to inbox",
                   );
@@ -499,7 +502,7 @@ export default function InboxPage() {
                     () =>
                       supabase
                         .from("items")
-                        .update({ status: "inbox" })
+                        .update(restoreItemPatch("inbox"))
                         .eq("id", id),
                     "Failed to restore to inbox",
                   );
@@ -515,7 +518,7 @@ export default function InboxPage() {
                     () =>
                       supabase
                         .from("items")
-                        .update({ status: "inbox" })
+                        .update(restoreItemPatch("inbox"))
                         .eq("id", id),
                     "Failed to restore to inbox",
                   );
@@ -574,7 +577,7 @@ export default function InboxPage() {
             try {
               const { error: undoError } = await supabase
                 .from("items")
-                .update({ status: "inbox" })
+                .update(restoreItemPatch("inbox"))
                 .eq("id", id);
               if (undoError) {
                 toast.error("Could not restore", {

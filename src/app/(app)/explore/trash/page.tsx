@@ -8,6 +8,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import { restoreItemPatch } from "@/lib/item-lifecycle";
 
 export default function ExploreTrashPage() {
   const supabase = createClient();
@@ -63,8 +65,7 @@ export default function ExploreTrashPage() {
                     item.__type === 'item' ? 'items' : 
                     item.__type === 'thread' ? 'threads' : 
                     item.__type === 'person' ? 'people' : 'locations';
-      const statusToRestore = 'active';
-      const { error } = await supabase.from(table).update({ status: statusToRestore, deleted_at: null }).eq("id", item.id);
+      const { error } = await supabase.from(table).update(restoreItemPatch()).eq("id", item.id);
       if (error) throw error;
       setItems(items.filter(i => i.id !== item.id));
       toast.success("Item restored");

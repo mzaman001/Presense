@@ -18,7 +18,12 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Sheet } from "@/components/ui/Sheet";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { m, AnimatePresence } from "framer-motion";
-import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import {
+  moveItemToTrashPatch,
+  archiveThreadPatch,
+  restoreItemPatch,
+} from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
@@ -249,16 +254,23 @@ export function ExploreDrawer({
     if (!item) return;
     setSaving(true);
     try {
-      const newStatus =
-        item.status === "archived" || item.status === "deleted"
-          ? "active"
-          : "archived";
+      // INFRA-19: distinct named transitions instead of a computed status
+      // string; a trashed row is un-trashed via restoreItemPatch rather than
+      // being flipped straight to archived.
+      const patch =
+        item.status === "archived"
+          ? restoreItemPatch("active")
+          : item.status === "deleted"
+            ? restoreItemPatch("active")
+            : archiveThreadPatch();
       const { error } = await supabase
         .from("explores")
-        .update({ status: newStatus })
+        .update(patch)
         .eq("id", item.id);
       if (error) throw error;
-      toast.success(`Item ${newStatus === "active" ? "restored" : "archived"}`);
+      toast.success(
+        `Item ${patch.status === "archived" ? "archived" : "restored"}`,
+      );
       onSaved();
       onClose();
     } catch (err: unknown) {

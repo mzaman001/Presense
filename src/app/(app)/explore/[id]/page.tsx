@@ -18,6 +18,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import {
+  archiveThreadPatch,
+  moveItemToTrashPatch,
+  restoreItemPatch,
+} from "@/lib/item-lifecycle";
 import { m, AnimatePresence } from "framer-motion";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
@@ -177,13 +183,18 @@ export default function ExploreDetailPage({
 
   const handleArchive = async () => {
     try {
-      const newStatus = status === "archived" ? "active" : "archived";
+      // INFRA-19: archive and un-archive are distinct, named transitions —
+      // no computed status string; deleted_at is never touched here.
       const { error } = await supabase
         .from("explores")
-        .update({ status: newStatus })
+        .update(
+          status === "archived" ? restoreItemPatch("active") : archiveThreadPatch(),
+        )
         .eq("id", id);
       if (error) throw error;
-      toast.success(newStatus === "archived" ? "Archived" : "Restored");
+      toast.success(
+        status === "archived" ? "Restored" : "Archived",
+      );
       router.push("/explore");
     } catch (err: unknown) {
       toast.error("Failed to archive", {
@@ -196,7 +207,7 @@ export default function ExploreDetailPage({
     try {
       const { error } = await supabase
         .from("explores")
-        .update({ status: "deleted" })
+        .update(moveItemToTrashPatch())
         .eq("id", id);
       if (error) throw error;
       toast.success("Deleted (30-day trash)");

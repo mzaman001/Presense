@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+// INFRA-19: status writes on entity tables go through item-lifecycle.ts
+import { completeTaskPatch } from "@/lib/item-lifecycle";
 
 type Phase = "work" | "short_break" | "long_break";
 
@@ -214,10 +216,7 @@ export function PomodoroTimer() {
                 () =>
                   supabase
                     .from("items")
-                    .update({
-                      status: "done",
-                      completed_at: new Date().toISOString(),
-                    })
+                    .update(completeTaskPatch())
                     .eq("id", activeTimer.taskId as string),
                 "Failed to mark task done",
               );
