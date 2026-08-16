@@ -179,10 +179,15 @@ enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
+# Reject passwords that appear in HaveIBeenPwned's leaked-password database (SEC2-02 decision,
+# 2026-08-16). NOTE: on the hosted project this is the Dashboard Auth → Settings "Prevent use of
+# leaked passwords" toggle; the local CLI mirror key below must match the CLI version in use.
+# If the CLI rejects this key, remove it — the hosted toggle is the authoritative control.
+check_hibp = true
 
 # Configure passkey sign-ins.
 # [auth.passkey]
@@ -211,10 +216,15 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
-# [auth.captcha]
-# enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# SEC2-02 decision (2026-08-16): Turnstile enabled. Backend check runs once a Turnstile secret
+# (`SUPABASE_AUTH_CAPTCHA_TURNSTILE_SECRET`) is set via `supabase secrets set` — until then auth
+# falls back to rejecting requests with a captcha challenge. Client-side sitekey still has to be
+# wired into the login form (follow-up ticket candidate: SEC2-03); this key enables the backend
+# enforcement on the hosted project immediately after the secret is set.
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(SUPABASE_AUTH_CAPTCHA_TURNSTILE_SECRET)"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
