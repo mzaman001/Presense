@@ -381,9 +381,11 @@ export function RitualOverlay({
       }
 
       if (activeRitual === "morning") {
+        // INFRA-18: explicit user_id filter for planner index usage.
         const { data: tasks } = await supabase
           .from("items")
           .select("*")
+          .eq("user_id", user.id)
           .in("status", ["inbox", "active", "overdue"]);
         if (tasks) {
           const todayStart = new Date().setHours(0, 0, 0, 0);
@@ -414,17 +416,20 @@ export function RitualOverlay({
       } else {
         const todayStart = new Date().setHours(0, 0, 0, 0);
         const startISO = new Date(todayStart).toISOString();
+        // INFRA-18: explicit user_id filter for planner index usage.
         const [{ data: completed }, { data: incomplete }, { data: logs }] =
           await Promise.all([
             supabase
               .from("items")
               .select("*")
+              .eq("user_id", user.id)
               .eq("status", "done")
               .gte("completed_at", startISO),
-            supabase.from("items").select("*").eq("status", "active"),
+            supabase.from("items").select("*").eq("user_id", user.id).eq("status", "active"),
             supabase
               .from("session_logs")
               .select("*")
+              .eq("user_id", user.id)
               .eq("type", "work")
               .gte("completed_at", startISO),
           ]);

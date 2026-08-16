@@ -301,9 +301,13 @@ export default function PeoplePage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchPeople = useCallback(async () => {
+    // INFRA-18: explicit user_id filter for planner index usage.
+    const { data: userSession } = await supabase.auth.getUser();
+    if (!userSession?.user) return;
     const { data, error } = await supabase
       .from("people")
       .select("*")
+      .eq("user_id", userSession.user.id)
       .order("sort_order", { ascending: true, nullsFirst: false });
     if (error) {
       setFetchError(error.message);

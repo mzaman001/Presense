@@ -149,16 +149,20 @@ export function ExploreDrawer({
         };
       }
 
-      // Fetch threads
+      // Fetch threads (INFRA-18: explicit user_id filter for planner index usage)
       /* @todo: Untyped usage justified per TOOL-01 */
-
-      supabase
-        .from("threads")
-        .select("id, title")
-        .eq("status", "active")
-        .then(({ data }: { data: { id: string; title: string }[] | null }) => {
-          setThreads(data || []);
-        });
+      (async () => {
+        const { data: userSession } = await supabase.auth.getUser();
+        if (!userSession?.user) return;
+        supabase
+          .from("threads")
+          .select("id, title")
+          .eq("user_id", userSession.user.id)
+          .eq("status", "active")
+          .then(({ data }: { data: { id: string; title: string }[] | null }) => {
+            setThreads(data || []);
+          });
+      })();
     }
   }, [item, isOpen, supabase]);
 

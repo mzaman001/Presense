@@ -245,9 +245,13 @@ export default function InboxPage() {
   } = useQuery({
     queryKey: ["inbox-tasks"],
     queryFn: async () => {
+      // INFRA-18: explicit user_id filter for planner index usage.
+      const { data: userSession } = await supabase.auth.getUser();
+      if (!userSession?.user) return [];
       const { data, error } = await supabase
         .from("items")
         .select("*")
+        .eq("user_id", userSession.user.id)
         .eq("status", "inbox")
         .order("created_at", { ascending: false });
       if (error) throw error;

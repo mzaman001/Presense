@@ -182,9 +182,14 @@ export default function ExplorePage() {
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
 
   const fetchItems = useCallback(async () => {
+    // INFRA-18: explicit user_id filter lets the planner use the
+    // user_id-leading explore indexes directly instead of only the RLS policy.
+    const { data: userSession } = await supabase.auth.getUser();
+    if (!userSession?.user) return;
     let query = supabase
       .from("explores")
       .select("*")
+      .eq("user_id", userSession.user.id)
       .order("saved_at", { ascending: false });
 
     if (showTrash) query = query.eq("status", "deleted");

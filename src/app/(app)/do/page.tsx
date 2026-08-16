@@ -171,9 +171,14 @@ export default function DoPage() {
   } = useQuery({
     queryKey: ["tasks"],
     queryFn: async () => {
+      // INFRA-18: explicit user_id filter lets the planner use the
+      // idx_items_user_status index directly instead of only the RLS policy.
+      const { data: userSession } = await supabase.auth.getUser();
+      if (!userSession?.user) return [];
       const { data, error } = await supabase
         .from("items")
         .select("*")
+        .eq("user_id", userSession.user.id)
         .in("status", ["active", "overdue"])
         .order("priority", { ascending: true, nullsFirst: false })
         .order("deadline", { ascending: true, nullsFirst: false });
@@ -185,9 +190,13 @@ export default function DoPage() {
   const { data: peopleList = [], refetch: fetchPeopleList } = useQuery({
     queryKey: ["people_minimal"],
     queryFn: async () => {
+      // INFRA-18: explicit user_id filter for planner index usage.
+      const { data: userSession } = await supabase.auth.getUser();
+      if (!userSession?.user) return [];
       const { data, error } = await supabase
         .from("people")
-        .select("id, name, initials, color");
+        .select("id, name, initials, color")
+        .eq("user_id", userSession.user.id);
       if (error) throw error;
       return data || [];
     },
@@ -245,9 +254,13 @@ export default function DoPage() {
   const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
 
   const fetchArchived = useCallback(async () => {
+    // INFRA-18: explicit user_id filter for planner index usage.
+    const { data: userSession } = await supabase.auth.getUser();
+    if (!userSession?.user) return [];
     const { data } = await supabase
       .from("items")
       .select("*")
+      .eq("user_id", userSession.user.id)
       .eq("status", "done")
       .order("completed_at", { ascending: false });
     setArchivedTasks((data as Task[]) ?? []);

@@ -1238,6 +1238,8 @@ One important nuance recorded in the closure note: PostgreSQL FK constraints do 
 
 **INFRA-18 — Client-side `.eq('user_id', userId)` alongside RLS, not instead of it**
 
+- **Status — ✅ CLOSED Aug 17, 2026 (commit TBD).** Added explicit `.eq("user_id", userId)` to every primary list-fetching query: Do task list + people dropdown + archived fetch, Think thread list, Explore item list (active/archive/trash variants), People, Locations, Trash + Explore/Trash (5 queries each), Home dashboard (6 queries), RitualOverlay morning + evening queries, and SearchModal (5 queries). Remaining unfiltered reads are intentionally out of scope (mutations, single-row PK lookups, ExploreDrawer thread picker). Verified with `tsc --noEmit` (clean), `VERCEL=1 npm run build` (compiled), and `npm test` (181/181).
+
 - **Priority:** Medium
 - **Citation:** Supabase's own guidance recommends adding the explicit client-side filter in addition to relying on RLS, because it lets the query planner use the `user_id` index directly rather than only via the policy's implicit filter — a small, low-risk addition with a measurable planner benefit per Supabase's own documented examples.
 - **Requirement:** Audit the main list-fetching queries (Do's task list, Think's thread list, Explore's item list, People, Locations) for whether they already include this explicit filter; add it where missing. This does not change the security model (RLS still enforces the boundary regardless) — it's a query-planning optimization only.

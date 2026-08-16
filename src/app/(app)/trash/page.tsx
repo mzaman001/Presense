@@ -34,26 +34,31 @@ export default function TrashPage() {
         supabase
           .from("explores")
           .select("*")
+          .eq("user_id", user.id) // INFRA-18
           .eq("status", "deleted")
           .order("deleted_at", { ascending: false }),
         supabase
           .from("items")
           .select("*")
+          .eq("user_id", user.id) // INFRA-18
           .eq("status", "deleted")
           .order("deleted_at", { ascending: false }),
         supabase
           .from("threads")
           .select("*")
+          .eq("user_id", user.id) // INFRA-18
           .eq("status", "deleted")
           .order("deleted_at", { ascending: false }),
         supabase
           .from("people")
           .select("*")
+          .eq("user_id", user.id) // INFRA-18
           .eq("status", "deleted")
           .order("deleted_at", { ascending: false }),
         supabase
           .from("locations")
           .select("*")
+          .eq("user_id", user.id) // INFRA-18
           .eq("status", "deleted")
           .order("deleted_at", { ascending: false }),
       ]);

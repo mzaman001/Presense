@@ -45,21 +45,26 @@ export function SearchModal() {
   }, [isSearchModalOpen]);
 
   useEffect(() => {
-    async function performSearch() {
+        async function performSearch() {
       if (!debouncedQuery.trim()) {
         setResults([]);
         setLoading(false);
         return;
       }
       setLoading(true);
+      // INFRA-18: explicit user_id filter for planner index usage.
+      const { data: userSession } = await supabase.auth.getUser();
+      if (!userSession?.user) {
+        setLoading(false);
+        return;
+      }
       const q = `%${debouncedQuery}%`;
-
       const [tasks, people, threads, explores, locations] = await Promise.all([
-        supabase.from("items").select("id, title").or(`title.ilike.${q},category.ilike.${q}`).limit(5),
-        supabase.from("people").select("id, name").or(`name.ilike.${q},relationship.ilike.${q}`).limit(5),
-        supabase.from("threads").select("id, title").or(`title.ilike.${q}`).limit(5),
-        supabase.from("explores").select("id, title").or(`title.ilike.${q},tags.cs.{${debouncedQuery}}`).limit(5),
-        supabase.from("locations").select("id, item_name, location_text").or(`item_name.ilike.${q},location_text.ilike.${q}`).limit(5)
+        supabase.from("items").select("id, title").eq("user_id", userSession.user.id).or(`title.ilike.${q},category.ilike.${q}`).limit(5),
+        supabase.from("people").select("id, name").eq("user_id", userSession.user.id).or(`name.ilike.${q},relationship.ilike.${q}`).limit(5),
+        supabase.from("threads").select("id, title").eq("user_id", userSession.user.id).or(`title.ilike.${q}`).limit(5),
+        supabase.from("explores").select("id, title").eq("user_id", userSession.user.id).or(`title.ilike.${q},tags.cs.{${debouncedQuery}}`).limit(5),
+        supabase.from("locations").select("id, item_name, location_text").eq("user_id", userSession.user.id).or(`item_name.ilike.${q},location_text.ilike.${q}`).limit(5)
       ]);
 
       const combined = [

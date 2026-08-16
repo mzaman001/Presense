@@ -156,22 +156,26 @@ export default function HomeDashboard() {
         doneRes,
         sessionsRes,
       ] = await Promise.all([
+        // INFRA-18: explicit user_id filter for planner index usage
         supabase
           .from("items")
           .select("*")
+          .eq("user_id", user.id)
           .in("status", ["active", "overdue"])
           .range(0, 99),
-        supabase.from("items").select("*").eq("status", "inbox").range(0, 99),
-        supabase.from("people").select("*").range(0, 99),
-        supabase.from("threads").select("*").range(0, 99),
+        supabase.from("items").select("*").eq("user_id", user.id).eq("status", "inbox").range(0, 99),
+        supabase.from("people").select("*").eq("user_id", user.id).range(0, 99),
+        supabase.from("threads").select("*").eq("user_id", user.id).range(0, 99),
         supabase
           .from("explores")
           .select("*")
+          .eq("user_id", user.id)
           .is("revisited_at", null)
           .range(0, 99),
         supabase
           .from("items")
           .select("*")
+          .eq("user_id", user.id)
           .eq("status", "done")
           .gte("completed_at", mondayStart.toISOString())
           .order("completed_at", { ascending: false })
@@ -179,6 +183,7 @@ export default function HomeDashboard() {
         supabase
           .from("session_logs")
           .select("*")
+          .eq("user_id", user.id)
           .gte("completed_at", mondayStart.toISOString())
           .eq("type", "work")
           .range(0, 99),

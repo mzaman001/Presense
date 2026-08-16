@@ -50,9 +50,13 @@ export default function ThinkPage() {
   );
 
   const fetchThreads = useCallback(async () => {
+    // INFRA-18: explicit user_id filter for planner index usage.
+    const { data: userSession } = await supabase.auth.getUser();
+    if (!userSession?.user) return;
     let query = supabase
       .from("threads")
       .select("*")
+      .eq("user_id", userSession.user.id)
       .order("is_pinned", { ascending: false })
       .order("last_updated", { ascending: false });
 

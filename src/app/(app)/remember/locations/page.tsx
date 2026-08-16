@@ -47,7 +47,14 @@ export default function LocationsPage() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   const fetchItems = useCallback(async () => {
-    let query = supabase.from("locations").select("*").order("updated_at", { ascending: false });
+    // INFRA-18: explicit user_id filter for planner index usage.
+    const { data: userSession } = await supabase.auth.getUser();
+    if (!userSession?.user) return;
+    let query = supabase
+      .from("locations")
+      .select("*")
+      .eq("user_id", userSession.user.id)
+      .order("updated_at", { ascending: false });
     if (search.trim()) {
       query = query.or(`item_name.ilike.%${search}%,location_text.ilike.%${search}%`);
     }

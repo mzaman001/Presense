@@ -21,11 +21,12 @@ export default function ExploreTrashPage() {
 
     // Fetch deleted explores, items, threads, people, and locations
     const [exploresRes, itemsRes, threadsRes, peopleRes, locationsRes] = await Promise.all([
-      supabase.from("explores").select("*").eq("status", "deleted").order("deleted_at", { ascending: false }),
-      supabase.from("items").select("*").eq("status", "deleted").order("deleted_at", { ascending: false }),
-      supabase.from("threads").select("*").eq("status", "deleted").order("deleted_at", { ascending: false }),
-      supabase.from("people").select("*").eq("status", "deleted").order("deleted_at", { ascending: false }),
-      supabase.from("locations").select("*").eq("status", "deleted").order("deleted_at", { ascending: false })
+      // INFRA-18: explicit user_id filter for planner index usage
+      supabase.from("explores").select("*").eq("user_id", user.id).eq("status", "deleted").order("deleted_at", { ascending: false }),
+      supabase.from("items").select("*").eq("user_id", user.id).eq("status", "deleted").order("deleted_at", { ascending: false }),
+      supabase.from("threads").select("*").eq("user_id", user.id).eq("status", "deleted").order("deleted_at", { ascending: false }),
+      supabase.from("people").select("*").eq("user_id", user.id).eq("status", "deleted").order("deleted_at", { ascending: false }),
+      supabase.from("locations").select("*").eq("user_id", user.id).eq("status", "deleted").order("deleted_at", { ascending: false })
     ]);
 
     const combined = [
