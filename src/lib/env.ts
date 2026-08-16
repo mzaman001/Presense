@@ -39,6 +39,12 @@ export const env = createEnv({
     NEXT_PUBLIC_SENTRY_DSN: z
       .string()
       .catch(() => logAndReturnEmpty("NEXT_PUBLIC_SENTRY_DSN")),
+    // SEC2-02/SEC2-03 (2026-08-16): Cloudflare Turnstile sitekey for auth captcha.
+    // OPTIONAL — when empty, no captcha widget renders and no token is sent, matching a
+    // project where backend captcha enforcement is not yet enabled. Do not make throwing.
+    NEXT_PUBLIC_TURNSTILE_SITEKEY: z
+      .string()
+      .catch(() => logAndReturnEmpty("NEXT_PUBLIC_TURNSTILE_SITEKEY")),
   },
   runtimeEnv: {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -47,6 +53,7 @@ export const env = createEnv({
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    NEXT_PUBLIC_TURNSTILE_SITEKEY: process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY,
   },
   emptyStringAsUndefined: true,
 });

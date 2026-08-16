@@ -13,10 +13,20 @@ export async function sendMagicLink(formData: FormData) {
   const origin = String(formData.get("origin") ?? "").trim();
   if (!email) return { error: "Please enter your email address." };
 
+  // SEC2-02/SEC2-03 (2026-08-16): forward the Turnstile challenge token when the
+  // client widget supplied one. GoTrue rejects signInWithOtp with `captcha_failed`
+  // when captcha enforcement is enabled and no token is present; a missing token
+  // (sitekey not configured) is fine while the backend toggle is still off.
+  const captchaToken =
+    String(formData.get("cf-turnstile-response") ?? "").trim() || undefined;
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: getAuthCallbackUrl(origin) },
+    options: {
+      emailRedirectTo: getAuthCallbackUrl(origin),
+      ...(captchaToken ? { captchaToken } : {}),
+    },
   });
   if (error) return { error: error.message };
   return { error: null as string | null };

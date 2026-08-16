@@ -2,23 +2,36 @@
 
 import { useState } from "react";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
+import { env } from "@/lib/env";
 import {
   OnboardingBackground,
   PresenseLogo,
 } from "@/components/layout/OnboardingBackground";
 import { sendMagicLink, startGoogleSignIn } from "./actions";
+import { TurnstileWidget } from "@/components/features/TurnstileWidget";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+
+// SEC2-02/SEC2-03 (2026-08-16): Turnstile sitekey is OPTIONAL — when unset the
+// widget renders nothing and no captcha token is sent, matching a project where
+// backend captcha enforcement is not yet enabled. Do NOT enable the backend
+// Turnstile secret until this wiring is deployed with a sitekey set.
+const captchaEnabled = Boolean(env.NEXT_PUBLIC_TURNSTILE_SITEKEY);
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState<"google" | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState("");
 
   const formDataWith = (pairs: Array<[string, string]>) => {
     const fd = new FormData();
     pairs.forEach(([k, v]) => fd.append(k, v));
+    // SEC2-03: attach the Turnstile challenge token (GoTrue's expected field).
+    if (captchaEnabled && captchaToken) {
+      fd.append("cf-turnstile-response", captchaToken);
+    }
     return fd;
   };
 
@@ -162,10 +175,20 @@ export default function LoginPage() {
                   Magic link &#x2014; no password needed
                 </span>
               </div>
+              {captchaEnabled && (
+                <TurnstileWidget
+                  sitekey={env.NEXT_PUBLIC_TURNSTILE_SITEKEY}
+                  onTokenChange={setCaptchaToken}
+                />
+              )}
               <Button
                 variant="primary"
                 type="submit"
-                disabled={!!loading || !email.trim()}
+                disabled={
+                  !!loading ||
+                  !email.trim() ||
+                  (captchaEnabled && !captchaToken)
+                }
                 className="flex w-full items-center justify-center gap-2"
               >
                 {loading === "email" ? (
