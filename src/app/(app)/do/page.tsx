@@ -355,41 +355,58 @@ export default function DoPage() {
     }, 300);
   };
 
-  const now = new Date();
+  // PERF-15: single-pass bucketing. The previous implementation ran four
+  // consecutive filter passes over `filtered` — each constructing a new
+  // Date(t.deadline) and calling toDateString() per task per pass, and
+  // producing fresh array identities every render (defeating the memoized
+  // Column/TaskCard tree). Now one derivation loop builds all four buckets
+  // with exactly one date parse per task, and the result is memoized by
+  // input identity so the buckets keep referential identity across renders
+  // where `tasks` and `categoryFilter` are unchanged.
+  const bucketed = useMemo(() => {
+    const now = new Date();
+    const started: Task[] = [];
 
-  // Exclude tasks whose start_date is in the future
-  const startedTasks = tasks.filter((t) => {
-    if (!t.start_date) return true;
-    return new Date(t.start_date) <= now;
-  });
-
-  const filtered = startedTasks.filter((t) => {
-    const isActiveOrOverdue = t.status === "active" || t.status === "overdue";
-    if (categoryFilter === "all") return isActiveOrOverdue;
-    if (categoryFilter === "inbox") return t.status === "inbox";
-    if (categoryFilter === "today") {
-      if (!t.deadline || !isActiveOrOverdue) return false;
-      const d = new Date(t.deadline);
-      const now = new Date();
-      return d <= now || d.toDateString() === now.toDateString();
+    // Exclude tasks whose start_date is in the future
+    for (const t of tasks) {
+      if (!t.start_date || new Date(t.start_date) <= now) started.push(t);
     }
-    return t.category === categoryFilter && isActiveOrOverdue;
-  });
 
-  const overdue = filtered.filter(
-    (t) => t.deadline && new Date(t.deadline) < now,
-  );
-  const today = filtered.filter((t) => {
-    if (!t.deadline) return false;
-    const d = new Date(t.deadline);
-    return d >= now && d.toDateString() === now.toDateString();
-  });
-  const upcoming = filtered.filter((t) => {
-    if (!t.deadline) return false;
-    const d = new Date(t.deadline);
-    return d > now && d.toDateString() !== now.toDateString();
-  });
-  const someday = filtered.filter((t) => !t.deadline);
+    const buckets = {
+      overdue: [] as Task[],
+      today: [] as Task[],
+      upcoming: [] as Task[],
+      someday: [] as Task[],
+    };
+
+    for (const t of started) {
+      const isActiveOrOverdue = t.status === "active" || t.status === "overdue";
+      if (categoryFilter === "all") {
+        if (!isActiveOrOverdue) continue;
+      } else if (categoryFilter === "inbox") {
+        if (t.status !== "inbox") continue;
+      } else if (categoryFilter === "today") {
+        if (!t.deadline || !isActiveOrOverdue) continue;
+        const d = new Date(t.deadline);
+        if (!(d <= now || d.toDateString() === now.toDateString())) continue;
+      } else if (t.category !== categoryFilter || !isActiveOrOverdue) {
+        continue;
+      }
+
+      if (!t.deadline) {
+        buckets.someday.push(t);
+      } else {
+        const d = new Date(t.deadline);
+        if (d < now) buckets.overdue.push(t);
+        else if (d.toDateString() === now.toDateString()) buckets.today.push(t);
+        else buckets.upcoming.push(t);
+      }
+    }
+
+    return buckets;
+  }, [tasks, categoryFilter]);
+
+  const { overdue, today, upcoming, someday } = bucketed;
 
   const doCats = userSettings?.do_categories || [
     "work",
