@@ -354,9 +354,8 @@ Touch devices get no hover state, only active/pressed. Do not inherit half-worki
 
 `hover:scale-[1.01]` grows the rendered box past its layout box, which clips visibly inside any `overflow-hidden`/`overflow-x-auto` ancestor (a horizontally-scrollable Kanban column, for instance). `translateY` lift repositions without growing the box. Every hoverable card/row must use the same lift distance, duration, and easing.
 
-### `backdrop-filter` budget (PERF-04)
-
-23 `backdrop-filter` declarations in `globals.css`, 0 `contain: paint`. No more than 2 stacked/nested `backdrop-filter` regions on screen at once. Each is a GPU layer; compounds on mobile. `--elev-overlay-blur` (24px, heaviest) only for the single topmost surface in focus (open modal/sheet). `--elev-floating-blur` (dropdowns, toasts) and `--elev-raised-blur` (cards) are the two "at once" the budget allows.
+### `backdrop-filter` budget (PERF-04/08)
+✅ DONE Aug 16, 2026: `--blur-modal` 48→24px and `--blur-elevated` 32→20px (heaviest values reduced per PERF-04's requirement; hierarchy preserved — modal 24 > elevated 20 > dropdown 18 > card 16 > chrome 12); `contain: paint` added to all blur-bearing glass primitives (`.glass-panel`, `.glass-card`, `.glass-card-elevated`, `.card-upcoming`, `.sidebar`, `.modal`, `.dropdown-panel`, `.mobile-top-bar`, `.bottom-nav`, `.mobile-drawer`); `@media (prefers-reduced-transparency: reduce)` confirmed complete — all 5 blur vars forced `none`, surfaces blended opaque, all blur selectors forced `backdrop-filter: none` (mobile chrome bars added during this pass — previously missing from the override list). Stacking rule unchanged: no more than 2 stacked/nested `backdrop-filter` regions on screen at once; `--elev-overlay-blur` only for the single topmost surface in focus. Raw `backdrop-filter` occurrence count intentionally unchanged (~23) — removing occurrences is DS-04's design consolidation, not this ticket's scope.
 
 ### Duplicate `useReducedMotion`
 
