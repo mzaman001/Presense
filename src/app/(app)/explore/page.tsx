@@ -8,6 +8,7 @@ import { createClient, safeMutate } from "@/lib/supabase";
 import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Plus, Link2, BookOpen, Lightbulb, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -344,10 +345,18 @@ export default function ExplorePage() {
                 <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
                   Nothing saved yet
                 </h3>
-                <p className="mb-6 max-w-sm text-sm text-[var(--color-text-3)]">
+                <p className="mb-2 max-w-sm text-sm text-[var(--color-text-3)]">
                   Capture &ldquo;interesting...&rdquo; or paste a URL to save
                   articles, tweets, and links.
                 </p>
+                {/* BUG-08 / CONF-10 (Option C): thin pointer to the global trash */}
+                <Link
+                  href="/trash?filter=explore"
+                  className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-3)] underline underline-offset-2 hover:text-[var(--color-accent)]"
+                >
+                  <UiIcon className="h-3 w-3" icon={Trash2} />
+                  Check the trash for deleted saves
+                </Link>
                 <Button
                   variant="primary"
                   onClick={() => setIsAddDrawerOpen(true)}

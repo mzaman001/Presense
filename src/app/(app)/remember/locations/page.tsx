@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Search, Plus, Loader2, Clock, AlertCircle, MapPin, Key, Wallet, Smartphone, Plug, Laptop, Headphones, Notebook, Book, Glasses, Watch, Briefcase, CreditCard, IdCard, Plane, PenTool, Baby, Umbrella, Footprints, Package } from "lucide-react";
+import { Search, Plus, Loader2, Clock, AlertCircle, MapPin, Trash2, Key, Wallet, Smartphone, Plug, Laptop, Headphones, Notebook, Book, Glasses, Watch, Briefcase, CreditCard, IdCard, Plane, PenTool, Baby, Umbrella, Footprints, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -50,10 +50,12 @@ export default function LocationsPage() {
     // INFRA-18: explicit user_id filter for planner index usage.
     const { data: userSession } = await supabase.auth.getUser();
     if (!userSession?.user) return;
+    // BUG-08: trashed locations must not render in the list on any client.
     let query = supabase
       .from("locations")
       .select("*")
       .eq("user_id", userSession.user.id)
+      .neq("status", "deleted")
       .order("updated_at", { ascending: false });
     if (search.trim()) {
       query = query.or(`item_name.ilike.%${search}%,location_text.ilike.%${search}%`);
@@ -131,6 +133,16 @@ export default function LocationsPage() {
           icon={MapPin}
           title="No locations here"
           description="Log an item to remember where you put it."
+          pointer={
+            // BUG-08 / CONF-10 (Option C): thin pointer to the global trash
+            <a
+              href="/trash?filter=location"
+              className="underline underline-offset-2 hover:text-[var(--color-accent)]"
+            >
+              <UiIcon className="mr-1 inline h-3 w-3 align-[-2px]" icon={Trash2} />
+              Check the trash for deleted locations
+            </a>
+          }
           action={
             <Button variant="primary" onClick={() => setShowAdd(true)} className="gap-2 mx-auto">
               <UiIcon size={16} icon={Plus} /> Log Item

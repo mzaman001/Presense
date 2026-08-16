@@ -7,12 +7,17 @@ export function EmptyState({
   title, 
   description, 
   action,
+  pointer,
   className
 }: { 
   icon?: React.ElementType; 
   title: string; 
   description: string; 
   action?: ReactNode;
+  // BUG-08 / CONF-10 (Option C): thin pointer to the global trash surface —
+  // e.g. a "N items in trash" link. Rendered as a caption row under the
+  // description; stays empty when no pointer is given.
+  pointer?: ReactNode;
   className?: string;
 }) {
   return (
@@ -24,6 +29,9 @@ export function EmptyState({
       )}
       <h3 className="text-title-md font-medium text-[var(--color-text-1)] mb-2">{title}</h3>
       <p className="text-body text-[var(--text-muted)] max-w-sm mb-6">{description}</p>
+      {pointer && (
+        <p className="text-caption mb-6 text-[var(--text-muted)]">{pointer}</p>
+      )}
       {action}
     </GlassCard>
   );

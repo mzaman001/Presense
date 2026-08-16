@@ -304,10 +304,13 @@ export default function PeoplePage() {
     // INFRA-18: explicit user_id filter for planner index usage.
     const { data: userSession } = await supabase.auth.getUser();
     if (!userSession?.user) return;
+    // BUG-08: trashed people must not render in the list on any client —
+    // the local optimistic filter only covers the deleting device.
     const { data, error } = await supabase
       .from("people")
       .select("*")
       .eq("user_id", userSession.user.id)
+      .neq("status", "deleted")
       .order("sort_order", { ascending: true, nullsFirst: false });
     if (error) {
       setFetchError(error.message);
@@ -495,6 +498,16 @@ export default function PeoplePage() {
                   icon={Users}
                   title="Your network is empty"
                   description="Add someone manually, or capture &ldquo;Meeting with Alex&rdquo; to automatically create a profile."
+                  pointer={
+                    // BUG-08 / CONF-10 (Option C): thin pointer to the global trash
+                    <Link
+                      href="/trash?filter=person"
+                      className="underline underline-offset-2 hover:text-[var(--color-accent)]"
+                    >
+                      <UiIcon className="mr-1 inline h-3 w-3 align-[-2px]" icon={Trash2} />
+                      Check the trash for deleted people
+                    </Link>
+                  }
                   action={
                     <Button
                       variant="primary"

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Plus, Loader2, Sparkles, Pin, Search } from "lucide-react";
+import { Plus, Loader2, Sparkles, Pin, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -378,10 +378,18 @@ export default function ThinkPage() {
                 <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
                   No threads yet
                 </h3>
-                <p className="mb-6 max-w-sm text-sm text-[var(--color-text-3)]">
+                <p className="mb-2 max-w-sm text-sm text-[var(--color-text-3)]">
                   Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I
                   wonder...&rdquo; to start expanding your ideas.
                 </p>
+                {/* BUG-08 / CONF-10 (Option C): thin pointer to the global trash */}
+                <Link
+                  href="/trash?filter=thread"
+                  className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-3)] underline underline-offset-2 hover:text-[var(--color-accent)]"
+                >
+                  <UiIcon className="h-3 w-3" icon={Trash2} />
+                  Check the trash for deleted threads
+                </Link>
                 <Button
                   variant="primary"
                   onClick={handleNewThread}

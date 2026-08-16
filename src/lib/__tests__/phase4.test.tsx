@@ -100,6 +100,7 @@ function mockSupabaseQuery(data: any = null, error: any = null) {
   const query: any = {
     select: vi.fn().mockImplementation(() => query),
     eq: vi.fn().mockImplementation(() => query),
+    neq: vi.fn().mockImplementation(() => query),
     in: vi.fn().mockImplementation(() => query),
     order: vi.fn().mockImplementation(() => query),
     limit: vi.fn().mockImplementation(() => query),

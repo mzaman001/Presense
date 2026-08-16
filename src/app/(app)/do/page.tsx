@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/Badge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TaskCard } from "@/components/features/TaskCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Clock, Zap, Calendar, Wind, CheckCircle2 } from "lucide-react";
+import { Plus, Clock, Zap, Calendar, Wind, CheckCircle2, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useQueryState, parseAsString, parseAsStringEnum } from "nuqs";
 import { cn } from "@/lib/utils";
@@ -618,6 +619,16 @@ export default function DoPage() {
               icon={Wind}
               title="You're all caught up"
               description="No tasks due today. Take a well-deserved break, or plan ahead for tomorrow."
+              pointer={
+                // BUG-08 / CONF-10 (Option C): thin pointer to the global trash
+                <Link
+                  href="/trash?filter=item"
+                  className="underline underline-offset-2 hover:text-[var(--color-accent)]"
+                >
+                  <UiIcon className="mr-1 inline h-3 w-3 align-[-2px]" icon={Trash2} />
+                  Check the trash for deleted tasks
+                </Link>
+              }
               className="md:col-span-2"
               action={
                 <Button

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ArrowLeft, Loader2, RefreshCw, Trash2 } from "lucide-react";
@@ -20,6 +21,10 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function TrashPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  // BUG-08 / CONF-10 (Option C): per-space pointers link here with
+  // ?filter=<type> to show only that entity type in the trash.
+  const filterType = searchParams.get("filter");
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [itemToPermanentDelete, setItemToPermanentDelete] = useState<any>(null);
@@ -29,6 +34,18 @@ export default function TrashPage() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
+
+    // BUG-08: a single status value + deleted_at convention across all five
+    // tables. fetchType is only a *view* preference (all five are always
+    // fetched — per-space views are a browsing surface, not separate logic).
+    const fetchType =
+      filterType === "explore" ||
+      filterType === "item" ||
+      filterType === "thread" ||
+      filterType === "person" ||
+      filterType === "location"
+        ? filterType
+        : null;
 
     // Fetch deleted explores, items, threads, people, and locations
     const [exploresRes, itemsRes, threadsRes, peopleRes, locationsRes] =
@@ -85,18 +102,19 @@ export default function TrashPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(locationsRes.data || []).map((i: any) => ({
         ...i,
-        __type: "location",
+                __type: "location",
       })),
       /* @todo: Untyped usage justified per TOOL-01 */
-       
-    ].sort(
-      (a: any, b: any) =>
-        new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime(),
-    );
+    ]
+      .filter((i: any) => (fetchType ? i.__type === fetchType : true))
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime(),
+      );
 
     setItems(combined);
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, filterType]);
 
   useEffect(() => {
     fetchTrash();
