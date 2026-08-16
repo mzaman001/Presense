@@ -47,15 +47,16 @@ export function Sidebar() {
 
   useEffect(() => {
     const updateTime = () => setNow(new Date());
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") updateTime();
+    };
     const interval = setInterval(updateTime, 60000);
     window.addEventListener("focus", updateTime);
-    window.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") updateTime();
-    });
+    window.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", updateTime);
-      window.removeEventListener("visibilitychange", updateTime);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 

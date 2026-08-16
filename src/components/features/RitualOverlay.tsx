@@ -304,15 +304,16 @@ export function RitualOverlay({
         return prev === next ? prev : next;
       });
     };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") update();
+    };
     const interval = setInterval(update, 60000);
     window.addEventListener("focus", update);
-    window.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") update();
-    });
+    window.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", update);
-      window.removeEventListener("visibilitychange", update);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
