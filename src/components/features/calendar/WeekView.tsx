@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   format,
@@ -39,23 +39,30 @@ function getTopOffset(deadline: string): number {
   return (d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT;
 }
 
+// PERF-16: precomputed numeric start/end so the sort comparator and the
+// per-column placement loop never re-parse deadline strings. Both phases
+// read the single pass over the array.
 function calculateOverlap(tasks: Task[]) {
-  const sorted = [...tasks].sort((a, b) => {
-    const dA = parseISO(a.deadline!);
-    const dB = parseISO(b.deadline!);
-    return dA.getTime() - dB.getTime();
+  const timed = tasks.map((task) => {
+    const d = new Date(task.deadline!);
+    return {
+      task,
+      start: d.getHours() + d.getMinutes() / 60,
+      duration: task.time_estimate ? task.time_estimate / 60 : 0.5,
+    };
   });
+  const sorted = timed.sort((a, b) => a.start - b.start);
 
   const layout: { task: Task; left: number; width: number }[] = [];
-  let columns: Task[][] = [];
+  let columns: { task: Task; start: number; duration: number }[][] = [];
   let lastEventEnding: number | null = null;
 
   function packColumns() {
     const numColumns = columns.length;
     columns.forEach((col, colIdx) => {
-      col.forEach((task) => {
+      col.forEach((entry) => {
         layout.push({
-          task,
+          task: entry.task,
           left: (colIdx / numColumns) * 100,
           width: (1 / numColumns) * 100,
         });
@@ -63,10 +70,9 @@ function calculateOverlap(tasks: Task[]) {
     });
   }
 
-  sorted.forEach((task) => {
-    const d = parseISO(task.deadline!);
-    const start = d.getHours() + d.getMinutes() / 60;
-    const end = start + (task.time_estimate ? task.time_estimate / 60 : 0.5);
+  sorted.forEach((entry) => {
+    const { start, duration } = entry;
+    const end = start + duration;
 
     if (lastEventEnding !== null && start >= lastEventEnding) {
       packColumns();
@@ -77,18 +83,13 @@ function calculateOverlap(tasks: Task[]) {
     let placed = false;
     for (const col of columns) {
       const lastInCol = col[col.length - 1];
-      const lastStart =
-        parseISO(lastInCol.deadline!).getHours() +
-        parseISO(lastInCol.deadline!).getMinutes() / 60;
-      const lastDuration = lastInCol.time_estimate ? lastInCol.time_estimate / 60 : 0.5;
-      
-      if (start >= lastStart + lastDuration) {
-        col.push(task);
+      if (start >= lastInCol.start + lastInCol.duration) {
+        col.push(entry);
         placed = true;
         break;
       }
     }
-    if (!placed) columns.push([task]);
+    if (!placed) columns.push([entry]);
 
     lastEventEnding = Math.max(lastEventEnding || 0, end);
   });
@@ -200,11 +201,24 @@ export function WeekView({ weekStart, tasks, onEditTask, onCreateTaskAt, days = 
 
   const viewDays = Array.from({ length: days }, (_, i) => addDays(weekStart, i));
 
+  // PERF-16: index tasks by their deadline day once per render instead of
+  // scanning the full list + parsing deadlines for all-day rows, timed
+  // columns, and the overlap layout on every render (compounded by the
+  // parent's 60 s clock refresh).
+  const tasksByDay = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (const t of tasks) {
+      if (!t.deadline) continue;
+      const key = format(parseISO(t.deadline), "yyyy-MM-dd");
+      const list = map.get(key);
+      if (list) list.push(t);
+      else map.set(key, [t]);
+    }
+    return map;
+  }, [tasks]);
+
   function getTasksForDay(day: Date) {
-    return tasks.filter((t) => {
-      if (!t.deadline) return false;
-      return isSameDay(parseISO(t.deadline), day);
-    });
+    return tasksByDay.get(format(day, "yyyy-MM-dd")) ?? [];
   }
 
   function handleSlotClick(day: Date, hour: number) {

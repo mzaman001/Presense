@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   format,
@@ -188,11 +188,23 @@ export function MonthView({
 
   const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
+  // PERF-16: index tasks by their deadline day once per render instead of
+  // scanning the full list + parsing the deadline for every grid cell
+  // (~42 cells per render, re-run on every popoverDay change).
+  const tasksByDay = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (const t of tasks) {
+      if (!t.deadline) continue;
+      const key = format(parseISO(t.deadline), "yyyy-MM-dd");
+      const list = map.get(key);
+      if (list) list.push(t);
+      else map.set(key, [t]);
+    }
+    return map;
+  }, [tasks]);
+
   function getTasksForDay(day: Date) {
-    return tasks.filter((t) => {
-      if (!t.deadline) return false;
-      return isSameDay(parseISO(t.deadline), day);
-    });
+    return tasksByDay.get(format(day, "yyyy-MM-dd")) ?? [];
   }
 
   const handleDayClick = (day: Date, e?: React.MouseEvent) => {
