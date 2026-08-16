@@ -1217,6 +1217,19 @@ This document's method throughout has been to cite current, authoritative source
 
 **INFRA-17 — Add explicit indexes on every column used in an RLS policy, and confirm this table-by-table**
 
+**Status — ✅ CLOSED Aug 17, 2026 (commit TBD).** Verified, not assumed: the app's actual 29 migration files (all `supabase/migrations/*.sql` on `main`) were applied end-to-end against a real PostgreSQL 16 instance (Supabase platform objects stubbed: `auth.users`, `auth.uid()`, `supabase_realtime` publication), all applied cleanly with zero errors, then the acceptance query equivalent to `\d+` (`pg_indexes` filtered for `user_id`) was run. Result — every one of the six tables has a btree index on `user_id`:
+
+| Table | Index | Source migration | Type |
+|---|---|---|---|
+| `items` | `idx_items_user_status (user_id, status)` + partial `idx_items_active (user_id, deadline) WHERE deleted_at IS NULL` | `001_baseline.sql`, `20260702100000_audit_fixes.sql` | explicit |
+| `people` | `idx_people_meeting (user_id, next_meeting)` | `001_baseline.sql` | explicit |
+| `threads` | `idx_threads_updated (user_id, last_updated)` + partial `idx_threads_active (user_id) WHERE deleted_at IS NULL` | `001_baseline.sql`, `20260702100000_audit_fixes.sql` | explicit |
+| `explores` | `idx_explores_saved (user_id, saved_at)`, `idx_explores_revisited (user_id, revisited_at)`, partial `idx_explores_active (user_id, type)` | `001_baseline.sql`, `20260702100000_audit_fixes.sql` | explicit |
+| `locations` | `idx_locations_updated (user_id, updated_at)` | `001_baseline.sql` | explicit |
+| `user_settings` | `user_settings_pkey` — `user_id` **is** the primary key, so the btree exists automatically | `001_baseline.sql` | PK |
+
+One important nuance recorded in the closure note: PostgreSQL FK constraints do **not** auto-create indexes (only PK/UNIQUE do), so `user_id REFERENCES auth.users` alone would not satisfy the ticket — the explicit `idx_*` entries above are the real coverage, and `user_settings` is covered by its PK. Bonus finding beyond the six ticket tables: `push_subscriptions` has `idx_push_subscriptions_user (user_id)` (from `20260702000000_fix_db_issues.sql`) plus a unique `(user_id, endpoint)`; `categories` has `UNIQUE(user_id, name)` (unique constraint auto-index, leading `user_id` supports eq lookups); `ritual_logs` and `session_logs` have `idx_*_user_completed (user_id, ...)` — no policy-filtered table is missing an index, so **no new migration was needed**. Subsumes INFRA-10's index concern. Build green (VERCEL=1), tests 181/181.
+
 - **Priority:** Critical
 - **Citation:** Supabase's own guidance: "make sure you've added indexes on any columns used within the Policies which are not already indexed" — this is listed as the highest-impact of their documented recommendations.
 - **Requirement:** For each of the five entity tables (`items`, `people`, `threads`, `explores`, `locations`) plus `user_settings`, confirm a btree index exists on `user_id` (the column virtually every policy in this app filters on) — this is likely already covered by each table's primary key/foreign key setup but must be verified, not assumed, per table.
