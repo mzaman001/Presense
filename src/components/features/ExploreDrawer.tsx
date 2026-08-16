@@ -13,6 +13,7 @@ import {
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Sheet } from "@/components/ui/Sheet";
 import { Dropdown } from "@/components/ui/Dropdown";
@@ -51,7 +52,12 @@ export function ExploreDrawer({
   onSaved,
 }: ExploreDrawerProps) {
   const supabase = createClient();
-  const { userSettings, setUserSettings } = useAppStore();
+  const { userSettings, setUserSettings } = useAppStore(
+    useShallow((s) => ({
+      userSettings: s.userSettings,
+      setUserSettings: s.setUserSettings,
+    })),
+  );
 
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");

@@ -29,6 +29,7 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { CaptureShortcut } from "@/components/layout/CaptureShortcut";
@@ -103,7 +104,12 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
 export default function HomeDashboard() {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
-  const { userSettings, setActiveTimer } = useAppStore();
+  const { userSettings, setActiveTimer } = useAppStore(
+    useShallow((s) => ({
+      userSettings: s.userSettings,
+      setActiveTimer: s.setActiveTimer,
+    })),
+  );
 
   const [taskToEdit, setTaskToEdit] = useState<TaskItem | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);

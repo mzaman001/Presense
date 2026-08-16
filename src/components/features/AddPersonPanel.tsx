@@ -64,7 +64,7 @@ export function AddPersonPanel({
     color: null as string | null,
   });
 
-  const { userSettings } = useAppStore();
+  const userSettings = useAppStore((s) => s.userSettings); // PERF-14
   const relationships =
     userSettings?.people_categories || DEFAULT_RELATIONSHIPS;
 

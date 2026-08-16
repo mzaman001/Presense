@@ -6,6 +6,7 @@ import { logger } from "@/lib/logger";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
 import { routeCapture } from "@/lib/capture-router";
 import { formatRRule, cn, extractMentions } from "@/lib/utils";
@@ -83,7 +84,21 @@ const toLocalISOString = (date: Date) => {
 };
 
 export function CaptureModal() {
-  const { isCaptureModalOpen, setCaptureModalOpen, userSettings, captureModalPrefill, setCaptureModalPrefill } = useAppStore();
+  const {
+    isCaptureModalOpen,
+    setCaptureModalOpen,
+    userSettings,
+    captureModalPrefill,
+    setCaptureModalPrefill,
+  } = useAppStore(
+    useShallow((s) => ({
+      isCaptureModalOpen: s.isCaptureModalOpen,
+      setCaptureModalOpen: s.setCaptureModalOpen,
+      userSettings: s.userSettings,
+      captureModalPrefill: s.captureModalPrefill,
+      setCaptureModalPrefill: s.setCaptureModalPrefill,
+    })),
+  );
   const [input, setInput] = useState("");
   const [lastRoutedInput, setLastRoutedInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);

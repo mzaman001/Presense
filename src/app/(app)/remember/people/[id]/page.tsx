@@ -50,7 +50,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
 
-  const { userSettings } = useAppStore();
+  const userSettings = useAppStore((s) => s.userSettings); // PERF-14
 
   const fetchPerson = useCallback(async () => {
     const { data: personData } = await supabase.from("people").select("*").eq("id", id).single();

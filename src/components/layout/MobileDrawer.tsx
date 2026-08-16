@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,7 +30,14 @@ const navItems = [
 
 export function MobileDrawer() {
   const pathname = usePathname();
-  const { isMobileDrawerOpen, setIsMobileDrawerOpen, setSearchModalOpen, setSettingsModalOpen } = useAppStore();
+  const { isMobileDrawerOpen, setIsMobileDrawerOpen, setSearchModalOpen, setSettingsModalOpen } = useAppStore(
+    useShallow((s) => ({
+      isMobileDrawerOpen: s.isMobileDrawerOpen,
+      setIsMobileDrawerOpen: s.setIsMobileDrawerOpen,
+      setSearchModalOpen: s.setSearchModalOpen,
+      setSettingsModalOpen: s.setSettingsModalOpen,
+    })),
+  );
 
   return (
     <AnimatePresence>

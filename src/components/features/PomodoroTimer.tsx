@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient, safeMutate } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { X, Play, Pause, SkipForward, Square, Timer } from "lucide-react";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { m, AnimatePresence } from "framer-motion";
@@ -68,7 +69,14 @@ function loadTimerState(): PersistedState | null {
 
 export function PomodoroTimer() {
   const { activeTimer, setActiveTimer, userSettings, markMutation } =
-    useAppStore();
+    useAppStore(
+      useShallow((s) => ({
+        activeTimer: s.activeTimer,
+        setActiveTimer: s.setActiveTimer,
+        userSettings: s.userSettings,
+        markMutation: s.markMutation,
+      })),
+    );
   const supabase = createClient();
   const queryClient = useQueryClient();
 

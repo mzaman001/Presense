@@ -171,7 +171,7 @@ export function TaskAddPanel({
     }
   };
 
-  const { userSettings } = useAppStore();
+  const userSettings = useAppStore((s) => s.userSettings); // PERF-14
 
   useEffect(() => {
     if (isOpen) {

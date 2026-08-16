@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient, safeMutate } from "@/lib/supabase";
 import type { Database } from "@/types/database.types";
 import { toast } from "sonner";
@@ -260,7 +261,15 @@ export function RitualOverlay({
     userSettings,
     updateUserSetting,
     markMutation,
-  } = useAppStore();
+  } = useAppStore(
+    useShallow((s) => ({
+      activeRitual: s.activeRitual,
+      setActiveRitual: s.setActiveRitual,
+      userSettings: s.userSettings,
+      updateUserSetting: s.updateUserSetting,
+      markMutation: s.markMutation,
+    })),
+  );
 
   const activeRitual = type !== undefined ? type : storeActiveRitual;
   const isCurrentlyOpen =

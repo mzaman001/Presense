@@ -2,12 +2,19 @@
 
 import { useEffect } from "react";
 import { useAppStore, UserSettings } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { applyDocumentTheme, normalizeColorMode, normalizeThemeId } from "@/lib/theme";
 import { getRitualDecision } from "@/lib/rituals";
 import { usePathname } from "next/navigation";
 
 export function AppInitializer({ initialSettings }: { initialSettings?: UserSettings }) {
-  const { userSettings, setUserSettings, setActiveRitual } = useAppStore();
+  const { userSettings, setUserSettings, setActiveRitual } = useAppStore(
+    useShallow((s) => ({
+      userSettings: s.userSettings,
+      setUserSettings: s.setUserSettings,
+      setActiveRitual: s.setActiveRitual,
+    })),
+  );
   const pathname = usePathname() || "";
 
   useEffect(() => {

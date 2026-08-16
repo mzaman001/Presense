@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { Avatar } from "@/components/ui/Avatar";
 import { Search, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,7 +9,14 @@ import Link from "next/link";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 export function MobileTopBar() {
-  const { userSettings, setSettingsModalOpen, setSearchModalOpen, setIsMobileDrawerOpen } = useAppStore();
+  const { userSettings, setSettingsModalOpen, setSearchModalOpen, setIsMobileDrawerOpen } = useAppStore(
+    useShallow((s) => ({
+      userSettings: s.userSettings,
+      setSettingsModalOpen: s.setSettingsModalOpen,
+      setSearchModalOpen: s.setSearchModalOpen,
+      setIsMobileDrawerOpen: s.setIsMobileDrawerOpen,
+    })),
+  );
 
   return (
     <header className="mobile-top-bar md:hidden fixed top-0 left-0 w-full h-[52px] border-b border-[var(--border-subtle)] bg-[var(--color-background)]/95 z-40 flex items-center justify-between px-4" style={{ paddingTop: 'env(safe-area-inset-top)' }}>

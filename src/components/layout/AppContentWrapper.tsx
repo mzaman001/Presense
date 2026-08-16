@@ -2,12 +2,19 @@
 
 import React, { useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export function AppContentWrapper({ children }: { children: React.ReactNode }) {
   const { setCaptureModalOpen, setSearchModalOpen, setSettingsModalOpen } =
-    useAppStore();
+    useAppStore(
+      useShallow((s) => ({
+        setCaptureModalOpen: s.setCaptureModalOpen,
+        setSearchModalOpen: s.setSearchModalOpen,
+        setSettingsModalOpen: s.setSettingsModalOpen,
+      })),
+    );
 
   const router = useRouter();
 

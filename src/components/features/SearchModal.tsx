@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
 import { Search, X, Loader2, CheckSquare, Users, MessageSquare, Compass, MapPin, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,7 +16,12 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 export function SearchModal() {
-  const { isSearchModalOpen, setSearchModalOpen } = useAppStore();
+  const { isSearchModalOpen, setSearchModalOpen } = useAppStore(
+    useShallow((s) => ({
+      isSearchModalOpen: s.isSearchModalOpen,
+      setSearchModalOpen: s.setSearchModalOpen,
+    })),
+  );
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 300);
   const [results, setResults] = useState<any[]>([]);

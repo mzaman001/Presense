@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from "react";
 import { useAppStore } from "@/store/useAppStore";
+import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient, safeMutate } from "@/lib/supabase";
 import {
   X,
@@ -348,7 +349,15 @@ export function SettingsModal() {
     setUserSettings,
     settingsActiveTab,
     setSettingsActiveTab,
-  } = useAppStore();
+  } = useAppStore(
+    useShallow((s) => ({
+      isSettingsModalOpen: s.isSettingsModalOpen,
+      setSettingsModalOpen: s.setSettingsModalOpen,
+      setUserSettings: s.setUserSettings,
+      settingsActiveTab: s.settingsActiveTab,
+      setSettingsActiveTab: s.setSettingsActiveTab,
+    })),
+  );
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const queryClient = useQueryClient();

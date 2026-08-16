@@ -185,7 +185,7 @@ function SortablePersonRow({
     position: "relative" as const,
   };
 
-  const { userSettings } = useAppStore();
+  const userSettings = useAppStore((s) => s.userSettings); // PERF-14
   const relKey = (person.relationship || "").toLowerCase();
   const relColor =
     person.color ||
