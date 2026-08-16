@@ -7,8 +7,22 @@ import { logger } from "@/lib/logger";
 import { accountDeleteSchema } from "@/lib/schemas";
 import * as Sentry from "@sentry/nextjs";
 
+// PERF-17: fail fast — this is a cheap env check that previously ran
+// after the auth round trip, the Redis rate-limit call, and body parsing.
+// If the service-role key is missing, account deletion can never succeed,
+// so reject before any of that work.
 export async function DELETE(request: Request) {
   try {
+    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+      logger.error("[account] SUPABASE_SERVICE_ROLE_KEY is not configured");
+      return NextResponse.json(
+        {
+          error: "Account deletion is not configured. Please contact support.",
+        },
+        { status: 500 },
+      );
+    }
+
     const supabase = await createServerClient();
     const {
       data: { user },
@@ -36,16 +50,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         { error: "Confirmation token does not match account email" },
         { status: 400 },
-      );
-    }
-
-    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-      logger.error("[account] SUPABASE_SERVICE_ROLE_KEY is not configured");
-      return NextResponse.json(
-        {
-          error: "Account deletion is not configured. Please contact support.",
-        },
-        { status: 500 },
       );
     }
 

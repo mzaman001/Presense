@@ -52,17 +52,22 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
 
   const userSettings = useAppStore((s) => s.userSettings); // PERF-14
 
+  // PERF-17: the person row and the linked-items query are independent —
+  // the items query needs only the route `id`, so run them concurrently
+  // instead of nesting the items query inside the person success branch.
   const fetchPerson = useCallback(async () => {
-    const { data: personData } = await supabase.from("people").select("*").eq("id", id).single();
-    if (personData) {
-      setPerson(personData as unknown as Person);
-      const { data: tasksData } = await supabase
+    const [personRes, tasksRes] = await Promise.all([
+      supabase.from("people").select("*").eq("id", id).single(),
+      supabase
         .from("items")
         .select("*")
         .contains("linked_people_ids", [id])
-        .in("status", ["active", "overdue", "inbox"]);
-      setLinkedTasks(tasksData ?? []);
+        .in("status", ["active", "overdue", "inbox"]),
+    ]);
+    if (personRes.data) {
+      setPerson(personRes.data as unknown as Person);
     }
+    setLinkedTasks(tasksRes.data ?? []);
     setLoading(false);
   }, [supabase, id]);
 

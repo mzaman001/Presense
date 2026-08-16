@@ -65,6 +65,10 @@ export default function ExploreDetailPage({
   const [isThreadDropdownOpen, setIsThreadDropdownOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  // PERF-17: the item fetch (with its revisited_at mutation) and the
+  // threads list are independent — the threads query needs only the
+  // global active-thread list, so run them concurrently instead of
+  // delaying threads behind the item round trip + mutation.
   const fetchItem = useCallback(async () => {
     const { data: item } = await supabase
       .from("explores")
@@ -101,11 +105,15 @@ export default function ExploreDetailPage({
       }
     }
 
-    const { data: threadData } = await supabase
+    // Start in parallel: this needs nothing from the item fetch.
+    const threadsPromise = supabase
       .from("threads")
       .select("id, title")
-      .eq("status", "active");
-    setThreads(threadData || []);
+      .eq("status", "active")
+      .then((res) => res.data || []);
+
+    const threadData = await threadsPromise;
+    setThreads(threadData);
 
     setLoading(false);
   }, [supabase, id]);

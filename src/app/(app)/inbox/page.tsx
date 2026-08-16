@@ -284,15 +284,14 @@ export default function InboxPage() {
           );
           if (!success) throw new Error("Route to Do failed");
         } else if (space === "remember") {
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-          if (user) {
+          // PERF-17: item.user_id is already in hand from the inbox query
+          // — drop the redundant supabase.auth.getUser() round trip.
+          if (item.user_id) {
             // BUG-38: insert FIRST, trash original only on success
             const { data: inserted, error: insertError } = await supabase
               .from("people")
               .insert({
-                user_id: user.id,
+                user_id: item.user_id,
                 name: item.title,
                 notes: [
                   {
@@ -399,15 +398,14 @@ export default function InboxPage() {
             }
           }
         } else if (space === "location") {
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-          if (user) {
+          // PERF-17: item.user_id is already in hand from the inbox query
+          // — drop the redundant supabase.auth.getUser() round trip.
+          if (item.user_id) {
             // BUG-38: insert FIRST, trash original only on success
             const { data: inserted, error: insertError } = await supabase
               .from("locations")
               .insert({
-                user_id: user.id,
+                user_id: item.user_id,
                 item_name: item.title,
                 location_text: item.title,
               })

@@ -193,20 +193,20 @@ export default function ThreadDetailPage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // PERF-17: the thread and explores queries are independent — run them
+  // concurrently instead of serializing the explores fetch behind the
+  // thread fetch on every render (and every realtime event).
   const fetchThread = useCallback(async () => {
-    const { data: threadData } = await supabase
-      .from("threads")
-      .select("*")
-      .eq("id", id)
-      .single();
-    setThread(threadData as unknown as Thread);
-
-    const { data: exploresData } = await supabase
-      .from("explores")
-      .select("id, title, type")
-      .eq("linked_thread_id", id)
-      .in("status", ["active", "archived"]);
-    setLinkedExplores(exploresData || []);
+    const [threadRes, exploresRes] = await Promise.all([
+      supabase.from("threads").select("*").eq("id", id).single(),
+      supabase
+        .from("explores")
+        .select("id, title, type")
+        .eq("linked_thread_id", id)
+        .in("status", ["active", "archived"]),
+    ]);
+    setThread(threadRes.data as unknown as Thread);
+    setLinkedExplores(exploresRes.data || []);
 
     setLoading(false);
   }, [supabase, id]);
