@@ -1,11 +1,24 @@
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async (req) => {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  // SEC2-02 (2026-08-16): this function defaults to `verify_jwt = true`, so every invocation must
+  // send a valid Authorization header. Fail loudly with 401 if the trigger (Supabase Dashboard
+  // scheduled function / pg_cron + net.http_post) omits it — a silent 401 means cleanup never
+  // runs and trash grows unbounded. See EXECUTION_SPEC.md SEC2-02 for the trigger contract.
+  if (!req.headers.get("Authorization")) {
+    return new Response(
+      JSON.stringify({
+        error: "No Authorization header — scheduled invocation must send a JWT",
+      }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
   try {
     const thirtyDaysAgo = new Date();
@@ -14,19 +27,44 @@ serve(async (req) => {
 
     const results = await Promise.all([
       // Items (Tasks)
-      supabase.from('items').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
-      
+      supabase
+        .from("items")
+        .delete()
+        .eq("status", "deleted")
+        .not("deleted_at", "is", null)
+        .lte("deleted_at", cutoffDate),
+
       // Threads
-      supabase.from('threads').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
-      
+      supabase
+        .from("threads")
+        .delete()
+        .eq("status", "deleted")
+        .not("deleted_at", "is", null)
+        .lte("deleted_at", cutoffDate),
+
       // Explores
-      supabase.from('explores').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
-      
+      supabase
+        .from("explores")
+        .delete()
+        .eq("status", "deleted")
+        .not("deleted_at", "is", null)
+        .lte("deleted_at", cutoffDate),
+
       // People
-      supabase.from('people').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate),
-      
+      supabase
+        .from("people")
+        .delete()
+        .eq("status", "deleted")
+        .not("deleted_at", "is", null)
+        .lte("deleted_at", cutoffDate),
+
       // Locations
-      supabase.from('locations').delete().eq('status', 'deleted').not('deleted_at', 'is', null).lte('deleted_at', cutoffDate)
+      supabase
+        .from("locations")
+        .delete()
+        .eq("status", "deleted")
+        .not("deleted_at", "is", null)
+        .lte("deleted_at", cutoffDate),
     ]);
 
     // Check for errors in the results array
@@ -37,11 +75,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ message: "Hard delete cleanup executed successfully." }),
       { headers: { "Content-Type": "application/json" } },
-    )
-  } catch (err: any) {
+    );
+  } catch (err: unknown) {
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({
+        error: err instanceof Error ? err.message : String(err),
+      }),
       { headers: { "Content-Type": "application/json" }, status: 500 },
-    )
+    );
   }
-})
+});

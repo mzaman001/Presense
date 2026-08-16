@@ -1,11 +1,24 @@
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async (req) => {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  // SEC2-02 (2026-08-16): this function defaults to `verify_jwt = true`, so every invocation must
+  // send a valid Authorization header. Fail loudly with 401 if the trigger (Supabase Dashboard
+  // scheduled function / pg_cron + net.http_post) omits it — a silent 401 means recurring tasks
+  // stop being regenerated. See EXECUTION_SPEC.md SEC2-02 for the trigger contract.
+  if (!req.headers.get("Authorization")) {
+    return new Response(
+      JSON.stringify({
+        error: "No Authorization header — scheduled invocation must send a JWT",
+      }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
     // Only scan tasks completed in the last 90 days to avoid unbounded full-table scan
@@ -23,7 +36,9 @@ serve(async (req) => {
     if (error) throw error;
 
     // Fetch nudge_time defaults for all users we'll need
-    const userIds = [...new Set(recurringTasks.map((t: any) => t.user_id))];
+    const userIds = [
+      ...new Set(recurringTasks.map((t: { user_id: string }) => t.user_id)),
+    ];
     const { data: settingsRows, error: settingsError } = await supabase
       .from("user_settings")
       .select("user_id, nudge_time")
@@ -57,8 +72,19 @@ serve(async (req) => {
         } else if (rruleStr.includes("FREQ=WEEKLY")) {
           const bydayMatch = rruleStr.match(/BYDAY=([A-Z,]+)/);
           if (bydayMatch) {
-            const dayMap: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
-            const targetDays = bydayMatch[1].split(",").map((d: string) => dayMap[d]).filter((d: number) => d !== undefined);
+            const dayMap: Record<string, number> = {
+              SU: 0,
+              MO: 1,
+              TU: 2,
+              WE: 3,
+              TH: 4,
+              FR: 5,
+              SA: 6,
+            };
+            const targetDays = bydayMatch[1]
+              .split(",")
+              .map((d: string) => dayMap[d])
+              .filter((d: number) => d !== undefined);
             // For intervals > 1, we look further ahead (interval weeks * 7 days + buffer)
             const lookAheadDays = interval > 1 ? interval * 7 + 7 : 14;
             const cursor = new Date(completedAt);
@@ -67,7 +93,9 @@ serve(async (req) => {
             for (let i = 0; i < lookAheadDays; i++) {
               if (targetDays.includes(cursor.getDay())) {
                 // For interval > 1, verify we've moved forward by the right number of weeks
-                const daysSinceCompletion = Math.floor((cursor.getTime() - completedAt.getTime()) / 86400000);
+                const daysSinceCompletion = Math.floor(
+                  (cursor.getTime() - completedAt.getTime()) / 86400000,
+                );
                 if (interval <= 1 || daysSinceCompletion >= interval * 7) {
                   nextDate = new Date(cursor);
                   nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
@@ -117,30 +145,34 @@ serve(async (req) => {
               ifthen_trigger: task.ifthen_trigger,
               recurrence: task.recurrence,
               deadline: nextDate.toISOString(),
-              status: "active"
+              status: "active",
             });
             if (insertError) throw insertError;
             createdCount++;
           }
         }
-      } catch (taskErr: any) {
-        console.error(`Failed to process task ${task.id}:`, taskErr.message);
+      } catch (taskErr: unknown) {
+        const msg =
+          taskErr instanceof Error ? taskErr.message : String(taskErr);
+        console.error(`Failed to process task ${task.id}:`, msg);
       }
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Recurrence cron executed",
         processed: recurringTasks.length,
-        created: createdCount
+        created: createdCount,
       }),
       { headers: { "Content-Type": "application/json" } },
-    )
-  } catch (err: any) {
+    );
+  } catch (err: unknown) {
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({
+        error: err instanceof Error ? err.message : String(err),
+      }),
       { headers: { "Content-Type": "application/json" }, status: 500 },
-    )
+    );
   }
-})
+});
