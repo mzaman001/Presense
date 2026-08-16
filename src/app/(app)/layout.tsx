@@ -11,6 +11,7 @@ import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { MotionProvider } from "@/components/layout/MotionProvider";
 import type { UserSettings } from "@/store/useAppStore";
@@ -46,28 +47,39 @@ export default async function AppLayout({
     .maybeSingle();
 
   if (!settings || settings.onboarding_complete === false) {
-    // If the user already has items/data, they've used the app before —
-    // auto-complete onboarding so they aren't stuck in a redirect loop.
+    // PERF-18: the redirect decision still needs the items count inline
+    // (a stale, data-less user must not render the app), but the upsert
+    // itself no longer blocks first paint — it runs post-response via
+    // after() with a fresh client (cookies() is request-scoped).
     const { count } = await supabase
       .from("items")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
 
     if (count && count > 0) {
-      // BUG-38: server-side — no toast available, but still check the error
-      const { error } = await supabase
-        .from("user_settings")
-        .upsert(
-          { user_id: userId, onboarding_complete: true },
-          { onConflict: "user_id" },
-        );
-      if (error) {
-        console.error(
-          "[layout] failed to auto-complete onboarding for",
-          userId,
-          error,
-        );
-      }
+      after(async () => {
+        try {
+          const { error } = await (await createClient())
+            .from("user_settings")
+            .upsert(
+              { user_id: userId, onboarding_complete: true },
+              { onConflict: "user_id" },
+            );
+          if (error) {
+            console.error(
+              "[layout] failed to auto-complete onboarding for",
+              userId,
+              error,
+            );
+          }
+        } catch (err) {
+          console.error(
+            "[layout] failed to auto-complete onboarding for",
+            userId,
+            err,
+          );
+        }
+      });
     } else {
       redirect("/onboarding");
     }
