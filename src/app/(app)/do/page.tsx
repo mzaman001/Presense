@@ -32,14 +32,14 @@ import dynamic from "next/dynamic";
 
 // Heavy, closed-by-default surfaces loaded on demand (same pattern as
 // DynamicModals) so /do's initial bundle and hydration exclude them.
-const TaskAddPanel = dynamic(
+export const TaskAddPanel = dynamic(
   () =>
     import("@/components/features/TaskAddPanel").then((m) => ({
       default: m.TaskAddPanel,
     })),
   { ssr: false, loading: () => null },
 );
-const CalendarView = dynamic(
+export const CalendarView = dynamic(
   () =>
     import("@/components/features/calendar/CalendarView").then((m) => ({
       default: m.CalendarView,
@@ -424,6 +424,10 @@ export default function DoPage() {
         actions={
           <Button
             variant="secondary"
+            // PERF-20: start fetching the add-panel chunk on hover/focus so
+            // the panel opens without paying the chunk transfer/eval cost
+            onMouseEnter={() => (TaskAddPanel as typeof TaskAddPanel & { preload: () => void }).preload()}
+            onFocus={() => (TaskAddPanel as typeof TaskAddPanel & { preload: () => void }).preload()}
             onClick={() => {
               setTaskToEdit(null);
               setInitialDeadline(null);
@@ -439,7 +443,14 @@ export default function DoPage() {
           options={[
             { label: "Board", value: "board" },
             { label: "Today", value: "today" },
-            { label: "Calendar", value: "calendar" },
+            {
+              label: "Calendar",
+              value: "calendar",
+              // PERF-20: fetch the calendar-view chunk on hover/focus so
+              // switching to the calendar is already warm
+              onMouseEnter: () => (CalendarView as typeof CalendarView & { preload: () => void }).preload(),
+              onFocus: () => (CalendarView as typeof CalendarView & { preload: () => void }).preload(),
+            },
           ]}
           value={viewMode}
           onChange={(val) => toggleViewMode(val)}

@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { SearchModal } from "@/components/layout/DynamicModals";
 
 export function AppContentWrapper({ children }: { children: React.ReactNode }) {
   const { setCaptureModalOpen, setSearchModalOpen, setSettingsModalOpen } =
@@ -34,6 +35,9 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
 
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        // PERF-20: start fetching the search chunk before the modal
+        // mounts so ⌘K opens without paying the chunk transfer/eval cost
+        (SearchModal as typeof SearchModal & { preload: () => void }).preload();
         setSearchModalOpen(true);
         return;
       }
