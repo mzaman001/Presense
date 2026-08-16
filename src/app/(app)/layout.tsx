@@ -5,7 +5,7 @@ import { MobileTopBar } from "@/components/layout/MobileTopBar";
 import { AppContentWrapper } from "@/components/layout/AppContentWrapper";
 import { AppInitializer } from "@/components/layout/AppInitializer";
 import { DynamicModals } from "@/components/layout/DynamicModals";
-import { RitualOverlay } from "@/components/features/RitualOverlay";
+import { RitualOverlayDynamic } from "@/components/layout/RitualOverlayDynamic";
 import QueryProvider from "@/components/layout/QueryProvider";
 import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 
@@ -96,7 +96,10 @@ export default async function AppLayout({
               <MobileDrawer />
               {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
               <DynamicModals />
-              <RitualOverlay />
+              {/* RitualOverlay is conditionally visible (ritual triage prompt)
+              — lazy-loaded via RitualOverlayDynamic so it never ships in
+              the shell bundle (PERF-19) */}
+              <RitualOverlayDynamic />
               <AppContentWrapper>
                 <NuqsAdapter>{children}</NuqsAdapter>
               </AppContentWrapper>
