@@ -29,6 +29,7 @@ Violating any of these has previously broken this project in production or reint
 | System architecture, data model, folder layout | `docs/project/ARCHITECTURE.md` | Reference only. Do not restate architecture here or in commit messages. |
 | Agent workflow (one ticket at a time, build+test+commit+stop) | `docs/agents/EXECUTION_RULES.md` | Read this before starting your first ticket of a session. |
 | Doc-identified issues requiring code fixes (do not fix in doc-only PRs) | `docs/project/DOCS_NEEDS_CODE.md` | The bridge between docs and code. Lists every doc-verified bug that needs a code PR, with ticket ID, file:line evidence, and fix plan. Read this before starting any code PR to avoid duplicating a known issue. |
+| The canonical interaction contract (create/edit/delete/toast/keyboard) | `docs/project/INTERACTION_PATTERNS.md` | The enforceable interaction contract (`DS-11`). Exactly one allowed pattern each for object creation entry points, inline vs. sheet editing, delete/undo/confirm behavior, toast conventions, and keyboard shortcuts. Read this before adding any new interaction. The status *vocabulary* it references lives in `docs/architecture/status-lifecycle-vocabulary.md`. |
 
 There is exactly one copy of each of these files. If you ever find a second copy (at repo root, in an old `docs/` path, or anywhere else), that is a bug — delete the stale copy, do not edit both, and note it in your PR.
 
