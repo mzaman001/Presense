@@ -1217,7 +1217,7 @@ This document's method throughout has been to cite current, authoritative source
 
 **INFRA-17 — Add explicit indexes on every column used in an RLS policy, and confirm this table-by-table**
 
-**Status — ✅ CLOSED Aug 17, 2026 (commit TBD).** Verified, not assumed: the app's actual 29 migration files (all `supabase/migrations/*.sql` on `main`) were applied end-to-end against a real PostgreSQL 16 instance (Supabase platform objects stubbed: `auth.users`, `auth.uid()`, `supabase_realtime` publication), all applied cleanly with zero errors, then the acceptance query equivalent to `\d+` (`pg_indexes` filtered for `user_id`) was run. Result — every one of the six tables has a btree index on `user_id`:
+**Status — ✅ CLOSED Aug 17, 2026 (commit `[33mbcb32b8[m`).** Verified, not assumed: the app's actual 29 migration files (all `supabase/migrations/*.sql` on `main`) were applied end-to-end against a real PostgreSQL 16 instance (Supabase platform objects stubbed: `auth.users`, `auth.uid()`, `supabase_realtime` publication), all applied cleanly with zero errors, then the acceptance query equivalent to `\d+` (`pg_indexes` filtered for `user_id`) was run. Result — every one of the six tables has a btree index on `user_id`:
 
 | Table | Index | Source migration | Type |
 |---|---|---|---|
@@ -1238,7 +1238,7 @@ One important nuance recorded in the closure note: PostgreSQL FK constraints do 
 
 **INFRA-18 — Client-side `.eq('user_id', userId)` alongside RLS, not instead of it**
 
-- **Status — ✅ CLOSED Aug 17, 2026 (commit TBD).** Added explicit `.eq("user_id", userId)` to every primary list-fetching query: Do task list + people dropdown + archived fetch, Think thread list, Explore item list (active/archive/trash variants), People, Locations, Trash + Explore/Trash (5 queries each), Home dashboard (6 queries), RitualOverlay morning + evening queries, and SearchModal (5 queries). Remaining unfiltered reads are intentionally out of scope (mutations, single-row PK lookups, ExploreDrawer thread picker). Verified with `tsc --noEmit` (clean), `VERCEL=1 npm run build` (compiled), and `npm test` (181/181).
+- **Status — ✅ CLOSED Aug 17, 2026 (commit `[33mbcb32b8[m`).** Added explicit `.eq("user_id", userId)` to every primary list-fetching query: Do task list + people dropdown + archived fetch, Think thread list, Explore item list (active/archive/trash variants), People, Locations, Trash + Explore/Trash (5 queries each), Home dashboard (6 queries), RitualOverlay morning + evening queries, and SearchModal (5 queries). Remaining unfiltered reads are intentionally out of scope (mutations, single-row PK lookups, ExploreDrawer thread picker). Verified with `tsc --noEmit` (clean), `VERCEL=1 npm run build` (compiled), and `npm test` (181/181).
 
 - **Priority:** Medium
 - **Citation:** Supabase's own guidance recommends adding the explicit client-side filter in addition to relying on RLS, because it lets the query planner use the `user_id` index directly rather than only via the policy's implicit filter — a small, low-risk addition with a measurable planner benefit per Supabase's own documented examples.
