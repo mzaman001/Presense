@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { CaptureShortcut } from "@/components/layout/CaptureShortcut";
 
 interface TaskItem {
   id: string;
@@ -382,620 +383,632 @@ export default function HomeDashboard() {
     }
   }
 
+  // PWA2-01: the manifest "Quick Capture" shortcut navigates to /?capture=1,
+  // which opens the capture modal directly from the installed app.
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-500">
-      <header className="mb-8 flex items-end justify-between">
-        <div>
-          <h1 className="text-page-greeting text-[var(--text-1)]">
-            {greeting}
-            <span className="text-[var(--text-3)]">
-              {userSettings?.display_name
-                ? `, ${userSettings.display_name.split(" ")[0]}`
-                : ", you"}
-              .
-            </span>
-          </h1>
-          <RitualStatusBadge userSettings={userSettings} />
-        </div>
-        <button
-          onClick={() => setShowReview(!showReview)}
-          className={cn(
-            "rounded-xl border px-4 py-2 text-xs font-medium transition-colors",
-            showReview
-              ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-              : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
-          )}
-        >
-          {showReview ? "Back to Dashboard" : "Week in Review"}
-        </button>
-      </header>
-
-      <ContextualTip
-        id="home"
-        title="Welcome to your External Brain"
-        description="This is your dashboard. The 'Focus Now' task is chosen based on the most urgent deadline. Use the '+' button below anytime to capture new things."
-      />
-
-      {showReview ? (
-        <div className="space-y-6">
-          <div className="mb-6 grid grid-cols-2 gap-4">
-            <GlassCard className="flex flex-col items-center justify-center p-6 text-center">
-              <div className="mb-1 text-3xl font-light text-[var(--color-text-1)]">
-                {doneTasks.length}
-              </div>
-              <div className="text-xs text-[var(--color-text-3)]">
-                Tasks Completed
-              </div>
-            </GlassCard>
-            <GlassCard className="flex flex-col items-center justify-center p-6 text-center">
-              <div className="mb-1 text-3xl font-light text-[var(--color-text-1)]">
-                {pomodorosThisWeek}
-              </div>
-              <div className="text-xs text-[var(--color-text-3)]">
-                Focus Sessions
-              </div>
-            </GlassCard>
+    <>
+      <CaptureShortcut />
+      <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-500">
+        <header className="mb-8 flex items-end justify-between">
+          <div>
+            <h1 className="text-page-greeting text-[var(--text-1)]">
+              {greeting}
+              <span className="text-[var(--text-3)]">
+                {userSettings?.display_name
+                  ? `, ${userSettings.display_name.split(" ")[0]}`
+                  : ", you"}
+                .
+              </span>
+            </h1>
+            <RitualStatusBadge userSettings={userSettings} />
           </div>
-          <h2 className="mb-4 text-xl font-semibold text-[var(--color-text-1)]">
-            Completed This Week
-          </h2>
-          {doneTasks.length === 0 ? (
-            <GlassCard className="border-dashed p-8 text-center text-[var(--color-text-3)]">
-              No tasks completed in the last 7 days.
-            </GlassCard>
-          ) : (
-            /* @todo: Untyped usage justified per TOOL-01 */
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            doneTasks.map((task: any) => (
-              <GlassCard
-                key={task.id}
-                className="flex items-center justify-between p-4 opacity-80"
-              >
-                <div>
-                  <h4 className="text-card-title text-[var(--text-1)] line-through">
-                    {task.title}
-                  </h4>
-                  <p className="mt-0.5 text-xs text-[var(--color-text-3)]">
-                    Completed{" "}
-                    {task.completed_at
-                      ? new Date(task.completed_at).toLocaleDateString()
-                      : ""}
-                  </p>
+          <button
+            onClick={() => setShowReview(!showReview)}
+            className={cn(
+              "rounded-xl border px-4 py-2 text-xs font-medium transition-colors",
+              showReview
+                ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+            )}
+          >
+            {showReview ? "Back to Dashboard" : "Week in Review"}
+          </button>
+        </header>
+
+        <ContextualTip
+          id="home"
+          title="Welcome to your External Brain"
+          description="This is your dashboard. The 'Focus Now' task is chosen based on the most urgent deadline. Use the '+' button below anytime to capture new things."
+        />
+
+        {showReview ? (
+          <div className="space-y-6">
+            <div className="mb-6 grid grid-cols-2 gap-4">
+              <GlassCard className="flex flex-col items-center justify-center p-6 text-center">
+                <div className="mb-1 text-3xl font-light text-[var(--color-text-1)]">
+                  {doneTasks.length}
                 </div>
-                <UiIcon
-                  className="h-5 w-5 text-[var(--color-do)]"
-                  icon={CheckCircle2}
-                />
+                <div className="text-xs text-[var(--color-text-3)]">
+                  Tasks Completed
+                </div>
               </GlassCard>
-            ))
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Inbox banner removed, using Inbox Section below Up Next instead */}
-
-          {/* Focus Now Hero Card */}
-          {primaryTask ? (
-            <GlassCard className="relative overflow-hidden p-8">
-              <div className="absolute top-0 right-0 p-8">
-                <div
-                  className="animate-spin-slow relative h-24 w-24 rounded-full"
-                  style={{
-                    background:
-                      "conic-gradient(from 0deg, var(--accent), var(--accent-hot), var(--accent-deep), var(--accent))",
-                    filter: "blur(1px)",
-                    WebkitMaskImage:
-                      "radial-gradient(circle, transparent 40px, black 41px)",
-                    maskImage:
-                      "radial-gradient(circle, transparent 40px, black 41px)",
-                  }}
-                />
-              </div>
-
-              <div className="relative z-10 flex h-full flex-col items-center justify-center p-10 text-center">
-                <span className="text-caption mb-4 rounded-full border border-[var(--accent)]/20 bg-[var(--accent)]/10 px-3 py-1 font-bold tracking-widest text-[var(--accent)] uppercase">
-                  ⚡ FOCUS NOW
-                </span>
-                <h2 className="mb-1 text-3xl font-medium text-[var(--text-1)]">
-                  {primaryTask.title}
-                </h2>
-                <p className="text-label mb-4 text-[var(--text-3)]">
-                  {heroReason}
-                </p>
-                <p className="mb-6 text-lg text-[var(--text-2)]">
-                  {primaryTask.first_step}
-                </p>
-
-                <Button
-                  variant="primary"
-                  onClick={() =>
-                    setActiveTimer({
-                      taskId: primaryTask.id,
-                      taskTitle: primaryTask.title,
-                    })
-                  }
-                  className=""
+              <GlassCard className="flex flex-col items-center justify-center p-6 text-center">
+                <div className="mb-1 text-3xl font-light text-[var(--color-text-1)]">
+                  {pomodorosThisWeek}
+                </div>
+                <div className="text-xs text-[var(--color-text-3)]">
+                  Focus Sessions
+                </div>
+              </GlassCard>
+            </div>
+            <h2 className="mb-4 text-xl font-semibold text-[var(--color-text-1)]">
+              Completed This Week
+            </h2>
+            {doneTasks.length === 0 ? (
+              <GlassCard className="border-dashed p-8 text-center text-[var(--color-text-3)]">
+                No tasks completed in the last 7 days.
+              </GlassCard>
+            ) : (
+              /* @todo: Untyped usage justified per TOOL-01 */
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              doneTasks.map((task: any) => (
+                <GlassCard
+                  key={task.id}
+                  className="flex items-center justify-between p-4 opacity-80"
                 >
-                  <UiIcon className="h-4 w-4 fill-[currentColor]" icon={Play} />
-                  <span>Start session &rarr;</span>
-                </Button>
-                <button
-                  onClick={async () => {
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
+                  <div>
+                    <h4 className="text-card-title text-[var(--text-1)] line-through">
+                      {task.title}
+                    </h4>
+                    <p className="mt-0.5 text-xs text-[var(--color-text-3)]">
+                      Completed{" "}
+                      {task.completed_at
+                        ? new Date(task.completed_at).toLocaleDateString()
+                        : ""}
+                    </p>
+                  </div>
+                  <UiIcon
+                    className="h-5 w-5 text-[var(--color-do)]"
+                    icon={CheckCircle2}
+                  />
+                </GlassCard>
+              ))
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Inbox banner removed, using Inbox Section below Up Next instead */}
 
-                    const snoozedTask = primaryTask;
+            {/* Focus Now Hero Card */}
+            {primaryTask ? (
+              <GlassCard className="relative overflow-hidden p-8">
+                <div className="absolute top-0 right-0 p-8">
+                  <div
+                    className="animate-spin-slow relative h-24 w-24 rounded-full"
+                    style={{
+                      background:
+                        "conic-gradient(from 0deg, var(--accent), var(--accent-hot), var(--accent-deep), var(--accent))",
+                      filter: "blur(1px)",
+                      WebkitMaskImage:
+                        "radial-gradient(circle, transparent 40px, black 41px)",
+                      maskImage:
+                        "radial-gradient(circle, transparent 40px, black 41px)",
+                    }}
+                  />
+                </div>
 
-                    // Save current states for rollback
-                    const previousDashboard = queryClient.getQueryData([
-                      "dashboard",
-                    ]);
-                    const previousTasks = queryClient.getQueryData(["tasks"]);
+                <div className="relative z-10 flex h-full flex-col items-center justify-center p-10 text-center">
+                  <span className="text-caption mb-4 rounded-full border border-[var(--accent)]/20 bg-[var(--accent)]/10 px-3 py-1 font-bold tracking-widest text-[var(--accent)] uppercase">
+                    ⚡ FOCUS NOW
+                  </span>
+                  <h2 className="mb-1 text-3xl font-medium text-[var(--text-1)]">
+                    {primaryTask.title}
+                  </h2>
+                  <p className="text-label mb-4 text-[var(--text-3)]">
+                    {heroReason}
+                  </p>
+                  <p className="mb-6 text-lg text-[var(--text-2)]">
+                    {primaryTask.first_step}
+                  </p>
 
-                    // Optimistic UI updates
-                    /* @todo: Untyped usage justified per TOOL-01 */
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    queryClient.setQueryData(["dashboard"], (old: any) => {
-                      if (!old) return old;
-                      return {
-                        ...old,
-                        /* @todo: Untyped usage justified per TOOL-01 */
-                        tasks: old.tasks.filter(
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          (t: any) => t.id !== snoozedTask.id,
-                        ),
-                      };
-                    });
-                    /* @todo: Untyped usage justified per TOOL-01 */
-                    queryClient.setQueryData(
-                      ["tasks"],
+                  <Button
+                    variant="primary"
+                    onClick={() =>
+                      setActiveTimer({
+                        taskId: primaryTask.id,
+                        taskTitle: primaryTask.title,
+                      })
+                    }
+                    className=""
+                  >
+                    <UiIcon
+                      className="h-4 w-4 fill-[currentColor]"
+                      icon={Play}
+                    />
+                    <span>Start session &rarr;</span>
+                  </Button>
+                  <button
+                    onClick={async () => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+
+                      const snoozedTask = primaryTask;
+
+                      // Save current states for rollback
+                      const previousDashboard = queryClient.getQueryData([
+                        "dashboard",
+                      ]);
+                      const previousTasks = queryClient.getQueryData(["tasks"]);
+
+                      // Optimistic UI updates
+                      /* @todo: Untyped usage justified per TOOL-01 */
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (old: any[] | undefined) =>
-                        old?.filter((t) => t.id !== snoozedTask.id) ?? [],
-                    );
-
-                    try {
-                      useAppStore.getState().markMutation();
-                      const { error } = await supabase
-                        .from("items")
-                        .update({ snoozed_until: tomorrow.toISOString() })
-                        .eq("id", snoozedTask.id);
-                      if (error) throw error;
-
-                      queryClient.invalidateQueries({
-                        queryKey: ["dashboard"],
+                      queryClient.setQueryData(["dashboard"], (old: any) => {
+                        if (!old) return old;
+                        return {
+                          ...old,
+                          /* @todo: Untyped usage justified per TOOL-01 */
+                          tasks: old.tasks.filter(
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (t: any) => t.id !== snoozedTask.id,
+                          ),
+                        };
                       });
-                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                      /* @todo: Untyped usage justified per TOOL-01 */
+                      queryClient.setQueryData(
+                        ["tasks"],
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (old: any[] | undefined) =>
+                          old?.filter((t) => t.id !== snoozedTask.id) ?? [],
+                      );
 
-                      toast.success("Snoozed until tomorrow", {
-                        duration: 8000,
-                        action: {
-                          label: "Undo",
-                          onClick: async () => {
-                            const currentDashboard = queryClient.getQueryData([
-                              "dashboard",
-                            ]);
-                            const currentTasks = queryClient.getQueryData([
-                              "tasks",
-                            ]);
+                      try {
+                        useAppStore.getState().markMutation();
+                        const { error } = await supabase
+                          .from("items")
+                          .update({ snoozed_until: tomorrow.toISOString() })
+                          .eq("id", snoozedTask.id);
+                        if (error) throw error;
 
-                            // Optimistic restore (put task back)
-                            /* @todo: Untyped usage justified per TOOL-01 */
-                            queryClient.setQueryData(
-                              ["dashboard"],
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              (old: any) => {
-                                if (!old) return old;
-                                return {
-                                  ...old,
-                                  tasks: [
-                                    ...old.tasks,
-                                    { ...snoozedTask, snoozed_until: null },
-                                  ],
-                                };
-                              },
-                            );
-                            /* @todo: Untyped usage justified per TOOL-01 */
-                            queryClient.setQueryData(
-                              ["tasks"],
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              (old: any[] | undefined) =>
-                                old
-                                  ? [
-                                      ...old,
-                                      { ...snoozedTask, snoozed_until: null },
-                                    ]
-                                  : [],
-                            );
+                        queryClient.invalidateQueries({
+                          queryKey: ["dashboard"],
+                        });
+                        queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
-                            try {
-                              useAppStore.getState().markMutation();
-                              const { error: undoError } = await supabase
-                                .from("items")
-                                .update({ snoozed_until: null })
-                                .eq("id", snoozedTask.id);
-                              if (undoError) throw undoError;
+                        toast.success("Snoozed until tomorrow", {
+                          duration: 8000,
+                          action: {
+                            label: "Undo",
+                            onClick: async () => {
+                              const currentDashboard = queryClient.getQueryData(
+                                ["dashboard"],
+                              );
+                              const currentTasks = queryClient.getQueryData([
+                                "tasks",
+                              ]);
 
-                              queryClient.invalidateQueries({
-                                queryKey: ["dashboard"],
-                              });
-                              queryClient.invalidateQueries({
-                                queryKey: ["tasks"],
-                              });
-                              toast.success("Snooze reversed");
-                            } catch {
-                              // Rollback undo
+                              // Optimistic restore (put task back)
+                              /* @todo: Untyped usage justified per TOOL-01 */
                               queryClient.setQueryData(
                                 ["dashboard"],
-                                currentDashboard,
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (old: any) => {
+                                  if (!old) return old;
+                                  return {
+                                    ...old,
+                                    tasks: [
+                                      ...old.tasks,
+                                      { ...snoozedTask, snoozed_until: null },
+                                    ],
+                                  };
+                                },
                               );
-                              queryClient.setQueryData(["tasks"], currentTasks);
-                              toast.error("Failed to undo snooze");
-                            }
+                              /* @todo: Untyped usage justified per TOOL-01 */
+                              queryClient.setQueryData(
+                                ["tasks"],
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (old: any[] | undefined) =>
+                                  old
+                                    ? [
+                                        ...old,
+                                        { ...snoozedTask, snoozed_until: null },
+                                      ]
+                                    : [],
+                              );
+
+                              try {
+                                useAppStore.getState().markMutation();
+                                const { error: undoError } = await supabase
+                                  .from("items")
+                                  .update({ snoozed_until: null })
+                                  .eq("id", snoozedTask.id);
+                                if (undoError) throw undoError;
+
+                                queryClient.invalidateQueries({
+                                  queryKey: ["dashboard"],
+                                });
+                                queryClient.invalidateQueries({
+                                  queryKey: ["tasks"],
+                                });
+                                toast.success("Snooze reversed");
+                              } catch {
+                                // Rollback undo
+                                queryClient.setQueryData(
+                                  ["dashboard"],
+                                  currentDashboard,
+                                );
+                                queryClient.setQueryData(
+                                  ["tasks"],
+                                  currentTasks,
+                                );
+                                toast.error("Failed to undo snooze");
+                              }
+                            },
                           },
-                        },
-                      });
-                    } catch {
-                      // Rollback snooze
-                      queryClient.setQueryData(
-                        ["dashboard"],
-                        previousDashboard,
-                      );
-                      queryClient.setQueryData(["tasks"], previousTasks);
-                      toast.error("Failed to snooze task");
-                    }
-                  }}
-                  className="mt-4 text-xs text-[var(--text-3)] underline decoration-dashed underline-offset-4 transition-colors hover:text-[var(--text-1)]"
-                >
-                  Snooze until tomorrow
-                </button>
-              </div>
-            </GlassCard>
-          ) : (
-            <GlassCard className="border-dashed p-8 text-center text-[var(--color-text-3)]">
-              No active tasks. Take a breath.
-            </GlassCard>
-          )}
-
-          {/* Bento 4-card overview */}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <Link href="/do" className="block">
-              <GlassCard
-                hoverable
-                className="flex h-full flex-col justify-between"
-              >
-                <UiIcon
-                  size={20}
-                  strokeWidth={1.5}
-                  className="mb-4 shrink-0 text-[var(--color-do)]"
-                  icon={CheckCircle2}
-                />
-                <div>
-                  <div className="text-2xl font-light text-[var(--color-text-1)]">
-                    <AnimatedNumber value={tasks.length} />
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                    Active Tasks
-                  </div>
-                </div>
-              </GlassCard>
-            </Link>
-            <Link href="/remember/people" className="block">
-              <GlassCard
-                hoverable
-                className="flex h-full flex-col justify-between"
-              >
-                <UiIcon
-                  size={20}
-                  strokeWidth={1.5}
-                  className="mb-4 shrink-0 text-[var(--color-people)]"
-                  icon={Users}
-                />
-                <div>
-                  <div className="text-2xl font-light text-[var(--color-text-1)]">
-                    <AnimatedNumber value={people.length} />
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                    People Tracked
-                  </div>
-                </div>
-              </GlassCard>
-            </Link>
-            <Link href="/think" className="block">
-              <GlassCard
-                hoverable
-                className="flex h-full flex-col justify-between"
-              >
-                <UiIcon
-                  size={20}
-                  strokeWidth={1.5}
-                  className="mb-4 shrink-0 text-[var(--color-think)]"
-                  icon={MessageSquare}
-                />
-                <div>
-                  <div className="text-2xl font-light text-[var(--color-text-1)]">
-                    <AnimatedNumber value={threads.length} />
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                    Open Threads
-                  </div>
-                </div>
-              </GlassCard>
-            </Link>
-            <Link href="/explore" className="block">
-              <GlassCard
-                hoverable
-                className="flex h-full flex-col justify-between"
-              >
-                <UiIcon
-                  size={20}
-                  strokeWidth={1.5}
-                  className="mb-4 shrink-0 text-[var(--color-explore)]"
-                  icon={Compass}
-                />
-                <div>
-                  <div className="text-2xl font-light text-[var(--color-text-1)]">
-                    <AnimatedNumber value={explores.length} />
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                    Saved Items
-                  </div>
-                </div>
-              </GlassCard>
-            </Link>
-          </div>
-
-          <div className="mt-6 flex flex-col items-center gap-4 md:flex-row">
-            <GlassCard className="flex w-full flex-1 items-center justify-between p-5">
-              <span className="text-card-title tracking-wider text-[var(--color-text-3)] uppercase">
-                Pomodoros this week
-              </span>
-              <span className="text-2xl font-semibold text-[var(--color-text-1)]">
-                <AnimatedNumber value={pomodorosThisWeek} />
-              </span>
-            </GlassCard>
-            <GlassCard className="flex w-full flex-1 items-center justify-between p-5">
-              <span className="text-card-title tracking-wider text-[var(--color-text-3)] uppercase">
-                Tasks completed this week
-              </span>
-              <span className="text-2xl font-semibold text-[var(--color-text-1)]">
-                <AnimatedNumber value={doneTasks.length} />
-              </span>
-            </GlassCard>
-          </div>
-
-          {userSettings?.daily_briefing !== false && (
-            <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-              {/* Today's Tasks */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-section-title text-[var(--text-1)]">
-                    Up Next
-                  </h3>
-                  <Link
-                    href="/do"
-                    className="flex items-center gap-1 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
-                  >
-                    {tasks.length > 1
-                      ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — `
-                      : ""}
-                    View all <UiIcon className="h-3 w-3" icon={ArrowRight} />
-                  </Link>
-                </div>
-                {tasks.slice(1, 6).map((task, i) => (
-                  <m.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      delay: i * 0.05,
-                      duration: 0.2,
-                      ease: [0.25, 0.46, 0.45, 0.94],
+                        });
+                      } catch {
+                        // Rollback snooze
+                        queryClient.setQueryData(
+                          ["dashboard"],
+                          previousDashboard,
+                        );
+                        queryClient.setQueryData(["tasks"], previousTasks);
+                        toast.error("Failed to snooze task");
+                      }
                     }}
+                    className="mt-4 text-xs text-[var(--text-3)] underline decoration-dashed underline-offset-4 transition-colors hover:text-[var(--text-1)]"
                   >
-                    <GlassCard
-                      className="flex cursor-pointer items-start justify-between gap-3 p-4 transition-transform hover:scale-[1.01]"
-                      onClick={() => {
-                        setTaskToEdit(task);
-                        setIsTaskPanelOpen(true);
-                      }}
-                    >
-                      <button
-                        onClick={(e) => completeTask(e, task.id)}
-                        className={cn(
-                          "checkbox mt-0.5",
-                          completing === task.id && "checked",
-                        )}
-                      >
-                        {completing === task.id && (
-                          <UiIcon
-                            className="h-3.5 w-3.5 text-white"
-                            icon={Check}
-                          />
-                        )}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-card-title text-[var(--text-1)]">
-                          {task.title}
-                        </h4>
-                        <p className="mt-0.5 truncate text-xs text-[var(--color-text-3)]">
-                          {task.first_step}
-                        </p>
-                      </div>
-                      <UiIcon
-                        className="mt-1 ml-2 h-4 w-4 shrink-0 text-[var(--color-text-3)]"
-                        icon={ArrowRight}
-                      />
-                    </GlassCard>
-                  </m.div>
-                ))}
-                {tasks.length <= 1 && (
-                  <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-4 text-center text-sm text-[var(--color-text-3)]">
-                    All caught up!
-                  </div>
-                )}
-              </div>
+                    Snooze until tomorrow
+                  </button>
+                </div>
+              </GlassCard>
+            ) : (
+              <GlassCard className="border-dashed p-8 text-center text-[var(--color-text-3)]">
+                No active tasks. Take a breath.
+              </GlassCard>
+            )}
 
-              {/* Inbox Section */}
-              {inboxItems.length > 0 && (
-                <div className="space-y-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-section-title text-[var(--text-1)]">
-                        Inbox
-                      </h3>
-                      <div className="text-caption rounded-full bg-amber-500/20 px-2 py-0.5 font-bold tracking-wider text-amber-500">
-                        {inboxItems.length} NEW
-                      </div>
+            {/* Bento 4-card overview */}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <Link href="/do" className="block">
+                <GlassCard
+                  hoverable
+                  className="flex h-full flex-col justify-between"
+                >
+                  <UiIcon
+                    size={20}
+                    strokeWidth={1.5}
+                    className="mb-4 shrink-0 text-[var(--color-do)]"
+                    icon={CheckCircle2}
+                  />
+                  <div>
+                    <div className="text-2xl font-light text-[var(--color-text-1)]">
+                      <AnimatedNumber value={tasks.length} />
                     </div>
+                    <div className="mt-1 text-xs text-[var(--color-text-3)]">
+                      Active Tasks
+                    </div>
+                  </div>
+                </GlassCard>
+              </Link>
+              <Link href="/remember/people" className="block">
+                <GlassCard
+                  hoverable
+                  className="flex h-full flex-col justify-between"
+                >
+                  <UiIcon
+                    size={20}
+                    strokeWidth={1.5}
+                    className="mb-4 shrink-0 text-[var(--color-people)]"
+                    icon={Users}
+                  />
+                  <div>
+                    <div className="text-2xl font-light text-[var(--color-text-1)]">
+                      <AnimatedNumber value={people.length} />
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--color-text-3)]">
+                      People Tracked
+                    </div>
+                  </div>
+                </GlassCard>
+              </Link>
+              <Link href="/think" className="block">
+                <GlassCard
+                  hoverable
+                  className="flex h-full flex-col justify-between"
+                >
+                  <UiIcon
+                    size={20}
+                    strokeWidth={1.5}
+                    className="mb-4 shrink-0 text-[var(--color-think)]"
+                    icon={MessageSquare}
+                  />
+                  <div>
+                    <div className="text-2xl font-light text-[var(--color-text-1)]">
+                      <AnimatedNumber value={threads.length} />
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--color-text-3)]">
+                      Open Threads
+                    </div>
+                  </div>
+                </GlassCard>
+              </Link>
+              <Link href="/explore" className="block">
+                <GlassCard
+                  hoverable
+                  className="flex h-full flex-col justify-between"
+                >
+                  <UiIcon
+                    size={20}
+                    strokeWidth={1.5}
+                    className="mb-4 shrink-0 text-[var(--color-explore)]"
+                    icon={Compass}
+                  />
+                  <div>
+                    <div className="text-2xl font-light text-[var(--color-text-1)]">
+                      <AnimatedNumber value={explores.length} />
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--color-text-3)]">
+                      Saved Items
+                    </div>
+                  </div>
+                </GlassCard>
+              </Link>
+            </div>
+
+            <div className="mt-6 flex flex-col items-center gap-4 md:flex-row">
+              <GlassCard className="flex w-full flex-1 items-center justify-between p-5">
+                <span className="text-card-title tracking-wider text-[var(--color-text-3)] uppercase">
+                  Pomodoros this week
+                </span>
+                <span className="text-2xl font-semibold text-[var(--color-text-1)]">
+                  <AnimatedNumber value={pomodorosThisWeek} />
+                </span>
+              </GlassCard>
+              <GlassCard className="flex w-full flex-1 items-center justify-between p-5">
+                <span className="text-card-title tracking-wider text-[var(--color-text-3)] uppercase">
+                  Tasks completed this week
+                </span>
+                <span className="text-2xl font-semibold text-[var(--color-text-1)]">
+                  <AnimatedNumber value={doneTasks.length} />
+                </span>
+              </GlassCard>
+            </div>
+
+            {userSettings?.daily_briefing !== false && (
+              <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                {/* Today's Tasks */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-section-title text-[var(--text-1)]">
+                      Up Next
+                    </h3>
                     <Link
-                      href="/inbox"
+                      href="/do"
                       className="flex items-center gap-1 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
                     >
+                      {tasks.length > 1
+                        ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — `
+                        : ""}
                       View all <UiIcon className="h-3 w-3" icon={ArrowRight} />
                     </Link>
                   </div>
-                  {/* @todo: Untyped usage justified per TOOL-01 */}
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {inboxItems.map((item: any) => (
-                    <GlassCard
-                      key={item.id}
-                      className="group flex flex-col items-start justify-between gap-4 border-amber-500/20 bg-amber-500/5 p-4 md:flex-row md:items-center"
+                  {tasks.slice(1, 6).map((task, i) => (
+                    <m.div
+                      key={task.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        delay: i * 0.05,
+                        duration: 0.2,
+                        ease: [0.25, 0.46, 0.45, 0.94],
+                      }}
                     >
-                      <p className="text-card-title flex-1 text-[var(--text-1)]">
-                        {item.title}
-                      </p>
-                      <div className="flex w-full shrink-0 items-center gap-2 opacity-100 transition-opacity md:w-auto md:opacity-0 md:group-hover:opacity-100">
-                        <div className="relative flex-1 md:flex-none">
-                          <Button
-                            variant="secondary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const rect = (
-                                e.currentTarget as HTMLElement
-                              ).getBoundingClientRect();
-                              setDropdownRect(rect);
-                              setActiveRouteItem(
-                                activeRouteItem === item.id ? null : item.id,
-                              );
-                            }}
-                            className="dropdown-trigger w-full"
-                          >
-                            <UiIcon
-                              className="h-3.5 w-3.5"
-                              icon={FolderInput}
-                            />
-                            Route it
-                          </Button>
-                          {activeRouteItem === item.id &&
-                            dropdownRect &&
-                            createPortal(
-                              <div
-                                className="dropdown-panel animate-in fade-in zoom-in-95 z-[9999] w-48 p-1 duration-100"
-                                style={{
-                                  position: "fixed",
-                                  top: dropdownRect.bottom + 4,
-                                  left: dropdownRect.right - 192,
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  onClick={() => {
-                                    routeInboxItem(item.id, "do");
-                                    setActiveRouteItem(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                >
-                                  <UiIcon
-                                    className="h-4 w-4 text-[var(--color-do)]"
-                                    icon={CheckCircle2}
-                                  />{" "}
-                                  Do (Task)
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    routeInboxItem(item.id, "think");
-                                    setActiveRouteItem(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                >
-                                  <UiIcon
-                                    className="h-4 w-4 text-[var(--color-think)]"
-                                    icon={MessageSquare}
-                                  />{" "}
-                                  Think (Thread)
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    routeInboxItem(item.id, "explore");
-                                    setActiveRouteItem(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                >
-                                  <UiIcon
-                                    className="h-4 w-4 text-[var(--color-explore)]"
-                                    icon={Compass}
-                                  />{" "}
-                                  Explore (Saved)
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    routeInboxItem(item.id, "remember");
-                                    setActiveRouteItem(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                >
-                                  <UiIcon
-                                    className="h-4 w-4 text-[var(--color-people)]"
-                                    icon={Brain}
-                                  />{" "}
-                                  Remember (Person)
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    routeInboxItem(item.id, "location");
-                                    setActiveRouteItem(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                >
-                                  <UiIcon
-                                    className="h-4 w-4 text-[var(--color-people)]"
-                                    icon={MapPin}
-                                  />{" "}
-                                  Locations
-                                </button>
-                              </div>,
-                              document.body,
-                            )}
-                        </div>
-                        <Button
-                          variant="icon"
-                          onClick={() => dismissInboxItem(item.id)}
-                          className="shrink-0 !border-transparent !bg-transparent hover:!bg-red-500/10 hover:!text-red-400"
-                          title="Dismiss"
+                      <GlassCard
+                        className="flex cursor-pointer items-start justify-between gap-3 p-4 transition-transform hover:scale-[1.01]"
+                        onClick={() => {
+                          setTaskToEdit(task);
+                          setIsTaskPanelOpen(true);
+                        }}
+                      >
+                        <button
+                          onClick={(e) => completeTask(e, task.id)}
+                          className={cn(
+                            "checkbox mt-0.5",
+                            completing === task.id && "checked",
+                          )}
                         >
-                          <UiIcon className="h-4 w-4" icon={X} />
-                        </Button>
-                      </div>
-                    </GlassCard>
+                          {completing === task.id && (
+                            <UiIcon
+                              className="h-3.5 w-3.5 text-white"
+                              icon={Check}
+                            />
+                          )}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-card-title text-[var(--text-1)]">
+                            {task.title}
+                          </h4>
+                          <p className="mt-0.5 truncate text-xs text-[var(--color-text-3)]">
+                            {task.first_step}
+                          </p>
+                        </div>
+                        <UiIcon
+                          className="mt-1 ml-2 h-4 w-4 shrink-0 text-[var(--color-text-3)]"
+                          icon={ArrowRight}
+                        />
+                      </GlassCard>
+                    </m.div>
                   ))}
+                  {tasks.length <= 1 && (
+                    <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-4 text-center text-sm text-[var(--color-text-3)]">
+                      All caught up!
+                    </div>
+                  )}
                 </div>
-              )}
 
-              {/* Removed People Briefing Preview */}
-            </div>
-          )}
-        </>
-      )}
-      <TaskAddPanel
-        isOpen={isTaskPanelOpen}
-        onClose={() => {
-          setIsTaskPanelOpen(false);
-          setTimeout(() => setTaskToEdit(null), 300);
-        }}
-        onTaskAdded={refreshData}
-        taskToEdit={taskToEdit}
-      />
-    </div>
+                {/* Inbox Section */}
+                {inboxItems.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-section-title text-[var(--text-1)]">
+                          Inbox
+                        </h3>
+                        <div className="text-caption rounded-full bg-amber-500/20 px-2 py-0.5 font-bold tracking-wider text-amber-500">
+                          {inboxItems.length} NEW
+                        </div>
+                      </div>
+                      <Link
+                        href="/inbox"
+                        className="flex items-center gap-1 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
+                      >
+                        View all{" "}
+                        <UiIcon className="h-3 w-3" icon={ArrowRight} />
+                      </Link>
+                    </div>
+                    {/* @todo: Untyped usage justified per TOOL-01 */}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {inboxItems.map((item: any) => (
+                      <GlassCard
+                        key={item.id}
+                        className="group flex flex-col items-start justify-between gap-4 border-amber-500/20 bg-amber-500/5 p-4 md:flex-row md:items-center"
+                      >
+                        <p className="text-card-title flex-1 text-[var(--text-1)]">
+                          {item.title}
+                        </p>
+                        <div className="flex w-full shrink-0 items-center gap-2 opacity-100 transition-opacity md:w-auto md:opacity-0 md:group-hover:opacity-100">
+                          <div className="relative flex-1 md:flex-none">
+                            <Button
+                              variant="secondary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = (
+                                  e.currentTarget as HTMLElement
+                                ).getBoundingClientRect();
+                                setDropdownRect(rect);
+                                setActiveRouteItem(
+                                  activeRouteItem === item.id ? null : item.id,
+                                );
+                              }}
+                              className="dropdown-trigger w-full"
+                            >
+                              <UiIcon
+                                className="h-3.5 w-3.5"
+                                icon={FolderInput}
+                              />
+                              Route it
+                            </Button>
+                            {activeRouteItem === item.id &&
+                              dropdownRect &&
+                              createPortal(
+                                <div
+                                  className="dropdown-panel animate-in fade-in zoom-in-95 z-[9999] w-48 p-1 duration-100"
+                                  style={{
+                                    position: "fixed",
+                                    top: dropdownRect.bottom + 4,
+                                    left: dropdownRect.right - 192,
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    onClick={() => {
+                                      routeInboxItem(item.id, "do");
+                                      setActiveRouteItem(null);
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                                  >
+                                    <UiIcon
+                                      className="h-4 w-4 text-[var(--color-do)]"
+                                      icon={CheckCircle2}
+                                    />{" "}
+                                    Do (Task)
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      routeInboxItem(item.id, "think");
+                                      setActiveRouteItem(null);
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                                  >
+                                    <UiIcon
+                                      className="h-4 w-4 text-[var(--color-think)]"
+                                      icon={MessageSquare}
+                                    />{" "}
+                                    Think (Thread)
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      routeInboxItem(item.id, "explore");
+                                      setActiveRouteItem(null);
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                                  >
+                                    <UiIcon
+                                      className="h-4 w-4 text-[var(--color-explore)]"
+                                      icon={Compass}
+                                    />{" "}
+                                    Explore (Saved)
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      routeInboxItem(item.id, "remember");
+                                      setActiveRouteItem(null);
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                                  >
+                                    <UiIcon
+                                      className="h-4 w-4 text-[var(--color-people)]"
+                                      icon={Brain}
+                                    />{" "}
+                                    Remember (Person)
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      routeInboxItem(item.id, "location");
+                                      setActiveRouteItem(null);
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                                  >
+                                    <UiIcon
+                                      className="h-4 w-4 text-[var(--color-people)]"
+                                      icon={MapPin}
+                                    />{" "}
+                                    Locations
+                                  </button>
+                                </div>,
+                                document.body,
+                              )}
+                          </div>
+                          <Button
+                            variant="icon"
+                            onClick={() => dismissInboxItem(item.id)}
+                            className="shrink-0 !border-transparent !bg-transparent hover:!bg-red-500/10 hover:!text-red-400"
+                            title="Dismiss"
+                          >
+                            <UiIcon className="h-4 w-4" icon={X} />
+                          </Button>
+                        </div>
+                      </GlassCard>
+                    ))}
+                  </div>
+                )}
+
+                {/* Removed People Briefing Preview */}
+              </div>
+            )}
+          </>
+        )}
+        <TaskAddPanel
+          isOpen={isTaskPanelOpen}
+          onClose={() => {
+            setIsTaskPanelOpen(false);
+            setTimeout(() => setTaskToEdit(null), 300);
+          }}
+          onTaskAdded={refreshData}
+          taskToEdit={taskToEdit}
+        />
+      </div>
+    </>
   );
 }
