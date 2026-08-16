@@ -762,6 +762,57 @@ h6 {
     -webkit-backdrop-filter: var(--glass-blur-heavy);
     border-right: 0.5px solid var(--border-subtle);
   }
+  /* DS-15 — collapsed-rail tooltip pill: hover/focus reveal within ~300ms. */
+  .sidebar-tooltip {
+    background: var(--surface-dropdown);
+    color: var(--text-1);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
+    font-size: var(--text-caption);
+    font-weight: var(--weight-medium);
+    line-height: 1;
+    box-shadow: var(--shadow-dropdown);
+    opacity: 0;
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+    transform: translateX(-4px) translateY(-50%);
+  }
+  .sidebar-row:hover .sidebar-tooltip,
+  .sidebar-row:focus-within .sidebar-tooltip {
+    opacity: 1;
+    transform: translateX(0) translateY(-50%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-tooltip {
+      transition: none;
+    }
+    .sidebar-row:hover .sidebar-tooltip,
+    .sidebar-row:focus-within .sidebar-tooltip {
+      transform: translateX(0) translateY(-50%);
+    }
+  }
+  /* DS-15 — Inbox badge: small accent pill at the icon's top-right in the
+     collapsed rail (per M3 Navigation Rail badges); numeral beside the label
+     when expanded via `.sidebar-badge-label`. */
+  .sidebar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 4px;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    border-radius: 9999px;
+    font-size: var(--text-caption);
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+  }
+  .sidebar-badge-label {
+    color: var(--accent);
+  }
 
   /* ========================================
      Sidebar Hover-to-Expand (DISABLED)
