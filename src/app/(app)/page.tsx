@@ -823,7 +823,8 @@ export default function HomeDashboard() {
                       }}
                     >
                       <GlassCard
-                        className="flex cursor-pointer items-start justify-between gap-3 p-4 transition-transform hover:scale-[1.01]"
+                        hoverable
+                        className="flex items-start justify-between gap-3 p-4"
                         onClick={() => {
                           setTaskToEdit(task);
                           setIsTaskPanelOpen(true);

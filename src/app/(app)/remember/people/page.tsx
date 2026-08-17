@@ -120,7 +120,7 @@ const TodayPersonCard = ({
         className="relative"
       >
         <Link href={`/remember/people/${person.id}`}>
-          <GlassCard className="cursor-pointer !rounded-2xl p-5 transition-all duration-200 ease-out hover:-translate-y-px hover:scale-[1.01] hover:border-[var(--accent-border)]">
+          <GlassCard className="cursor-pointer !rounded-2xl p-5 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:shadow-[var(--shadow-card-hover)]">
             <div className="mb-3 flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <Avatar name={person.name} color={relColor} />
@@ -254,7 +254,7 @@ function SortablePersonRow({
         style={{ x: dragX }}
         className="relative z-10"
       >
-        <GlassCard className="flex items-stretch overflow-hidden !rounded-2xl bg-[var(--color-surface)] p-0 transition-all duration-200 ease-out group-hover:border-[var(--accent-border)] hover:-translate-y-px hover:scale-[1.005]">
+        <GlassCard className="flex items-stretch overflow-hidden !rounded-2xl bg-[var(--color-surface)] p-0 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:border-[var(--accent-border)]">
           <div
             {...attributes}
             {...listeners}

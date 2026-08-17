@@ -178,7 +178,7 @@ export default function LocationsPage() {
               <m.div key={item.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
                 <GlassCard 
                   onClick={() => setEditingItem(item)}
-                  className={cn("px-4 py-3 relative group cursor-pointer hover:border-[var(--accent-border)] transition-all duration-200 ease-out hover:scale-[1.01] hover:-translate-y-px",
+                  className={cn("px-4 py-3 relative group cursor-pointer hover:border-[var(--accent-border)] transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]",
                   isStale && "border-[rgba(251,191,36,0.25)]",
                   isVeryStale && "opacity-50"
                 )}>

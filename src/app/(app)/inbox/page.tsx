@@ -104,7 +104,7 @@ const InboxItemCard = ({
         style={{ x: dragX }}
         className="relative"
       >
-        <div className="glass-card group flex flex-col items-start justify-between gap-4 !overflow-visible rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-colors hover:bg-amber-500/10 md:flex-row md:items-center">
+        <div className="glass-card group flex flex-col items-start justify-between gap-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-amber-500/40 hover:bg-amber-500/10 hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center">
           <p className="text-card-title flex-1 text-lg text-[var(--text-1)]">
             {item.title}
           </p>

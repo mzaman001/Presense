@@ -457,7 +457,7 @@ export default function ThinkPage() {
                         href={`/think/${thread.id}`}
                         onClick={() => setPrefetchedThread(thread.id, thread)}
                       >
-                        <GlassCard className="group relative h-full cursor-pointer p-5 transition-transform hover:scale-[1.01]">
+                        <GlassCard className="group relative h-full cursor-pointer p-5 transition-transform duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
                           {!showArchive && !showTrash && (
                             <>
                               {/* BUG-44 — hover/focus trash affordance; stops

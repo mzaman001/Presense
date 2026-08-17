@@ -536,7 +536,7 @@ export default function DoPage() {
               .map((task) => (
                 <GlassCard
                   key={task.id}
-                  className="flex items-center justify-between p-4 opacity-70 transition-opacity hover:opacity-100"
+                  className="flex items-center justify-between p-4 opacity-70 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:opacity-100 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]"
                 >
                   <div>
                     <div className="mb-1 flex items-center gap-2">

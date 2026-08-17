@@ -123,7 +123,7 @@ const ExploreItemCard = ({
         <GlassCard
           onClick={() => setEditItem(item)}
           className={cn(
-            "group relative cursor-pointer !rounded-2xl p-5 transition-transform hover:scale-[1.01] hover:border-[var(--color-accent)]/30",
+            "group relative cursor-pointer !rounded-2xl p-5 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--color-accent)]/30 hover:shadow-[var(--shadow-card-hover)]",
             isUnread && "border-[var(--accent-dim-hover)]",
           )}
         >
