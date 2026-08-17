@@ -2170,3 +2170,11 @@ Source: full audit of `src/` against the Vercel React Best Practices guide (70 r
 3. Acceptance: on /, only Home is active; ritual pending shows as a quiet hint; on /trash only Trash active; build + 181 tests pass; push to main.
 
 **Status (Aug 17, 2026):** Implemented. The sidebar now enforces a single-active-row rule: the page the user is on owns the full active treatment (accent pill + left accent bar + accent icon); a pending ritual row is a subdued hint — a 7% accent tint, accent icon, brighter label, no left bar, no full pill — so the two can never stack or glue together. The account tile's avatar falls back to the current theme's accent color (amber default) instead of the off-theme blue. Build passes (`VERCEL=1 npm run build`), tests pass (16 files, 181 tests). Committed as `fix: DS-17 ...`.
+
+## 35. Addendum 22 — sidebar refinement via frontend-design skill (Aug 17, 2026)
+
+**Ticket:** DS-18 — apply the anthropics/skills `frontend-design` skill to the desktop sidebar: enforce the skill's restraint rule (one full-accent element at a time — page pill only; Quick Capture becomes outline in the collapsed rail), make the ritual hint derive from the `--accent-dim` token instead of a hardcoded rgba, lower the "Spaces"/"Tools" block labels to meta-size caption signposts, and remove the duplicated ritual state machine. Full two-pass design plan in `docs/plans/SIDEBAR-DS18-SPEC.md`; skill source preserved in `docs/plans/frontend-design-SKILL.md`.
+**Type:** design refinement · **Priority:** P1 (owner follow-up to DS-17 feedback).
+**Acceptance:** one full-accent row in any viewport state; Quick Capture subdued in the collapsed rail; ritual hint theme-aware via token; no new CSS specificity conflicts; build + 181 tests pass; push to main.
+
+**Status:** CLOSED (Aug 17, 2026). Implemented: Quick Capture collapsed rail restyled to quiet outline (solid amber only when expanded), ritual hint derives from `--accent-dim` token (theme-aware), "Spaces"/"Tools" block labels lowered to meta-size signposts, duplicate ritual state machine removed. tsc clean, VERCEL build passes, 181/181 tests pass. Commits: <add-here>

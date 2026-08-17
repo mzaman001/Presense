@@ -126,13 +126,21 @@ export function Sidebar() {
     "ml-0 min-w-0 max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-ellipsis transition-[opacity,max-width,margin] duration-200",
     "group-hover/sidebar:ml-3 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:ml-3 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100",
   );
-  /* DS-16 — block label that appears only when the rail is expanded */
+  /* DS-16 — block label that appears only when the rail is expanded.
+     DS-18 — lowered to meta-size signposts: captions label, nothing more. */
   const blockLabelClass = cn(
-    "mx-2 hidden px-2 pt-3 text-caption whitespace-nowrap uppercase tracking-[0.08em] text-[var(--text-muted)] group-hover/sidebar:block group-focus-within/sidebar:block",
+    "mx-2 hidden px-2 pt-3 pb-1 text-meta whitespace-nowrap uppercase tracking-[0.1em] text-[var(--text-decorative)] group-hover/sidebar:block group-focus-within/sidebar:block",
   );
   /* DS-16 — row shared geometry; state colors are applied per row */
   const rowClass =
     "flex h-11 w-full items-center rounded-xl px-2 transition-colors";
+  /* DS-18 — Quick Capture stays the sole solid accent action only when the
+     rail is expanded; in the collapsed rail it is a quiet outline so it
+     never competes with the page pill (skill: one accessory at full volume). */
+  const captureCollapsedClass =
+    "border border-[var(--accent-border)] text-[var(--accent)] hover:bg-[var(--accent-dim)]";
+  const captureExpandedClass =
+    "bg-[var(--accent)] text-[var(--text-on-accent)] group-hover/sidebar:bg-[var(--accent)] group-focus-within/sidebar:bg-[var(--accent)] shadow-[0_2px_12px_-2px_var(--accent)] group-hover/sidebar:shadow-[var(--shadow-button-primary)] group-focus-within/sidebar:shadow-[var(--shadow-button-primary)]";
   /* DS-16 — relative so the inbox badge offsets to the tile corner */
   const iconClass = "relative flex h-10 w-10 shrink-0 items-center justify-center";
   /* DS-16 — active row: accent-dim pill + left accent bar, rest muted */
@@ -199,7 +207,11 @@ export function Sidebar() {
             title="Quick Capture"
             className={cn(
               rowClass,
-              "h-10 bg-[var(--accent)] text-[var(--text-on-accent)] shadow-[0_2px_12px_-2px_var(--accent)] hover:brightness-110",
+              "h-10",
+              /* collapsed = quiet outline; expanded = solid primary action */
+              captureCollapsedClass,
+              "group-hover/sidebar:bg-[var(--accent)] group-hover/sidebar:text-[var(--text-on-accent)] group-hover/sidebar:border-[var(--accent)] group-hover/sidebar:shadow-[var(--shadow-button-primary)]",
+              "group-focus-within/sidebar:bg-[var(--accent)] group-focus-within/sidebar:text-[var(--text-on-accent)] group-focus-within/sidebar:border-[var(--accent)] group-focus-within/sidebar:shadow-[var(--shadow-button-primary)]",
             )}
           >
             <span className={iconClass}>
@@ -250,6 +262,16 @@ export function Sidebar() {
                 : ritualState === "evening" || ritualState === "missed_morning"
                   ? "Evening review"
                   : "Plan my day";
+          /* DS-18 — full label (with checkmark) shared with the inner row;
+             computed once alongside the state machine. */
+          const ritualLabelFull =
+            ritualState === "all_done"
+              ? "All done \u2713"
+              : ritualState === "done"
+                ? "Day planned \u2713"
+                : ritualState === "evening" || ritualState === "missed_morning"
+                  ? "Evening review"
+                  : "Plan my day";
           return (
         <RailTooltip label={ritualLabel}>
           <div
@@ -258,45 +280,16 @@ export function Sidebar() {
             onMouseLeave={() => setHoveredItem(null)}
           >
           {(() => {
-            const currentHours = now.getHours();
-            const todayStr = now.toLocaleDateString("en-CA");
-            const morningDone = userSettings?.last_ritual_date === todayStr;
-            const eveningDone =
-              userSettings?.last_evening_ritual_date === todayStr;
-            const shutdownHour = parseInt(
-              userSettings?.shutdown_time?.split(":")[0] || "17",
-              10,
-            );
-
-            let state:
-              "morning" | "evening" | "done" | "all_done" | "missed_morning" =
-              "morning";
-
-            if (eveningDone) state = "all_done";
-            else if (morningDone && currentHours >= shutdownHour)
-              state = "evening";
-            else if (!morningDone && currentHours >= shutdownHour)
-              state = "missed_morning";
-            else if (morningDone) state = "done";
-            else state = "morning";
-
+            /* DS-18 — the ritual state machine is computed once in the outer
+               IIFE (ritualState/ritualLabelFull); this block only maps it. */
             const Icon =
-              state === "all_done" || state === "done"
+              ritualState === "all_done" || ritualState === "done"
                 ? CheckCircle2
-                : state === "evening" || state === "missed_morning"
+                : ritualState === "evening" || ritualState === "missed_morning"
                   ? Moon
                   : Sparkles;
-
-            const label =
-              state === "all_done"
-                ? "All done ✓"
-                : state === "done"
-                  ? "Day planned ✓"
-                  : state === "evening"
-                    ? "Evening review"
-                    : state === "missed_morning"
-                      ? "Evening review"
-                      : "Plan my day";
+            const label = ritualLabelFull;
+            const state = ritualState;
 
             /* DS-16 — ritual row integrated as a regular nav row,
                done states muted.
@@ -320,8 +313,9 @@ export function Sidebar() {
                 className={cn(
                   rowClass,
                   ritualPending
-                    ? /* DS-17 — subdued hint, never the full active pill */
-                      "bg-[rgba(229,180,30,0.07)] text-[var(--text-1)]"
+                    ? /* DS-17 — subdued hint, never the full active pill;
+                       DS-18 — theme-aware via --accent-dim token */
+                      "bg-[var(--accent-dim)] text-[var(--text-1)]"
                     : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
                 )}
               >
