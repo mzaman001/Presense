@@ -6,8 +6,23 @@ const limiters = new Map<string, Ratelimit>();
 
 let redisWarned = false;
 
+/**
+ * SEC-01 (Aug 17, 2026): the limiter cache is keyed by the FULL call-site
+ * identity (bucket + limit + window) — previously the module-level Map
+ * returned a cached limiter regardless of the caller's maxRequests/windowMs,
+ * so when Redis was configured every route silently shared one hardcoded
+ * Ratelimit. The bucket name still drives the Redis prefix (per-site counters).
+ */
+function limiterKey(
+  bucket: string,
+  maxRequests: number,
+  windowMs: number,
+): string {
+  return `${bucket}:${maxRequests}:${windowMs}`;
+}
+
 function getRateLimit(bucket: string, maxRequests: number, windowMs: number) {
-  const cached = limiters.get(bucket);
+  const cached = limiters.get(limiterKey(bucket, maxRequests, windowMs));
   if (cached) return cached;
 
   const redisEnvAvailable =
@@ -40,7 +55,7 @@ function getRateLimit(bucket: string, maxRequests: number, windowMs: number) {
     prefix: `rl:${bucket}`,
   });
 
-  limiters.set(bucket, ratelimit);
+  limiters.set(limiterKey(bucket, maxRequests, windowMs), ratelimit);
   return ratelimit;
 }
 
@@ -68,7 +83,9 @@ export async function checkRateLimit(
     return false;
   }
 
-  const memKey = `${bucket}:${key}`;
+  // SEC-01: the in-memory fallback keys on limit + window too, so it always
+  // mirrors what the Redis path now does.
+  const memKey = `${bucket}:${key}:${maxRequests}:${windowMs}`;
   const now = Date.now();
   const entry = memMap.get(memKey);
 

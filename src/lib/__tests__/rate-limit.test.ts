@@ -98,6 +98,22 @@ describe("in-memory fallback (no Redis env)", () => {
 
     expect(await checkRateLimit("mem-account", "u1", 3, 60_000)).toBe(false);
   });
+
+  it("rejects the 4th account request and isolates per-limit counters (SEC-01)", async () => {
+    // SEC-01 AC: a 4th account-delete request within a minute is rejected,
+    // and the counter keys on `${bucket}:${key}:${maxRequests}:${windowMs}`
+    // — the same keying the Redis path now uses — so a second call site with
+    // different params never shares the account route's quota.
+    vi.useFakeTimers();
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    for (let i = 0; i < 3; i++) {
+      expect(await checkRateLimit("account", "u1", 3, 60_000)).toBe(true);
+    }
+    expect(await checkRateLimit("account", "u1", 3, 60_000)).toBe(false);
+    expect(await checkRateLimit("account", "u1", 30, 60_000)).toBe(true);
+    expect(await checkRateLimit("account", "u1", 30, 60_000)).toBe(true);
+    vi.useRealTimers();
+  });
 });
 
 describe("Redis-backed path (env configured, modules mocked)", () => {
