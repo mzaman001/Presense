@@ -15,6 +15,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { LenisProvider } from "@/components/layout/LenisProvider";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
@@ -158,6 +159,32 @@ export default function ThinkPage() {
       router.push(`/think/${data.id}`);
     }
   };
+
+  /* BUG-44 — optimistic soft delete for the list row; matches the detail
+     page's handleDelete (moveItemToTrashPatch, no confirm per DS-11). */
+  const deleteThread = useCallback(
+    async (thread: Thread) => {
+      const { data: userSession } = await supabase.auth.getUser();
+      if (!userSession?.user) return;
+      // Optimistic removal from the list
+      setThreads((current) => current.filter((t) => t.id !== thread.id));
+      try {
+        // INFRA-19: soft delete through the canonical lifecycle patch
+        const { error } = await supabase
+          .from("threads")
+          .update(moveItemToTrashPatch())
+          .eq("id", thread.id)
+          .eq("user_id", userSession.user.id);
+        if (error) throw error;
+        // BUG-08: the global trash lists trashed threads per-space
+        toast.success("Thread moved to trash");
+      } catch {
+        toast.error("Failed to delete thread");
+        fetchThreads();
+      }
+    },
+    [supabase, fetchThreads],
+  );
 
   const togglePin = async (e: React.MouseEvent, thread: Thread) => {
     e.preventDefault();
@@ -347,7 +374,21 @@ export default function ThinkPage() {
                           href={`/think/${thread.id}`}
                           onClick={() => setPrefetchedThread(thread.id, thread)}
                         >
-                          <GlassCard className="h-full cursor-pointer border-[var(--accent-dim-hover)] bg-[var(--surface-input)] p-4 transition-colors hover:bg-[var(--surface-hover)]">
+                          <GlassCard className="group relative h-full cursor-pointer border-[var(--accent-dim-hover)] bg-[var(--surface-input)] p-4 transition-colors hover:bg-[var(--surface-hover)]">
+                            {/* BUG-44 — hover/focus trash affordance; stops
+                                propagation so navigation doesn't fire. */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteThread(thread);
+                              }}
+                              aria-label={`Move ${thread.title} to trash`}
+                              className="absolute top-3 right-3 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+                            >
+                              <UiIcon className="h-4 w-4" icon={Trash2} />
+                            </button>
                             <div className="flex items-start gap-3">
                               <div className="w-1 shrink-0 self-stretch rounded-full bg-[var(--accent)]" />
                               <div>
@@ -418,24 +459,41 @@ export default function ThinkPage() {
                       >
                         <GlassCard className="group relative h-full cursor-pointer p-5 transition-transform hover:scale-[1.01]">
                           {!showArchive && !showTrash && (
-                            <button
-                              onClick={(e) => togglePin(e, thread)}
-                              className={cn(
-                                "absolute top-3 right-3 rounded-lg p-1.5 transition-all",
-                                thread.is_pinned
-                                  ? "text-[var(--accent)] opacity-100 hover:bg-[var(--surface-hover)]"
-                                  : "text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:bg-[var(--color-surface)] hover:text-[var(--text-2)]",
-                              )}
-                            >
-                              <UiIcon
-                                size={14}
-                                strokeWidth={1.5}
+                            <>
+                              {/* BUG-44 — hover/focus trash affordance; stops
+                                  propagation so navigation doesn't fire. */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteThread(thread);
+                                }}
+                                aria-label={`Move ${thread.title} to trash`}
+                                className="absolute top-3 right-11 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+                              >
+                                <UiIcon className="h-4 w-4" icon={Trash2} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => togglePin(e, thread)}
                                 className={cn(
-                                  thread.is_pinned && "fill-current",
+                                  "absolute top-3 right-3 rounded-lg p-1.5 transition-all",
+                                  thread.is_pinned
+                                    ? "text-[var(--accent)] opacity-100 hover:bg-[var(--surface-hover)]"
+                                    : "text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:bg-[var(--color-surface)] hover:text-[var(--text-2)]",
                                 )}
-                                icon={Pin}
-                              />
-                            </button>
+                              >
+                                <UiIcon
+                                  size={14}
+                                  strokeWidth={1.5}
+                                  className={cn(
+                                    thread.is_pinned && "fill-current",
+                                  )}
+                                  icon={Pin}
+                                />
+                              </button>
+                            </>
                           )}
                           <div className="flex items-start gap-3">
                             <div

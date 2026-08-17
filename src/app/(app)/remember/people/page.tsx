@@ -134,6 +134,20 @@ const TodayPersonCard = ({
                   </p>
                 </div>
               </div>
+              {/* BUG-44 — hover/focus trash affordance; stops propagation
+                  so the person detail page doesn't open on delete. */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  deletePerson(person);
+                }}
+                aria-label={`Move ${person.name} to trash`}
+                className="hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+              >
+                <UiIcon className="h-4 w-4" icon={Trash2} />
+              </button>
               <span className="text-caption rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-2 py-1 font-bold tracking-widest text-[var(--accent)] uppercase">
                 Briefing Ready
               </span>
@@ -251,6 +265,21 @@ function SortablePersonRow({
               icon={GripVertical}
             />
           </div>
+
+          {/* BUG-44 — hover/focus trash affordance; stops propagation so the
+              person detail page doesn't open on delete. */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              deletePerson(person);
+            }}
+            aria-label={`Move ${person.name} to trash`}
+            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+          >
+            <UiIcon className="h-4 w-4" icon={Trash2} />
+          </button>
 
           <Link
             href={`/remember/people/${person.id}`}

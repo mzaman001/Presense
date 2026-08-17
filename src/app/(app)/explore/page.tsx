@@ -146,6 +146,20 @@ const ExploreItemCard = ({
                   <span className="text-caption font-bold text-[var(--color-text-3)] uppercase">
                     {mappedType}
                   </span>
+                  {/* BUG-44 — hover/focus trash affordance; stops propagation
+                      so the edit drawer doesn't open on delete. */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      deleteExploreItem(item);
+                    }}
+                    aria-label={`Move ${item.title} to trash`}
+                    className="ml-1 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+                  >
+                    <UiIcon className="h-4 w-4" icon={Trash2} />
+                  </button>
                 </div>
               </div>
               {item.note && item.note !== item.title && (

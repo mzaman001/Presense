@@ -115,6 +115,94 @@ export const TaskCard = React.memo(
           : "none";
     const isCompleting = completing === task.id;
 
+    /* BUG-44 — swipe and hover trash button share one soft-delete path:
+       optimistic cache removal → moveItemToTrashPatch() → toast with Undo.
+       DS-11: soft delete never shows a confirmation dialog. */
+    const handleTaskDelete = async () => {
+      // Save current caches for possible rollback
+      const previousTasks = queryClient.getQueryData<any[]>(["tasks"]);
+      const previousDashboard = queryClient.getQueryData<any>(["dashboard"]);
+
+      // Optimistically update ["tasks"]
+      queryClient.setQueryData<any[]>(
+        ["tasks"],
+        (old) => old?.filter((t) => t.id !== task.id) ?? [],
+      );
+
+      // Optimistically update ["dashboard"]
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      queryClient.setQueryData<any>(["dashboard"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          /* @todo: Untyped usage justified per TOOL-01 */
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tasks: old.tasks?.filter((t: any) => t.id !== task.id) ?? [],
+        };
+      });
+
+      try {
+        const { error } = await supabase
+          .from("items")
+          .update(moveItemToTrashPatch())
+          .eq("id", task.id);
+        if (error) throw error;
+
+        markMutation();
+        fetchTasks();
+
+        toast.success("Task moved to trash", {
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              const currentTasks = queryClient.getQueryData<any[]>(["tasks"]);
+              const currentDashboard = queryClient.getQueryData<any>([
+                "dashboard",
+              ]);
+
+              // Optimistic restore
+              queryClient.setQueryData<any[]>(["tasks"], (old) => [
+                ...(old ?? []),
+                task,
+              ]);
+              /* @todo: Untyped usage justified per TOOL-01 */
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              queryClient.setQueryData<any>(["dashboard"], (old: any) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  tasks: [...(old.tasks ?? []), task],
+                };
+              });
+
+              try {
+                const { error: undoError } = await supabase
+                  .from("items")
+                  .update(restoreItemPatch("active"))
+                  .eq("id", task.id);
+                if (undoError) throw undoError;
+                fetchTasks();
+              } catch {
+                // Rollback undo
+                queryClient.setQueryData(["tasks"], currentTasks);
+                queryClient.setQueryData(["dashboard"], currentDashboard);
+                toast.error("Failed to restore task");
+              }
+            },
+          },
+        });
+      } catch {
+        // Rollback on failure
+        queryClient.setQueryData(["tasks"], previousTasks);
+        queryClient.setQueryData(["dashboard"], previousDashboard);
+
+        animate(dragX, 0, { duration: 0.3 });
+        setDeleted(false);
+        toast.error("Failed to move task to trash");
+      }
+    };
+
     /* @todo: Untyped usage justified per TOOL-01 */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleDragEnd = async (_: any, info: any) => {
@@ -125,91 +213,22 @@ export const TaskCard = React.memo(
         animate(dragX, -300, { duration: 0.25 });
         setDeleted(true);
 
-        // Save current caches for possible rollback
-        const previousTasks = queryClient.getQueryData<any[]>(["tasks"]);
-        const previousDashboard = queryClient.getQueryData<any>(["dashboard"]);
-
-        // Optimistically update ["tasks"]
-        queryClient.setQueryData<any[]>(
-          ["tasks"],
-          (old) => old?.filter((t) => t.id !== task.id) ?? [],
-        );
-
-        // Optimistically update ["dashboard"]
-        /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        queryClient.setQueryData<any>(["dashboard"], (old: any) => {
-          if (!old) return old;
-          return {
-            ...old,
-            /* @todo: Untyped usage justified per TOOL-01 */
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            tasks: old.tasks?.filter((t: any) => t.id !== task.id) ?? [],
-          };
-        });
-
-        try {
-          const { error } = await supabase
-            .from("items")
-            .update(moveItemToTrashPatch())
-            .eq("id", task.id);
-          if (error) throw error;
-
-          markMutation();
-          fetchTasks();
-
-          toast.success("Task moved to trash", {
-            action: {
-              label: "Undo",
-              onClick: async () => {
-                const currentTasks = queryClient.getQueryData<any[]>(["tasks"]);
-                const currentDashboard = queryClient.getQueryData<any>([
-                  "dashboard",
-                ]);
-
-                // Optimistic restore
-                queryClient.setQueryData<any[]>(["tasks"], (old) => [
-                  ...(old ?? []),
-                  task,
-                ]);
-                /* @todo: Untyped usage justified per TOOL-01 */
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                queryClient.setQueryData<any>(["dashboard"], (old: any) => {
-                  if (!old) return old;
-                  return {
-                    ...old,
-                    tasks: [...(old.tasks ?? []), task],
-                  };
-                });
-
-                try {
-                  const { error: undoError } = await supabase
-                    .from("items")
-                    .update(restoreItemPatch("active"))
-                    .eq("id", task.id);
-                  if (undoError) throw undoError;
-                  fetchTasks();
-                } catch {
-                  // Rollback undo
-                  queryClient.setQueryData(["tasks"], currentTasks);
-                  queryClient.setQueryData(["dashboard"], currentDashboard);
-                  toast.error("Failed to restore task");
-                }
-              },
-            },
-          });
-        } catch (err) {
-          // Rollback on failure
-          queryClient.setQueryData(["tasks"], previousTasks);
-          queryClient.setQueryData(["dashboard"], previousDashboard);
-
-          animate(dragX, 0, { duration: 0.3 });
-          setDeleted(false);
-          toast.error("Failed to archive task");
-        }
+        await handleTaskDelete();
       } else {
         animate(dragX, 0, { type: "spring", stiffness: 400, damping: 30 });
       }
+    };
+
+    /* BUG-44 — hover trash button; stops propagation so the card's edit
+       panel doesn't open on delete click. */
+    const handleHoverDeleteClick = async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (deleted) return;
+      haptics.heavy();
+      animate(dragX, -300, { duration: 0.25 });
+      setDeleted(true);
+      await handleTaskDelete();
     };
 
     return (
@@ -283,13 +302,24 @@ export const TaskCard = React.memo(
           >
             {priority < 4 && (
               <div
-                className="absolute top-2 right-2 h-2 w-2 rounded-full"
+                className="absolute top-3 right-9 h-2 w-2 rounded-full"
                 style={{
                   background: priorityDotColor,
                   boxShadow: priorityGlow,
                 }}
               />
             )}
+
+            {/* BUG-44 — hover/focus trash affordance (desktop pointer users).
+                Stops propagation so the edit panel doesn't open on delete. */}
+            <button
+              type="button"
+              onClick={handleHoverDeleteClick}
+              aria-label={`Move ${String(task.title ?? "task").slice(0, 40)} to trash`}
+              className="absolute top-2 right-2 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+            >
+              <UiIcon className="h-4 w-4" icon={Trash2} />
+            </button>
 
             <div className="flex items-start gap-3">
               <m.button

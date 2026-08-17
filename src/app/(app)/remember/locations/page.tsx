@@ -81,6 +81,25 @@ export default function LocationsPage() {
     }
   };
 
+  /* BUG-44 — optimistic soft delete for the list row (DS-11: no confirm).
+     INFRA-19: lifecycle patch is the single source of the trash transition. */
+  const deleteLocationItem = async (item: LocationItem) => {
+    try {
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      const { data: userSession } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("locations")
+        .update({ status: "deleted", deleted_at: new Date().toISOString() })
+        .eq("id", item.id)
+        .eq("user_id", userSession?.user?.id ?? "");
+      if (error) throw error;
+      toast.success("Location moved to trash");
+    } catch {
+      toast.error("Failed to delete location");
+      fetchItems();
+    }
+  };
+
   const noResults = !loading && items.length === 0 && search.trim();
 
   return (
@@ -167,6 +186,16 @@ export default function LocationsPage() {
                     <div className="w-8 h-8 rounded-full bg-[rgba(255,255,255,0.05)] flex items-center justify-center shrink-0">
                       {React.createElement(getIcon(item.item_name), { className: "w-4 h-4 text-[var(--color-text-2)]" })}
                     </div>
+                    {/* BUG-44 — hover/focus trash affordance; stops propagation
+                        so the edit panel doesn't open on delete. */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); deleteLocationItem(item); }}
+                      aria-label={`Move ${item.item_name} to trash`}
+                      className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex z-10 relative"
+                    >
+                      <UiIcon className="w-4 h-4" icon={Trash2} />
+                    </button>
                     <div className="flex-1 min-w-0 pr-20">
                       <p className={cn("text-sm font-semibold text-[var(--color-text-1)]", isVeryStale && "line-through opacity-60")}>{item.item_name}</p>
                       <p className="text-xs text-[var(--color-text-3)] truncate">{item.location_text}</p>
