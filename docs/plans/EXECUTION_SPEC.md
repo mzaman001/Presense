@@ -2207,6 +2207,16 @@ status = 'active'`. The function now inserts directly and swallows unique-violat
 (`supabase functions deploy cron_cleanup cron_recurrence`) and apply the migration, then fire both
 scheduled triggers with the auth header to confirm 200. INFRA-23: **CLOSED**.
 
+### 28.7 — FEAT-01 closed (Aug 17, 2026, commit b9a6472)
+Home's plain 'Week in Review' toggle is now a real review surface per the spec: week-range header
+card; per-week comparison cards (tasks completed, focus time in h/m, both derived from existing
+`items.completed_at` and `session_logs.duration_minutes` — last week fetched alongside this week's
+data); a Monday-indexed day-of-week completion bar chart; and an optional free-text reflection
+persisted into a pinned `Weekly Note: <range>` thread (same storage pattern as RitualOverlay's daily
+note), skip-friendly and with no streak/gamification mechanics anywhere. AC verified: accurate real
+data, no celebratory/streak UI, skip has no guilt-inducing wording. FEAT-01: **CLOSED**.
+
+
 
 
 
