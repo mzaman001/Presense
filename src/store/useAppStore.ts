@@ -10,8 +10,6 @@ export interface UserSettings {
   ambient_bg?: boolean;
   reduce_motion?: boolean;
   notifications_enabled?: boolean;
-  quiet_start?: string;
-  quiet_end?: string;
   daily_briefing?: boolean;
   pomodoro_sound?: boolean;
   pomodoro_duration?: number;
@@ -24,14 +22,8 @@ export interface UserSettings {
   do_category_colors?: Record<string, string>;
   people_categories?: string[];
   relationship_colors?: Record<string, string>;
-  auto_snooze?: boolean;
   smart_routing_enabled?: boolean;
   nlp_date_parsing?: boolean;
-  routing_confidence?: string;
-  ollama_enabled?: boolean;
-  ollama_url?: string;
-  location_detection?: boolean;
-  daily_briefing_time?: string;
   nudge_time?: string;
   pomodoro_long_break_interval?: number;
   explore_custom_types?: string[];

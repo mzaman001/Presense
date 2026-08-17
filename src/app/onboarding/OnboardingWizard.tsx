@@ -93,7 +93,6 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
 
   // Screen 3: Day Shape
   const [wakeTime, setWakeTime] = useState("07:00");
-  const [sleepTime, setSleepTime] = useState("22:00");
 
   // Screen 4: First Capture
   const [captureInput, setCaptureInput] = useState("");
@@ -202,8 +201,6 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
               .from("user_settings")
               .update({
                 nudge_time: nudgeTimeStr,
-                quiet_start: sleepTime + ":00",
-                quiet_end: wakeTime + ":00",
                 timezone: timezone,
               })
               .eq("user_id", user.id),
@@ -493,7 +490,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
             className="w-full max-w-md space-y-8"
           >
             <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-1)]">
-              When does your day usually start and end?
+              When do you usually start your day?
             </h1>
             <div className="space-y-6">
               <div className="space-y-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
@@ -504,17 +501,6 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                   type="time"
                   value={wakeTime}
                   onChange={(e) => setWakeTime(e.target.value)}
-                  className="w-full bg-transparent text-2xl font-bold text-[var(--color-text-1)] outline-none"
-                />
-              </div>
-              <div className="space-y-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                <label className="block text-sm font-semibold tracking-wider text-[var(--color-text-2)] uppercase">
-                  I wind down around
-                </label>
-                <input
-                  type="time"
-                  value={sleepTime}
-                  onChange={(e) => setSleepTime(e.target.value)}
                   className="w-full bg-transparent text-2xl font-bold text-[var(--color-text-1)] outline-none"
                 />
               </div>

@@ -91,8 +91,6 @@ interface SettingsState {
   ambient_bg?: boolean;
   reduce_motion?: boolean;
   notifications_enabled?: boolean;
-  quiet_start?: string;
-  quiet_end?: string;
   daily_briefing?: boolean;
   pomodoro_sound?: boolean;
   pomodoro_duration?: number;
@@ -105,14 +103,8 @@ interface SettingsState {
   do_category_colors?: Record<string, string>;
   people_categories?: string[];
   relationship_colors?: Record<string, string>;
-  auto_snooze?: boolean;
   smart_routing_enabled?: boolean;
   nlp_date_parsing?: boolean;
-  routing_confidence?: string;
-  ollama_enabled?: boolean;
-  ollama_url?: string;
-  location_detection?: boolean;
-  daily_briefing_time?: string;
   nudge_time?: string;
   shutdown_time?: string;
   pomodoro_long_break_interval?: number;
@@ -438,8 +430,6 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
       "notif_overdue",
       "notif_stale_threads",
       "notif_morning",
-      "quiet_start",
-      "quiet_end",
       "daily_briefing",
       "pomodoro_sound",
       "pomodoro_duration",
@@ -448,14 +438,8 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
       "auto_start_breaks",
       "default_view",
       "auto_archive_days",
-      "auto_snooze",
       "smart_routing_enabled",
       "nlp_date_parsing",
-      "routing_confidence",
-      "ollama_enabled",
-      "ollama_url",
-      "location_detection",
-      "daily_briefing_time",
       "nudge_time",
       "shutdown_time",
       "pomodoro_long_break_interval",
@@ -509,10 +493,6 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
     control,
     name: "auto_archive_days",
   });
-  const locationDetectionValue = useWatch({
-    control,
-    name: "location_detection",
-  });
   const nudgeTimeValue = useWatch({ control, name: "nudge_time" });
   const shutdownTimeValue = useWatch({ control, name: "shutdown_time" });
   const pomodoroLongBreakIntervalValue = useWatch({
@@ -523,8 +503,6 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
     control,
     name: "daily_capacity_minutes",
   });
-  const ollamaEnabledValue = useWatch({ control, name: "ollama_enabled" });
-  const ollamaUrlValue = useWatch({ control, name: "ollama_url" });
   const smartRoutingEnabledValue = useWatch({
     control,
     name: "smart_routing_enabled",
@@ -553,13 +531,10 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
       long_break_duration: longBreakDurationValue,
       auto_start_breaks: autoStartBreaksValue,
       auto_archive_days: autoArchiveDaysValue,
-      location_detection: locationDetectionValue,
       nudge_time: nudgeTimeValue,
       shutdown_time: shutdownTimeValue,
       pomodoro_long_break_interval: pomodoroLongBreakIntervalValue,
       daily_capacity_minutes: dailyCapacityMinutesValue,
-      ollama_enabled: ollamaEnabledValue,
-      ollama_url: ollamaUrlValue,
       smart_routing_enabled: smartRoutingEnabledValue,
       nlp_date_parsing: nlpDateParsingValue,
     }),
@@ -581,13 +556,10 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
       longBreakDurationValue,
       autoStartBreaksValue,
       autoArchiveDaysValue,
-      locationDetectionValue,
       nudgeTimeValue,
       shutdownTimeValue,
       pomodoroLongBreakIntervalValue,
       dailyCapacityMinutesValue,
-      ollamaEnabledValue,
-      ollamaUrlValue,
       smartRoutingEnabledValue,
       nlpDateParsingValue,
     ],
@@ -1792,96 +1764,7 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
                             </button>
                           </div>
 
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Enhanced routing via Ollama
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Use local LLM for advanced routing decisions
-                              </div>
-                            </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "ollama_enabled",
-                                  !settings.ollama_enabled,
-                                )
-                              }
-                              className={`toggle-track ${settings.ollama_enabled ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
-                          {settings.ollama_enabled && (
-                            <m.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                            >
-                              <label className="text-label mt-4 mb-2 block text-[var(--text-3)]">
-                                Ollama URL
-                              </label>
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  {...register("ollama_url")}
-                                  placeholder="http://localhost:11434"
-                                  className="input !w-[200px] bg-[var(--color-background)] !px-2 !py-1 !text-xs"
-                                />
-                                <button
-                                  onClick={async () => {
-                                    const url =
-                                      settings.ollama_url ||
-                                      "http://localhost:11434";
-                                    try {
-                                      const res = await fetch(
-                                        `${url}/api/tags`,
-                                      );
-                                      if (res.ok) {
-                                        const data = await res.json();
-                                        const models = data.models || [];
-                                        const modelName =
-                                          models.length > 0
-                                            ? models[0].name
-                                            : "No models found";
-                                        toast.success(
-                                          `Connected — model: ${modelName}`,
-                                        );
-                                      } else {
-                                        toast.error("Not reachable");
-                                      }
-                                    } catch {
-                                      toast.error("Not reachable");
-                                    }
-                                  }}
-                                  className="rounded-xl border border-[var(--accent-border)] bg-[var(--accent-dim)] px-4 py-3 text-sm font-semibold whitespace-nowrap text-[var(--accent)] transition-colors hover:bg-[var(--accent-dim-hover)]"
-                                >
-                                  Test connection
-                                </button>
-                              </div>
-                            </m.div>
-                          )}
-                          <div className="mt-4 flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Location Context
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Use location to prompt relevant tasks
-                              </div>
-                            </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "location_detection",
-                                  !settings.location_detection,
-                                )
-                              }
-                              className={`toggle-track ${settings.location_detection ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
+
                         </div>
                       )}
 
