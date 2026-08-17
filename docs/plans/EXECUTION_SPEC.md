@@ -2159,3 +2159,14 @@ Source: full audit of `src/` against the Vercel React Best Practices guide (70 r
 **Dependencies / notes:** DS-16 sidebar changes ARE deployed (verified via Vercel API: deployments `dpl_B7oVLUGf...` = e24f2e0 and `dpl_6a3dHXuT...` = f7c95d4, both READY). User "seeing no change" is attributable to the Serwist PWA service-worker cache — advise hard refresh.
 
 **Status (Aug 17, 2026):** Implemented. SettingsModal now renders `null` when closed (shell in `DynamicModals`) with all form work moved into a guarded `SettingsModalContent` sub-component, so no hooks run while the modal is closed. Unselective `watch()` replaced with selective `watch([...])` for the save debounce and `useWatch()` subscriptions for the theme/localStorage effect plus a derived `settings` memo — the render-driven reference churn that caused the "state update on unmounted component" warning is eliminated. `reset(data)` still fires only inside the load effect (once per open cycle). Build passes (`VERCEL=1 npm run build`), tests pass (16 files, 181 tests). Committed as `fix: BUG-45 ...`.
+
+## 34. Addendum 21 — sidebar visual defect fixes (Aug 17, 2026)
+
+**Ticket:** DS-17 — post-DS-16 visual defects in the desktop sidebar: (a) two rows show the active treatment simultaneously when the ritual is pending on the Home page (ritual pill + Home pill stacked/glued together with a left bar); (b) the account avatar tile defaults to blue (#7692FF) against the warm theme; (c) accent overuse makes the rail feel noisy rather than a "flashlight on one item".
+**Type:** design fix · **Priority:** P1 (user-facing quality regression reported by owner).
+**Requirement:**
+1. Exactly ONE row holds the full active treatment (accent pill + left accent bar + accent icon): the page the user is on. The pending ritual row downgrades to a subdued hint (soft tinted background, accent icon, brighter label — no left bar, no full pill).
+2. Account tile avatar falls back to the warm amber accent when no user color is set (works across all three themes).
+3. Acceptance: on /, only Home is active; ritual pending shows as a quiet hint; on /trash only Trash active; build + 181 tests pass; push to main.
+
+**Status (Aug 17, 2026):** Implemented. The sidebar now enforces a single-active-row rule: the page the user is on owns the full active treatment (accent pill + left accent bar + accent icon); a pending ritual row is a subdued hint — a 7% accent tint, accent icon, brighter label, no left bar, no full pill — so the two can never stack or glue together. The account tile's avatar falls back to the current theme's accent color (amber default) instead of the off-theme blue. Build passes (`VERCEL=1 npm run build`), tests pass (16 files, 181 tests). Committed as `fix: DS-17 ...`.

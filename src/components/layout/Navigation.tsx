@@ -31,7 +31,7 @@ import { createClient } from "@/lib/supabase";
 import { useRealtime } from "@/hooks/useRealtime";
 
 const navItems = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/", label: "Home", icon: Home, exact: true },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/do", label: "Do", icon: Check },
   { href: "/remember/people", label: "Remember", icon: Brain },
@@ -298,8 +298,11 @@ export function Sidebar() {
                       ? "Evening review"
                       : "Plan my day";
 
-            /* DS-16 — ritual row integrated as a regular nav row:
-               pending = accent pill like an active row, done states muted. */
+            /* DS-16 — ritual row integrated as a regular nav row,
+               done states muted.
+               DS-17 — single-active-row rule: the page the user is on owns
+               the full active treatment; a pending ritual row is a subdued
+               hint (soft tint + accent icon, no left bar, no full pill). */
             const ritualPending = state === "morning" || state === "evening" || state === "missed_morning";
             return (
               <button
@@ -317,7 +320,8 @@ export function Sidebar() {
                 className={cn(
                   rowClass,
                   ritualPending
-                    ? activeRowClass
+                    ? /* DS-17 — subdued hint, never the full active pill */
+                      "bg-[rgba(229,180,30,0.07)] text-[var(--text-1)]"
                     : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
                 )}
               >
@@ -327,7 +331,9 @@ export function Sidebar() {
                     strokeWidth={1.5}
                     className={cn(
                       "transition-colors",
-                      ritualPending ? "" : "group-hover:text-[var(--text-1)]",
+                      ritualPending
+                        ? "text-[var(--accent)]"
+                        : "group-hover:text-[var(--text-1)]",
                     )}
                   />
                 </span>
@@ -617,13 +623,21 @@ export function Sidebar() {
           const subtitle =
             userSettings?.display_name && email ? email : "Account";
           return (
-            <div className="flex w-full min-w-0 items-center">
+              <div className="flex w-full min-w-0 items-center">
               {/* DS-16 — account tile mirrors the brand tile: a rounded-square
-                  container anchoring the bottom of the rail when collapsed */}
+                  container anchoring the bottom of the rail when collapsed.
+                  DS-17 — fallback avatar color is the theme accent (warm
+                  amber default), never the off-theme blue. */}
               <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
                 <Avatar
                   name={displayName}
-                  color={userSettings.avatar_color || "#7692FF"}
+                  color={
+                    userSettings.avatar_color ||
+                    ((getComputedStyle(
+                      document.documentElement,
+                    ).getPropertyValue("--accent") || "").trim() ||
+                    "#E5B41E")
+                  }
                   size="sm"
                 />
               </div>
