@@ -19,6 +19,8 @@ import {
   Sparkles,
   Brain,
   MapPin,
+  CalendarDays,
+  Save,
 } from "lucide-react";
 import { m } from "framer-motion";
 import Link from "next/link";
@@ -120,6 +122,10 @@ export default function HomeDashboard() {
   const [taskToEdit, setTaskToEdit] = useState<TaskItem | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  // FEAT-01 (Aug 17, 2026): optional weekly reflection, persisted
+  // per week into a pinned "Weekly Note" thread — same storage
+  // pattern as RitualOverlay's daily note.
+  const [weeklyReflection, setWeeklyReflection] = useState("");
   const [completing, setCompleting] = useState<string | null>(null);
   const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
   const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
@@ -152,6 +158,10 @@ export default function HomeDashboard() {
         0,
         0,
       );
+      // FEAT-01 (Aug 17, 2026): last week's Monday for the this-vs-last-week
+      // comparison in the Week in Review surface.
+      const lastMondayStart = new Date(mondayStart);
+      lastMondayStart.setDate(lastMondayStart.getDate() - 7);
 
       const [
         tasksRes,
@@ -161,6 +171,8 @@ export default function HomeDashboard() {
         exploresRes,
         doneRes,
         sessionsRes,
+        doneLastWeekRes,
+        sessionsLastWeekRes,
       ] = await Promise.all([
         // INFRA-18: explicit user_id filter for planner index usage
         supabase
@@ -191,6 +203,22 @@ export default function HomeDashboard() {
           .select("*")
           .eq("user_id", user.id)
           .gte("completed_at", mondayStart.toISOString())
+          .eq("type", "work")
+          .range(0, 99),
+        // FEAT-01: last week's completions and focus sessions.
+        supabase
+          .from("items")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("status", "done")
+          .gte("completed_at", lastMondayStart.toISOString())
+          .lt("completed_at", mondayStart.toISOString())
+          .range(0, 99),
+        supabase
+          .from("session_logs")
+          .select("duration_minutes")
+          .eq("user_id", user.id)
+          .gte("completed_at", lastMondayStart.toISOString())
           .eq("type", "work")
           .range(0, 99),
       ]);
@@ -241,6 +269,27 @@ export default function HomeDashboard() {
         ) as unknown as TaskItem[];
       }
 
+      // FEAT-01: fixed set of review metrics derived from existing
+      // timestamps — no new tracking infrastructure.
+      const sessionsThisWeek = sessionsRes.data || [];
+      const sessionsLastWeek = sessionsLastWeekRes.data || [];
+      const focusMinutesThisWeek = sessionsThisWeek.reduce(
+        (sum, s) => sum + (Number(s.duration_minutes) || 0),
+        0,
+      );
+      const focusMinutesLastWeek = sessionsLastWeek.reduce(
+        (sum, s) => sum + (Number(s.duration_minutes) || 0),
+        0,
+      );
+      const doneTasksLastWeek = doneLastWeekRes.data || [];
+      // FEAT-01: day-of-week completion pattern, Monday-indexed (0 = Mon …
+      // 6 = Sun) to match this page's mondayStart week convention.
+      const dayCounts = new Array(7).fill(0) as number[];
+      for (const task of doneRes.data || []) {
+        if (!task.completed_at) continue;
+        const day = (new Date(task.completed_at).getDay() + 6) % 7;
+        if (day >= 0 && day <= 6) dayCounts[day]++;
+      }
       return {
         tasks: upNext,
         inboxItems: inboxRes.data || [],
@@ -248,7 +297,11 @@ export default function HomeDashboard() {
         threads: threadsRes.data || [],
         explores: exploresRes.data || [],
         doneTasks: doneRes.data || [],
-        pomodorosThisWeek: sessionsRes.data ? sessionsRes.data.length : 0,
+        pomodorosThisWeek: sessionsThisWeek.length,
+        doneTasksLastWeek,
+        focusMinutesThisWeek,
+        focusMinutesLastWeek,
+        dayCounts,
       };
     },
   });
@@ -261,6 +314,10 @@ export default function HomeDashboard() {
     explores = [],
     doneTasks = [],
     pomodorosThisWeek = 0,
+    doneTasksLastWeek = [],
+    focusMinutesThisWeek = 0,
+    focusMinutesLastWeek = 0,
+    dayCounts = [],
   } = dashboardData || {};
 
   const completeTask = async (e: React.MouseEvent, id: string) => {
@@ -279,6 +336,72 @@ export default function HomeDashboard() {
     } finally {
       setCompleting(null);
     }
+  };
+
+  // FEAT-01: persist the week's reflection into a pinned thread,
+  // matching RitualOverlay's daily-note pattern (threads entries array).
+  const saveWeeklyReflection = async () => {
+    const text = weeklyReflection.trim();
+    if (!text) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // Monday-start week label, e.g. "Aug 10 – Aug 16".
+    const mon = new Date(mondayStartForLabel());
+    const sun = new Date(mon);
+    sun.setDate(sun.getDate() + 6);
+    const label = `${mon.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${sun.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+    const title = `Weekly Note: ${label}`;
+    const { data: existing, error: selError } = await supabase
+      .from("threads")
+      .select("id, entries")
+      .eq("title", title)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .limit(1);
+    /* @todo: Untyped usage justified per TOOL-01 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (selError) { toast.error("Failed to save reflection"); return; }
+    const entry: { text: string; created_at: string } = {
+      text,
+      created_at: new Date().toISOString(),
+    };
+    /* @todo: Untyped usage justified per TOOL-01 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let threadId: string | null = null;
+    if (existing && existing.length > 0) {
+      threadId = existing[0].id;
+      const prev: { text: string; created_at: string }[] = (existing[0].entries as { text: string; created_at: string }[]) || [];
+      if (prev.some((e) => e.text === text)) {
+        toast.info("Reflection already saved for this week");
+        setWeeklyReflection("");
+        return;
+      }
+      const { error } = await supabase
+        .from("threads")
+        .update({ entries: [...prev, entry], last_updated: new Date().toISOString() })
+        .eq("id", threadId);
+      if (error) { toast.error("Failed to save reflection"); return; }
+    } else {
+      const { data, error } = await supabase
+        .from("threads")
+        .insert({ user_id: user.id, title, color_accent: "#E5B41E", is_pinned: true, entries: [entry] })
+        .select("id")
+        .single();
+      if (error || !data) { toast.error("Failed to save reflection"); return; }
+      threadId = data.id;
+    }
+    toast.success("Weekly reflection saved");
+    setWeeklyReflection("");
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  };
+
+  // FEAT-01: the Monday start used by the reflection week label. Kept as a
+  // pure helper that recomputes on every call so the label is always fresh.
+  const mondayStartForLabel = () => {
+    const now = new Date();
+    const currentDay = now.getDay() || 7;
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay + 1, 0, 0, 0, 0);
+    return monday.getTime();
   };
 
   const routeInboxItem = async (id: string, space: string) => {
@@ -441,24 +564,113 @@ export default function HomeDashboard() {
 
         {showReview ? (
           <div className="space-y-6">
-            <div className="mb-6 grid grid-cols-2 gap-4">
-              <GlassCard className="flex flex-col items-center justify-center p-6 text-center">
-                <div className="mb-1 text-3xl font-light text-[var(--color-text-1)]">
-                  {doneTasks.length}
-                </div>
-                <div className="text-xs text-[var(--color-text-3)]">
+            <GlassCard className="flex items-center gap-3 p-4">
+              <UiIcon className="h-4 w-4 text-[var(--accent)]" icon={CalendarDays} />
+              <div className="text-sm font-medium text-[var(--color-text-1)]">
+                {(() => {
+                  const mon = new Date(mondayStartForLabel());
+                  const sun = new Date(mon);
+                  sun.setDate(sun.getDate() + 6);
+                  return `${mon.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${sun.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+                })()}
+                <span className="ml-2 font-normal text-[var(--color-text-3)]">Week in Review</span>
+              </div>
+            </GlassCard>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* FEAT-01: this vs last week, neutral tone — a dip is
+                  information, never a rebuke. */}
+              <GlassCard className="p-5">
+                <div className="text-xs tracking-wider text-[var(--color-text-3)] uppercase">
                   Tasks Completed
                 </div>
-              </GlassCard>
-              <GlassCard className="flex flex-col items-center justify-center p-6 text-center">
-                <div className="mb-1 text-3xl font-light text-[var(--color-text-1)]">
-                  {pomodorosThisWeek}
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-3xl font-light text-[var(--color-text-1)]">
+                    {doneTasks.length}
+                  </span>
+                  <span className="text-xs text-[var(--color-text-3)]">
+                    {doneTasks.length > doneTasksLastWeek.length
+                      ? `${doneTasks.length - doneTasksLastWeek.length} more than last week`
+                      : doneTasks.length < doneTasksLastWeek.length
+                        ? `${doneTasksLastWeek.length - doneTasks.length} fewer than last week`
+                        : "same as last week"}
+                  </span>
                 </div>
-                <div className="text-xs text-[var(--color-text-3)]">
-                  Focus Sessions
+              </GlassCard>
+              <GlassCard className="p-5">
+                <div className="text-xs tracking-wider text-[var(--color-text-3)] uppercase">
+                  Focus Time
+                </div>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-3xl font-light text-[var(--color-text-1)]">
+                    {Math.floor(focusMinutesThisWeek / 60)}h {focusMinutesThisWeek % 60}m
+                  </span>
+                  <span className="text-xs text-[var(--color-text-3)]">
+                    {focusMinutesThisWeek > focusMinutesLastWeek
+                      ? `${focusMinutesThisWeek - focusMinutesLastWeek} min more than last week`
+                      : focusMinutesThisWeek < focusMinutesLastWeek
+                        ? `${focusMinutesLastWeek - focusMinutesThisWeek} min fewer than last week`
+                        : "same as last week"}
+                  </span>
                 </div>
               </GlassCard>
             </div>
+            <GlassCard className="p-5">
+              <div className="mb-3 text-xs tracking-wider text-[var(--color-text-3)] uppercase">
+                When you got things done
+              </div>
+              <div className="flex items-end gap-1.5">
+                {dayCounts.map((count, i) => {
+                  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                  const max = Math.max(1, ...dayCounts);
+                  const h = Math.max(4, Math.round((count / max) * 56));
+                  return (
+                    <div key={labels[i]} className="flex flex-1 flex-col items-center gap-1.5">
+                      <div
+                        className="w-full rounded-sm bg-[var(--accent)]/25"
+                        style={{ height: count > 0 ? h : 4 }}
+                      />
+                      <span className="text-[10px] text-[var(--color-text-3)]">
+                        {labels[i]}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {doneTasks.length === 0 && (
+                <p className="mt-3 text-xs text-[var(--color-text-3)]">
+                  No completions this week yet — data appears here as tasks are finished.
+                </p>
+              )}
+            </GlassCard>
+            <GlassCard className="p-5">
+              <div className="mb-3 text-xs tracking-wider text-[var(--color-text-3)] uppercase">
+                Reflection{" "}
+                <span className="font-normal normal-case tracking-normal">
+                  (optional — write if you want to)
+                </span>
+              </div>
+              <textarea
+                value={weeklyReflection}
+                onChange={(e) => setWeeklyReflection(e.target.value)}
+                placeholder="What went well this week? What would you like to change?"
+                rows={3}
+                className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:border-[var(--accent)]/50 focus:outline-none"
+              />
+              <div className="mt-3 flex justify-end">
+                <button
+                  onClick={saveWeeklyReflection}
+                  disabled={!weeklyReflection.trim()}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                    weeklyReflection.trim()
+                      ? "bg-[var(--accent)]/15 text-[var(--accent)] hover:bg-[var(--accent)]/25"
+                      : "cursor-not-allowed text-[var(--color-text-3)]/50",
+                  )}
+                >
+                  <UiIcon className="h-3.5 w-3.5" icon={Save} /> Save reflection
+                </button>
+              </div>
+            </GlassCard>
             <h2 className="mb-4 text-xl font-semibold text-[var(--color-text-1)]">
               Completed This Week
             </h2>
