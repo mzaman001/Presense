@@ -239,6 +239,21 @@
   --elev-overlay-blur: var(--blur-elevated);
   --elev-overlay-border: rgba(255, 255, 255, 0.22);
 
+  /* DS-29 (Aug 17, 2026) — Glassmorphism 2.0 additions, attached to the
+     existing elevation tiers so every tier gains the same frost fill and
+     specular edge. The frost fill is a subtle top-brighter alpha gradient
+     (flat rgba reads washed out per 2026 guidance); the specular edge is a
+     1px inset highlight at the top, strongest at overlay tier. Shared once,
+     consumed by all glass surfaces — never duplicated per component. */
+  --elev-flat-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 45%);
+  --elev-flat-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+  --elev-raised-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 45%);
+  --elev-raised-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
+  --elev-floating-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 45%);
+  --elev-floating-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.16);
+  --elev-overlay-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 45%);
+  --elev-overlay-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.22);
+
   /* === SHADOW SYSTEM === */
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
   --shadow-card-hover: 0 8px 32px rgba(0, 0, 0, 0.45);
@@ -816,6 +831,58 @@ h6 {
     opacity: 0.05;
     mix-blend-mode: overlay;
   }
+  /* DS-29 (Aug 17, 2026): the frost fill ::after — alpha-gradient surface, on
+     top of the grain ::before. Z-index 0 keeps content above both; a new
+     .glass-fill-z class exists for surfaces whose children need ::before below
+     them but this layer above (none needed today). */
+  .glass-card::after,
+  .glass-card-elevated::after,
+  .glass-panel::after,
+  .dropdown-panel::after,
+  .modal::after,
+  .sidebar::after,
+  .mobile-top-bar::after,
+  .bottom-nav::after,
+  .mobile-drawer::after,
+  [data-sonner-toast]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: var(--elev-floating-frost);
+    mix-blend-mode: normal;
+  }
+  .glass-card::after,
+  .glass-card-elevated::after,
+  .glass-panel::after {
+    background-image: var(--elev-raised-frost);
+  }
+  .modal::after,
+  .mobile-drawer::after {
+    background-image: var(--elev-overlay-frost);
+  }
+  /* DS-29 (Aug 17, 2026): the specular edge — a brighter top edge simulating
+     light catching a physical glass edge. Merged into the surface's existing
+     box-shadow via box-shadow augmentation on the same elements. */
+  .glass-card,
+  .glass-panel {
+    box-shadow: var(--shadow-card), var(--elev-raised-specular);
+  }
+  .glass-card-elevated {
+    box-shadow: var(--shadow-card-hover), var(--elev-raised-specular);
+  }
+  .dropdown-panel {
+    box-shadow: var(--shadow-dropdown), var(--elev-floating-specular);
+  }
+  .mobile-drawer {
+    box-shadow: var(--shadow-modal), var(--elev-overlay-specular);
+  }
+  .sidebar,
+  .mobile-top-bar,
+  .bottom-nav {
+    box-shadow: none, var(--elev-floating-specular);
+  }
 
   .card-overdue {
     background: var(--status-overdue-dim);
@@ -984,7 +1051,7 @@ h6 {
     border: 0.5px solid var(--border-default);
     border-top: 0.5px solid var(--border-strong);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-modal);
+    box-shadow: var(--shadow-modal), var(--elev-overlay-specular);
     position: relative;
     overflow: hidden;
   }
@@ -996,7 +1063,7 @@ h6 {
     -webkit-backdrop-filter: var(--blur-dropdown);
     border: 0.5px solid var(--border-default);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-toast);
+    box-shadow: var(--shadow-toast), var(--elev-floating-specular);
     position: relative;
     overflow: hidden;
   }
