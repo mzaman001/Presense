@@ -2216,6 +2216,18 @@ persisted into a pinned `Weekly Note: <range>` thread (same storage pattern as R
 note), skip-friendly and with no streak/gamification mechanics anywhere. AC verified: accurate real
 data, no celebratory/streak UI, skip has no guilt-inducing wording. FEAT-01: **CLOSED**.
 
+### 28.8 — TOOL-08 closed (Aug 17, 2026, commit 782493a)
+AC1: `getRateLimit()` now fires an error-level `Sentry.captureMessage` (tagged `subsystem=rate-limit`,
+bucket in extras) whenever Redis env vars are absent in a production runtime — one-shot per process.
+Test added (fresh module graph via `vi.resetModules` to observe the one-shot window): production with
+no env vars fails closed AND reports. AC2 (production verification via Vercel platform, not code):
+checked live project runtime errors — `UPSTASH_REDIS_REST_URL` is **NOT set in production** (203 events
+over 7d), so production is currently running with rate limiting disabled; `NEXT_PUBLIC_TURNSTILE_SITEKEY`
+also missing (152 events). No Vercel-MCP env management tool exists; setting env vars requires the owner
+in the Vercel dashboard (see launch action). TOOL-08: **CLOSED** (code + verification done; env vars
+await owner setup).
+
+
 
 
 
