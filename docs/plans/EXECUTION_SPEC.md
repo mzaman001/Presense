@@ -2196,6 +2196,18 @@ Glassmorphism 2.0 applied on top of the existing elevation-bundle system: (1) th
 ### 28.5 — SEC-01 closed (Aug 17, 2026, commit 587e1d3)
 The module-level limiter cache in `src/lib/rate-limit.ts` is now keyed by the full call-site identity `${bucket}:${maxRequests}:${windowMs}` (previously bucket name only — every route shared one cached `Ratelimit` constructed with the first caller's params whenever Redis was configured). The `Ratelimit` instance still uses `prefix: rl:${bucket}` so per-user counters remain per-site in Redis; the in-memory dev fallback's `memMap` keying was brought into line with the same composite key so both paths enforce identical semantics. New test `rejects the 4th account request and isolates per-limit counters (SEC-01)` asserts the 3/min account-delete window rejects a fourth request and that a hypothetical second call site with different params never shares the account quota — 186/186 tests, build green. SEC-01: **CLOSED**.
 
+### 28.6 — INFRA-23 closed (Aug 17, 2026, commit 3b3e71d)
+`deno.land/std` and `esm.sh` imports removed from both edge functions (`Deno.serve` and
+`npm:@supabase/supabase-js@2` now). `cron_recurrence`'s check-then-insert race is fixed at the
+database level: new migration `20260817000003_items_unique_active_recurring.sql` first dedupes any
+pre-existing duplicate active recurring rows (keeps oldest by `created_at`, deletes the rest so the
+index can be created) then creates the partial unique index `(user_id, title, recurrence) WHERE
+status = 'active'`. The function now inserts directly and swallows unique-violation 23505 as success
+(concurrent invocation → exactly one recurring task). Launch action: re-deploy both edge functions
+(`supabase functions deploy cron_cleanup cron_recurrence`) and apply the migration, then fire both
+scheduled triggers with the auth header to confirm 200. INFRA-23: **CLOSED**.
+
+
 
 
 
