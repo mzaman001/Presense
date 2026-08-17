@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { Ratelimit, type Duration } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { logger } from "./logger";
@@ -30,6 +31,22 @@ function getRateLimit(bucket: string, maxRequests: number, windowMs: number) {
     !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN);
 
   if (!redisEnvAvailable) {
+    if (process.env.NODE_ENV === "production" && !redisWarned) {
+      // TOOL-08 (Aug 17, 2026): a production deployment without Redis env vars
+      // silently fails OPEN under the old code (getRateLimit returned null and
+      // nothing reported it). A misconfigured deployment now surfaces as an
+      // error-level Sentry event with the route's bucket attached, so it can
+      // never be silent again.
+      redisWarned = true;
+      Sentry.captureMessage(
+        `[rate-limit] Upstash Redis not configured in production — rate limiting DISABLED for bucket "${bucket}". Set UPSTASH_REDIS_REST_URL/TOKEN (or KV_REST_API_URL/TOKEN).`,
+        {
+          level: "error",
+          tags: { subsystem: "rate-limit" },
+          extra: { bucket, hasKvApiUrl: !!process.env.KV_REST_API_URL },
+        },
+      );
+    }
     if (!redisWarned && process.env.NODE_ENV === "development") {
       redisWarned = true;
       logger.warn(

@@ -1,4 +1,9 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import * as Sentry from "@sentry/nextjs";
+
+vi.mock("@sentry/nextjs", () => ({
+  captureMessage: vi.fn(),
+}));
 
 const redisConstructor = vi.fn();
 
@@ -113,6 +118,33 @@ describe("in-memory fallback (no Redis env)", () => {
     expect(await checkRateLimit("account", "u1", 30, 60_000)).toBe(true);
     expect(await checkRateLimit("account", "u1", 30, 60_000)).toBe(true);
     vi.useRealTimers();
+  });
+});
+
+// TOOL-08 (Aug 17, 2026): with no Redis env vars in a production runtime,
+// the old code failed open silently. Now it reports an error-level Sentry
+// event — this test pins that contract.
+describe("production fallback when Redis env vars are absent", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("reports an error-level Sentry event, never fails open silently", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    // Fresh module graph: the earlier "fails closed in production" test ran
+    // against the same cached module and already consumed the one-shot
+    // redisWarned window. Resetting guarantees this test observes the report.
+    vi.resetModules();
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+
+    // checkRateLimit resolves false (fail closed) but must ALSO report the
+    // misconfiguration to Sentry.
+    const result = await checkRateLimit("account", "u", 3, 60_000);
+    expect(result).toBe(false);
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("rate limiting DISABLED"),
+      expect.objectContaining({ level: "error" }),
+    );
   });
 });
 
