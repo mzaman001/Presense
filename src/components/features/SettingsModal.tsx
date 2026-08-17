@@ -40,7 +40,7 @@ import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { settingsSchema } from "@/lib/schemas";
 import { z } from "zod";
@@ -344,6 +344,12 @@ function CategoryManager({
   );
 }
 
+/* BUG-45 — BUG-45 guard: SettingsModal is always mounted by DynamicModals.
+   Previously every hook (unselective `watch()` → debounce → render-driven
+   `reset()`/theme effect) ran on every render, producing React's
+   "state update on a component that hasn't mounted yet" warning. Now the
+   shell renders null when closed, and all form work lives in
+   SettingsModalContent so hooks run only while the modal is open. */
 export function SettingsModal() {
   const {
     isSettingsModalOpen,
@@ -379,19 +385,226 @@ export function SettingsModal() {
 
   const settings = watch();
 
+  if (!isSettingsModalOpen) return null; // BUG-45: inert when closed
+  return <SettingsModalContent onClose={setSettingsModalOpen} />;
+}
+
+function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void }) {
+  const {
+    setUserSettings,
+    settingsActiveTab,
+    setSettingsActiveTab,
+  } = useAppStore(
+    useShallow((s) => ({
+      setUserSettings: s.setUserSettings,
+      settingsActiveTab: s.settingsActiveTab,
+      setSettingsActiveTab: s.setSettingsActiveTab,
+    })),
+  );
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const activeTab = settingsActiveTab || "account";
+  const [loading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
+  const [initialLoaded, setInitialLoaded] = useState(false);
+
+  const {
+    control,
+    register,
+    watch,
+    setValue,
+    reset,
+    getValues,
+  } = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {},
+  });
+
+  /* BUG-45 — selective subscriptions: the save debounce only needs the
+     persistence-relevant surface, and the theme effect only needs the
+     three theme fields. Unselective `watch()` returns a new object every
+     render and was the engine of the setState-in-render warning. */
+  const [debouncedSettings] = useDebounce(
+    watch([
+      "display_name",
+      "avatar_color",
+      "timezone",
+      "ambient_bg",
+      "notifications_enabled",
+      "notif_overdue",
+      "notif_stale_threads",
+      "notif_morning",
+      "quiet_start",
+      "quiet_end",
+      "daily_briefing",
+      "pomodoro_sound",
+      "pomodoro_duration",
+      "short_break_duration",
+      "long_break_duration",
+      "auto_start_breaks",
+      "default_view",
+      "auto_archive_days",
+      "auto_snooze",
+      "smart_routing_enabled",
+      "nlp_date_parsing",
+      "routing_confidence",
+      "ollama_enabled",
+      "ollama_url",
+      "location_detection",
+      "daily_briefing_time",
+      "nudge_time",
+      "shutdown_time",
+      "pomodoro_long_break_interval",
+      "daily_capacity_minutes",
+      "density",
+      "do_categories",
+      "do_category_colors",
+      "people_categories",
+      "relationship_colors",
+    ]),
+    1000,
+  );
+  /* BUG-45 — selective useWatch subscriptions replace the unselective
+     `watch()` (which re-created its object every render). Only the
+     fields the modal actually renders/saves are subscribed. */
+  const themeValue = useWatch({ control, name: "theme" });
+  const colorModeValue = useWatch({ control, name: "color_mode" });
+  const reduceMotionValue = useWatch({ control, name: "reduce_motion" });
+  const avatarColorValue = useWatch({ control, name: "avatar_color" });
+  const timezoneValue = useWatch({ control, name: "timezone" });
+  const densityValue = useWatch({ control, name: "density" });
+  const ambientBgValue = useWatch({ control, name: "ambient_bg" });
+  const notificationsEnabledValue = useWatch({
+    control,
+    name: "notifications_enabled",
+  });
+  const dailyBriefingValue = useWatch({ control, name: "daily_briefing" });
+  const pomodoroSoundValue = useWatch({ control, name: "pomodoro_sound" });
+  const notifOverdueValue = useWatch({ control, name: "notif_overdue" });
+  const notifStaleThreadsValue = useWatch({
+    control,
+    name: "notif_stale_threads",
+  });
+  const pomodoroDurationValue = useWatch({
+    control,
+    name: "pomodoro_duration",
+  });
+  const shortBreakDurationValue = useWatch({
+    control,
+    name: "short_break_duration",
+  });
+  const longBreakDurationValue = useWatch({
+    control,
+    name: "long_break_duration",
+  });
+  const autoStartBreaksValue = useWatch({
+    control,
+    name: "auto_start_breaks",
+  });
+  const autoArchiveDaysValue = useWatch({
+    control,
+    name: "auto_archive_days",
+  });
+  const locationDetectionValue = useWatch({
+    control,
+    name: "location_detection",
+  });
+  const nudgeTimeValue = useWatch({ control, name: "nudge_time" });
+  const shutdownTimeValue = useWatch({ control, name: "shutdown_time" });
+  const pomodoroLongBreakIntervalValue = useWatch({
+    control,
+    name: "pomodoro_long_break_interval",
+  });
+  const dailyCapacityMinutesValue = useWatch({
+    control,
+    name: "daily_capacity_minutes",
+  });
+  const ollamaEnabledValue = useWatch({ control, name: "ollama_enabled" });
+  const ollamaUrlValue = useWatch({ control, name: "ollama_url" });
+  const smartRoutingEnabledValue = useWatch({
+    control,
+    name: "smart_routing_enabled",
+  });
+  const nlpDateParsingValue = useWatch({ control, name: "nlp_date_parsing" });
+
+  /* BUG-45 — a derived view over selective useWatch subscriptions replaces
+     the unselective `watch()` (which re-created its object every render).
+     This memo recomputes only when a watched field actually changes. */
+  const settings = useMemo(
+    () => ({
+      theme: themeValue,
+      color_mode: colorModeValue,
+      reduce_motion: reduceMotionValue,
+      avatar_color: avatarColorValue,
+      timezone: timezoneValue,
+      density: densityValue,
+      ambient_bg: ambientBgValue,
+      notifications_enabled: notificationsEnabledValue,
+      daily_briefing: dailyBriefingValue,
+      pomodoro_sound: pomodoroSoundValue,
+      notif_overdue: notifOverdueValue,
+      notif_stale_threads: notifStaleThreadsValue,
+      pomodoro_duration: pomodoroDurationValue,
+      short_break_duration: shortBreakDurationValue,
+      long_break_duration: longBreakDurationValue,
+      auto_start_breaks: autoStartBreaksValue,
+      auto_archive_days: autoArchiveDaysValue,
+      location_detection: locationDetectionValue,
+      nudge_time: nudgeTimeValue,
+      shutdown_time: shutdownTimeValue,
+      pomodoro_long_break_interval: pomodoroLongBreakIntervalValue,
+      daily_capacity_minutes: dailyCapacityMinutesValue,
+      ollama_enabled: ollamaEnabledValue,
+      ollama_url: ollamaUrlValue,
+      smart_routing_enabled: smartRoutingEnabledValue,
+      nlp_date_parsing: nlpDateParsingValue,
+    }),
+    [
+      themeValue,
+      colorModeValue,
+      reduceMotionValue,
+      avatarColorValue,
+      timezoneValue,
+      densityValue,
+      ambientBgValue,
+      notificationsEnabledValue,
+      dailyBriefingValue,
+      pomodoroSoundValue,
+      notifOverdueValue,
+      notifStaleThreadsValue,
+      pomodoroDurationValue,
+      shortBreakDurationValue,
+      longBreakDurationValue,
+      autoStartBreaksValue,
+      autoArchiveDaysValue,
+      locationDetectionValue,
+      nudgeTimeValue,
+      shutdownTimeValue,
+      pomodoroLongBreakIntervalValue,
+      dailyCapacityMinutesValue,
+      ollamaEnabledValue,
+      ollamaUrlValue,
+      smartRoutingEnabledValue,
+      nlpDateParsingValue,
+    ],
+  );
+
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const [clearTasksConfirm, setClearTasksConfirm] = useState(false);
   const [clearLocationsConfirm, setClearLocationsConfirm] = useState(false);
   const [userEmail, setUserEmail] = useState("");
 
-  const [debouncedSettings] = useDebounce(settings, 1000);
   const lastSavedSettingsRef = useRef<string | null>(null);
-  const dialogRef = useDialogFocus(isSettingsModalOpen);
-  useBodyScrollLock(isSettingsModalOpen);
+  const dialogRef = useDialogFocus(true);
+  useBodyScrollLock(true);
 
   useEffect(() => {
-    if (!isSettingsModalOpen) return;
-
+    /* BUG-45 — this component only mounts when the modal is open, but keep
+       the guard so the effect's deps stay honest if wiring changes. */
     async function loadSettings() {
       setLoading(true);
       const {
@@ -417,17 +630,17 @@ export function SettingsModal() {
       setTimeout(() => setInitialLoaded(true), 100);
     }
     loadSettings();
-  }, [isSettingsModalOpen, supabase, setUserSettings, reset]);
+  }, [supabase, setUserSettings, reset]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isSettingsModalOpen) {
-        setSettingsModalOpen(false);
+      if (e.key === "Escape") {
+        onClose(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSettingsModalOpen, setSettingsModalOpen]);
+  }, [onClose]);
 
   useEffect(() => {
     if (!initialLoaded) return;
@@ -476,28 +689,28 @@ export function SettingsModal() {
     save();
   }, [debouncedSettings, supabase, initialLoaded, setUserSettings]);
 
+  /* BUG-45 — driven by selective `useWatch` values instead of the
+     whole-object `watch()` reference, which changed on every render. */
   useEffect(() => {
     if (!initialLoaded) return;
-    localStorage.setItem("presense_theme", normalizeThemeId(settings.theme));
+    localStorage.setItem(
+      "presense_theme",
+      normalizeThemeId(String(themeValue ?? "")),
+    );
     localStorage.setItem(
       "presense_color_mode",
-      normalizeColorMode(settings.color_mode),
+      normalizeColorMode(String(colorModeValue ?? "")),
     );
     localStorage.setItem(
       "presense_reduce_motion",
-      String(Boolean(settings.reduce_motion)),
+      String(Boolean(reduceMotionValue)),
     );
     applyDocumentTheme(
-      settings.theme,
-      settings.color_mode,
-      Boolean(settings.reduce_motion),
+      String(themeValue ?? ""),
+      String(colorModeValue ?? ""),
+      Boolean(reduceMotionValue),
     );
-  }, [
-    settings.theme,
-    settings.color_mode,
-    settings.reduce_motion,
-    initialLoaded,
-  ]);
+  }, [themeValue, colorModeValue, reduceMotionValue, initialLoaded]);
 
   const updateSetting = useCallback(
     (key: string, value: unknown) => {
@@ -526,7 +739,7 @@ export function SettingsModal() {
     localStorage.removeItem("presense_color_mode");
     localStorage.removeItem("presense_reduce_motion");
     await supabase.auth.signOut();
-    setSettingsModalOpen(false);
+    onClose(false);
     router.push("/login");
   };
 
@@ -696,7 +909,7 @@ export function SettingsModal() {
       localStorage.removeItem("presense_reduce_motion");
       await supabase.auth.signOut();
       toast.success("Account deleted");
-      setSettingsModalOpen(false);
+      onClose(false);
       router.push("/login");
     } catch (err) {
       const message =
@@ -708,16 +921,15 @@ export function SettingsModal() {
   return (
     <ModalErrorBoundary
       modalName="Settings Modal"
-      onClose={() => setSettingsModalOpen(false)}
+      onClose={() => onClose(false)}
     >
       <AnimatePresence>
-        {isSettingsModalOpen && (
-          <m.div
+        <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
-            onClick={() => setSettingsModalOpen(false)}
+            onClick={() => onClose(false)}
           >
             <m.div
               ref={dialogRef}
@@ -809,7 +1021,7 @@ export function SettingsModal() {
                 >
                   <Button
                     variant="icon"
-                    onClick={() => setSettingsModalOpen(false)}
+                    onClick={() => onClose(false)}
                     aria-label="Close settings"
                     className="absolute top-4 right-4 z-10"
                   >
@@ -1748,7 +1960,6 @@ export function SettingsModal() {
               </div>
             </m.div>
           </m.div>
-        )}
       </AnimatePresence>
     </ModalErrorBoundary>
   );
