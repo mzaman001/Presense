@@ -1,7 +1,10 @@
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// INFRA-23 (Aug 17, 2026): `deno.land/std` is maintenance-mode — built-in
+// `Deno.serve` is now the standard entry point. The esm.sh resolution path
+// for `@supabase/supabase-js` is fragile; the `npm:` specifier is the
+// reliable pattern.
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // SEC2-02 (2026-08-16): this function defaults to `verify_jwt = true`, so every invocation must
   // send a valid Authorization header. Fail loudly with 401 if the trigger (Supabase Dashboard
   // scheduled function / pg_cron + net.http_post) omits it — a silent 401 means recurring tasks
@@ -123,32 +126,26 @@ serve(async (req) => {
         }
 
         if (nextDate) {
-          // Better dedup: match on title AND recurrence pattern, not just title alone.
-          // This prevents two genuinely different tasks with the same title from colliding.
-          const { data: existing, error: existingError } = await supabase
-            .from("items")
-            .select("id")
-            .eq("user_id", task.user_id)
-            .eq("title", task.title)
-            .eq("recurrence", task.recurrence)
-            .eq("status", "active")
-            .maybeSingle();
-          if (existingError) throw existingError;
-
-          if (!existing) {
-            const { error: insertError } = await supabase.from("items").insert({
-              user_id: task.user_id,
-              title: task.title,
-              category: task.category,
-              priority: task.priority,
-              first_step: task.first_step,
-              ifthen_trigger: task.ifthen_trigger,
-              recurrence: task.recurrence,
-              deadline: nextDate.toISOString(),
-            });
-            if (insertError) throw insertError;
-            createdCount++;
-          }
+          // INFRA-23 (Aug 17, 2026): the old check-then-insert (maybeSingle
+          // then insert) raced under overlapping invocations — a retry or
+          // manual trigger could duplicate a recurring task. Uniqueness is
+          // now enforced by a partial unique index on
+          // (user_id, title, recurrence) WHERE status = 'active'
+          // (migration 20260817000003): insert directly and treat a
+          // unique-violation (Postgres 23505) as "the sibling already
+          // exists — that is a success". No window between check and insert.
+          const { error: insertError } = await supabase.from("items").insert({
+            user_id: task.user_id,
+            title: task.title,
+            category: task.category,
+            priority: task.priority,
+            first_step: task.first_step,
+            ifthen_trigger: task.ifthen_trigger,
+            recurrence: task.recurrence,
+            deadline: nextDate.toISOString(),
+          });
+          if (insertError && insertError.code !== "23505") throw insertError;
+          if (!insertError) createdCount++;
         }
       } catch (taskErr: unknown) {
         const msg =

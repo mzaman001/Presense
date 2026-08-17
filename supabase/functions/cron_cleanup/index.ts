@@ -1,7 +1,10 @@
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// INFRA-23 (Aug 17, 2026): `deno.land/std` is maintenance-mode — built-in
+// `Deno.serve` is now the standard entry point. The esm.sh resolution path
+// for `@supabase/supabase-js` is fragile; the `npm:` specifier is the
+// reliable pattern.
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // SEC2-02 (2026-08-16): this function defaults to `verify_jwt = true`, so every invocation must
   // send a valid Authorization header. Fail loudly with 401 if the trigger (Supabase Dashboard
   // scheduled function / pg_cron + net.http_post) omits it — a silent 401 means cleanup never
