@@ -813,6 +813,45 @@ h6 {
   .sidebar-badge-label {
     color: var(--accent);
   }
+  /* DS-16 — Inbox badge v2: sits inside the 40px icon tile, offset to the
+     tile's top-right corner (M3 badge placement) instead of the row edge. */
+  .sidebar-badge-v2 {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 14px;
+    padding: 0 4px;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    border-radius: 9999px;
+    font-size: calc(var(--text-caption) - 1px);
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+    box-shadow: 0 0 0 2px var(--surface-sidebar);
+  }
+  /* DS-16 — active nav row: the accent-dim pill plus a left accent bar that
+     "hugs" the content so exactly one row visibly wins the rail. */
+  .nav-row-active {
+    position: relative;
+    box-shadow: inset 3px 0 0 0 var(--accent);
+    border-radius: var(--radius-lg);
+  }
+  /* DS-16 — brand and account anchor tiles: matching rounded-square
+     containers so the rail is anchored at top and bottom when collapsed. */
+  .sidebar-brand-tile {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-lg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-row-active {
+      box-shadow: inset 3px 0 0 0 var(--accent);
+    }
+  }
 
   /* ========================================
      Sidebar Hover-to-Expand (DISABLED)

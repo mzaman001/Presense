@@ -2120,3 +2120,26 @@ Source: full audit of `src/` against the Vercel React Best Practices guide (70 r
 - **Out of scope:** persistence of expanded state (would require overriding `CONF-05` and `user_settings` + API work), per-user expand preference, mobile navigation, theme changes.
 
 **DS-15 status (Aug 17, 2026 — commit `8771ebc`):** ACCEPTANCE CRITERIA MET — (1) invariant 4 preserved: aside keeps `w-[80px] focus-within:w-[248px] hover:w-[248px]` with `group/sidebar`, no chevron/click-toggle/persistence added; (2) `.sidebar-tooltip` pills on every collapsed row (nav, Quick Capture, ritual, Search, Focus, Trash, Settings, Account), hover + focus-within reveal, `prefers-reduced-motion` honored, native `title` retained as fallback; (3) inbox badge via a cache-deduped `["inbox-tasks"]` query (same contract as inbox page) with `useRealtime` refetch — small accent pill at icon top-right in rail, numeral beside label when expanded, invisible at 0; (4) ritual row verified rendering in collapsed state, dynamic tooltip label matching state, and a latent mojibake bug in the row's `title` attr (`"âœ“"` → `"✓"`) fixed en passant; (5) utility rows aligned to the h-11/44px grid at icon 20/1.5 with a full-divider group break; (6) build (`VERCEL=1`) and tests (16 files, 181) pass; `BottomNav`/`MobileDrawer`/`MobileTopBar` untouched.
+
+## 32. Addendum 19 — sidebar rail redesign (Aug 17, 2026)
+
+**Ticket:** DS-16 — Sidebar rail redesign to best-in-class quality
+**Type:** design-system · **Priority:** P1 (user explicitly rejected DS-15's visual result: "still looks as same as before. Ugly")
+**Scope:** `src/components/layout/Navigation.tsx`, `src/app/globals.css` only. Mobile chrome untouched. Invariant 4 (hover/focus-expand, no click-toggle/persistence) preserved.
+
+**Problem:** DS-15 added the functional layer (tooltips, inbox badge, icon consistency) but left the rail's visual language flat: equal-weight outline icons, an almost invisible active state, Quick Capture's pill dominating, unanchored brand mark and account chip.
+
+**Design basis:** Linear's Mar-2026 refresh principles ("don't compete for attention you haven't earned"; "structure felt, not seen" — grouping via spacing, not dividers) [1]; Linear design-system accent discipline (one accent as "functional flashlight", weights ≤ 510, hairline borders) [2]; Notion's anchored header/account chips, 8px grid, aligned icon squares [3]; M3 Expressive calmness [4]; Things 3 / Arc active-item energy concentration [5].
+
+**Plan (8 decisions):** (1) three-tone state hierarchy — muted inactive (55%), soft hover fill, active = accent-dim pill + accent icon + left accent bar; (2) drop thin tool-row dividers, group via 12–16px spacing rhythm with uppercase block labels expanded-state-only; (3) anchor brand mark and account chip as mirrored rounded-square tiles; (4) uniform 32px icon tiles, 1.5 stroke; (5) Quick Capture kept as the sole solid-accent CTA but visually softened (smaller glow/height); (6) ritual row integrated as a nav row with accent icon when pending; (7) DS-15 inbox badge restyled to sit inside the tile; (8) mobile untouched.
+
+**Acceptance criteria:** collapsed rail shows clear hierarchy (anchor tiles, quiet CTA, muted rows); active row unmistakable; no thin dividers between tool rows; invariant 4 preserved exactly (`w-[80px] focus-within:w-[248px] hover:w-[248px]`, no chevron/click-toggle/persistence); build + 181 tests pass.
+
+**Status:** OPEN — awaiting user confirmation of plan before implementation.
+
+**References:**
+[1] https://linear.app/now/behind-the-latest-design-refresh
+[2] https://styles.refero.design/style/90ce5883-bb24-4466-93f7-801cd617b0d1
+[3] https://medium.com/@quickmasum/ui-breakdown-of-notions-sidebar-2121364ec78d
+[4] https://www.todoist.com/help/articles/2026-changelog-HD3jJAtLd
+[5] https://culturedcode.com/things/features/

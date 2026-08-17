@@ -126,9 +126,18 @@ export function Sidebar() {
     "ml-0 min-w-0 max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-ellipsis transition-[opacity,max-width,margin] duration-200",
     "group-hover/sidebar:ml-3 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:ml-3 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100",
   );
+  /* DS-16 — block label that appears only when the rail is expanded */
+  const blockLabelClass = cn(
+    "mx-2 hidden px-2 pt-3 text-caption whitespace-nowrap uppercase tracking-[0.08em] text-[var(--text-muted)] group-hover/sidebar:block group-focus-within/sidebar:block",
+  );
+  /* DS-16 — row shared geometry; state colors are applied per row */
   const rowClass =
     "flex h-11 w-full items-center rounded-xl px-2 transition-colors";
-  const iconClass = "flex h-10 w-10 shrink-0 items-center justify-center";
+  /* DS-16 — relative so the inbox badge offsets to the tile corner */
+  const iconClass = "relative flex h-10 w-10 shrink-0 items-center justify-center";
+  /* DS-16 — active row: accent-dim pill + left accent bar, rest muted */
+  const activeRowClass =
+    "nav-row-active bg-[var(--accent-dim)] text-[var(--accent)]";
 
   return (
     <aside
@@ -140,9 +149,11 @@ export function Sidebar() {
         "transition-[width] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)]",
       )}
     >
-      <div className="flex h-[80px] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-5">
+      <div className="flex h-[80px] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4">
         <div className="flex w-full min-w-0 items-center">
-          <div className={iconClass}>
+          {/* DS-16 — brand tile: a rounded-square container so the top of
+              the rail is anchored in both collapsed and expanded states */}
+          <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
             <svg
               width="28"
               height="28"
@@ -179,7 +190,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="shrink-0 px-3 pt-3 pb-2">
+      <div className="shrink-0 px-3 pt-3 pb-1">
         <RailTooltip label="Quick Capture">
           <button
             onMouseEnter={() => setHoveredItem("capture")}
@@ -188,13 +199,13 @@ export function Sidebar() {
             title="Quick Capture"
             className={cn(
               rowClass,
-              "bg-[var(--accent)] text-[var(--text-on-accent)] shadow-[var(--shadow-button-primary)] hover:brightness-105",
+              "h-10 bg-[var(--accent)] text-[var(--text-on-accent)] shadow-[0_2px_12px_-2px_var(--accent)] hover:brightness-110",
             )}
           >
             <span className={iconClass}>
-              <UiIcon size={22} strokeWidth={1.7} icon={Plus} />
+              <UiIcon size={20} strokeWidth={1.7} icon={Plus} />
             </span>
-            <span className={cn("text-body-lg font-semibold", labelClass)}>
+            <span className={cn("text-body-lg font-medium", labelClass)}>
               Quick Capture
             </span>
           </button>
@@ -203,8 +214,11 @@ export function Sidebar() {
 
       <nav
         id="sidebar-content"
-        className="flex w-full flex-1 flex-col gap-2 px-3"
+        className="flex w-full flex-1 flex-col px-3 pt-2"
       >
+        <span aria-hidden className={blockLabelClass}>
+          Spaces
+        </span>
         {(() => {
           /* DS-15 — tooltip label matches the dynamic ritual button label:
              compute the state machine once here and pass the label down. */
@@ -284,6 +298,9 @@ export function Sidebar() {
                       ? "Evening review"
                       : "Plan my day";
 
+            /* DS-16 — ritual row integrated as a regular nav row:
+               pending = accent pill like an active row, done states muted. */
+            const ritualPending = state === "morning" || state === "evening" || state === "missed_morning";
             return (
               <button
                 onClick={() => {
@@ -299,33 +316,41 @@ export function Sidebar() {
                 title={label.replace("✓", "")}
                 className={cn(
                   rowClass,
-                  state === "all_done" || state === "done"
-                    ? "bg-transparent text-[var(--text-muted)] hover:bg-[rgba(255,255,255,0.02)] hover:text-[var(--text-1)]"
-                    : "border border-[var(--accent)]/15 bg-[var(--accent-dim)]/10 text-[var(--accent)] hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]",
+                  ritualPending
+                    ? activeRowClass
+                    : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
                 )}
               >
                 <span className={iconClass}>
                   <Icon
                     size={20}
                     strokeWidth={1.5}
-                    className={
-                      state === "all_done" || state === "done"
-                        ? ""
-                        : "text-[var(--accent)]"
-                    }
+                    className={cn(
+                      "transition-colors",
+                      ritualPending ? "" : "group-hover:text-[var(--text-1)]",
+                    )}
                   />
                 </span>
                 <span
                   className={cn(
-                    "nav-label text-body-lg leading-none font-medium",
+                    "nav-label text-body-lg flex flex-1 items-center leading-none font-medium",
                     labelClass,
                   )}
                 >
-                  {hoveredItem === "plan-day" && state === "done"
-                    ? "Review your day"
-                    : hoveredItem === "plan-day" && state === "all_done"
-                      ? "Already done"
-                      : label}
+                  <span
+                    className={cn(
+                      "text-body-lg leading-none whitespace-nowrap",
+                      ritualPending
+                        ? "text-[var(--accent)]"
+                        : "text-[var(--text-3)]",
+                    )}
+                  >
+                    {hoveredItem === "plan-day" && state === "done"
+                      ? "Review your day"
+                      : hoveredItem === "plan-day" && state === "all_done"
+                        ? "Already done"
+                        : label}
+                  </span>
                 </span>
               </button>
             );
@@ -352,7 +377,7 @@ export function Sidebar() {
                 className={cn(
                   rowClass,
                   isActive
-                    ? "bg-[var(--accent-dim)] font-medium text-[var(--accent)]"
+                    ? activeRowClass
                     : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
                 )}
               >
@@ -364,16 +389,14 @@ export function Sidebar() {
                       "transition-all",
                       isActive
                         ? "text-[var(--accent)]"
-                        : "text-[var(--text-3)] group-hover:text-[var(--text-2)]",
+                        : "text-[var(--text-3)] group-hover:text-[var(--text-1)]",
                       !isTouch && !isActive && "group-hover:translate-x-0.5",
                     )}
                   />
                   {showBadge && (
                     <span
                       aria-label={`${inboxCount} item${inboxCount === 1 ? "" : "s"} in Inbox`}
-                      className={cn(
-                        "sidebar-badge absolute right-0.5 top-1/2 z-10 -translate-y-1/2 translate-x-1/2",
-                      )}
+                      className="sidebar-badge-v2"
                     >
                       {inboxCount > 9 ? "9+" : inboxCount}
                     </span>
@@ -386,7 +409,14 @@ export function Sidebar() {
                     labelClass,
                   )}
                 >
-                  <span className="text-body-lg leading-none font-medium whitespace-nowrap text-[var(--text-3)]">
+                  <span
+                    className={cn(
+                      "text-body-lg leading-none whitespace-nowrap",
+                      isActive
+                        ? "font-medium text-[var(--accent)]"
+                        : "text-[var(--text-3)]",
+                    )}
+                  >
                     {item.label}
                   </span>
                   {showBadge && (
@@ -405,6 +435,10 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto flex flex-col px-3 pb-[calc(env(safe-area-inset-bottom,24px)+84px)]">
+        <span aria-hidden className={blockLabelClass}>
+          Tools
+        </span>
+
         {/* Search */}
         <RailTooltip label="Search">
           <div
@@ -424,7 +458,7 @@ export function Sidebar() {
               <UiIcon
                 size={20}
                 strokeWidth={1.5}
-                className="transition-colors group-hover:text-[var(--text-2)]"
+                className="transition-colors group-hover:text-[var(--text-1)]"
                 icon={Search}
               />
             </span>
@@ -443,9 +477,6 @@ export function Sidebar() {
         </div>
         </RailTooltip>
 
-        {/* Divider before utility items (DS-15: full divider, scannable group break) */}
-        <div className="mx-3 my-2 border-t border-[var(--border-subtle)]" />
-
         {/* Focus (Pomodoro) */}
         <RailTooltip label="Focus Timer">
           <div
@@ -462,14 +493,14 @@ export function Sidebar() {
               title="Focus Timer"
               className={cn(
                 rowClass,
-                "text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-2)]",
+                "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
               )}
             >
               <span className={iconClass}>
                 <UiIcon
                   size={20}
                   strokeWidth={1.5}
-                  className="transition-colors"
+                  className="transition-colors group-hover:text-[var(--text-1)]"
                   icon={Timer}
                 />
               </span>
@@ -499,8 +530,8 @@ export function Sidebar() {
               className={cn(
                 rowClass,
                 pathname === "/trash"
-                  ? "bg-[var(--accent-dim)] font-medium text-[var(--accent)]"
-                  : "text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-2)]",
+                  ? activeRowClass
+                  : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
               )}
             >
               <span className={iconClass}>
@@ -511,7 +542,7 @@ export function Sidebar() {
                     "transition-all",
                     pathname === "/trash"
                       ? "text-[var(--accent)]"
-                      : "text-[var(--text-muted)]",
+                      : "text-[var(--text-3)] group-hover:text-[var(--text-1)]",
                     !isTouch &&
                       pathname !== "/trash" &&
                       "group-hover:translate-x-0.5",
@@ -543,14 +574,14 @@ export function Sidebar() {
               title="Settings"
               className={cn(
                 rowClass,
-                "text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-2)]",
+                "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
               )}
             >
               <span className={iconClass}>
                 <UiIcon
                   size={20}
                   strokeWidth={1.5}
-                  className="transition-colors"
+                  className="transition-colors group-hover:text-[var(--text-1)]"
                   icon={Settings}
                 />
               </span>
@@ -587,7 +618,9 @@ export function Sidebar() {
             userSettings?.display_name && email ? email : "Account";
           return (
             <div className="flex w-full min-w-0 items-center">
-              <div className={iconClass}>
+              {/* DS-16 — account tile mirrors the brand tile: a rounded-square
+                  container anchoring the bottom of the rail when collapsed */}
+              <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
                 <Avatar
                   name={displayName}
                   color={userSettings.avatar_color || "#7692FF"}
