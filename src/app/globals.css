@@ -153,19 +153,25 @@
   --accent-border: rgba(229, 180, 30, 0.2);
   --accent-text: #e5b41e;
 
-  /* === SPACE ACCENT COLOURS === */
-  --space-do: #e5b41e;
-  --space-do-dim: rgba(229, 180, 30, 0.08);
-  --space-do-border: rgba(229, 180, 30, 0.2);
-  --space-think: #eb4233;
-  --space-think-dim: rgba(235, 66, 51, 0.08);
-  --space-think-border: rgba(235, 66, 51, 0.2);
-  --space-remember: #f4a261;
-  --space-remember-dim: rgba(244, 162, 97, 0.08);
-  --space-remember-border: rgba(244, 162, 97, 0.2);
-  --space-explore: #a76011;
-  --space-explore-dim: rgba(167, 96, 17, 0.08);
-  --space-explore-border: rgba(167, 96, 17, 0.2);
+  /* DS-28 (Aug 17, 2026): space colors are OKLCH-derived from the theme
+     accent, not hand-picked hex. do = accent (L 0.792 C 0.156 H 87.9);
+     think/remember/explore hold warm-tuned semantic hues (think H25
+     red-family, remember H55 peach, explore H40 deep amber) with
+     lightness from the previous warm set and chroma capped to the
+     accent, so the role *relationship* stays identical in every theme.
+     Values generated via culori OKLab with round-trip validation. */
+  --space-do: #e7b300;
+  --space-do-dim: rgba(231, 179, 0, 0.08);
+  --space-do-border: rgba(231, 179, 0, 0.2);
+  --space-think: #e0504d;
+  --space-think-dim: rgba(224, 80, 77, 0.08);
+  --space-think-border: rgba(224, 80, 77, 0.2);
+  --space-remember: #f89f5f;
+  --space-remember-dim: rgba(248, 159, 95, 0.08);
+  --space-remember-border: rgba(248, 159, 95, 0.2);
+  --space-explore: #b25533;
+  --space-explore-dim: rgba(178, 85, 51, 0.08);
+  --space-explore-border: rgba(178, 85, 51, 0.2);
   --space-inbox: rgba(255, 255, 255, 0.18);
 
   /* === STATUS COLOURS === */
@@ -427,19 +433,22 @@
   --accent-border: rgba(200, 144, 10, 0.18);
   --accent-text: #9a6c00;
 
-  /* === SPACE COLOURS (richer/deeper in light for contrast) === */
-  --space-do: #c8900a;
-  --space-do-dim: rgba(200, 144, 10, 0.1);
-  --space-do-border: rgba(200, 144, 10, 0.2);
-  --space-think: #d43520;
-  --space-think-dim: rgba(212, 53, 32, 0.1);
-  --space-think-border: rgba(212, 53, 32, 0.2);
-  --space-remember: #d97706;
-  --space-remember-dim: rgba(217, 119, 6, 0.1);
-  --space-remember-border: rgba(217, 119, 6, 0.2);
-  --space-explore: #8a4e08;
-  --space-explore-dim: rgba(138, 78, 8, 0.1);
-  --space-explore-border: rgba(138, 78, 8, 0.2);
+  /* DS-28 (Aug 17, 2026): same OKLCH derivation as dark warm, applied to
+     the light-mode accent (L 0.692 C 0.145 H 87.9): do = accent, think
+     H25 / remember H55 / explore H40 with slightly deeper lightness for
+     on-light contrast. */
+  --space-do: #bf8c00;
+  --space-do-dim: rgba(191, 140, 0, 0.1);
+  --space-do-border: rgba(191, 140, 0, 0.2);
+  --space-think: #c9403d;
+  --space-think-dim: rgba(201, 64, 61, 0.1);
+  --space-think-border: rgba(201, 64, 61, 0.2);
+  --space-remember: #e88a4a;
+  --space-remember-dim: rgba(232, 138, 74, 0.1);
+  --space-remember-border: rgba(232, 138, 74, 0.2);
+  --space-explore: #9e4424;
+  --space-explore-dim: rgba(158, 68, 36, 0.1);
+  --space-explore-border: rgba(158, 68, 36, 0.2);
 
   /* === SHADOW SYSTEM (softer in light) === */
   --shadow-card: 0 2px 16px rgba(100, 60, 0, 0.1);
@@ -489,6 +498,25 @@
   --border-focus: rgba(118, 146, 255, 0.6);
   --border-input-focus: rgba(118, 146, 255, 0.5);
   --toggle-track-on: var(--accent);
+
+  /* DS-28 (Aug 17, 2026): navy gets explicit space colors derived the same
+     way as warm — do = accent periwinkle (L 0.689 C 0.163 H 270.8);
+     think/remember/explore keep the system's semantic hues (think H25,
+     remember H55, explore H40) at navy-dark lightness, so the four roles
+     stay visually distinct and unmistakably navy. */
+  --space-do: #94b3ff;
+  --space-do-dim: rgba(148, 179, 255, 0.15);
+  --space-do-border: rgba(148, 179, 255, 0.3);
+  --space-think: #e34c4a;
+  --space-think-dim: rgba(227, 76, 74, 0.08);
+  --space-think-border: rgba(227, 76, 74, 0.2);
+  --space-remember: #f89f5f;
+  --space-remember-dim: rgba(248, 159, 95, 0.08);
+  --space-remember-border: rgba(248, 159, 95, 0.2);
+  --space-explore: #b25533;
+  --space-explore-dim: rgba(178, 85, 51, 0.08);
+  --space-explore-border: rgba(178, 85, 51, 0.2);
+
   --surface-sidebar: rgba(2, 5, 15, 0.7);
   --surface-modal: rgba(5, 11, 29, 0.75);
   --surface-dropdown: rgba(6, 12, 31, 0.88);
@@ -522,6 +550,22 @@
   --surface-modal: rgba(238, 243, 255, 0.8);
   --surface-dropdown: rgba(230, 240, 255, 0.85);
   --surface-toast: rgba(228, 236, 255, 0.85);
+
+  /* DS-28 (Aug 17, 2026): light-mode space tokens — do = light accent
+     (L 0.410 C 0.225 H 267.4) slightly brightened for on-light use;
+     think/remember/explore keep semantic hues with light-mode lightness. */
+  --space-do: #8db5ff;
+  --space-do-dim: rgba(141, 181, 255, 0.1);
+  --space-do-border: rgba(141, 181, 255, 0.25);
+  --space-think: #ef383d;
+  --space-think-dim: rgba(239, 56, 61, 0.08);
+  --space-think-border: rgba(239, 56, 61, 0.2);
+  --space-remember: #e88a4a;
+  --space-remember-dim: rgba(232, 138, 74, 0.08);
+  --space-remember-border: rgba(232, 138, 74, 0.2);
+  --space-explore: #a34826;
+  --space-explore-dim: rgba(163, 72, 38, 0.08);
+  --space-explore-border: rgba(163, 72, 38, 0.2);
 }
 
 :root[data-theme="forest"] {
@@ -547,6 +591,24 @@
   --border-focus: rgba(239, 221, 141, 0.55);
   --border-input-focus: rgba(239, 221, 141, 0.45);
   --toggle-track-on: var(--accent-hot);
+
+  /* DS-28 (Aug 17, 2026): forest space colors — do = accent pale gold
+     (L 0.895 C 0.102 H 97.0), deepened for the dark forest background;
+     think/remember/explore keep the system's semantic hues with lightness
+     lowered from the warm signatures so they read as forest, not amber. */
+  --space-do: #d0bc5d;
+  --space-do-dim: rgba(208, 188, 93, 0.15);
+  --space-do-border: rgba(208, 188, 93, 0.3);
+  --space-think: #c56a63;
+  --space-think-dim: rgba(197, 106, 99, 0.08);
+  --space-think-border: rgba(197, 106, 99, 0.2);
+  --space-remember: #f1a36c;
+  --space-remember-dim: rgba(241, 163, 108, 0.08);
+  --space-remember-border: rgba(241, 163, 108, 0.2);
+  --space-explore: #ad593c;
+  --space-explore-dim: rgba(173, 89, 60, 0.08);
+  --space-explore-border: rgba(173, 89, 60, 0.2);
+
   --surface-sidebar: rgba(5, 8, 4, 0.7);
   --surface-modal: rgba(10, 15, 8, 0.75);
   --surface-dropdown: rgba(11, 16, 9, 0.88);
@@ -580,6 +642,22 @@
   --surface-modal: rgba(245, 249, 240, 0.8);
   --surface-dropdown: rgba(235, 248, 225, 0.85);
   --surface-toast: rgba(236, 250, 227, 0.85);
+
+  /* DS-28 (Aug 17, 2026): forest light-mode space tokens — do = light
+     accent green (L 0.446 C 0.089 H 123.8) lifted for on-light use;
+     think/remember/explore keep semantic hues with light-mode lightness. */
+  --space-do: #aec77c;
+  --space-do-dim: rgba(174, 199, 124, 0.1);
+  --space-do-border: rgba(174, 199, 124, 0.25);
+  --space-think: #be6e68;
+  --space-think-dim: rgba(190, 110, 104, 0.08);
+  --space-think-border: rgba(190, 110, 104, 0.2);
+  --space-remember: #eba677;
+  --space-remember-dim: rgba(235, 166, 119, 0.08);
+  --space-remember-border: rgba(235, 166, 119, 0.2);
+  --space-explore: #a65e44;
+  --space-explore-dim: rgba(166, 94, 68, 0.08);
+  --space-explore-border: rgba(166, 94, 68, 0.2);
 }
 
 body {
