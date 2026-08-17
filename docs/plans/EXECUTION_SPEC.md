@@ -2227,6 +2227,19 @@ also missing (152 events). No Vercel-MCP env management tool exists; setting env
 in the Vercel dashboard (see launch action). TOOL-08: **CLOSED** (code + verification done; env vars
 await owner setup).
 
+### 28.9 — CONF-14 residual closed (Aug 17, 2026, commit 1a9131c)
+Removed dead settings fields with zero runtime consumers: `quiet_start`, `quiet_end`
+(wrote only by onboarding — onboarding's wind-down input + state removed too), `auto_snooze`,
+`routing_confidence`, `ollama_enabled`, `ollama_url` (Ollama toggle + URL + test-connection UI),
+`location_detection`, `daily_briefing_time`. Cleaned from SettingsModal (type, watch list,
+useWatch, autosave payload, UI), `src/lib/schemas.ts`, `src/store/useAppStore.ts` (UserSettings),
+and OnboardingWizard. Functional fields kept (verified consumers): `nudge_time`, `shutdown_time`,
+`daily_capacity_minutes`, `density`, `default_view`, `ambient_bg`, `nlp_date_parsing`,
+`smart_routing_enabled`, `relationship_colors`/`people_categories`, `do_categories`/
+`do_category_colors`. Existing DB columns in `user_settings` remain (harmless extras; no
+migration needed). CONF-14 residual: **CLOSED**.
+
+
 
 
 
