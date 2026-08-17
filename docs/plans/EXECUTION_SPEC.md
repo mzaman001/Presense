@@ -1777,6 +1777,10 @@ Per the audit's final verdict: **"What is Presense's competitive positioning?"**
 
 Each path implies a different roadmap. Pick one before pursuing Strategic-tier items (P2).
 
+
+### 28.1 — BUG-16 closed (Aug 17, 2026, commit TBD)
+`Navigation.tsx`'s inline ritual state machine (which disagreed with `rituals.ts` on the nudge-time start, the 6-hour morning window, and evening eligibility) was deleted. The sidebar's ritual row now calls `getRitualDecision()` with the same inputs as `AppInitializer.tsx` and maps `reason` to the four DS-15/16/17/18 presentation states (`evening`→Evening review, `morning_due`→Plan my day, `evening_completed`→All done ✓, everything else→Day planned ✓). The deliberate non-use of `manual: true` is commented in code: the manual branch always returns `kind: "morning"` and would have hidden the evening state. Display-mapping contract covered by new cases in `src/lib/__tests__/rituals.test.ts` (185/185, build green). BUG-16: **CLOSED**.
+
 ### 24.7 — Verification sweep: audit tickets already fixed in code but still documented as open (Aug 10, 2026)
 
 Same failure mode as root patterns 1 & 2: the July-9 audit and later passes examined states that no longer exist. A read-only sweep verified each ticket against current code with command evidence. **No code was changed for any row below.**

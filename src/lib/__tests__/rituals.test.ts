@@ -66,3 +66,52 @@ describe("ritual decisions", () => {
     expect(decision.reason).toBe("manual_evening_planning_for_tomorrow");
   });
 });
+
+/* BUG-16 (Aug 17, 2026) — the sidebar ritual row's display mapping depends
+   on these reason-to-state correspondences, so they live next to the engine. */
+const sidebarStateFrom = (
+  input: Parameters<typeof getRitualDecision>[0],
+): "morning" | "evening" | "done" | "all_done" => {
+  const reason = getRitualDecision(input).reason;
+  if (reason === "evening_due") return "evening";
+  if (reason === "morning_due") return "morning";
+  if (reason === "evening_completed") return "all_done";
+  return "done";
+};
+
+describe("sidebar ritual display mapping (BUG-16)", () => {
+  const base = { nudgeTime: "09:00", shutdownTime: "17:00" };
+
+  test("before nudge time reads done (muted hint), not morning", () => {
+    expect(
+      sidebarStateFrom({ ...base, now: new Date("2026-07-03T08:30:00") }),
+    ).toBe("done");
+  });
+
+  test("evening at shutdown with morning done is not hidden by an old inline state machine", () => {
+    expect(
+      sidebarStateFrom({
+        ...base,
+        lastMorningDate: "2026-07-03",
+        now: new Date("2026-07-03T17:05:00"),
+      }),
+    ).toBe("evening");
+  });
+
+  test("missed morning at 16:30 reads done, never the old wrong evening", () => {
+    expect(
+      sidebarStateFrom({ ...base, now: new Date("2026-07-03T16:30:00") }),
+    ).toBe("done");
+  });
+
+  test("both done reads all_done", () => {
+    expect(
+      sidebarStateFrom({
+        ...base,
+        lastMorningDate: "2026-07-03",
+        lastEveningDate: "2026-07-03",
+        now: new Date("2026-07-03T20:00:00"),
+      }),
+    ).toBe("all_done");
+  });
+});

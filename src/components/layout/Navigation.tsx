@@ -29,6 +29,7 @@ import { useIsTouch } from "@/hooks/useIsTouch";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { createClient } from "@/lib/supabase";
 import { useRealtime } from "@/hooks/useRealtime";
+import { getRitualDecision } from "@/lib/rituals";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home, exact: true },
@@ -232,44 +233,59 @@ export function Sidebar() {
           Spaces
         </span>
         {(() => {
-          /* DS-15 — tooltip label matches the dynamic ritual button label:
-             compute the state machine once here and pass the label down. */
+          /* BUG-16 (Aug 17, 2026) — the sidebar ritual row now reads the
+             single source of truth, `getRitualDecision()` from
+             `src/lib/rituals.ts`, exactly like `AppInitializer.tsx`. The
+             inline duplicate state machine (which missed the 6-hour
+             morning window, the nudge-time start, and disagreed with the
+             engine on evening eligibility) has been deleted — labels are
+             now derived from the engine's `kind`/`reason`, and DS-17/18
+             styling semantics are preserved. */
           const ritualNow = new Date();
-          const ritualTodayStr = ritualNow.toLocaleDateString("en-CA");
-          const ritualMorningDone =
-            userSettings?.last_ritual_date === ritualTodayStr;
-          const ritualEveningDone =
-            userSettings?.last_evening_ritual_date === ritualTodayStr;
-          const ritualShutdownHour = parseInt(
-            userSettings?.shutdown_time?.split(":")[0] || "17",
-            10,
-          );
-          const ritualHours = ritualNow.getHours();
-          let ritualState: "morning" | "evening" | "done" | "all_done" | "missed_morning" =
-            "morning";
-          if (ritualEveningDone) ritualState = "all_done";
-          else if (ritualMorningDone && ritualHours >= ritualShutdownHour)
-            ritualState = "evening";
-          else if (!ritualMorningDone && ritualHours >= ritualShutdownHour)
-            ritualState = "missed_morning";
-          else if (ritualMorningDone) ritualState = "done";
-          else ritualState = "morning";
+          const ritualDecision = getRitualDecision({
+            now: ritualNow,
+            nudgeTime: userSettings?.nudge_time || null,
+            shutdownTime: userSettings?.shutdown_time || null,
+            lastMorningDate: userSettings?.last_ritual_date || null,
+            lastEveningDate:
+              userSettings?.last_evening_ritual_date || null,
+            /* Intentionally NOT `manual: true` — the manual branch in
+               `rituals.ts` always returns `kind: "morning"` (planning
+               mode), which would hide the evening-review state from the
+               sidebar entirely. The sidebar is a status display, so it
+               uses the same auto semantics as `AppInitializer.tsx`. */
+          });
+          /* Display mapping from the engine's decision to the sidebar's
+             four presentation states. Everything else (before morning
+             window, morning window missed, evening completed) reads as
+             "done": the day's pending ritual work is complete, and the
+             row stays a muted hint per DS-17. */
+          const ritualState: "morning" | "evening" | "done" | "all_done" =
+            ritualDecision.reason === "evening_due"
+              ? "evening"
+              : ritualDecision.reason === "morning_due"
+                ? "morning"
+                : ritualDecision.reason === "evening_completed"
+                  ? "all_done"
+                  : "done";
+          const ritualPending =
+            ritualState === "morning" || ritualState === "evening";
           const ritualLabel =
             ritualState === "all_done"
               ? "All done"
               : ritualState === "done"
                 ? "Day planned"
-                : ritualState === "evening" || ritualState === "missed_morning"
+                : ritualState === "evening"
                   ? "Evening review"
                   : "Plan my day";
           /* DS-18 — full label (with checkmark) shared with the inner row;
-             computed once alongside the state machine. */
+             computed once alongside the state mapping. */
           const ritualLabelFull =
             ritualState === "all_done"
               ? "All done \u2713"
               : ritualState === "done"
                 ? "Day planned \u2713"
-                : ritualState === "evening" || ritualState === "missed_morning"
+                : ritualState === "evening"
                   ? "Evening review"
                   : "Plan my day";
           return (
@@ -285,29 +301,17 @@ export function Sidebar() {
             const Icon =
               ritualState === "all_done" || ritualState === "done"
                 ? CheckCircle2
-                : ritualState === "evening" || ritualState === "missed_morning"
+                : ritualState === "evening"
                   ? Moon
                   : Sparkles;
             const label = ritualLabelFull;
             const state = ritualState;
-
-            /* DS-16 — ritual row integrated as a regular nav row,
-               done states muted.
-               DS-17 — single-active-row rule: the page the user is on owns
-               the full active treatment; a pending ritual row is a subdued
-               hint (soft tint + accent icon, no left bar, no full pill). */
-            const ritualPending = state === "morning" || state === "evening" || state === "missed_morning";
+            const ritualRitualKind = ritualPending ? ritualState : null;
             return (
               <button
                 onClick={() => {
                   if (useAppStore.getState().activeRitual) return;
-                  useAppStore
-                    .getState()
-                    .setActiveRitual(
-                      state === "evening" || state === "missed_morning"
-                        ? "evening"
-                        : "morning",
-                    );
+                  useAppStore.getState().setActiveRitual(ritualRitualKind);
                 }}
                 title={label.replace("✓", "")}
                 className={cn(
