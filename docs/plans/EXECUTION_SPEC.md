@@ -2177,4 +2177,4 @@ Source: full audit of `src/` against the Vercel React Best Practices guide (70 r
 **Type:** design refinement · **Priority:** P1 (owner follow-up to DS-17 feedback).
 **Acceptance:** one full-accent row in any viewport state; Quick Capture subdued in the collapsed rail; ritual hint theme-aware via token; no new CSS specificity conflicts; build + 181 tests pass; push to main.
 
-**Status:** CLOSED (Aug 17, 2026). Implemented: Quick Capture collapsed rail restyled to quiet outline (solid amber only when expanded), ritual hint derives from `--accent-dim` token (theme-aware), "Spaces"/"Tools" block labels lowered to meta-size signposts, duplicate ritual state machine removed. tsc clean, VERCEL build passes, 181/181 tests pass. Commits: <add-here>
+**Status:** CLOSED (Aug 17, 2026). Implemented: Quick Capture collapsed rail restyled to quiet outline (solid amber only when expanded), ritual hint derives from `--accent-dim` token (theme-aware), "Spaces"/"Tools" block labels lowered to meta-size signposts, duplicate ritual state machine removed. tsc clean, VERCEL build passes, 181/181 tests pass. Commits: `6df2ce6`.
