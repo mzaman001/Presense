@@ -67,11 +67,22 @@ const mockNext = vi.fn(() => ({
 }));
 
 // Mock Next.js next/server module
+const mockJson = vi.fn((_body, init) => ({
+  status: init?.status ?? 200,
+  body: _body,
+  headers: {
+    set: vi.fn(),
+    get: vi.fn(() => "application/json"),
+  },
+  cookies: { getAll: vi.fn(() => []), set: vi.fn() },
+}));
+
 vi.mock("next/server", () => {
   return {
     NextResponse: {
       next: (...args: any[]) => (mockNext as any)(...args),
       redirect: (...args: any[]) => (mockRedirect as any)(...args),
+      json: (...args: any[]) => (mockJson as any)(...args),
     },
   };
 });
@@ -144,6 +155,43 @@ describe("Edge Auth Middleware Routing", () => {
       expect(mockRedirect).toHaveBeenCalled();
       expect(res.status).toBe(307);
       expect(res.url).toContain("/login");
+    });
+
+    /* AUDIT-02 (Aug 19, 2026): /api/* routes must return JSON 401 instead of
+       the HTML 307 redirect, so programmatic consumers (bots, mobile) get a
+       usable response. Page routes keep the 307 behavior unchanged. */
+
+    it("returns JSON 401 for unauthenticated requests to /api/* routes", async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      const req = createMockRequest("/api/capture");
+      const res = await proxy(req);
+
+      expect(mockJson).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "AUTH_REQUIRED" }),
+        { status: 401 },
+      );
+      expect(res.status).toBe(401);
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    it("carries a stable error payload on the /api/* 401", async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      const req = createMockRequest("/api/people/reorder");
+      const res = await proxy(req);
+
+      expect(res.body).toMatchObject({
+        error: "Unauthorized",
+        code: "AUTH_REQUIRED",
+      });
+    });
+
+    it("keeps the 307 /login redirect for unauthenticated page routes", async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      const req = createMockRequest("/do");
+      const res = await proxy(req);
+
+      expect(mockRedirect).toHaveBeenCalled();
+      expect(res.status).toBe(307);
     });
 
     it("copies cookies set by Supabase to the redirect response", async () => {
