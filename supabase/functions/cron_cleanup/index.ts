@@ -5,14 +5,30 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 Deno.serve(async (req) => {
-  // SEC2-02 (2026-08-16): this function defaults to `verify_jwt = true`, so every invocation must
-  // send a valid Authorization header. Fail loudly with 401 if the trigger (Supabase Dashboard
-  // scheduled function / pg_cron + net.http_post) omits it — a silent 401 means cleanup never
-  // runs and trash grows unbounded. See EXECUTION_SPEC.md SEC2-02 for the trigger contract.
-  if (!req.headers.get("Authorization")) {
+  // AUDIT-04 (Aug 19, 2026): `verify_jwt = true` alone was not enough — any
+  // signed *user* JWT satisfied it, so any logged-in user could trigger this
+  // service-role, RLS-bypassing hard-delete sweep. A configured CRON_SECRET
+  // secret now gates authority: the trigger must send `x-cron-secret: <secret>`.
+  // If configured and missing/wrong, 401 with a stable error code (never
+  // echoes the expected value). If not configured, fall back to the previous
+  // JWT presence check (SEC2-02) so deployment stays compatible until set.
+  const cronSecret = Deno.env.get("CRON_SECRET") || "";
+  if (cronSecret) {
+    if (req.headers.get("x-cron-secret") !== cronSecret) {
+      return new Response(
+        JSON.stringify({
+          error: "Forbidden",
+          code: "CRON_AUTH_FAILED",
+          message: "A valid scheduler secret is required.",
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  } else if (!req.headers.get("Authorization")) {
     return new Response(
       JSON.stringify({
         error: "No Authorization header — scheduled invocation must send a JWT",
+        code: "CRON_AUTH_FAILED",
       }),
       { status: 401, headers: { "Content-Type": "application/json" } },
     );
@@ -70,13 +86,42 @@ Deno.serve(async (req) => {
         .lte("deleted_at", cutoffDate),
     ]);
 
-    // Check for errors in the results array
-    for (const res of results) {
-      if (res.error) throw res.error;
+    // AUDIT-05 (Aug 19, 2026): the previous `Promise.all` + single-throw
+    // design reported 500 after some deletes had already committed — a
+    // partial run masquerading as total failure with no per-table outcome.
+    // Each table now reports independently: `{ status: "ok" | "failed",
+    // error? }` per table, with an overall status. A run is only
+    // considered complete when every table succeeded.
+    const tables = ["items", "threads", "explores", "people", "locations"];
+    const tableResults = tables.map((table, i) => {
+      const res = results[i];
+      return {
+        table,
+        status: res.error ? "failed" : "ok",
+        ...(res.error ? { error: res.error.message } : {}),
+      };
+    });
+
+    const overallStatus = tableResults.every((r) => r.status === "ok")
+      ? "completed"
+      : "partial";
+
+    if (overallStatus === "partial") {
+      console.error(
+        "cron_cleanup partial run:",
+        JSON.stringify(tableResults.filter((r) => r.status === "failed")),
+      );
     }
 
     return new Response(
-      JSON.stringify({ message: "Hard delete cleanup executed successfully." }),
+      JSON.stringify({
+        status: overallStatus,
+        message:
+          overallStatus === "completed"
+            ? "Hard delete cleanup executed successfully."
+            : "Cleanup completed with per-table failures — inspect status.",
+        tables: tableResults,
+      }),
       { headers: { "Content-Type": "application/json" } },
     );
   } catch (err: unknown) {
