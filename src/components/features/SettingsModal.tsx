@@ -381,18 +381,19 @@ export function SettingsModal() {
   return <SettingsModalContent onClose={setSettingsModalOpen} />;
 }
 
-function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void }) {
-  const {
-    setUserSettings,
-    settingsActiveTab,
-    setSettingsActiveTab,
-  } = useAppStore(
-    useShallow((s) => ({
-      setUserSettings: s.setUserSettings,
-      settingsActiveTab: s.settingsActiveTab,
-      setSettingsActiveTab: s.setSettingsActiveTab,
-    })),
-  );
+function SettingsModalContent({
+  onClose,
+}: {
+  onClose: (open: boolean) => void;
+}) {
+  const { setUserSettings, settingsActiveTab, setSettingsActiveTab } =
+    useAppStore(
+      useShallow((s) => ({
+        setUserSettings: s.setUserSettings,
+        settingsActiveTab: s.settingsActiveTab,
+        setSettingsActiveTab: s.setSettingsActiveTab,
+      })),
+    );
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -404,17 +405,11 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
   );
   const [initialLoaded, setInitialLoaded] = useState(false);
 
-  const {
-    control,
-    register,
-    watch,
-    setValue,
-    reset,
-    getValues,
-  } = useForm<SettingsFormValues>({
-    resolver: zodResolver(settingsSchema),
-    defaultValues: {},
-  });
+  const { control, register, watch, setValue, reset, getValues } =
+    useForm<SettingsFormValues>({
+      resolver: zodResolver(settingsSchema),
+      defaultValues: {},
+    });
 
   /* BUG-45 — selective subscriptions: the save debounce only needs the
      persistence-relevant surface, and the theme effect only needs the
@@ -429,7 +424,6 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
       "notifications_enabled",
       "notif_overdue",
       "notif_stale_threads",
-      "notif_morning",
       "daily_briefing",
       "pomodoro_sound",
       "pomodoro_duration",
@@ -444,7 +438,6 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
       "shutdown_time",
       "pomodoro_long_break_interval",
       "daily_capacity_minutes",
-      "density",
       "do_categories",
       "do_category_colors",
       "people_categories",
@@ -460,7 +453,6 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
   const reduceMotionValue = useWatch({ control, name: "reduce_motion" });
   const avatarColorValue = useWatch({ control, name: "avatar_color" });
   const timezoneValue = useWatch({ control, name: "timezone" });
-  const densityValue = useWatch({ control, name: "density" });
   const ambientBgValue = useWatch({ control, name: "ambient_bg" });
   const notificationsEnabledValue = useWatch({
     control,
@@ -519,7 +511,6 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
       reduce_motion: reduceMotionValue,
       avatar_color: avatarColorValue,
       timezone: timezoneValue,
-      density: densityValue,
       ambient_bg: ambientBgValue,
       notifications_enabled: notificationsEnabledValue,
       daily_briefing: dailyBriefingValue,
@@ -544,7 +535,6 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
       reduceMotionValue,
       avatarColorValue,
       timezoneValue,
-      densityValue,
       ambientBgValue,
       notificationsEnabledValue,
       dailyBriefingValue,
@@ -572,6 +562,12 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
 
   const lastSavedSettingsRef = useRef<string | null>(null);
   const dialogRef = useDialogFocus(true);
+  /* BUG-46 — `density` has NO column in `user_settings` (verified live),
+     so it must never enter the autosave payload. Keep it as pure
+     session-local UI state until a schema decision is made. */
+  const [localDensity, setLocalDensity] = useState<"compact" | "comfortable">(
+    "compact",
+  );
   useBodyScrollLock(true);
 
   useEffect(() => {
@@ -897,952 +893,945 @@ function SettingsModalContent({ onClose }: { onClose: (open: boolean) => void })
     >
       <AnimatePresence>
         <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
-            onClick={() => onClose(false)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
+          onClick={() => onClose(false)}
+        >
+          <m.div
+            ref={dialogRef}
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className="modal relative flex h-[100dvh] min-h-0 w-full max-w-4xl flex-col overflow-hidden md:h-[80vh] md:flex-row md:rounded-2xl"
+            style={{
+              backdropFilter: "blur(48px)",
+              WebkitBackdropFilter: "blur(48px)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Settings"
           >
-            <m.div
-              ref={dialogRef}
-              initial={{ opacity: 0, scale: 0.97, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 8 }}
-              transition={{ type: "spring", stiffness: 300, damping: 28 }}
-              className="modal relative flex h-[100dvh] min-h-0 w-full max-w-4xl flex-col overflow-hidden md:h-[80vh] md:flex-row md:rounded-2xl"
-              style={{
-                backdropFilter: "blur(48px)",
-                WebkitBackdropFilter: "blur(48px)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Settings"
-            >
-              <div className="flex h-full min-h-0 w-full flex-col md:flex-row">
-                {/* Sidebar Tabs */}
-                <div className="flex w-full shrink-0 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] p-4 pb-0 md:w-64 md:flex-col md:overflow-x-visible md:border-r md:border-b-0 md:pb-4">
-                  <h2 className="mb-8 hidden px-2 text-xl font-bold text-[var(--color-text-1)] md:block">
-                    Settings
-                  </h2>
-                  <nav className="flex w-full gap-1 pb-2 md:flex-col md:pb-0">
-                    {TABS.map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setSettingsActiveTab(tab.id)}
-                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                          activeTab === tab.id
-                            ? "bg-[var(--color-surface)] text-[var(--color-text-1)]"
-                            : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
-                        }`}
-                      >
-                        <tab.icon className="h-4 w-4" />
-                        {tab.label}
-                      </button>
-                    ))}
-                  </nav>
-
-                  <div className="mt-auto border-t border-[var(--color-border)] pt-4">
-                    <div className="mb-2 flex h-6 items-center gap-2 px-2 text-xs font-medium">
-                      <AnimatePresence mode="wait">
-                        {saveStatus === "saving" && (
-                          <m.div
-                            key="saving"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex items-center gap-1.5 text-[var(--color-text-3)]"
-                          >
-                            <UiIcon
-                              className="h-3.5 w-3.5 animate-spin"
-                              icon={Loader2}
-                            />{" "}
-                            Saving...
-                          </m.div>
-                        )}
-                        {saveStatus === "saved" && (
-                          <m.div
-                            key="saved"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex items-center gap-1.5 text-[var(--color-think)]"
-                          >
-                            <UiIcon
-                              className="h-3.5 w-3.5"
-                              icon={CheckCircle2}
-                            />{" "}
-                            Saved
-                          </m.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+            <div className="flex h-full min-h-0 w-full flex-col md:flex-row">
+              {/* Sidebar Tabs */}
+              <div className="flex w-full shrink-0 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] p-4 pb-0 md:w-64 md:flex-col md:overflow-x-visible md:border-r md:border-b-0 md:pb-4">
+                <h2 className="mb-8 hidden px-2 text-xl font-bold text-[var(--color-text-1)] md:block">
+                  Settings
+                </h2>
+                <nav className="flex w-full gap-1 pb-2 md:flex-col md:pb-0">
+                  {TABS.map((tab) => (
                     <button
-                      onClick={handleSignOut}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--status-danger)] transition-colors hover:bg-[var(--status-danger-dim)]"
+                      key={tab.id}
+                      onClick={() => setSettingsActiveTab(tab.id)}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                        activeTab === tab.id
+                          ? "bg-[var(--color-surface)] text-[var(--color-text-1)]"
+                          : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
+                      }`}
                     >
-                      <UiIcon className="h-4 w-4" icon={LogOut} /> Sign Out
+                      <tab.icon className="h-4 w-4" />
+                      {tab.label}
                     </button>
+                  ))}
+                </nav>
+
+                <div className="mt-auto border-t border-[var(--color-border)] pt-4">
+                  <div className="mb-2 flex h-6 items-center gap-2 px-2 text-xs font-medium">
+                    <AnimatePresence mode="wait">
+                      {saveStatus === "saving" && (
+                        <m.div
+                          key="saving"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-center gap-1.5 text-[var(--color-text-3)]"
+                        >
+                          <UiIcon
+                            className="h-3.5 w-3.5 animate-spin"
+                            icon={Loader2}
+                          />{" "}
+                          Saving...
+                        </m.div>
+                      )}
+                      {saveStatus === "saved" && (
+                        <m.div
+                          key="saved"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-center gap-1.5 text-[var(--color-think)]"
+                        >
+                          <UiIcon className="h-3.5 w-3.5" icon={CheckCircle2} />{" "}
+                          Saved
+                        </m.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                </div>
-
-                {/* Main Content Area */}
-                <div
-                  className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
-                  data-lenis-prevent
-                >
-                  <Button
-                    variant="icon"
-                    onClick={() => onClose(false)}
-                    aria-label="Close settings"
-                    className="absolute top-4 right-4 z-10"
+                  <button
+                    onClick={handleSignOut}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--status-danger)] transition-colors hover:bg-[var(--status-danger-dim)]"
                   >
+                    <UiIcon className="h-4 w-4" icon={LogOut} /> Sign Out
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Content Area */}
+              <div
+                className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                data-lenis-prevent
+              >
+                <Button
+                  variant="icon"
+                  onClick={() => onClose(false)}
+                  aria-label="Close settings"
+                  className="absolute top-4 right-4 z-10"
+                >
+                  <UiIcon
+                    size={16}
+                    strokeWidth={1.5}
+                    className="shrink-0"
+                    icon={X}
+                  />
+                </Button>
+
+                {loading ? (
+                  <div className="flex h-full items-center justify-center">
                     <UiIcon
-                      size={16}
-                      strokeWidth={1.5}
-                      className="shrink-0"
-                      icon={X}
+                      className="h-6 w-6 animate-spin text-[var(--color-text-3)]"
+                      icon={Loader2}
                     />
-                  </Button>
+                  </div>
+                ) : (
+                  <div className="max-w-2xl p-10">
+                    <h3 className="mb-8 border-b border-[var(--color-border)] pb-4 text-2xl font-bold text-[var(--color-text-1)]">
+                      {TABS.find((t) => t.id === activeTab)?.label}
+                    </h3>
 
-                  {loading ? (
-                    <div className="flex h-full items-center justify-center">
-                      <UiIcon
-                        className="h-6 w-6 animate-spin text-[var(--color-text-3)]"
-                        icon={Loader2}
-                      />
-                    </div>
-                  ) : (
-                    <div className="max-w-2xl p-10">
-                      <h3 className="mb-8 border-b border-[var(--color-border)] pb-4 text-2xl font-bold text-[var(--color-text-1)]">
-                        {TABS.find((t) => t.id === activeTab)?.label}
-                      </h3>
+                    {activeTab === "account" && (
+                      <div className="space-y-6">
+                        <div>
+                          <label className="text-label mb-2 block text-[var(--text-3)]">
+                            Email
+                          </label>
+                          <input
+                            value={userEmail}
+                            readOnly
+                            className="input cursor-not-allowed opacity-60"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-label text-[var(--text-3)]">
+                            Display Name
+                          </label>
+                          <input
+                            type="text"
+                            {...register("display_name")}
+                            placeholder="How should we call you?"
+                            className="input w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-label mb-3 block text-[var(--text-3)]">
+                            Avatar Color
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              "#F472B6",
+                              "#4ADE80",
+                              "#3B82F6",
+                              "#FBBF24",
+                              "#A855F7",
+                              "#EF4444",
+                            ].map((color) => (
+                              <Button
+                                variant="danger"
+                                key={color}
+                                onClick={() =>
+                                  updateSetting("avatar_color", color)
+                                }
+                                className={`h-8 w-8 rounded-full transition-transform ${settings.avatar_color === color ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]" : "opacity-70 hover:opacity-100"}`}
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-label mb-2 block text-[var(--text-3)]">
+                            Timezone
+                          </label>
+                          <Dropdown
+                            variant="select"
+                            value={settings.timezone || "UTC"}
+                            onChange={(val) => updateSetting("timezone", val)}
+                            options={
+                              typeof Intl !== "undefined" &&
+                              "supportedValuesOf" in Intl
+                                ? /* @todo: Untyped usage justified per TOOL-01 */
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                  (Intl as any)
+                                    .supportedValuesOf("timeZone")
+                                    .map((tz: string) => ({
+                                      value: tz,
+                                      label: tz.replace(/_/g, " "),
+                                    }))
+                                : [
+                                    { value: "UTC", label: "UTC" },
+                                    {
+                                      value: "America/New_York",
+                                      label: "Eastern Time (ET)",
+                                    },
+                                    {
+                                      value: "America/Chicago",
+                                      label: "Central Time (CT)",
+                                    },
+                                    {
+                                      value: "America/Denver",
+                                      label: "Mountain Time (MT)",
+                                    },
+                                    {
+                                      value: "America/Los_Angeles",
+                                      label: "Pacific Time (PT)",
+                                    },
+                                    {
+                                      value: "Asia/Kolkata",
+                                      label: "India Standard Time (IST)",
+                                    },
+                                    {
+                                      value: "Europe/London",
+                                      label: "Greenwich Mean Time (GMT)",
+                                    },
+                                  ]
+                            }
+                          />
+                        </div>
+                        <div className="mt-8 border-t border-[var(--status-danger-border)] pt-8">
+                          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--status-danger)]">
+                            Danger Zone
+                          </h4>
+                          <p className="mb-4 text-xs text-[var(--color-text-3)]">
+                            Permanently delete your account and all data.
+                          </p>
+                          <Button
+                            variant="danger"
+                            onClick={() => setDeleteAccountConfirm(true)}
+                            className="mt-4 w-full"
+                          >
+                            Delete Account
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
-                      {activeTab === "account" && (
-                        <div className="space-y-6">
+                    {activeTab === "appearance" && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
                           <div>
-                            <label className="text-label mb-2 block text-[var(--text-3)]">
-                              Email
-                            </label>
-                            <input
-                              value={userEmail}
-                              readOnly
-                              className="input cursor-not-allowed opacity-60"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-label text-[var(--text-3)]">
-                              Display Name
-                            </label>
-                            <input
-                              type="text"
-                              {...register("display_name")}
-                              placeholder="How should we call you?"
-                              className="input w-full"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-label mb-3 block text-[var(--text-3)]">
-                              Avatar Color
-                            </label>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                "#F472B6",
-                                "#4ADE80",
-                                "#3B82F6",
-                                "#FBBF24",
-                                "#A855F7",
-                                "#EF4444",
-                              ].map((color) => (
-                                <Button
-                                  variant="danger"
-                                  key={color}
-                                  onClick={() =>
-                                    updateSetting("avatar_color", color)
-                                  }
-                                  className={`h-8 w-8 rounded-full transition-transform ${settings.avatar_color === color ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]" : "opacity-70 hover:opacity-100"}`}
-                                  style={{ backgroundColor: color }}
-                                />
-                              ))}
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Theme Accent
+                            </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Select your primary colour palette
                             </div>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => updateSetting("theme", "warm")}
+                              className={`h-8 w-8 rounded-full border-2 bg-[#E5B41E] transition-all ${normalizeThemeId(settings.theme) === "warm" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
+                              title="Warm"
+                            />
+                            <button
+                              onClick={() => updateSetting("theme", "navy")}
+                              className={`h-8 w-8 rounded-full border-2 bg-[#7692FF] transition-all ${normalizeThemeId(settings.theme) === "navy" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
+                              title="Navy"
+                            />
+                            <button
+                              onClick={() => updateSetting("theme", "forest")}
+                              className={`h-8 w-8 rounded-full border-2 bg-[#EFDD8D] transition-all ${normalizeThemeId(settings.theme) === "forest" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
+                              title="Forest"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
                           <div>
-                            <label className="text-label mb-2 block text-[var(--text-3)]">
-                              Timezone
-                            </label>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Color Mode
+                            </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Dark, Light, or System match
+                            </div>
+                          </div>
+                          <div className="w-40">
                             <Dropdown
                               variant="select"
-                              value={settings.timezone || "UTC"}
-                              onChange={(val) => updateSetting("timezone", val)}
-                              options={
-                                typeof Intl !== "undefined" &&
-                                "supportedValuesOf" in Intl
-                                  ? /* @todo: Untyped usage justified per TOOL-01 */
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    (Intl as any)
-                                      .supportedValuesOf("timeZone")
-                                      .map((tz: string) => ({
-                                        value: tz,
-                                        label: tz.replace(/_/g, " "),
-                                      }))
-                                  : [
-                                      { value: "UTC", label: "UTC" },
-                                      {
-                                        value: "America/New_York",
-                                        label: "Eastern Time (ET)",
-                                      },
-                                      {
-                                        value: "America/Chicago",
-                                        label: "Central Time (CT)",
-                                      },
-                                      {
-                                        value: "America/Denver",
-                                        label: "Mountain Time (MT)",
-                                      },
-                                      {
-                                        value: "America/Los_Angeles",
-                                        label: "Pacific Time (PT)",
-                                      },
-                                      {
-                                        value: "Asia/Kolkata",
-                                        label: "India Standard Time (IST)",
-                                      },
-                                      {
-                                        value: "Europe/London",
-                                        label: "Greenwich Mean Time (GMT)",
-                                      },
-                                    ]
+                              value={settings.color_mode || "dark"}
+                              onChange={(val) =>
+                                updateSetting("color_mode", val)
                               }
+                              className="w-full"
+                              options={[
+                                { value: "dark", label: "Dark" },
+                                { value: "light", label: "Light" },
+                                { value: "system", label: "System Default" },
+                              ]}
                             />
                           </div>
-                          <div className="mt-8 border-t border-[var(--status-danger-border)] pt-8">
-                            <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--status-danger)]">
-                              Danger Zone
-                            </h4>
-                            <p className="mb-4 text-xs text-[var(--color-text-3)]">
-                              Permanently delete your account and all data.
-                            </p>
-                            <Button
-                              variant="danger"
-                              onClick={() => setDeleteAccountConfirm(true)}
-                              className="mt-4 w-full"
-                            >
-                              Delete Account
-                            </Button>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Density
+                              {/* BUG-46 — `density` has NO column in
+                                    `user_settings` (verified live). Keep it
+                                    out of the autosave watch list; the
+                                    value only lives in this UI until a
+                                    schema decision is made. */}
+                            </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Adjust row height and spacing
+                            </div>
+                          </div>
+                          <div className="w-40">
+                            <Dropdown
+                              variant="select"
+                              value={localDensity}
+                              onChange={(val) =>
+                                setLocalDensity(
+                                  val as "compact" | "comfortable",
+                                )
+                              }
+                              className="w-full"
+                              options={[
+                                { value: "compact", label: "Compact" },
+                                {
+                                  value: "comfortable",
+                                  label: "Comfortable",
+                                },
+                              ]}
+                            />
                           </div>
                         </div>
-                      )}
-
-                      {activeTab === "appearance" && (
-                        <div className="space-y-6">
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Theme Accent
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Select your primary colour palette
-                              </div>
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Ambient Background
                             </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => updateSetting("theme", "warm")}
-                                className={`h-8 w-8 rounded-full border-2 bg-[#E5B41E] transition-all ${normalizeThemeId(settings.theme) === "warm" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                                title="Warm"
-                              />
-                              <button
-                                onClick={() => updateSetting("theme", "navy")}
-                                className={`h-8 w-8 rounded-full border-2 bg-[#7692FF] transition-all ${normalizeThemeId(settings.theme) === "navy" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                                title="Navy"
-                              />
-                              <button
-                                onClick={() => updateSetting("theme", "forest")}
-                                className={`h-8 w-8 rounded-full border-2 bg-[#EFDD8D] transition-all ${normalizeThemeId(settings.theme) === "forest" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                                title="Forest"
-                              />
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Show moving gradients in the background
                             </div>
                           </div>
-
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Color Mode
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Dark, Light, or System match
-                              </div>
-                            </div>
-                            <div className="w-40">
-                              <Dropdown
-                                variant="select"
-                                value={settings.color_mode || "dark"}
-                                onChange={(val) =>
-                                  updateSetting("color_mode", val)
-                                }
-                                className="w-full"
-                                options={[
-                                  { value: "dark", label: "Dark" },
-                                  { value: "light", label: "Light" },
-                                  { value: "system", label: "System Default" },
-                                ]}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Density
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Adjust row height and spacing
-                              </div>
-                            </div>
-                            <div className="w-40">
-                              <Dropdown
-                                variant="select"
-                                value={settings.density || "compact"}
-                                onChange={(val) =>
-                                  updateSetting("density", val)
-                                }
-                                className="w-full"
-                                options={[
-                                  { value: "compact", label: "Compact" },
-                                  {
-                                    value: "comfortable",
-                                    label: "Comfortable",
-                                  },
-                                ]}
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Ambient Background
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Show moving gradients in the background
-                              </div>
-                            </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "ambient_bg",
-                                  !settings.ambient_bg,
-                                )
-                              }
-                              className={`toggle-track ${settings.ambient_bg ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Reduce Motion
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Minimize UI animations
-                              </div>
-                            </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "reduce_motion",
-                                  !settings.reduce_motion,
-                                )
-                              }
-                              className={`toggle-track ${settings.reduce_motion ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
+                          <button
+                            onClick={() =>
+                              updateSetting("ambient_bg", !settings.ambient_bg)
+                            }
+                            className={`toggle-track ${settings.ambient_bg ? "on" : ""}`}
+                          >
+                            <div className="toggle-thumb" />
+                          </button>
                         </div>
-                      )}
-
-                      {activeTab === "notifications" && (
-                        <div className="space-y-6">
-                          <div className="mb-6 flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Master Toggle
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Enable all notifications
-                              </div>
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Reduce Motion
                             </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "notifications_enabled",
-                                  !settings.notifications_enabled,
-                                )
-                              }
-                              className={`toggle-track ${settings.notifications_enabled ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
-
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Daily Briefing
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Receive a summary of today&apos;s tasks
-                              </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Minimize UI animations
                             </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "daily_briefing",
-                                  !settings.daily_briefing,
-                                )
-                              }
-                              className={`toggle-track ${settings.daily_briefing ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
                           </div>
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Pomodoro Finish Sound
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Play a sound when timer completes
-                              </div>
-                            </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "pomodoro_sound",
-                                  !settings.pomodoro_sound,
-                                )
-                              }
-                              className={`toggle-track ${settings.pomodoro_sound ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Deadline Reminders
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Get notified as deadlines approach
-                              </div>
-                            </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "notif_overdue",
-                                  !settings.notif_overdue,
-                                )
-                              }
-                              className={`toggle-track ${settings.notif_overdue ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
-
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                            <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Stale Location Alerts
-                              </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Remind to update locations older than 90 days
-                              </div>
-                            </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "notif_stale_threads",
-                                  !settings.notif_stale_threads,
-                                )
-                              }
-                              className={`toggle-track ${settings.notif_stale_threads ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
+                          <button
+                            onClick={() =>
+                              updateSetting(
+                                "reduce_motion",
+                                !settings.reduce_motion,
+                              )
+                            }
+                            className={`toggle-track ${settings.reduce_motion ? "on" : ""}`}
+                          >
+                            <div className="toggle-thumb" />
+                          </button>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {activeTab === "focus" && (
-                        <div className="space-y-6">
-                          <div className="space-y-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                            <div className="text-sm font-semibold text-[var(--color-text-1)]">
-                              Timer Durations
+                    {activeTab === "notifications" && (
+                      <div className="space-y-6">
+                        <div className="mb-6 flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Master Toggle
                             </div>
-
-                            <div>
-                              <label className="text-label mb-2 block text-[var(--text-3)]">
-                                Work Duration (mins)
-                              </label>
-                              <div className="flex flex-wrap gap-2">
-                                {[15, 20, 25, 30, 45, 60].map((mins) => (
-                                  <Button
-                                    variant="preset"
-                                    key={mins}
-                                    onClick={() =>
-                                      updateSetting("pomodoro_duration", mins)
-                                    }
-                                    className={cn(
-                                      "",
-                                      settings.pomodoro_duration === mins &&
-                                        "active",
-                                    )}
-                                  >
-                                    {mins}m
-                                  </Button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-label mb-2 block text-[var(--text-3)]">
-                                Short Break (mins)
-                              </label>
-                              <div className="flex flex-wrap gap-2">
-                                {[3, 5, 10, 15].map((mins) => (
-                                  <Button
-                                    variant="preset"
-                                    key={mins}
-                                    onClick={() =>
-                                      updateSetting(
-                                        "short_break_duration",
-                                        mins,
-                                      )
-                                    }
-                                    className={cn(
-                                      "",
-                                      settings.short_break_duration === mins &&
-                                        "active",
-                                    )}
-                                  >
-                                    {mins}m
-                                  </Button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-label mb-2 block text-[var(--text-3)]">
-                                Long Break (mins)
-                              </label>
-                              <div className="flex flex-wrap gap-2">
-                                {[15, 20, 30].map((mins) => (
-                                  <Button
-                                    variant="preset"
-                                    key={mins}
-                                    onClick={() =>
-                                      updateSetting("long_break_duration", mins)
-                                    }
-                                    className={cn(
-                                      "",
-                                      settings.long_break_duration === mins &&
-                                        "active",
-                                    )}
-                                  >
-                                    {mins}m
-                                  </Button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-4">
-                              <div>
-                                <div className="text-sm font-medium text-[var(--color-text-1)]">
-                                  Auto-start Breaks
-                                </div>
-                                <div className="text-xs text-[var(--color-text-3)]">
-                                  Automatically begin break timer when work
-                                  finishes
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  updateSetting(
-                                    "auto_start_breaks",
-                                    !settings.auto_start_breaks,
-                                  )
-                                }
-                                className={`toggle-track ${settings.auto_start_breaks ? "on" : ""}`}
-                              >
-                                <div className="toggle-thumb" />
-                              </button>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Enable all notifications
                             </div>
                           </div>
+                          <button
+                            onClick={() =>
+                              updateSetting(
+                                "notifications_enabled",
+                                !settings.notifications_enabled,
+                              )
+                            }
+                            className={`toggle-track ${settings.notifications_enabled ? "on" : ""}`}
+                          >
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
 
-                          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                            <label className="text-label mb-3 block text-[var(--text-3)]">
-                              Long Break After (sessions)
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Daily Briefing
+                            </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Receive a summary of today&apos;s tasks
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              updateSetting(
+                                "daily_briefing",
+                                !settings.daily_briefing,
+                              )
+                            }
+                            className={`toggle-track ${settings.daily_briefing ? "on" : ""}`}
+                          >
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Pomodoro Finish Sound
+                            </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Play a sound when timer completes
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              updateSetting(
+                                "pomodoro_sound",
+                                !settings.pomodoro_sound,
+                              )
+                            }
+                            className={`toggle-track ${settings.pomodoro_sound ? "on" : ""}`}
+                          >
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Deadline Reminders
+                            </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Get notified as deadlines approach
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              updateSetting(
+                                "notif_overdue",
+                                !settings.notif_overdue,
+                              )
+                            }
+                            className={`toggle-track ${settings.notif_overdue ? "on" : ""}`}
+                          >
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Stale Location Alerts
+                            </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Remind to update locations older than 90 days
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              updateSetting(
+                                "notif_stale_threads",
+                                !settings.notif_stale_threads,
+                              )
+                            }
+                            className={`toggle-track ${settings.notif_stale_threads ? "on" : ""}`}
+                          >
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "focus" && (
+                      <div className="space-y-6">
+                        <div className="space-y-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                          <div className="text-sm font-semibold text-[var(--color-text-1)]">
+                            Timer Durations
+                          </div>
+
+                          <div>
+                            <label className="text-label mb-2 block text-[var(--text-3)]">
+                              Work Duration (mins)
                             </label>
                             <div className="flex flex-wrap gap-2">
-                              {[2, 3, 4, 5].map((n) => (
+                              {[15, 20, 25, 30, 45, 60].map((mins) => (
                                 <Button
                                   variant="preset"
-                                  key={n}
+                                  key={mins}
                                   onClick={() =>
-                                    updateSetting(
-                                      "pomodoro_long_break_interval",
-                                      n,
-                                    )
+                                    updateSetting("pomodoro_duration", mins)
                                   }
                                   className={cn(
                                     "",
-                                    (settings.pomodoro_long_break_interval ||
-                                      4) === n && "active",
+                                    settings.pomodoro_duration === mins &&
+                                      "active",
                                   )}
                                 >
-                                  {n}
+                                  {mins}m
                                 </Button>
                               ))}
                             </div>
                           </div>
-                        </div>
-                      )}
 
-                      {activeTab === "ritual" && (
-                        <div className="space-y-6">
-                          <div className="space-y-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                            <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-4">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-dim)]">
-                                <UiIcon
-                                  className="h-5 w-5 text-[var(--accent)]"
-                                  icon={Sparkles}
-                                />
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-[var(--text-1)]">
-                                  Daily Ritual
-                                </h4>
-                                <p className="text-xs text-[var(--text-muted)]">
-                                  Configure your morning planning and evening
-                                  review times.
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-6">
-                              <div>
-                                <label className="text-label mb-2 block flex items-center gap-1.5 text-[var(--text-3)]">
-                                  <UiIcon
-                                    className="h-3.5 w-3.5 text-orange-400"
-                                    icon={Sparkles}
-                                  />{" "}
-                                  Morning Nudge
-                                </label>
-                                <Dropdown
-                                  variant="select"
-                                  value={settings.nudge_time || "10:00"}
-                                  onChange={(val) =>
-                                    updateSetting("nudge_time", val)
+                          <div>
+                            <label className="text-label mb-2 block text-[var(--text-3)]">
+                              Short Break (mins)
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {[3, 5, 10, 15].map((mins) => (
+                                <Button
+                                  variant="preset"
+                                  key={mins}
+                                  onClick={() =>
+                                    updateSetting("short_break_duration", mins)
                                   }
-                                  className="w-full"
-                                  options={TIME_OPTIONS}
-                                />
-                                <p className="text-meta mt-2 text-[var(--text-muted)]">
-                                  When should we remind you to plan your day?
-                                </p>
-                              </div>
-                              <div>
-                                <label className="text-label mb-2 block flex items-center gap-1.5 text-[var(--text-3)]">
-                                  <UiIcon
-                                    className="h-3.5 w-3.5 text-blue-400"
-                                    icon={Moon}
-                                  />{" "}
-                                  Evening Shutdown
-                                </label>
-                                <Dropdown
-                                  variant="select"
-                                  value={settings.shutdown_time || "17:00"}
-                                  onChange={(val) =>
-                                    updateSetting("shutdown_time", val)
-                                  }
-                                  className="w-full"
-                                  options={TIME_OPTIONS}
-                                />
-                                <p className="text-meta mt-2 text-[var(--text-muted)]">
-                                  When do you usually finish work?
-                                </p>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-label mb-2 block text-[var(--text-3)]">
-                                Daily Capacity (mins)
-                              </label>
-                              <div className="flex items-center gap-4">
-                                <input
-                                  type="range"
-                                  min="60"
-                                  max="720"
-                                  step="30"
-                                  value={settings.daily_capacity_minutes || 240}
-                                  onChange={(e) =>
-                                    updateSetting(
-                                      "daily_capacity_minutes",
-                                      parseInt(e.target.value),
-                                    )
-                                  }
-                                  className="flex-1 accent-[var(--accent)]"
-                                />
-                                <span className="w-16 text-right font-medium text-[var(--text-1)]">
-                                  {Math.floor(
-                                    (settings.daily_capacity_minutes || 240) /
-                                      60,
+                                  className={cn(
+                                    "",
+                                    settings.short_break_duration === mins &&
+                                      "active",
                                   )}
-                                  h{" "}
-                                  {(settings.daily_capacity_minutes || 240) %
-                                    60}
-                                  m
-                                </span>
-                              </div>
-                              <p className="text-meta mt-2 text-[var(--text-muted)]">
-                                Used for workload visualization during morning
-                                planning.
-                              </p>
+                                >
+                                  {mins}m
+                                </Button>
+                              ))}
                             </div>
                           </div>
-                        </div>
-                      )}
 
-                      {activeTab === "tasks" && (
-                        <div className="space-y-8">
                           <div>
-                            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-[var(--color-text-1)]">
-                              <UiIcon
-                                icon={CheckSquare}
-                                size={20}
-                                className="text-[var(--color-accent)]"
-                              />
-                              Task Management
-                            </h3>
-                            <div className="space-y-6">
-                              <CategoryManager
-                                title="Task Categories"
-                                categoriesKey="do_categories"
-                                colorsKey="do_category_colors"
-                                defaultCategories={[
-                                  "work",
-                                  "study",
-                                  "personal",
-                                  "errand",
-                                  "health",
-                                ]}
-                                settings={settings as SettingsState}
-                                updateSetting={updateSetting}
-                                setSettings={setSettings}
-                                supabase={supabase}
-                              />
-
-                              <div className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-[var(--color-text-1)]">
-                                      Auto-Archive Completed
-                                    </p>
-                                    <p className="text-xs text-[var(--text-3)]">
-                                      Move done tasks to archive automatically
-                                    </p>
-                                  </div>
-                                  <Dropdown
-                                    variant="select"
-                                    value={String(
-                                      settings.auto_archive_days ?? 7,
-                                    )}
-                                    onChange={(val) =>
-                                      updateSetting(
-                                        "auto_archive_days",
-                                        Number(val),
-                                      )
-                                    }
-                                    className="w-40"
-                                    options={[
-                                      { value: "0", label: "Immediately" },
-                                      { value: "1", label: "After 1 day" },
-                                      { value: "3", label: "After 3 days" },
-                                      { value: "7", label: "After 1 week" },
-                                      { value: "-1", label: "Never" },
-                                    ]}
-                                  />
-                                </div>
-                                <div className="h-[1px] bg-[var(--color-border)]" />
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-[var(--color-text-1)]">
-                                      NLP Date Parsing
-                                    </p>
-                                    <p className="text-xs text-[var(--text-3)]">
-                                      Extract dates from task text
-                                    </p>
-                                  </div>
-                                  <label className="relative inline-flex cursor-pointer items-center">
-                                    <input
-                                      type="checkbox"
-                                      className="peer sr-only"
-                                      checked={
-                                        settings.nlp_date_parsing !== false
-                                      }
-                                      onChange={(e) =>
-                                        updateSetting(
-                                          "nlp_date_parsing",
-                                          e.target.checked,
-                                        )
-                                      }
-                                    />
-                                    <div className="peer h-6 w-11 rounded-full bg-[var(--color-surface-hover)] peer-checked:bg-[var(--color-accent)] after:absolute after:top-0.5 after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-[var(--color-text-1)] after:transition-all after:content-[''] peer-checked:after:translate-x-full"></div>
-                                  </label>
-                                </div>
-                              </div>
+                            <label className="text-label mb-2 block text-[var(--text-3)]">
+                              Long Break (mins)
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {[15, 20, 30].map((mins) => (
+                                <Button
+                                  variant="preset"
+                                  key={mins}
+                                  onClick={() =>
+                                    updateSetting("long_break_duration", mins)
+                                  }
+                                  className={cn(
+                                    "",
+                                    settings.long_break_duration === mins &&
+                                      "active",
+                                  )}
+                                >
+                                  {mins}m
+                                </Button>
+                              ))}
                             </div>
                           </div>
-                        </div>
-                      )}
 
-                      {activeTab === "people" && (
-                        <div className="space-y-8">
-                          <div>
-                            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-[var(--color-text-1)]">
-                              <UiIcon
-                                icon={Users}
-                                size={20}
-                                className="text-[var(--color-accent)]"
-                              />
-                              People & Relationships
-                            </h3>
-                            <div className="space-y-6">
-                              <CategoryManager
-                                title="Relationship Types"
-                                categoriesKey="people_categories"
-                                colorsKey="relationship_colors"
-                                defaultCategories={[
-                                  "family",
-                                  "friend",
-                                  "colleague",
-                                  "client",
-                                  "acquaintance",
-                                ]}
-                                settings={settings as SettingsState}
-                                updateSetting={updateSetting}
-                                setSettings={setSettings}
-                                supabase={supabase}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {activeTab === "routing" && (
-                        <div className="space-y-6">
-                          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-4">
                             <div>
-                              <div className="font-medium text-[var(--color-text-1)]">
-                                Smart NLP Routing
+                              <div className="text-sm font-medium text-[var(--color-text-1)]">
+                                Auto-start Breaks
                               </div>
-                              <div className="text-sm text-[var(--color-text-3)]">
-                                Automatically route captures based on natural
-                                language
+                              <div className="text-xs text-[var(--color-text-3)]">
+                                Automatically begin break timer when work
+                                finishes
                               </div>
                             </div>
                             <button
                               onClick={() =>
                                 updateSetting(
-                                  "smart_routing_enabled",
-                                  !settings.smart_routing_enabled,
+                                  "auto_start_breaks",
+                                  !settings.auto_start_breaks,
                                 )
                               }
-                              className={`toggle-track ${settings.smart_routing_enabled ? "on" : ""}`}
+                              className={`toggle-track ${settings.auto_start_breaks ? "on" : ""}`}
                             >
                               <div className="toggle-thumb" />
                             </button>
                           </div>
-
-
                         </div>
-                      )}
 
-                      {activeTab === "data" && (
-                        <div className="space-y-6">
-                          <p className="text-sm text-[var(--color-text-3)]">
-                            Manage your data and account. All data stays synced
-                            across devices.
-                          </p>
-                          <Button
-                            variant="secondary"
-                            type="button"
-                            onClick={handleExportData}
-                            className="w-full"
-                          >
-                            <UiIcon
-                              size={14}
-                              strokeWidth={1.5}
-                              className="shrink-0"
-                              icon={Download}
-                            />{" "}
-                            Export All Data
-                          </Button>
-                          <div className="mt-4 grid grid-cols-2 gap-4">
-                            <Button
-                              variant="danger"
-                              type="button"
-                              onClick={() => setClearTasksConfirm(true)}
-                              className="w-full"
-                            >
-                              Clear Completed Tasks
-                            </Button>
-                            <Button
-                              variant="danger"
-                              type="button"
-                              onClick={() => setClearLocationsConfirm(true)}
-                              className="w-full"
-                            >
-                              Clear Stale Locations
-                            </Button>
+                        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                          <label className="text-label mb-3 block text-[var(--text-3)]">
+                            Long Break After (sessions)
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {[2, 3, 4, 5].map((n) => (
+                              <Button
+                                variant="preset"
+                                key={n}
+                                onClick={() =>
+                                  updateSetting(
+                                    "pomodoro_long_break_interval",
+                                    n,
+                                  )
+                                }
+                                className={cn(
+                                  "",
+                                  (settings.pomodoro_long_break_interval ||
+                                    4) === n && "active",
+                                )}
+                              >
+                                {n}
+                              </Button>
+                            ))}
                           </div>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      <ConfirmModal
-                        isOpen={deleteAccountConfirm}
-                        onClose={() => setDeleteAccountConfirm(false)}
-                        onConfirm={handleDeleteAccount}
-                        title="Delete Account"
-                        description="This will permanently delete all your data. This cannot be undone."
-                        confirmLabel="Delete Account"
-                        inputRequired="DELETE"
-                        confirmDestructive
-                      />
-                      <ConfirmModal
-                        isOpen={clearTasksConfirm}
-                        onClose={() => setClearTasksConfirm(false)}
-                        onConfirm={handleClearCompleted}
-                        title="Clear Completed Tasks"
-                        description="Remove all completed tasks permanently?"
-                        confirmLabel="Clear Tasks"
-                        confirmDestructive
-                      />
-                      <ConfirmModal
-                        isOpen={clearLocationsConfirm}
-                        onClose={() => setClearLocationsConfirm(false)}
-                        onConfirm={handleClearStaleLocations}
-                        title="Clear Stale Locations"
-                        description="Remove locations not updated in 30+ days?"
-                        confirmLabel="Clear Locations"
-                        confirmDestructive
-                      />
-                    </div>
-                  )}
-                </div>
+                    {activeTab === "ritual" && (
+                      <div className="space-y-6">
+                        <div className="space-y-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                          <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-4">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-dim)]">
+                              <UiIcon
+                                className="h-5 w-5 text-[var(--accent)]"
+                                icon={Sparkles}
+                              />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-[var(--text-1)]">
+                                Daily Ritual
+                              </h4>
+                              <p className="text-xs text-[var(--text-muted)]">
+                                Configure your morning planning and evening
+                                review times.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-6">
+                            <div>
+                              <label className="text-label mb-2 block flex items-center gap-1.5 text-[var(--text-3)]">
+                                <UiIcon
+                                  className="h-3.5 w-3.5 text-orange-400"
+                                  icon={Sparkles}
+                                />{" "}
+                                Morning Nudge
+                              </label>
+                              <Dropdown
+                                variant="select"
+                                value={settings.nudge_time || "10:00"}
+                                onChange={(val) =>
+                                  updateSetting("nudge_time", val)
+                                }
+                                className="w-full"
+                                options={TIME_OPTIONS}
+                              />
+                              <p className="text-meta mt-2 text-[var(--text-muted)]">
+                                When should we remind you to plan your day?
+                              </p>
+                            </div>
+                            <div>
+                              <label className="text-label mb-2 block flex items-center gap-1.5 text-[var(--text-3)]">
+                                <UiIcon
+                                  className="h-3.5 w-3.5 text-blue-400"
+                                  icon={Moon}
+                                />{" "}
+                                Evening Shutdown
+                              </label>
+                              <Dropdown
+                                variant="select"
+                                value={settings.shutdown_time || "17:00"}
+                                onChange={(val) =>
+                                  updateSetting("shutdown_time", val)
+                                }
+                                className="w-full"
+                                options={TIME_OPTIONS}
+                              />
+                              <p className="text-meta mt-2 text-[var(--text-muted)]">
+                                When do you usually finish work?
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-label mb-2 block text-[var(--text-3)]">
+                              Daily Capacity (mins)
+                            </label>
+                            <div className="flex items-center gap-4">
+                              <input
+                                type="range"
+                                min="60"
+                                max="720"
+                                step="30"
+                                value={settings.daily_capacity_minutes || 240}
+                                onChange={(e) =>
+                                  updateSetting(
+                                    "daily_capacity_minutes",
+                                    parseInt(e.target.value),
+                                  )
+                                }
+                                className="flex-1 accent-[var(--accent)]"
+                              />
+                              <span className="w-16 text-right font-medium text-[var(--text-1)]">
+                                {Math.floor(
+                                  (settings.daily_capacity_minutes || 240) / 60,
+                                )}
+                                h{" "}
+                                {(settings.daily_capacity_minutes || 240) % 60}m
+                              </span>
+                            </div>
+                            <p className="text-meta mt-2 text-[var(--text-muted)]">
+                              Used for workload visualization during morning
+                              planning.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "tasks" && (
+                      <div className="space-y-8">
+                        <div>
+                          <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-[var(--color-text-1)]">
+                            <UiIcon
+                              icon={CheckSquare}
+                              size={20}
+                              className="text-[var(--color-accent)]"
+                            />
+                            Task Management
+                          </h3>
+                          <div className="space-y-6">
+                            <CategoryManager
+                              title="Task Categories"
+                              categoriesKey="do_categories"
+                              colorsKey="do_category_colors"
+                              defaultCategories={[
+                                "work",
+                                "study",
+                                "personal",
+                                "errand",
+                                "health",
+                              ]}
+                              settings={settings as SettingsState}
+                              updateSetting={updateSetting}
+                              setSettings={setSettings}
+                              supabase={supabase}
+                            />
+
+                            <div className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-[var(--color-text-1)]">
+                                    Auto-Archive Completed
+                                  </p>
+                                  <p className="text-xs text-[var(--text-3)]">
+                                    Move done tasks to archive automatically
+                                  </p>
+                                </div>
+                                <Dropdown
+                                  variant="select"
+                                  value={String(
+                                    settings.auto_archive_days ?? 7,
+                                  )}
+                                  onChange={(val) =>
+                                    updateSetting(
+                                      "auto_archive_days",
+                                      Number(val),
+                                    )
+                                  }
+                                  className="w-40"
+                                  options={[
+                                    { value: "0", label: "Immediately" },
+                                    { value: "1", label: "After 1 day" },
+                                    { value: "3", label: "After 3 days" },
+                                    { value: "7", label: "After 1 week" },
+                                    { value: "-1", label: "Never" },
+                                  ]}
+                                />
+                              </div>
+                              <div className="h-[1px] bg-[var(--color-border)]" />
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-[var(--color-text-1)]">
+                                    NLP Date Parsing
+                                  </p>
+                                  <p className="text-xs text-[var(--text-3)]">
+                                    Extract dates from task text
+                                  </p>
+                                </div>
+                                <label className="relative inline-flex cursor-pointer items-center">
+                                  <input
+                                    type="checkbox"
+                                    className="peer sr-only"
+                                    checked={
+                                      settings.nlp_date_parsing !== false
+                                    }
+                                    onChange={(e) =>
+                                      updateSetting(
+                                        "nlp_date_parsing",
+                                        e.target.checked,
+                                      )
+                                    }
+                                  />
+                                  <div className="peer h-6 w-11 rounded-full bg-[var(--color-surface-hover)] peer-checked:bg-[var(--color-accent)] after:absolute after:top-0.5 after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-[var(--color-text-1)] after:transition-all after:content-[''] peer-checked:after:translate-x-full"></div>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "people" && (
+                      <div className="space-y-8">
+                        <div>
+                          <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-[var(--color-text-1)]">
+                            <UiIcon
+                              icon={Users}
+                              size={20}
+                              className="text-[var(--color-accent)]"
+                            />
+                            People & Relationships
+                          </h3>
+                          <div className="space-y-6">
+                            <CategoryManager
+                              title="Relationship Types"
+                              categoriesKey="people_categories"
+                              colorsKey="relationship_colors"
+                              defaultCategories={[
+                                "family",
+                                "friend",
+                                "colleague",
+                                "client",
+                                "acquaintance",
+                              ]}
+                              settings={settings as SettingsState}
+                              updateSetting={updateSetting}
+                              setSettings={setSettings}
+                              supabase={supabase}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "routing" && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                          <div>
+                            <div className="font-medium text-[var(--color-text-1)]">
+                              Smart NLP Routing
+                            </div>
+                            <div className="text-sm text-[var(--color-text-3)]">
+                              Automatically route captures based on natural
+                              language
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              updateSetting(
+                                "smart_routing_enabled",
+                                !settings.smart_routing_enabled,
+                              )
+                            }
+                            className={`toggle-track ${settings.smart_routing_enabled ? "on" : ""}`}
+                          >
+                            <div className="toggle-thumb" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "data" && (
+                      <div className="space-y-6">
+                        <p className="text-sm text-[var(--color-text-3)]">
+                          Manage your data and account. All data stays synced
+                          across devices.
+                        </p>
+                        <Button
+                          variant="secondary"
+                          type="button"
+                          onClick={handleExportData}
+                          className="w-full"
+                        >
+                          <UiIcon
+                            size={14}
+                            strokeWidth={1.5}
+                            className="shrink-0"
+                            icon={Download}
+                          />{" "}
+                          Export All Data
+                        </Button>
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <Button
+                            variant="danger"
+                            type="button"
+                            onClick={() => setClearTasksConfirm(true)}
+                            className="w-full"
+                          >
+                            Clear Completed Tasks
+                          </Button>
+                          <Button
+                            variant="danger"
+                            type="button"
+                            onClick={() => setClearLocationsConfirm(true)}
+                            className="w-full"
+                          >
+                            Clear Stale Locations
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <ConfirmModal
+                      isOpen={deleteAccountConfirm}
+                      onClose={() => setDeleteAccountConfirm(false)}
+                      onConfirm={handleDeleteAccount}
+                      title="Delete Account"
+                      description="This will permanently delete all your data. This cannot be undone."
+                      confirmLabel="Delete Account"
+                      inputRequired="DELETE"
+                      confirmDestructive
+                    />
+                    <ConfirmModal
+                      isOpen={clearTasksConfirm}
+                      onClose={() => setClearTasksConfirm(false)}
+                      onConfirm={handleClearCompleted}
+                      title="Clear Completed Tasks"
+                      description="Remove all completed tasks permanently?"
+                      confirmLabel="Clear Tasks"
+                      confirmDestructive
+                    />
+                    <ConfirmModal
+                      isOpen={clearLocationsConfirm}
+                      onClose={() => setClearLocationsConfirm(false)}
+                      onConfirm={handleClearStaleLocations}
+                      title="Clear Stale Locations"
+                      description="Remove locations not updated in 30+ days?"
+                      confirmLabel="Clear Locations"
+                      confirmDestructive
+                    />
+                  </div>
+                )}
               </div>
-            </m.div>
+            </div>
           </m.div>
+        </m.div>
       </AnimatePresence>
     </ModalErrorBoundary>
   );
