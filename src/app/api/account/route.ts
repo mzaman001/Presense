@@ -61,17 +61,68 @@ export async function DELETE(request: Request) {
     );
 
     // Delete the auth user (requires service-role key)
-    const { error } = await serviceClient.auth.admin.deleteUser(user.id);
+    const { error: deleteAuthError } =
+      await serviceClient.auth.admin.deleteUser(user.id);
 
-    if (error) {
-      logger.error("[account] deleteUser failed:", error);
+    if (deleteAuthError) {
+      logger.error("[account] deleteUser failed:", deleteAuthError);
       return NextResponse.json(
         { error: "Failed to delete account. Please contact support." },
         { status: 500 },
       );
     }
 
-    return NextResponse.json({ success: true });
+    // AUDIT-06 (Aug 19, 2026): deleteUser alone orphaned every user-owned
+    // row (10 tables) forever — a retention/GDPR gap. Now every table with a
+    // user_id FK is swept after the auth deletion succeeds. Per AGENTS
+    // invariant 7 every mutation's error is checked; the final response
+    // reports per-table outcomes and only {success:true} when the sweep is
+    // fully complete.
+    const ownedTables = [
+      "items",
+      "threads",
+      "people",
+      "explores",
+      "locations",
+      "push_subscriptions",
+      "user_settings",
+      "categories",
+      "session_logs",
+      "ritual_logs",
+    ];
+
+    const deleteResults = await Promise.all(
+      ownedTables.map((table) =>
+        serviceClient.from(table).delete().eq("user_id", user.id),
+      ),
+    );
+
+    const failures = deleteResults
+      .map((res, i) =>
+        res.error ? { table: ownedTables[i], error: res.error.message } : null,
+      )
+      .filter((r): r is { table: string; error: string } => r !== null);
+
+    if (failures.length > 0) {
+      logger.error("[account] purge failed for tables:", failures);
+      Sentry.captureMessage(
+        `[account] purge partial failure for user ${user.id}: ${failures
+          .map((f) => `${f.table}: ${f.error}`)
+          .join("; ")}`,
+        { level: "error" },
+      );
+      return NextResponse.json(
+        {
+          error:
+            "Account was deleted but some personal data could not be purged. Please contact support.",
+          code: "PURGE_PARTIAL",
+          failedTables: failures.map((f) => f.table),
+        },
+        { status: 207 },
+      );
+    }
+
+    return NextResponse.json({ success: true, purgedTables: ownedTables });
   } catch (error) {
     Sentry.captureException(error);
     logger.error("[account] Error:", error);

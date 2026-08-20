@@ -143,6 +143,21 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/login") || pathname.startsWith("/auth");
 
     if (!user && !isAuthRoute) {
+      /* AUDIT-02 (Aug 19, 2026): programmatic consumers of /api/* routes
+         (capture bot, future mobile) received an HTML 307 to /login, which
+         most HTTP clients handle uselessly. API routes now get a JSON 401
+         with a stable error code; page routes keep the HTML redirect. The
+         CSP header and cookie propagation (Law 6 invariants) are untouched. */
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          {
+            error: "Unauthorized",
+            code: "AUTH_REQUIRED",
+            message: "A valid session cookie is required.",
+          },
+          { status: 401 },
+        );
+      }
       return securedRedirectResponse(
         request,
         "/login",
