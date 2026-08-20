@@ -31,6 +31,30 @@ import { createClient } from "@/lib/supabase";
 import { useRealtime } from "@/hooks/useRealtime";
 import { getRitualDecision } from "@/lib/rituals";
 
+/* AUDIT-01 (Aug 19, 2026): fallback avatar accent resolved from the
+   canonical accent for each frozen theme id (AGENTS invariant 2, values
+   copied from `:root` / `:root[data-theme="*"]` / `:root[data-mode="light"]`
+   blocks in `globals.css`). Previously the fallback read
+   `getComputedStyle(document.documentElement)` — a DOM read that errored
+   during SSR with `ReferenceError: getComputedStyle is not defined`
+   (Vercel production, 7 events Aug 17–18 on `/` and `/trash`). */
+const AVATAR_ACCENT_BY_THEME: Record<string, string> = {
+  warm: "#e5b41e",
+  navy: "#7692ff",
+  forest: "#efdd8d",
+};
+
+function avatarAccentFallback(): string {
+  // Client-only: the theme lives on `data-theme`; default to the warm-dark
+  // canonical accent (the SSR-safe table above covers the theme ids).
+  if (typeof document === "undefined") return "#e5b41e";
+  return (
+    AVATAR_ACCENT_BY_THEME[
+      document.documentElement.getAttribute("data-theme") ?? ""
+    ] ?? "#e5b41e"
+  );
+}
+
 const navItems = [
   { href: "/", label: "Home", icon: Home, exact: true },
   { href: "/inbox", label: "Inbox", icon: Inbox },
@@ -60,7 +84,7 @@ function RailTooltip({
       <span
         aria-hidden
         className={
-          "sidebar-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 whitespace-nowrap -translate-y-1/2"
+          "sidebar-tooltip pointer-events-none absolute top-1/2 left-full z-50 ml-3 -translate-y-1/2 whitespace-nowrap"
         }
       >
         {label}
@@ -77,10 +101,7 @@ function RailTooltip({
  */
 function useInboxCount(): number {
   const supabase = useMemo(() => createClient(), []);
-  const {
-    data: inboxItems = [],
-    refetch,
-  } = useQuery({
+  const { data: inboxItems = [], refetch } = useQuery({
     queryKey: ["inbox-tasks"],
     queryFn: async () => {
       const { data: userSession } = await supabase.auth.getUser();
@@ -143,7 +164,8 @@ export function Sidebar() {
   const captureExpandedClass =
     "bg-[var(--accent)] text-[var(--text-on-accent)] group-hover/sidebar:bg-[var(--accent)] group-focus-within/sidebar:bg-[var(--accent)] shadow-[0_2px_12px_-2px_var(--accent)] group-hover/sidebar:shadow-[var(--shadow-button-primary)] group-focus-within/sidebar:shadow-[var(--shadow-button-primary)]";
   /* DS-16 — relative so the inbox badge offsets to the tile corner */
-  const iconClass = "relative flex h-10 w-10 shrink-0 items-center justify-center";
+  const iconClass =
+    "relative flex h-10 w-10 shrink-0 items-center justify-center";
   /* DS-16 — active row: accent-dim pill + left accent bar, rest muted */
   const activeRowClass =
     "nav-row-active bg-[var(--accent-dim)] text-[var(--accent)]";
@@ -211,8 +233,8 @@ export function Sidebar() {
               "h-10",
               /* collapsed = quiet outline; expanded = solid primary action */
               captureCollapsedClass,
-              "group-hover/sidebar:bg-[var(--accent)] group-hover/sidebar:text-[var(--text-on-accent)] group-hover/sidebar:border-[var(--accent)] group-hover/sidebar:shadow-[var(--shadow-button-primary)]",
-              "group-focus-within/sidebar:bg-[var(--accent)] group-focus-within/sidebar:text-[var(--text-on-accent)] group-focus-within/sidebar:border-[var(--accent)] group-focus-within/sidebar:shadow-[var(--shadow-button-primary)]",
+              "group-hover/sidebar:border-[var(--accent)] group-hover/sidebar:bg-[var(--accent)] group-hover/sidebar:text-[var(--text-on-accent)] group-hover/sidebar:shadow-[var(--shadow-button-primary)]",
+              "group-focus-within/sidebar:border-[var(--accent)] group-focus-within/sidebar:bg-[var(--accent)] group-focus-within/sidebar:text-[var(--text-on-accent)] group-focus-within/sidebar:shadow-[var(--shadow-button-primary)]",
             )}
           >
             <span className={iconClass}>
@@ -247,8 +269,7 @@ export function Sidebar() {
             nudgeTime: userSettings?.nudge_time || null,
             shutdownTime: userSettings?.shutdown_time || null,
             lastMorningDate: userSettings?.last_ritual_date || null,
-            lastEveningDate:
-              userSettings?.last_evening_ritual_date || null,
+            lastEveningDate: userSettings?.last_evening_ritual_date || null,
             /* Intentionally NOT `manual: true` — the manual branch in
                `rituals.ts` always returns `kind: "morning"` (planning
                mode), which would hide the evening-review state from the
@@ -289,79 +310,82 @@ export function Sidebar() {
                   ? "Evening review"
                   : "Plan my day";
           return (
-        <RailTooltip label={ritualLabel}>
-          <div
-            className="relative w-full"
-            onMouseEnter={() => setHoveredItem("plan-day")}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-          {(() => {
-            /* DS-18 — the ritual state machine is computed once in the outer
-               IIFE (ritualState/ritualLabelFull); this block only maps it. */
-            const Icon =
-              ritualState === "all_done" || ritualState === "done"
-                ? CheckCircle2
-                : ritualState === "evening"
-                  ? Moon
-                  : Sparkles;
-            const label = ritualLabelFull;
-            const state = ritualState;
-            const ritualRitualKind = ritualPending ? ritualState : null;
-            return (
-              <button
-                onClick={() => {
-                  if (useAppStore.getState().activeRitual) return;
-                  useAppStore.getState().setActiveRitual(ritualRitualKind);
-                }}
-                title={label.replace("✓", "")}
-                className={cn(
-                  rowClass,
-                  ritualPending
-                    ? /* DS-17 — subdued hint, never the full active pill;
-                       DS-18 — theme-aware via --accent-dim token */
-                      "bg-[var(--accent-dim)] text-[var(--text-1)]"
-                    : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
-                )}
+            <RailTooltip label={ritualLabel}>
+              <div
+                className="relative w-full"
+                onMouseEnter={() => setHoveredItem("plan-day")}
+                onMouseLeave={() => setHoveredItem(null)}
               >
-                <span className={iconClass}>
-                  <Icon
-                    size={20}
-                    strokeWidth={1.5}
-                    className={cn(
-                      "transition-colors",
-                      ritualPending
-                        ? "text-[var(--accent)]"
-                        : "group-hover:text-[var(--text-1)]",
-                    )}
-                  />
-                </span>
-                <span
-                  className={cn(
-                    "nav-label text-body-lg flex flex-1 items-center leading-none font-medium",
-                    labelClass,
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "text-body-lg leading-none whitespace-nowrap",
-                      ritualPending
-                        ? "text-[var(--accent)]"
-                        : "text-[var(--text-3)]",
-                    )}
-                  >
-                    {hoveredItem === "plan-day" && state === "done"
-                      ? "Review your day"
-                      : hoveredItem === "plan-day" && state === "all_done"
-                        ? "Already done"
-                        : label}
-                  </span>
-                </span>
-              </button>
-            );
-          })()}
-        </div>
-        </RailTooltip>
-        )})()}
+                {(() => {
+                  /* DS-18 — the ritual state machine is computed once in the outer
+               IIFE (ritualState/ritualLabelFull); this block only maps it. */
+                  const Icon =
+                    ritualState === "all_done" || ritualState === "done"
+                      ? CheckCircle2
+                      : ritualState === "evening"
+                        ? Moon
+                        : Sparkles;
+                  const label = ritualLabelFull;
+                  const state = ritualState;
+                  const ritualRitualKind = ritualPending ? ritualState : null;
+                  return (
+                    <button
+                      onClick={() => {
+                        if (useAppStore.getState().activeRitual) return;
+                        useAppStore
+                          .getState()
+                          .setActiveRitual(ritualRitualKind);
+                      }}
+                      title={label.replace("✓", "")}
+                      className={cn(
+                        rowClass,
+                        ritualPending
+                          ? /* DS-17 — subdued hint, never the full active pill;
+                       DS-18 — theme-aware via --accent-dim token */
+                            "bg-[var(--accent-dim)] text-[var(--text-1)]"
+                          : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
+                      )}
+                    >
+                      <span className={iconClass}>
+                        <Icon
+                          size={20}
+                          strokeWidth={1.5}
+                          className={cn(
+                            "transition-colors",
+                            ritualPending
+                              ? "text-[var(--accent)]"
+                              : "group-hover:text-[var(--text-1)]",
+                          )}
+                        />
+                      </span>
+                      <span
+                        className={cn(
+                          "nav-label text-body-lg flex flex-1 items-center leading-none font-medium",
+                          labelClass,
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "text-body-lg leading-none whitespace-nowrap",
+                            ritualPending
+                              ? "text-[var(--accent)]"
+                              : "text-[var(--text-3)]",
+                          )}
+                        >
+                          {hoveredItem === "plan-day" && state === "done"
+                            ? "Review your day"
+                            : hoveredItem === "plan-day" && state === "all_done"
+                              ? "Already done"
+                              : label}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })()}
+              </div>
+            </RailTooltip>
+          );
+        })()}
 
         {navItems.map((item) => {
           const isActive =
@@ -450,35 +474,35 @@ export function Sidebar() {
             onMouseEnter={() => setHoveredItem("search")}
             onMouseLeave={() => setHoveredItem(null)}
           >
-          <button
-            onClick={() => useAppStore.getState().setSearchModalOpen(true)}
-            title="Search"
-            className={cn(
-              rowClass,
-              "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
-            )}
-          >
-            <span className={iconClass}>
-              <UiIcon
-                size={20}
-                strokeWidth={1.5}
-                className="transition-colors group-hover:text-[var(--text-1)]"
-                icon={Search}
-              />
-            </span>
-            <span
+            <button
+              onClick={() => useAppStore.getState().setSearchModalOpen(true)}
+              title="Search"
               className={cn(
-                "nav-label text-body-lg flex flex-1 items-center justify-between leading-none font-medium text-[var(--text-3)]",
-                labelClass,
+                rowClass,
+                "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
               )}
             >
-              <span className="text-body-lg leading-none font-medium whitespace-nowrap text-[var(--text-3)]">
-                Search
+              <span className={iconClass}>
+                <UiIcon
+                  size={20}
+                  strokeWidth={1.5}
+                  className="transition-colors group-hover:text-[var(--text-1)]"
+                  icon={Search}
+                />
               </span>
-              <Kbd className="ml-2 border-none bg-transparent">Cmd+K</Kbd>
-            </span>
-          </button>
-        </div>
+              <span
+                className={cn(
+                  "nav-label text-body-lg flex flex-1 items-center justify-between leading-none font-medium text-[var(--text-3)]",
+                  labelClass,
+                )}
+              >
+                <span className="text-body-lg leading-none font-medium whitespace-nowrap text-[var(--text-3)]">
+                  Search
+                </span>
+                <Kbd className="ml-2 border-none bg-transparent">Cmd+K</Kbd>
+              </span>
+            </button>
+          </div>
         </RailTooltip>
 
         {/* Focus (Pomodoro) */}
@@ -608,49 +632,43 @@ export function Sidebar() {
             useAppStore.getState().setSettingsModalOpen(true, "account")
           }
           title="Account"
-        className={cn(
-          "absolute bottom-0 left-0 flex h-[60px] w-full items-center border-t border-[var(--border-subtle)] px-5 text-left transition-colors",
-          "cursor-pointer hover:bg-[var(--surface-hover)]",
-        )}
-      >
-        {(() => {
-          const email =
-            typeof userSettings?.email === "string" ? userSettings.email : "";
-          const displayName =
-            userSettings?.display_name || email || "Presense User";
-          const subtitle =
-            userSettings?.display_name && email ? email : "Account";
-          return (
+          className={cn(
+            "absolute bottom-0 left-0 flex h-[60px] w-full items-center border-t border-[var(--border-subtle)] px-5 text-left transition-colors",
+            "cursor-pointer hover:bg-[var(--surface-hover)]",
+          )}
+        >
+          {(() => {
+            const email =
+              typeof userSettings?.email === "string" ? userSettings.email : "";
+            const displayName =
+              userSettings?.display_name || email || "Presense User";
+            const subtitle =
+              userSettings?.display_name && email ? email : "Account";
+            return (
               <div className="flex w-full min-w-0 items-center">
-              {/* DS-16 — account tile mirrors the brand tile: a rounded-square
+                {/* DS-16 — account tile mirrors the brand tile: a rounded-square
                   container anchoring the bottom of the rail when collapsed.
                   DS-17 — fallback avatar color is the theme accent (warm
                   amber default), never the off-theme blue. */}
-              <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
-                <Avatar
-                  name={displayName}
-                  color={
-                    userSettings.avatar_color ||
-                    ((getComputedStyle(
-                      document.documentElement,
-                    ).getPropertyValue("--accent") || "").trim() ||
-                    "#E5B41E")
-                  }
-                  size="sm"
-                />
+                <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
+                  <Avatar
+                    name={displayName}
+                    color={userSettings.avatar_color || avatarAccentFallback()}
+                    size="sm"
+                  />
+                </div>
+                <div className={cn("flex min-w-0 flex-col", labelClass)}>
+                  <span className="text-body truncate leading-tight font-medium whitespace-nowrap text-[var(--color-text-1)]">
+                    {displayName}
+                  </span>
+                  <span className="text-meta truncate leading-tight whitespace-nowrap text-[var(--text-muted)]">
+                    {subtitle}
+                  </span>
+                </div>
               </div>
-              <div className={cn("flex min-w-0 flex-col", labelClass)}>
-                <span className="text-body truncate leading-tight font-medium whitespace-nowrap text-[var(--color-text-1)]">
-                  {displayName}
-                </span>
-                <span className="text-meta truncate leading-tight whitespace-nowrap text-[var(--text-muted)]">
-                  {subtitle}
-                </span>
-              </div>
-            </div>
-          );
-        })()}
-      </button>
+            );
+          })()}
+        </button>
       </RailTooltip>
     </aside>
   );

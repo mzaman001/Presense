@@ -5,14 +5,31 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 Deno.serve(async (req) => {
-  // SEC2-02 (2026-08-16): this function defaults to `verify_jwt = true`, so every invocation must
-  // send a valid Authorization header. Fail loudly with 401 if the trigger (Supabase Dashboard
-  // scheduled function / pg_cron + net.http_post) omits it — a silent 401 means recurring tasks
-  // stop being regenerated. See EXECUTION_SPEC.md SEC2-02 for the trigger contract.
-  if (!req.headers.get("Authorization")) {
+  // AUDIT-04 (Aug 19, 2026): `verify_jwt = true` alone was not enough — any
+  // signed *user* JWT satisfied it, so any logged-in user could trigger this
+  // service-role, RLS-bypassing sweep. A configured CRON_SECRET secret now
+  // gates authority: the trigger must send `x-cron-secret: <secret>`. If the
+  // secret is configured and missing or wrong, 401 with a stable error code
+  // (no info leak — never echoes the expected value). If CRON_SECRET is not
+  // configured, fall back to the previous JWT presence check (SEC2-02) so
+  // deployment stays compatible until the secret is set.
+  const cronSecret = Deno.env.get("CRON_SECRET") || "";
+  if (cronSecret) {
+    if (req.headers.get("x-cron-secret") !== cronSecret) {
+      return new Response(
+        JSON.stringify({
+          error: "Forbidden",
+          code: "CRON_AUTH_FAILED",
+          message: "A valid scheduler secret is required.",
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  } else if (!req.headers.get("Authorization")) {
     return new Response(
       JSON.stringify({
         error: "No Authorization header — scheduled invocation must send a JWT",
+        code: "CRON_AUTH_FAILED",
       }),
       { status: 401, headers: { "Content-Type": "application/json" } },
     );
