@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { proxy, cspReportUri } from "@/proxy";
+import { proxy, cspReportUri, cspSentryIngestOrigin } from "@/proxy";
 
 // Set required environment variables for the middleware
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
@@ -238,6 +238,59 @@ describe("Edge Auth Middleware Routing", () => {
       expect(headerStore.get("Content-Security-Policy")).not.toContain(
         "report-uri",
       );
+    });
+
+    it("derives the ingest origin from an EU DSN", () => {
+      expect(
+        cspSentryIngestOrigin(
+          "https://3b802d3cf21ac6b135bbde1081dc639d@o4511896684789760.ingest.de.sentry.io/4511896692850768",
+        ),
+      ).toBe("https://o4511896684789760.ingest.de.sentry.io");
+    });
+
+    it("derives the ingest origin from a US DSN", () => {
+      expect(
+        cspSentryIngestOrigin("https://abc123@o450000.ingest.sentry.io/450000"),
+      ).toBe("https://o450000.ingest.sentry.io");
+    });
+
+    it("returns an empty string for missing or malformed DSNs", () => {
+      expect(cspSentryIngestOrigin(undefined)).toBe("");
+      expect(cspSentryIngestOrigin("")).toBe("");
+      expect(cspSentryIngestOrigin("not-a-dsn")).toBe("");
+      expect(
+        cspSentryIngestOrigin("http://abc@o123.ingest.sentry.io/456"),
+      ).toBe("");
+    });
+
+    it("omits the Sentry origin from connect-src when no DSN is configured", async () => {
+      delete process.env.NEXT_PUBLIC_SENTRY_DSN;
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      const req = createMockRequest("/do");
+      await proxy(req);
+
+      const csp = headerStore.get("Content-Security-Policy") ?? "";
+      const connectSrc = csp.match(/connect-src ([^;]+)/)?.[1] ?? "";
+      expect(connectSrc.trim()).toBe(
+        "'self' https://*.supabase.co wss://*.supabase.co",
+      );
+    });
+
+    it("appends the Sentry ingest origin to connect-src when a DSN is configured", async () => {
+      process.env.NEXT_PUBLIC_SENTRY_DSN =
+        "https://3b802d3cf21ac6b135bbde1081dc639d@o4511896684789760.ingest.de.sentry.io/4511896692850768";
+      try {
+        mockGetUser.mockResolvedValue({ data: { user: null } });
+        const req = createMockRequest("/do");
+        await proxy(req);
+
+        const csp = headerStore.get("Content-Security-Policy") ?? "";
+        expect(csp).toContain(
+          "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://o4511896684789760.ingest.de.sentry.io",
+        );
+      } finally {
+        delete process.env.NEXT_PUBLIC_SENTRY_DSN;
+      }
     });
 
     it("appends report-uri to the CSP derived from the DSN when configured", async () => {

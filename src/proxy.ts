@@ -18,6 +18,16 @@ type CookieToSet = {
 
 const sentryDsnRe = /^https:\/\/([^@]+)@o(\d+)\.(ingest\.[^/]+)\/(\d+)$/;
 
+// Verbatim derivation of Sentry's ingest host from the DSN (host part only).
+// Returns "" when the DSN is absent or malformed so the CSP stays byte-identical.
+export function cspSentryIngestOrigin(dsn: string | null | undefined): string {
+  if (!dsn) return "";
+  const match = sentryDsnRe.exec(dsn);
+  if (!match) return "";
+  const [, , orgId, ingestHost] = match;
+  return `https://o${orgId}.${ingestHost}`;
+}
+
 // Verbatim derivation of Sentry's CSP violation reporting endpoint from the DSN.
 // Returns "" when the DSN is absent or malformed so the CSP stays byte-identical.
 export function cspReportUri(dsn: string | null | undefined): string {
@@ -42,7 +52,8 @@ function buildCspHeader(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' blob: data: ${env.NEXT_PUBLIC_SUPABASE_URL}`,
     "font-src 'self' data:",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
+      cspSentryIngestOrigin(env.NEXT_PUBLIC_SENTRY_DSN),
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
