@@ -389,3 +389,15 @@ describe("Edge Auth Middleware Routing", () => {
     });
   });
 });
+
+describe("CSP strict-dynamic removal (INCIDENT-2026-08-22)", () => {
+  it("does not include 'strict-dynamic' in the script-src directive", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    const req = createMockRequest("/login");
+    await proxy(req);
+
+    const csp = headerStore.get("Content-Security-Policy") ?? "";
+    expect(csp).toContain("script-src 'self' 'nonce-");
+    expect(csp).not.toContain("'strict-dynamic'");
+  });
+});

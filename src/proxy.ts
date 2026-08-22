@@ -41,8 +41,8 @@ export function cspReportUri(dsn: string | null | undefined): string {
 function buildCspHeader(nonce: string): string {
   const isDev = process.env.NODE_ENV === "development";
   const scriptSrc = isDev
-    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
-    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+    ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval'`
+    : `script-src 'self' 'nonce-${nonce}'`;
 
   const reportUri = cspReportUri(env.NEXT_PUBLIC_SENTRY_DSN);
 
