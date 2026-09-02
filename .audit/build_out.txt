@@ -1,0 +1,115 @@
+
+> presense@0.1.0 prebuild
+> node -e "if (process.env.VERCEL) process.exit(0); require('node:child_process').execSync('npm run types:check', { stdio: 'inherit' })"
+
+
+> presense@0.1.0 types:check
+> npm run types:generate && git diff --exit-code src/types/database.types.ts
+
+
+> presense@0.1.0 types:generate
+> npx supabase gen types typescript --project-id mhfzmgrrtruxuiscvbhm > src/types/database.types.ts
+
+warning: in the working copy of 'src/types/database.types.ts', LF will be replaced by CRLF the next time Git touches it
+
+> presense@0.1.0 build
+> next build
+
+[@serwist/next] WARNING: You are using '@serwist/next' with `next dev --turbopack`, but it doesn't support Turbopack. Do one of the following:
+
+- Set `disable` to `process.env.NODE_ENV !== "production"`.
+
+- Use webpack by running `next dev --webpack` instead of `next dev --turbopack`.
+
+- Migrate to '@serwist/turbopack' which has experimental support for Turbopack. See https://serwist.pages.dev/docs/next/turbo for more information.
+
+- Migrate to configurator mode which has support for Turbopack. See https://serwist.pages.dev/docs/next/config for more information. 
+
+Follow https://github.com/serwist/serwist/issues/54 for progress on Serwist + Turbopack. You can also suppress this warning by setting SERWIST_SUPPRESS_TURBOPACK_WARNING=1.
+
+ANALYZE: undefined
+▲ Next.js 16.2.9 (Turbopack)
+- Environments: .env.local, .env
+- Experiments (use with caution):
+  · clientTraceMetadata
+  · optimizePackageImports
+
+  Creating an optimized production build ...
+ANALYZE: undefined
+✓ Compiled successfully in 12.5s
+  Running next.config.js provided runAfterProductionCompile ...
+✓ Completed runAfterProductionCompile in 609ms
+  Running TypeScript ...
+  Finished TypeScript in 12.4s ...
+  Collecting page data using 15 workers ...
+⚠ Using edge runtime on a page currently disables static generation for that page
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+  Generating static pages using 15 workers (0/19) ...
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+  Generating static pages using 15 workers (4/19) 
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_URL
+[env] ❌ Missing required environment variable: UPSTASH_REDIS_REST_TOKEN
+  Generating static pages using 15 workers (9/19) 
+  Generating static pages using 15 workers (14/19) 
+✓ Generating static pages using 15 workers (19/19) in 909ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /~offline
+├ ƒ /api/account
+├ ƒ /api/capture
+├ ƒ /api/people/reorder
+├ ƒ /api/telemetry
+├ ƒ /auth/callback
+├ ƒ /do
+├ ƒ /explore
+├ ƒ /explore/[id]
+├ ƒ /explore/trash
+├ ƒ /icon
+├ ƒ /inbox
+├ ƒ /login
+├ ƒ /onboarding
+├ ƒ /remember/locations
+├ ƒ /remember/people
+├ ƒ /remember/people/[id]
+├ ƒ /think
+├ ƒ /think/[id]
+└ ƒ /trash
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+

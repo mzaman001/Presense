@@ -4,14 +4,16 @@
 
 This file is organized in three layers, same order every design system worth using follows: **foundations** (the raw material — color, type, space, motion, glass), **components** (the reusable parts built from foundations), **surfaces** (every actual page/space in the app, specified corner to corner so nothing is left to a coding agent's imagination). A component or page not covered here is a documentation gap, not license to invent — flag it.
 
+> **2026-08-19 — this is now the single canonical design file.** A separate root-level `design.md` was created and then merged back into this document in full; it no longer exists as a standalone file (see the change log at the end of this document). Every place below marked "Superseded," "Amended," or "Removed 2026-08-19" reflects that merge. If you find a root `design.md` again in the future, that is the exact duplicate-file bug this project's own `AGENTS.md` warns about — merge and delete it, do not maintain both.
+
 ---
 
 ## 0. The four pillars (unchanged, still non-negotiable)
 
 1. **Atmosphere over flatness.** Every background has ambient light from orbs; every surface floats in an environment, never on a blank canvas.
 2. **Warmth at the centre.** Amber/coral/orange is the default experience. Cool tones (navy, forest) are alternate full themes a user opts into, not accents layered onto the warm theme.
-3. **Glass as the language of depth.** Cards, panels, modals, dropdowns, toasts are glass surfaces — but glass is a **tool for hierarchy**, not decoration on every element. §3 specifies exactly where glass is and isn't allowed, because unrestricted glass is the single most common way this aesthetic breaks (see §3.4).
-4. **Inter carries the voice.** All type is Inter. JetBrains Mono only for numbers/timestamps.
+3. **Glass as the language of depth — and glass is not the same thing as glow.** Cards, panels, modals, dropdowns, toasts are glass (translucent, frosted, grainy — §3) surfaces — but glass is a **tool for hierarchy**, not decoration on every element. §3 specifies exactly where glass is and isn't allowed, because unrestricted glass is the single most common way this aesthetic breaks (see §3.4). **Superseded 2026-08-19: glow — a colored, blurred `box-shadow` used for hover/focus/priority emphasis — is a *different* thing from glass and is now banned outright, everywhere, no exceptions.** It was independently and repeatedly flagged as the single most generic-feeling part of the app, and it's a named, catalogued AI-UI-generation tell as of 2026 ("glowing card borders," "animated accent-glow" background). Removing it does not touch the glass/frost/grain language in §3 at all — those stay. See §1.6 for the replacement (a plain elevation ladder with no color in the shadow) and §3.0 rule 5 for the one place this directly changes existing guidance (pills).
+4. ~~**Inter carries the voice.** All type is Inter.~~ **Superseded 2026-08-19:** Inter is retired. UI/body type is now **Plus Jakarta Sans**; a second face, **Fraunces**, is introduced for a small, named set of display moments. JetBrains Mono is unchanged for numbers/timestamps. Reason: Inter is independently named, across nearly every current "how to spot AI-generated UI" source, as the single most common tell — more reliable even than the purple-gradient tell. See §2.5 for the full replacement spec and rationale.
 
 ---
 
@@ -20,6 +22,8 @@ This file is organized in three layers, same order every design system worth usi
 ### 1.1 What's already correct — do not rebuild
 
 The token layer in `globals.css` is mature: `--bg-base`, `--accent`/`--accent-hot`/`--accent-deep`, `--text-1` through `--text-4`, `--surface-1`, `--border-default`, and a full `--elev-*` bundle system (`flat`/`raised`/`floating`/`overlay`, each with matched shadow+blur+border) already exist and are correctly structured. `--space-do`/`-think`/`-remember`/`-explore` now resolve to four distinct warm-family hues (`#E5B41E`, `#EB4233`, `#F4A261`, `#A76011`) — CONF-02 is resolved, do not collapse them back to a single shared accent.
+
+**Removed 2026-08-19:** `--accent-glow` and `--shadow-accent-glow` (previously defined per-theme in `globals.css`, consumed by `TaskCard.tsx` and throughout `RitualOverlay.tsx`) are deleted, not deprecated — do not leave them defined-but-unused. The `--elev-*` bundle system above is unaffected and stays exactly as built: its shadow component was already neutral (no accent tint), which is exactly right and is now the *only* way shadow-based emphasis happens anywhere in the app. See §1.6 for the full elevation-ladder spec that replaces glow as the emphasis mechanism.
 
 ### 1.2 The rule
 
@@ -44,28 +48,58 @@ Every text/background pairing must pass **4.5:1 for body text, 3:1 for large tex
 
 Per-space colors are **kept**, and are **derived**, not independently hand-picked. Four independently-chosen hex values per theme (the earlier approach) reliably produces colors that feel too similar and don't sit naturally in every theme — this is a well-documented anti-pattern, not bad luck. The correct mechanism (`DS-28`): in OKLCH (perceptually uniform, so a fixed hue rotation reads as an equally-distinct color at any lightness/chroma), each space's color is that theme's own `--accent` hue rotated by a fixed offset, with lightness and chroma held roughly constant across all four. The same offsets are used in every theme — only the base accent hue differs — so the four space colors are guaranteed to (a) look distinct from each other within a theme, by a consistent, deliberate gap, and (b) never look "out of place," because they're mathematically derived from that theme's own primary color rather than picked separately three times. Apply the result everywhere a space's identity should show: that space's `PageHeader` icon, the sidebar's active-nav-item state, and any cross-space reference badge (global Trash, Home summary cards) — a partially-applied color system is what made this feel arbitrary before.
 
+### 1.6 Emphasis without glow (added 2026-08-19)
+
+Glow is banned (pillar 3). Emphasis now comes from exactly three mechanisms, in order of preference, and never from a colored blurred shadow:
+
+1. **Background or border-color shift** — a selected/active row gets a tinted background (`--surface-2` or a low-alpha space/status color as background, not shadow) and/or a border-color change. This is the default for cards, list rows, and nav items.
+2. **A solid filled indicator** — a 6px filled dot in the relevant color (priority, status) rather than a halo around the whole element. `TaskCard.tsx`'s priority indicator is exactly this: a flat dot, no `boxShadow`.
+3. **The neutral elevation ladder**, for genuine depth (something is now floating above the page, not just "important"):
+
+| Token | Use | Shadow (dark-mode reference value) |
+|---|---|---|
+| `--elev-flat` | Resting card, list row | none — surface color + 1px border only |
+| `--elev-raised` | Hovered card, active dropdown trigger | `0 1px 2px rgba(0,0,0,0.24)` |
+| `--elev-floating` | Open menu, popover, tooltip | `0 4px 16px rgba(0,0,0,0.32)` |
+| `--elev-overlay` | Sheet, modal, dialog | `0 12px 40px rgba(0,0,0,0.4)` |
+
+These reuse the existing `--elev-*` bundle names from §1.1 — this is a value change to the shadow component of each bundle (strip any accent tint, use the neutral values above), not a new parallel token family. The blur/border components of each bundle, used for the glass surfaces in §3, are unchanged.
+
 ---
 
 ## 2. Typography
 
-### 2.1 What's already correct
+### 2.1 Type scale — rebuilt 2026-08-19, retires the old scale
 
-A full semantic type scale already exists and should be used as-is: `--text-caption` (10px), `--text-meta` (11px), `--text-ui` (12px), `--text-body` (13px, fluid via `clamp(14px, 0.3vw + 13px, 15px)` at the base), `--text-title-sm` through `--text-title-4xl` (15px–32px), `--text-display`. **This is more mature than most projects at this stage — do not introduce a competing scale, and do not reach for an arbitrary `text-[13px]` when one of these already matches.**
+The previous scale (`--text-caption` 10px, `--text-meta` 11px, `--text-ui` 12px, `--text-body` 13px, `--text-title-sm`…`-4xl`) had a real, quiet defect: `--text-caption` and an old `--text-xs` token both silently resolved to 10px under two different names, with no single clear "smallest legible size" — three near-identical tiny sizes fighting for the same job is exactly what reads as "weird sizing" even when no individual value is wrong. The scale below **retires `--text-caption`/`--text-meta`/`--text-ui` entirely** and replaces them one-for-one. Do the retirement as a mechanical find/replace across the codebase in the same PR that lands this — don't leave both scales live at once.
 
-### 2.2 What to add: a scale-to-usage map (currently missing — this is the actual gap)
+| Token | Size | Line-height | Weight | Use | Replaces |
+|---|---|---|---|---|---|
+| `--text-display` | 40px | 1.05 | 500 (Fraunces) | Home greeting only — this size and face appear nowhere else | `--text-display` (unchanged size, font-family now Fraunces — see §2.5) |
+| `--text-title-xl` | 28px | 1.15 | 600 | Onboarding headline, empty-state headline | `--text-title-4xl`/`-3xl` |
+| `--text-title-lg` | 22px | 1.2 | 600 | Page/section title (space name: "Do", "Think"...) | `--text-title-xl` |
+| `--text-title-md` | 18px | 1.3 | 600 | Card / modal title, Settings section header | `--text-title-md`/`-lg` |
+| `--text-title-sm` | 16px | 1.35 | 600 | Card / list-row title (task title, person name, thread first line) | `--text-title-sm` |
+| `--text-body-lg` | 16px | 1.5 | 400 | Think's editor body | `--text-body` (large context) |
+| `--text-body` | 15px | 1.5 | 400 | Default UI body — the floor for anything read as content | `--text-body` (default), `--text-ui` |
+| `--text-body-sm` | 13px | 1.45 | 400 | Secondary metadata, list captions | `--text-meta` |
+| `--text-label` | 12px | 1.3 | 500 | Form labels, tab labels, button labels | `--text-ui` (label contexts) |
+| `--text-micro` | 11px | 1.3 | 500 | The single smallest size in the system — timestamps, tiny badges. Nothing goes below this. | `--text-caption` |
 
-Having a scale and knowing which class to reach for in which context are different things, and the second is what's been missing — hence "every component looks different." Use this table, not judgment, when placing type:
+### 2.2 Scale-to-usage map
 
 | Context | Token | Weight |
 |---|---|---|
-| Page greeting ("Good morning...") | `text-title-4xl` (Home only — this size appears nowhere else) | 500 |
-| Page title (space name: "Do", "Think"...) | `text-title-xl` | 500 |
-| Section header inside a page (e.g. a Do column header, a Settings section) | `text-title-md` | 600 |
-| Card / list-row title (task title, person name, thread first line) | `text-title-sm` | 600 |
+| Page greeting ("Good morning...") | `text-display` (Home only) | 500 |
+| Page title (space name) | `text-title-lg` | 600 |
+| Section header inside a page | `text-title-md` | 600 |
+| Card / list-row title | `text-title-sm` | 600 |
 | Body copy (task notes, thread body, descriptions) | `text-body` | 400 |
-| Secondary/meta line under a title (timestamp, category, "3 tasks") | `text-meta` | 400 |
-| Button label, input label, tab label | `text-ui` | 500 |
-| Uppercase eyebrow label, badge text | `text-caption`, letter-spacing `0.04em`, uppercase | 600 |
+| Think's editor body specifically | `text-body-lg` | 400 |
+| Secondary/meta line under a title (timestamp, category, "3 tasks") | `text-body-sm` | 400 |
+| Button label, input label, tab label | `text-label` | 500 |
+| Uppercase eyebrow label, badge text | `text-label`, letter-spacing `0.04em`, uppercase | 600 |
+| Tiny timestamp, smallest badge | `text-micro` | 500 |
 | Numbers that need tabular alignment (durations, counts, dates in the calendar grid) | `text-mono` (JetBrains Mono) | 400 |
 
 ### 2.3 Responsive type
@@ -75,6 +109,27 @@ Do not scale type per-breakpoint with `md:text-lg` chains scattered through comp
 ### 2.4 `text-wrap`
 
 Add `text-wrap: balance` to every heading-level token (`title-lg` and above) and `text-wrap: pretty` to `--text-body` at the CSS-variable/utility level, not per-component. This is a one-line, zero-risk addition (browser support is universal enough by 2026 to not need a fallback) that measurably improves how ragged lines look on both narrow and wide measures — do it once, globally, and every component inherits it.
+
+### 2.5 Font families (replaces Inter, added 2026-08-19)
+
+| Role | Face | Loaded via | Notes |
+|---|---|---|---|
+| UI and body (everything, most of the time) | **Plus Jakarta Sans** (variable) | `next/font/google`, same self-hosting pattern Inter used — no infra change, one import swap | Chosen specifically for productivity/consumer apps that want warmth without losing legibility at small sizes; Inter's own ubiquity is what now makes it read as a template default rather than a neutral choice |
+| Display — a small, named set of contexts only | **Fraunces** (variable, optical-size axis) | `next/font/google` | Never used below 24px — its low-contrast strokes are part of its character at display size and a liability at body size. Contexts: Home greeting (`--text-display`), onboarding headline, sign-in "Welcome back," empty-state headline. Nowhere else. |
+| Numerals, timestamps, code | **JetBrains Mono** | unchanged | Not touched by this change |
+
+### 2.6 Icons (new section, added 2026-08-19)
+
+Icons switch from Lucide to **Phosphor Icons**, consumed everywhere through the existing `Icon.tsx` wrapper (swap the underlying import; the wrapper's external API doesn't need to change). This is a distinctiveness fix, not a quality complaint about Lucide: Lucide is now the default icon set bundled into shadcn/ui and most AI coding tools, which makes its *ubiquity* the actual problem. Phosphor's multi-weight system also finally gives this app a way to express state without color or glow:
+
+| Weight | Use |
+|---|---|
+| **Light** | Default everywhere — nav, buttons, list rows |
+| **Regular** | Small contexts (16px and below) where Light gets too thin to stay crisp |
+| **Fill** | Active/selected state only (e.g. a nav item's icon fills solid when its space is active) |
+| **Duotone** | Empty states and onboarding only, at 32px+ |
+
+Sizing stays 16/20/24px as before. No mixed icon sets — every direct `lucide-react` import outside `Icon.tsx` gets migrated in the same pass as the library swap. **Accessibility note:** Phosphor's Light weight is thinner than Lucide's fixed stroke — re-verify 3:1 contrast against background for every icon during migration; don't assume the weight swap is contrast-neutral.
 
 ---
 
@@ -90,7 +145,7 @@ Apple's Liquid Glass (2025+) is specular and motion-reactive — it refracts and
 2. **A grain/noise layer on every glass surface.** A small (64–128px), tileable, low-contrast noise texture, applied as a shared `background-image` at ~3–6% opacity with `mix-blend-mode: overlay` or `soft-light`. Generate this once as a static, cached asset — never compute noise live per-element or per-frame; that reintroduces exactly the performance cost this document's `PERF-04`/`PERF-08` tickets exist to remove.
 3. **A specular-highlight border, not a flat single-color line.** A thin (0.5–1px) gradient border, slightly brighter along the top edge, simulating light catching a physical glass edge.
 4. **Glass parity across every surface that claims it — including dropdowns and toasts, not just cards/panels/modals.** If this file says a component is glass, it must actually render that way; a stated claim that turns out not to match the shipped component (as happened here) is worse than not making the claim at all.
-5. **Pills are explicitly excluded from the glass language.** Status/priority/category pills are flat, saturated, and glowing (see §7's pill spec) — a distinct visual layer that sits *on top of* glass, not a muted extension of it. Do not "fix" a pill by making it glassy; that would be wrong for this system.
+5. **Pills are explicitly excluded from the glass language.** Status/priority/category pills are flat and saturated (see §7's pill spec) — a distinct visual layer that sits *on top of* glass, not a muted extension of it. Do not "fix" a pill by making it glassy; that would be wrong for this system. **Amended 2026-08-19:** pills no longer glow — that word described the same banned colored-blur effect covered in pillar 3 and §1.6. A pill's saturation and flat fill are the entire signal; if a pill needs more emphasis than that, use `--elev-raised` (§1.6), never a color-tinted shadow.
 
 ### 3.1 What's already correct
 
@@ -160,6 +215,20 @@ Apps praised for calm, cohesive mobile design (How We Feel is the clearest examp
 | Page transition | `--dur-base`, opacity-only, no y-axis movement | **✅ DONE (BUG-23 closed Aug 10, 2026)** — `src/app/(app)/template.tsx` exists and renders the shared page transition; spec-verification of the actual fade still pending on next touch |
 | Toast enter/exit | `--dur-fast` in, `--dur-slow` out (linger before dismiss reads calmer than a symmetric fade) | |
 | Ambient orb drift | `--dur-very-slow` and slower, looping | Must pause on `document.visibilitychange` (tab hidden) — `PERF-03` |
+
+### 4.3 Named motion roles and the banned generic pattern (added 2026-08-19)
+
+§4.1's `--dur-*`/`--ease-*` tokens already exist; what was missing was naming which *role* each one plays, so "add a transition" stops meaning "invent new numbers" per-component (see the fragmentation this caused in §4.4 below). This table names the roles — it does not add a new token family, it's the usage layer on top of §4.1/§4.2:
+
+| Role | Token(s) | Notes |
+|---|---|---|
+| Micro (hover/press feedback) | `--dur-fast` (120ms) + `--ease-smooth` | Same as §4.2's hover row |
+| Enter (panel/menu/sheet appearing) | `--dur-base` (200ms) + `--ease-smooth` or `--ease-spring` per §4.5's physical-vs-state-change rule | |
+| Exit (the same thing leaving) | **New: 150ms**, same easing family as its matching enter | Always faster than its own entrance so dismissal never feels sluggish — this value doesn't exist yet in `globals.css` and needs adding as `--dur-exit` |
+| Page transition | `--dur-base` (200ms), opacity-only | Same as §4.2 |
+| Physical/spring (drag release, reorder) | `--ease-spring` | Reserved for genuinely physical moments only — see §4.5, unchanged |
+
+**Banned outright:** a scroll-triggered fade-up-with-stagger applied uniformly down a list (`initial={{opacity:0,y:20}}`, `whileInView`, a fixed per-child stagger delay). This is independently, specifically named across current design criticism as the most recognizable "an AI agent wrote this" motion pattern — it signals "polished" without doing anything functional for the person using the app. If a list needs to feel alive on load, give the *container* one `--dur-base` enter transition, not a cascading animation on every child.
 
 ### 4.4 Hover magnitude standardization (audit-verified, extends DS-30)
 
@@ -283,6 +352,7 @@ This is the section that was missing entirely before this pass, and it is the di
 - Both are **public routes**: theme is always the literal default (`warm`/`dark`), never read from `localStorage` (`BUG-15`, confirmed fixed) — this file exists partly so a future onboarding redesign doesn't reopen that exact bug by adding a new place that reads a stored preference before authentication.
 - Onboarding's ambient background uses the same orb/token system as the in-app `AmbientBackground`, not a separately hardcoded palette (`BUG-21`) — one atmosphere system, two mount points, not two systems.
 - Login's card is the one place a glass surface sits directly on the raw ambient background with no other content behind it — this is exactly the "simple background, glass only on the focal element" case current guidance holds up as glass done right, so this screen is closer to the ideal than most others and should be treated as a reference example when reviewing other pages' glass usage.
+- **Amended 2026-08-19 — direction change, conflicts with §9.5's current 5-step wizard shape, flagged explicitly rather than silently overridden:** onboarding should not read as a form wizard with a numbered progress indicator. `OnboardingWizard.tsx`'s current 5-step (name → struggles → day shape → first capture → tour) structure and step count can stay, but **remove any step-count/progress-dot UI** ("step 2 of 5") — a calm app shouldn't remind someone they're behind schedule during its first impression. Each step's headline uses `--text-display`/Fraunces (§2.5) once per step, not per-field labels in that face. Forward/back are the only navigation chrome. Sign-in becomes a single centered card, no split-screen marketing-copy-on-the-left layout (itself a recognizable template pattern) — Fraunces for "Welcome back" only, everything else Plus Jakarta Sans, same ambient background as onboarding.
 
 ### 6.11 Page-to-page transitions
 
@@ -302,7 +372,9 @@ For each: what it's for, its variants, and the one rule most likely to be violat
 
 **GlassCard** — see §3 in full. Two variants only: `list` (flat, no blur — for rows in a scrollable list, where per-row blur would multiply straight past the §3.3 budget) and `elevated` (blur, for standalone cards, modals, the sidebar). Do not add a third variant without checking whether it's actually one of these two with different padding.
 
-**Dropdown / Popover** — every menu, select, and combobox. Portal-based (`createPortal`), not optional (`BUG-03`/`BUG-27`, "do not break" list). Keyboard: arrow keys move selection, `Enter` commits, `Escape` closes and returns focus to the trigger.
+**Dropdown / Popover / Menu** — every menu, select, and combobox. **Amended 2026-08-19:** rebuilt on `@base-ui/react/select` (choosing one value: space picker, priority picker, sort order) and `@base-ui/react/menu` (triggering an action or showing a contextual action list: row overflow menu, calendar day-cell actions, account menu) — replacing the previous approach of each hand-rolling its own `useFloating` wiring independently. This also retires two bespoke absolute-positioned menu implementations that existed outside these shared components (in `CaptureModal.tsx` and `calendar/MonthView.tsx`) — there is now exactly one recipe for "a floating list of options," not four. Portal-based, not optional (`BUG-03`/`BUG-27`, "do not break" list — Base UI's own portal handles this natively now). Keyboard (arrow-key roving focus, typeahead, `Enter` commits, `Escape` closes and returns focus to the trigger) comes from Base UI directly — do not hand-implement it again. Visual recipe for every instance regardless of which primitive backs it: `--elev-floating` (§1.6), `--radius-md`, 4–8px content inset, Phosphor Light-weight icons at 16px (§2.6), `--dur-fast`/enter-exit motion (§4.3).
+
+**Sidebar / navigation rail** — the persistent space-switcher (Do/Think/Remember/Explore + Inbox). **Added 2026-08-19** (previously undocumented in this file despite being one of the largest layout components). Structure: a narrow (72px) icon-first rail, not a wide labeled sidebar — closer to a minimal nav rail than a traditional admin-dashboard sidebar with permanent icon+label rows. Each space's icon is Phosphor Light 24px in `--text-3` when inactive; active state is Phosphor **Fill** weight in that space's derived color (§1.5) plus a 2px left-edge bar in the same color — two signals, both load-bearing, no glow. Labels show as a tooltip on hover/focus, plus a one-time `--dur-base` reveal-then-collapse on first load, not permanent text. Collapsed is not a second component to maintain — one component with an `isExpanded` boolean, collapsed by default under 1024px (see §8 for the mobile behavior, which reuses this same component rather than a separate bottom-tab-bar pattern).
 
 **Sheet** — every mobile-width modal-like surface. Drag-to-dismiss from a dedicated handle (not the whole sheet body, which would fight with a focused input's own touch handling), `useVisualViewport`-aware so the keyboard never covers the active field, snap points (half/full) for content that has a natural "peek" state (`MOB-03`/`T3`).
 
@@ -353,23 +425,25 @@ This section exists because "mobile responsive" was named directly as a priority
 
 ### 8.1 Breakpoints
 
-Tailwind defaults, used mobile-first (unprefixed = phone, `md:` = the point the sidebar switches from `BottomNav` to the hover-rail, `lg:` = desktop multi-column layouts activate per §6's per-page specs):
+Tailwind defaults, used mobile-first (unprefixed = phone, `md:` = the point the nav rail switches from bottom-anchored to left-anchored, `lg:` = desktop multi-column layouts activate per §6's per-page specs):
 
 | Prefix | Min-width | What changes here |
 |---|---|---|
-| (none) | 0 | `BottomNav`, single-column everything, Calendar defaults to Day view |
+| (none) | 0 | Nav rail (§7's sidebar entry) renders bottom-anchored, icon-only; single-column everything; Calendar defaults to Day view |
 | `sm:` | 640px | Minor spacing increases only — this step rarely changes structure |
-| `md:` | 768px | Sidebar (hover-rail) replaces `BottomNav`; Do's Board view gains its first extra visible column |
-| `lg:` | 1024px | Home's two-column layout activates; Do's Board reaches full 4-column width |
+| `md:` | 768px | Nav rail moves to a left-anchored vertical rail; Do's Board view gains its first extra visible column |
+| `lg:` | 1024px | Home's two-column layout activates; Do's Board reaches full 4-column width; the rail becomes manually expandable |
 | `xl:` / `2xl:` | 1280px / 1536px | Content max-width caps, no new structural changes |
+
+**Amended 2026-08-19:** there is no separate `BottomNav` component. The mobile bottom bar and the desktop rail are the same nav-rail component (§7) at two different `isExpanded`/anchor states, sharing tokens, active-state treatment, and icon weights — a second, independently-styled mobile nav is exactly the kind of drift that made "distinct yet consistent" fail to land. If a `BottomNav.tsx` currently exists as a separate file, retire it into the shared component in the same PR that does this.
 
 ### 8.2 Touch targets and thumb reach
 
-Every interactive control is **44×44px minimum** hit area (`--touch-target` token — already exists, apply it everywhere it currently isn't, per `A11Y-01`/`DS-09`). On mobile layouts specifically, primary actions (the capture button, a view's main "Add" action) sit in the **bottom two-thirds of the viewport** — the zone reachable by a thumb without a grip shift — which is already satisfied by `BottomNav`'s placement and should be checked for any new primary action before it ships at the top of a mobile screen.
+Every interactive control is **44×44px minimum** hit area (`--touch-target` token — already exists, apply it everywhere it currently isn't, per `A11Y-01`/`DS-09`). On mobile layouts specifically, primary actions (the capture button, a view's main "Add" action) sit in the **bottom two-thirds of the viewport** — the zone reachable by a thumb without a grip shift — which is already satisfied by the bottom-anchored nav rail's placement (§7, §8.1) and should be checked for any new primary action before it ships at the top of a mobile screen.
 
 ### 8.3 Safe areas
 
-`viewport-fit: cover` plus `env(safe-area-inset-*)` on every fixed-position edge element (`BottomNav`'s `pb-safe`, a full-screen `Sheet`'s top inset) — already partially applied; extend to any new fixed-position element rather than reintroducing the un-inset pattern.
+`viewport-fit: cover` plus `env(safe-area-inset-*)` on every fixed-position edge element (the bottom-anchored nav rail's `pb-safe`, a full-screen `Sheet`'s top inset) — already partially applied; extend to any new fixed-position element rather than reintroducing the un-inset pattern.
 
 ### 8.4 Viewport height
 
@@ -423,17 +497,17 @@ Full tickets live in `EXECUTION_SPEC.md`'s `A11Y-*` series. The design-relevant 
 - **All mutation sites error-checked** (BUG-38 closed Aug 10, 2026 — the audit's "11 unchecked at lines 79, 102, 128, 157, 167, 169, 176, 183, 189, 213" count was stale).
 - **0 skip logic** on steps 1-4 (only step 5 has "Skip tour").
 - **0 resume logic** — closed browser = restart from step 1.
-- **0 progress indicator** (no 5-dots-at-top showing current step).
-- **0 keyboard navigation** (Enter to advance, Backspace to go back — mouse-only).
-- Step transitions use Framer Motion `initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-20}}` per step (good baseline). Step 5 has `scale:0.95` (celebratory feel).
+- **0 progress indicator** — **correct now, do not add one.** §6.10's 2026-08-19 amendment explicitly removes step-count UI; the item below asking to "add progress indicator — 5 dots at top" is superseded and should not be implemented.
+- **0 keyboard navigation** (Enter to advance, Backspace to go back — mouse-only). Still an open gap, still worth fixing.
+- Step transitions use Framer Motion `initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-20}}` per step. **Flagged 2026-08-19:** this is structurally the same per-child fade-with-offset shape §4.3 now bans when applied as a uniform list stagger — it's lower-risk here since it's one step transitioning at a time rather than N list items staggering, but replace it with the named `--dur-base` enter/exit pair from §4.3 for consistency rather than a bespoke y:20/y:-20 pair local to this component.
 
 **Spec for fixes:**
 - Add Skip option on every step (sensible defaults: name="Friend", struggles=[], day shape=9am-10pm).
 - Add Resume logic — persist current step to `localStorage` (`presense_onboarding_step`).
 - ~~Fix unchecked mutations~~ — **DONE (BUG-38, Aug 10, 2026)**: every mutation checks `error` (via `safeMutate()` wrapper or direct destructure; server components log).
 - Add copy that excites — warmer welcome ("Welcome to your second brain. What should I call you?").
-- Add first-capture delight — animate destination badge (pulse + accent color) to confirm "I understood you."
-- Add progress indicator — 5 dots at top.
+- Add first-capture delight — animate destination badge (pulse + accent color, per §1.6 — a filled-indicator color change, not a glow) to confirm "I understood you."
+- ~~Add progress indicator — 5 dots at top.~~ **Superseded 2026-08-19 — do not add, see above.**
 - Add "Why we ask" tooltips for struggles + day shape questions.
 - Add keyboard navigation — Enter to advance, Backspace to go back.
 
@@ -459,9 +533,32 @@ See `docs/project/DOCS_NEEDS_CODE.md`.
 
 **EmptyState padding inconsistency:** component hardcodes `p-12`, but Home uses `p-6`/`p-8`. Pick one.
 
+**Added 2026-08-19:** when fixing the four hand-rolled empty states above to use the shared `EmptyState` component, use that space's Phosphor **Duotone** icon (§2.6) at 32px+, not the default Light weight — Duotone is reserved specifically for empty states and onboarding, this is that context. Each space's copy should describe that space's actual first action, not a templated string with the space name substituted in ("Nothing saved yet — bookmark a link or paste a note to start your Explore list," not a generic "No items.").
+
 See `docs/project/DOCS_NEEDS_CODE.md` for the migration plan.
 
-## 10. Adding a new pattern
+## 11. App icon (new section, added 2026-08-19)
+
+No app icon spec existed anywhere in the repo before this. `public/icon.svg` (two overlapping radial-gradient circles blended with `screen` mode on a dark rounded square, plus a grain filter) is a close-to-literal match for the default output of a 2026 AI icon generator and needs replacing, not tuning.
+
+**Direction:** a single flat shape, no gradient fill, no blend mode, no drop shadow, no grain-as-substitute-for-character. Given the app's ambient-orb language already carries "soft warm light" everywhere else, the icon should compress that idea into something graphic and specific rather than atmospheric — a simple, slightly asymmetric mark (e.g. a soft-edged crescent or an off-center dot-and-arc, evocative of first light without literally drawing a sun), rendered as one confident flat shape in `--accent` (`#E5B41E`) on `--bg-base` (`#0F0A00`), or inverted for contexts that need it.
+
+| Context | Requirement |
+|---|---|
+| Browser tab (16px) | Must read as a single recognizable shape with zero surviving internal detail — shrink and squint; if it becomes a smudge, there's too much detail |
+| Home screen / app icon (1024px master) | Same mark, not a more-detailed "full" version |
+| Relationship to in-app color | Uses `--accent`/`--bg-base` exactly — a compressed reference to the in-app palette, not an independently art-directed logo |
+| Format | Single flat shape only — no gradient, no shadow, no glass/blur (the one surface where §3's glass language explicitly does not apply, both for the AI-slop reason above and because a translucent icon over a user's own wallpaper is illegible regardless) |
+
+This is a direction and a set of constraints, not a finished asset — route actual execution through a real icon designer or a deliberate manual pass, checked against the 16px and masked-shape tests above before shipping.
+
+## 12. Change log
+
+| Date | Change |
+|---|---|
+| 2026-08-19 | Merged a separately-created root `design.md` into this file and deleted the standalone copy, per `AGENTS.md`'s no-second-copy rule. Superseded pillar 4 (Inter → Plus Jakarta Sans + Fraunces, §2.5); clarified pillar 3 and banned glow outright (§1.6, §3.0 rule 5 pill amendment); removed `--accent-glow`/`--shadow-accent-glow` (§1.1); rebuilt the type scale to remove the `--text-caption`/`--text-xs` 10px duplicate (§2.1–2.2); added an icon section replacing Lucide with Phosphor (§2.6); added named motion roles and banned the generic scroll-fade-stagger pattern (§4.3); consolidated four separate dropdown/menu implementations onto Base UI `Menu`/`Select` (§7); added a previously-undocumented sidebar/nav-rail spec and unified it with the separate `BottomNav` (§7, §8.1); amended onboarding/sign-in to remove step-count UI (§6.10, §9.5); added an app icon spec (§11). |
+
+## 13. Adding a new pattern
 
 1. Check §7 and `COMPONENT_MANIFEST.md`. If an existing component covers it with a new variant/prop, extend that component — do not create a sibling.
 2. If genuinely new: prototype it honoring §1–§5's tokens exactly (no new hex values, no new arbitrary spacing, no new blur amount outside the `--elev-*` bundles).
