@@ -171,6 +171,13 @@ describe("Console error regression — network failures and render-phase state",
   });
 
   describe("Dynamic modals — no render-phase state updates", () => {
+    it("SettingsModal does not initialize Supabase while closed", async () => {
+      const { createClient } = await import("@/lib/supabase");
+      render(<SettingsModal />, { wrapper });
+
+      expect(createClient).not.toHaveBeenCalled();
+    });
+
     it("SearchModal must not dispatch state during render", async () => {
       vi.useRealTimers();
       // Prime the store so the modal is open at mount — exactly the case that

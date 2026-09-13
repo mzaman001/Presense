@@ -343,39 +343,8 @@ function CategoryManager({
    shell renders null when closed, and all form work lives in
    SettingsModalContent so hooks run only while the modal is open. */
 export function SettingsModal() {
-  const {
-    isSettingsModalOpen,
-    setSettingsModalOpen,
-    setUserSettings,
-    settingsActiveTab,
-    setSettingsActiveTab,
-  } = useAppStore(
-    useShallow((s) => ({
-      isSettingsModalOpen: s.isSettingsModalOpen,
-      setSettingsModalOpen: s.setSettingsModalOpen,
-      setUserSettings: s.setUserSettings,
-      settingsActiveTab: s.settingsActiveTab,
-      setSettingsActiveTab: s.setSettingsActiveTab,
-    })),
-  );
-  const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
-  const activeTab = settingsActiveTab || "account";
-  const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle",
-  );
-  const [initialLoaded, setInitialLoaded] = useState(false);
-
-  const { register, watch, setValue, reset, getValues } =
-    useForm<SettingsFormValues>({
-      resolver: zodResolver(settingsSchema),
-      defaultValues: {},
-    });
-
-  const settings = watch();
+  const isSettingsModalOpen = useAppStore((s) => s.isSettingsModalOpen);
+  const setSettingsModalOpen = useAppStore((s) => s.setSettingsModalOpen);
 
   if (!isSettingsModalOpen) return null; // BUG-45: inert when closed
   return <SettingsModalContent onClose={setSettingsModalOpen} />;
