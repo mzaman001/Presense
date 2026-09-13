@@ -79,7 +79,7 @@ Icons stay **Lucide** — refine stroke-width/sizing consistency, not the icon s
 Two-typeface system:
 
 - **UI / body: Inter.** De facto standard for this kind of interface, extremely legible at small sizes, pairs cleanly with Lucide's stroke weight.
-- **Headline / display: TBD from a shortlist, chosen with a real side-by-side preview during implementation.** Requirement: not Fraunces' soft/organic character, not a classic editorial serif, not plain/basic — **premium, calm, meditative, highly readable**, with the finish level implied by "Apple-level quality." Shortlist to preview: a refined low-contrast serif with restrained personality (e.g. Newsreader, Source Serif 4, Piazzolla) alongside 1–2 non-obvious options.
+- **Headline / display: Newsreader** (Google Font). Decided in the Phase 2 brainstorming pass: a serif built for long-form reading, moderate stroke contrast (calmer than a dramatic display serif like Playfair), optical sizing so it stays crisp from large greeting-text sizes down to smaller section headers. Meets the brief from §4 — not Fraunces' soft/organic character, not classic-editorial, not plain — premium, calm, meditative, highly readable. Loaded via `next/font/google`.
 
 ## 7. Color system
 
@@ -123,7 +123,7 @@ WCAG AA, verified with automated (`@axe-core/playwright`) plus manual keyboard/s
 
 ## 14. Brand mark
 
-A simple logomark, replacing the current inline SVG circle-with-gradient in `Navigation.tsx`. Used on: login screen, PWA icon/favicon, sidebar brand tile. Designed once tokens/typography are locked.
+**A horizon arc** — a simple partial-circle/arc shape (~200°, suggesting a rising or setting sun against a horizon line), rendered in the single accent color only, no gradient. Replaces the current inline SVG circle-with-gradient in `Navigation.tsx`. Used on: login screen, PWA icon/favicon, sidebar brand tile. One mark works unmodified in both modes — it only ever uses `var(--accent)`, which already carries the light/dark distinction.
 
 ## 15. Onboarding & sign-in
 
@@ -160,8 +160,42 @@ No hard deadline — sequencing optimizes for reviewability, not speed.
 
 ## 20. Explicitly deferred to implementation
 
-- **Exact headline typeface** (§6) — decided with a real preview.
 - **Specific IA changes** beyond the five-area set (§9) — proposed when the actual page is being rebuilt.
 - **Specific list of components/files to delete** (§16) — proposed for approval before any deletion.
 - **What happens to existing People and Explore data** when those spaces are cut. Default recommendation, to confirm before implementation reaches §18 step 5: keep the `people` and `explores` tables untouched (never drop per AGENTS.md §2.5) and unreachable from the main nav, but offer a one-time export (e.g. a CSV/JSON download from Settings) so nothing already saved there is silently lost. Open for a different call if preferred (e.g. a one-time migration of Explore items into Think, or People notes into a plain reminder).
 - Settings page content/layout, search-within-a-space behavior, offline/PWA caching UX — handled as normal design decisions during implementation, escalated back only if genuinely ambiguous.
+
+## 21. Phase 2 locked design: Navigation, Home, Sign-in, Onboarding
+
+Decided in the Phase 2 brainstorming pass, after Foundation (Phase 1) shipped. This section is Phase 2's design; §18's rollout order is unchanged (Phase 2 = "Home, sign-in, onboarding" — nav redesign is folded into this phase rather than deferred further, since Home can't be meaningfully reviewed next to a still-glassy nav).
+
+### Navigation (folded into this phase)
+
+- **Desktop sidebar:** keep the hover/focus-expand rail as the interaction model (unchanged from §9) — re-skin only. Flat `--surface-sidebar` background, hairline right border (`--border-subtle`), no blur. The brand tile becomes the new horizon-arc mark (§14). Active-row indicator: a left accent bar + accent-colored text/icon — no background pill, since `--space-*` tokens are now all aliased to the one accent (Foundation §3 decision), a colored pill background would be redundant with the icon/text already being accent-colored. Icons unified to Lucide 20px/1.5 stroke everywhere, including the utility rows (Search/Focus/Trash/Settings), which currently use an inconsistent 17px — this was flagged in the project's own prior sidebar research and never fixed.
+- **Ritual row:** stays a single row (not redesigned into something larger), but gets the sidebar's clearest visual treatment after the active nav item — it's the one row tied to the app's actual differentiator (§3).
+- **Mobile bottom nav:** same flat re-skin, same current 5-slot layout (Home/Do/Capture/Think/Explore). Explore's nav slot is left in place for this phase and only removed when Explore is actually cut (§18 step 5) — avoids reshuffling the bottom nav twice.
+- **Dropdown/Popover:** visual re-skin only (flat panel, hairline border, no blur) — the floating-ui positioning engine is unchanged, per §5's decision to investigate reported glitches rather than assume a rewrite is needed. That repro/fix happens within this phase since the nav's own dropdowns (account menu, etc.) are in scope here.
+
+### Home
+
+Restructured top-to-bottom around the promoted ritual/review system (§3), replacing the current toggle-into-a-different-view pattern:
+
+1. Greeting (Newsreader, time-of-day aware) + the ritual state inline beneath it (today's morning/evening status, or the prompt to start one) — this replaces the separate `RitualStatusBadge` treatment with something that reads as part of the page, not a pill bolted onto the header.
+2. "Focus Now" hero — the single highest-priority task, unchanged logic, re-skinned flat (no conic-gradient spinner decoration — a small static accent-colored ring or none at all).
+3. Bento row, 4 tiles: Active Tasks (unchanged), Ritual Streak (new — §3's promoted streak), Locations tile (new — replaces "People Tracked"; shows count of logged items or count needing a "still here?" check), Focus Time or Tasks Completed This Week (replaces "Saved Items"; whichever reads more naturally next to a streak tile, implementer's call).
+4. "Up Next" list and Inbox section stay, but Inbox's entire inline "Route it" dropdown is deleted — Home shows an item count + a link to `/inbox`, nothing interactive inline (§3's cleanup finding).
+5. Week in Review becomes reachable from Home (not hidden behind discovery) but doesn't need to be the default view — a clearly-visible link/tab is enough; it doesn't need to be inlined into the main scroll.
+
+### Sign-in
+
+Single email field, magic-link primary action, Google secondary — same auth logic, entirely new shell: the horizon-arc mark, "Sign in" in Newsreader, flat card (`--surface-modal`, hairline border, no blur), no gradient button. This is also where the ~1.1MB JS bundle gets fixed structurally (whatever's pulling in that weight — audited during implementation, not pre-diagnosed here) since the page is being rebuilt anyway.
+
+### Onboarding
+
+Cut from `OnboardingWizard.tsx`'s current 5 steps down to 2–3: enough to say who the app is for and introduce the ritual loop as the core idea (§3, §15), not a full feature tour. Uses the new mark/typeface. Background stays the static (non-animated) treatment already shipped in the Foundation-phase fix (`OnboardingBackground.tsx`'s dead keyframes were removed, not restored) — animating it properly, if wanted, is explicitly out of scope for this phase and can be revisited later without blocking on it.
+
+### Deferred within Phase 2 (proposed during implementation)
+
+- Exact bento-tile copy/icons for the two new Home tiles.
+- Exact onboarding screen count (2 vs 3) and copy — implementer proposes, doesn't need to come back for approval unless genuinely ambiguous.
+- The `/login` bundle-size root cause — diagnosed when the page is actually rebuilt.
