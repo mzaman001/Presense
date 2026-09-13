@@ -402,6 +402,18 @@
   --shadow-button-primary: none;
   --shadow-button-primary-hover: none;
 
+  /* === STATUS COLOURS — light-mode override ===
+     The shared --status-danger red (#f87171) is tuned for dark
+     backgrounds; against light-mode surfaces it measures 2.27:1-2.77:1,
+     well under the 4.5:1 AA minimum for text (discovered via
+     tests/accessibility.spec.ts once /trash's query bug was fixed and
+     its "Delete Forever" button — which reads this token — could
+     finally be scanned). This darker red clears 4.5:1 against every
+     light-mode surface (5.31:1 vs --bg-elevated, 5.80:1 vs --bg-base,
+     6.47:1 vs --surface-1). Only the text color needs the override —
+     -dim/-border stay shared since they're non-text, 3:1-exempt fills. */
+  --status-danger: #b91c1c;
+
   /* === TOGGLE === */
   --toggle-track-off: rgba(33, 29, 23, 0.15);
   --toggle-track-on: var(--accent);
