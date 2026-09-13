@@ -208,7 +208,7 @@ const InboxItemCard = ({
                 document.body,
               )}
             <Button
-              variant="icon"
+              variant="ghost"
               onClick={() => dismissInboxItem(item.id)}
               className="shrink-0 !border-transparent !bg-transparent hover:!bg-red-500/10 hover:!text-red-400"
               title="Dismiss"

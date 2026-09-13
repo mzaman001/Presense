@@ -890,7 +890,7 @@ function SettingsModalContent({
               {/* Main Content Area */}
               <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <Button
-                  variant="icon"
+                  variant="ghost"
                   onClick={() => onClose(false)}
                   aria-label="Close settings"
                   className="absolute top-4 right-4 z-10"
@@ -1261,7 +1261,7 @@ function SettingsModalContent({
                             <div className="flex flex-wrap gap-2">
                               {[15, 20, 25, 30, 45, 60].map((mins) => (
                                 <Button
-                                  variant="preset"
+                                  variant="secondary"
                                   key={mins}
                                   onClick={() =>
                                     updateSetting("pomodoro_duration", mins)
@@ -1285,7 +1285,7 @@ function SettingsModalContent({
                             <div className="flex flex-wrap gap-2">
                               {[3, 5, 10, 15].map((mins) => (
                                 <Button
-                                  variant="preset"
+                                  variant="secondary"
                                   key={mins}
                                   onClick={() =>
                                     updateSetting("short_break_duration", mins)
@@ -1309,7 +1309,7 @@ function SettingsModalContent({
                             <div className="flex flex-wrap gap-2">
                               {[15, 20, 30].map((mins) => (
                                 <Button
-                                  variant="preset"
+                                  variant="secondary"
                                   key={mins}
                                   onClick={() =>
                                     updateSetting("long_break_duration", mins)
@@ -1357,7 +1357,7 @@ function SettingsModalContent({
                           <div className="flex flex-wrap gap-2">
                             {[2, 3, 4, 5].map((n) => (
                               <Button
-                                variant="preset"
+                                variant="secondary"
                                 key={n}
                                 onClick={() =>
                                   updateSetting(
