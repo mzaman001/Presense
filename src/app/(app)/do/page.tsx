@@ -1,5 +1,7 @@
 "use client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import type { TaskRecord } from "@/lib/task-cache";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 import React, {
@@ -16,7 +18,15 @@ import { Badge } from "@/components/ui/Badge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TaskCard } from "@/components/features/TaskCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Clock, Zap, Calendar, Wind, CheckCircle2, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Clock,
+  Zap,
+  Calendar,
+  Wind,
+  CheckCircle2,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useQueryState, parseAsString, parseAsStringEnum } from "nuqs";
@@ -25,12 +35,9 @@ import { toast } from "sonner";
 import { useHaptics } from "@/hooks/useHaptics";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
-import { DEFAULT_DO_COLORS } from "@/lib/constants";
+import { resolveCategoryColor } from "@/lib/constants";
 // INFRA-19: all status writes on entity tables go through item-lifecycle.ts
-import {
-  completeTaskPatch,
-  uncompleteTaskPatch,
-} from "@/lib/item-lifecycle";
+import { completeTaskPatch, uncompleteTaskPatch } from "@/lib/item-lifecycle";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
@@ -53,20 +60,12 @@ export const CalendarView = dynamic(
   { ssr: false, loading: () => null },
 );
 
-interface Task {
-  id: string;
-  title: string;
-  first_step: string | null;
-  ifthen_trigger: string | null;
-  deadline: string | null;
-  status: string;
-  category: string;
-  snoozed_until?: string | null;
-  recurrence?: string | null;
-  linked_people_ids?: string[] | null;
-  start_date?: string | null;
-  completed_at?: string | null;
-}
+/**
+ * The task row shape comes from the generated Database types rather than a
+ * hand-written local copy — two divergent copies used to exist (here and on
+ * the home dashboard) and neither matched the column nullability.
+ */
+type Task = TaskRecord;
 
 const Column = React.memo(
   ({
@@ -151,6 +150,7 @@ const Column = React.memo(
 Column.displayName = "Column";
 
 export default function DoPage() {
+  const userId = useUserId();
   const supabase = useMemo(() => createClient(), []);
   const initialFilter = "all";
 
@@ -179,12 +179,10 @@ export default function DoPage() {
     queryFn: async () => {
       // INFRA-18: explicit user_id filter lets the planner use the
       // idx_items_user_status index directly instead of only the RLS policy.
-      const { data: userSession } = await supabase.auth.getUser();
-      if (!userSession?.user) return [];
       const { data, error } = await supabase
         .from("items")
         .select("*")
-        .eq("user_id", userSession.user.id)
+        .eq("user_id", userId)
         .in("status", ["active", "overdue"])
         .order("priority", { ascending: true, nullsFirst: false })
         .order("deadline", { ascending: true, nullsFirst: false });
@@ -197,12 +195,10 @@ export default function DoPage() {
     queryKey: ["people_minimal"],
     queryFn: async () => {
       // INFRA-18: explicit user_id filter for planner index usage.
-      const { data: userSession } = await supabase.auth.getUser();
-      if (!userSession?.user) return [];
       const { data, error } = await supabase
         .from("people")
         .select("id, name, initials, color")
-        .eq("user_id", userSession.user.id);
+        .eq("user_id", userId);
       if (error) throw error;
       return data || [];
     },
@@ -261,12 +257,10 @@ export default function DoPage() {
 
   const fetchArchived = useCallback(async () => {
     // INFRA-18: explicit user_id filter for planner index usage.
-    const { data: userSession } = await supabase.auth.getUser();
-    if (!userSession?.user) return [];
     const { data } = await supabase
       .from("items")
       .select("*")
-      .eq("user_id", userSession.user.id)
+      .eq("user_id", userId)
       .eq("status", "done")
       .order("completed_at", { ascending: false });
     setArchivedTasks((data as Task[]) ?? []);
@@ -338,11 +332,7 @@ export default function DoPage() {
     try {
       useAppStore.getState().markMutation();
       const { success } = await safeMutate(
-        () =>
-          supabase
-            .from("items")
-            .update(uncompleteTaskPatch())
-            .eq("id", id),
+        () => supabase.from("items").update(uncompleteTaskPatch()).eq("id", id),
         "Failed to restore task",
       );
       if (!success) return;
@@ -445,8 +435,16 @@ export default function DoPage() {
             variant="secondary"
             // PERF-20: start fetching the add-panel chunk on hover/focus so
             // the panel opens without paying the chunk transfer/eval cost
-            onMouseEnter={() => (TaskAddPanel as typeof TaskAddPanel & { preload: () => void }).preload()}
-            onFocus={() => (TaskAddPanel as typeof TaskAddPanel & { preload: () => void }).preload()}
+            onMouseEnter={() =>
+              (
+                TaskAddPanel as typeof TaskAddPanel & { preload: () => void }
+              ).preload()
+            }
+            onFocus={() =>
+              (
+                TaskAddPanel as typeof TaskAddPanel & { preload: () => void }
+              ).preload()
+            }
             onClick={() => {
               setTaskToEdit(null);
               setInitialDeadline(null);
@@ -467,8 +465,14 @@ export default function DoPage() {
               value: "calendar",
               // PERF-20: fetch the calendar-view chunk on hover/focus so
               // switching to the calendar is already warm
-              onMouseEnter: () => (CalendarView as typeof CalendarView & { preload: () => void }).preload(),
-              onFocus: () => (CalendarView as typeof CalendarView & { preload: () => void }).preload(),
+              onMouseEnter: () =>
+                (
+                  CalendarView as typeof CalendarView & { preload: () => void }
+                ).preload(),
+              onFocus: () =>
+                (
+                  CalendarView as typeof CalendarView & { preload: () => void }
+                ).preload(),
             },
           ]}
           value={viewMode}
@@ -536,19 +540,18 @@ export default function DoPage() {
               .map((task) => (
                 <GlassCard
                   key={task.id}
-                  className="flex items-center justify-between p-4 opacity-70 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:opacity-100 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]"
+                  className="flex items-center justify-between p-4 opacity-70 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:opacity-100 hover:shadow-[var(--shadow-card-hover)]"
                 >
                   <div>
                     <div className="mb-1 flex items-center gap-2">
                       <span
                         className="text-caption font-semibold text-[rgba(255,255,255,0.35)] capitalize"
                         style={{
-                          color:
-                            (userSettings?.do_category_colors?.[
-                              task.category
-                            ] ||
-                              DEFAULT_DO_COLORS[task.category]) ??
+                          color: resolveCategoryColor(
+                            task.category,
+                            userSettings?.do_category_colors,
                             "rgba(255,255,255,0.35)",
+                          ),
                         }}
                       >
                         {task.category}
@@ -625,7 +628,10 @@ export default function DoPage() {
                   href="/trash?filter=item"
                   className="underline underline-offset-2 hover:text-[var(--color-accent)]"
                 >
-                  <UiIcon className="mr-1 inline h-3 w-3 align-[-2px]" icon={Trash2} />
+                  <UiIcon
+                    className="mr-1 inline h-3 w-3 align-[-2px]"
+                    icon={Trash2}
+                  />
                   Check the trash for deleted tasks
                 </Link>
               }

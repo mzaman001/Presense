@@ -1,5 +1,6 @@
 "use client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useUserId } from "@/components/providers/SessionProvider";
 
 import React, { useEffect, useState, useCallback } from "react";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
@@ -276,7 +277,7 @@ function SortablePersonRow({
               deletePerson(person);
             }}
             aria-label={`Move ${person.name} to trash`}
-            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+            className="row-actions hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
           >
             <UiIcon className="h-4 w-4" icon={Trash2} />
           </button>
@@ -323,6 +324,7 @@ function SortablePersonRow({
 }
 
 export default function PeoplePage() {
+  const userId = useUserId();
   const supabase = createClient();
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
@@ -331,14 +333,12 @@ export default function PeoplePage() {
 
   const fetchPeople = useCallback(async () => {
     // INFRA-18: explicit user_id filter for planner index usage.
-    const { data: userSession } = await supabase.auth.getUser();
-    if (!userSession?.user) return;
     // BUG-08: trashed people must not render in the list on any client —
     // the local optimistic filter only covers the deleting device.
     const { data, error } = await supabase
       .from("people")
       .select("*")
-      .eq("user_id", userSession.user.id)
+      .eq("user_id", userId)
       .neq("status", "deleted")
       .order("sort_order", { ascending: true, nullsFirst: false });
     if (error) {
@@ -395,10 +395,7 @@ export default function PeoplePage() {
           label: "Undo",
           onClick: async () => {
             try {
-              const {
-                data: { user },
-              } = await supabase.auth.getUser();
-              if (user) {
+              if (userId) {
                 const { success } = await safeMutate(
                   () =>
                     supabase
@@ -533,7 +530,10 @@ export default function PeoplePage() {
                       href="/trash?filter=person"
                       className="underline underline-offset-2 hover:text-[var(--color-accent)]"
                     >
-                      <UiIcon className="mr-1 inline h-3 w-3 align-[-2px]" icon={Trash2} />
+                      <UiIcon
+                        className="mr-1 inline h-3 w-3 align-[-2px]"
+                        icon={Trash2}
+                      />
                       Check the trash for deleted people
                     </Link>
                   }

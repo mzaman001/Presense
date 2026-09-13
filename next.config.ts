@@ -42,7 +42,6 @@ const nextConfig: NextConfig = {
       "@dnd-kit/core",
       "@dnd-kit/sortable",
       "compromise",
-      "lenis",
       "@base-ui/react",
     ],
   },
@@ -64,8 +63,6 @@ const nextConfig: NextConfig = {
 };
 
 import withBundleAnalyzer from "@next/bundle-analyzer";
-
-console.log("ANALYZE:", process.env.ANALYZE);
 
 const analyze = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",

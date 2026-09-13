@@ -8,6 +8,7 @@ import { DynamicModals } from "@/components/layout/DynamicModals";
 import { RitualOverlayDynamic } from "@/components/layout/RitualOverlayDynamic";
 import QueryProvider from "@/components/layout/QueryProvider";
 import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
+import { SessionProvider } from "@/components/providers/SessionProvider";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -37,13 +38,16 @@ export default async function AppLayout({
   if (!session?.user) {
     redirect("/login");
   }
-  const userId = session.user.id;
+  const sessionUser = {
+    id: session.user.id,
+    email: session.user.email ?? "",
+  };
 
   // Check if onboarding is complete by looking for user_settings
   const { data: settings } = await supabase
     .from("user_settings")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", sessionUser.id)
     .maybeSingle();
 
   if (!settings || settings.onboarding_complete === false) {
@@ -54,28 +58,30 @@ export default async function AppLayout({
     const { count } = await supabase
       .from("items")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .eq("user_id", sessionUser.id);
 
     if (count && count > 0) {
       after(async () => {
         try {
-          const { error } = await (await createClient())
+          const { error } = await (
+            await createClient()
+          )
             .from("user_settings")
             .upsert(
-              { user_id: userId, onboarding_complete: true },
+              { user_id: sessionUser.id, onboarding_complete: true },
               { onConflict: "user_id" },
             );
           if (error) {
             console.error(
               "[layout] failed to auto-complete onboarding for",
-              userId,
+              sessionUser.id,
               error,
             );
           }
         } catch (err) {
           console.error(
             "[layout] failed to auto-complete onboarding for",
-            userId,
+            sessionUser.id,
             err,
           );
         }
@@ -96,30 +102,32 @@ export default async function AppLayout({
       <AppInitializer
         initialSettings={(settings as UserSettings) || undefined}
       />
-      <MotionProvider>
-        <QueryProvider>
-          <TooltipProvider>
-            <RealtimeProvider>
-              <ConnectionStatus />
-              <UpdatePrompt />
-              <AmbientBackground />
-              <MobileTopBar />
-              <Sidebar />
-              <MobileDrawer />
-              {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
-              <DynamicModals />
-              {/* RitualOverlay is conditionally visible (ritual triage prompt)
+      <SessionProvider user={sessionUser}>
+        <MotionProvider>
+          <QueryProvider>
+            <TooltipProvider>
+              <RealtimeProvider>
+                <ConnectionStatus />
+                <UpdatePrompt />
+                <AmbientBackground />
+                <MobileTopBar />
+                <Sidebar />
+                <MobileDrawer />
+                {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
+                <DynamicModals />
+                {/* RitualOverlay is conditionally visible (ritual triage prompt)
               — lazy-loaded via RitualOverlayDynamic so it never ships in
               the shell bundle (PERF-19) */}
-              <RitualOverlayDynamic />
-              <AppContentWrapper>
-                <NuqsAdapter>{children}</NuqsAdapter>
-              </AppContentWrapper>
-              <BottomNav />
-            </RealtimeProvider>
-          </TooltipProvider>
-        </QueryProvider>
-      </MotionProvider>
+                <RitualOverlayDynamic />
+                <AppContentWrapper>
+                  <NuqsAdapter>{children}</NuqsAdapter>
+                </AppContentWrapper>
+                <BottomNav />
+              </RealtimeProvider>
+            </TooltipProvider>
+          </QueryProvider>
+        </MotionProvider>
+      </SessionProvider>
     </>
   );
 }

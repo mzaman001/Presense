@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -245,13 +244,29 @@
      (flat rgba reads washed out per 2026 guidance); the specular edge is a
      1px inset highlight at the top, strongest at overlay tier. Shared once,
      consumed by all glass surfaces — never duplicated per component. */
-  --elev-flat-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 45%);
+  --elev-flat-frost: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035),
+    transparent 45%
+  );
   --elev-flat-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
-  --elev-raised-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 45%);
+  --elev-raised-frost: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.05),
+    transparent 45%
+  );
   --elev-raised-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
-  --elev-floating-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 45%);
+  --elev-floating-frost: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07),
+    transparent 45%
+  );
   --elev-floating-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.16);
-  --elev-overlay-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 45%);
+  --elev-overlay-frost: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.09),
+    transparent 45%
+  );
   --elev-overlay-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.22);
 
   /* === SHADOW SYSTEM === */
@@ -1291,6 +1306,35 @@ h6 {
   .checkbox-sm {
     width: 16px;
     height: 16px;
+  }
+}
+
+/* === ROW ACTIONS ===
+   Per-row controls (restore, delete, edit) that reveal on hover.
+
+   The previous pattern was `opacity-0 group-hover:opacity-100` applied
+   inline in 12 places. On touch devices there is no hover, so those
+   controls were permanently invisible — the actions existed but could not
+   be reached on a phone. They were also unreachable by keyboard, since
+   opacity:0 elements stay focusable but invisible.
+
+   This gates the hide behind an actual hover-capable pointer and restores
+   visibility on focus-within, so touch and keyboard users always see the
+   controls and mouse users keep the calm, uncluttered row. */
+.row-actions {
+  opacity: 1;
+  transition: opacity 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .row-actions {
+    opacity: 0;
+  }
+
+  .group:hover .row-actions,
+  .row-actions:hover,
+  .row-actions:focus-within {
+    opacity: 1;
   }
 }
 

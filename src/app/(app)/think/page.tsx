@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { m } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -16,7 +17,6 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
-import { LenisProvider } from "@/components/layout/LenisProvider";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
@@ -32,6 +32,7 @@ interface Thread {
 }
 
 export default function ThinkPage() {
+  const userId = useUserId();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const setPrefetchedThread = useAppStore((s) => s.setPrefetchedThread);
@@ -52,12 +53,10 @@ export default function ThinkPage() {
 
   const fetchThreads = useCallback(async () => {
     // INFRA-18: explicit user_id filter for planner index usage.
-    const { data: userSession } = await supabase.auth.getUser();
-    if (!userSession?.user) return;
     let query = supabase
       .from("threads")
       .select("*")
-      .eq("user_id", userSession.user.id)
+      .eq("user_id", userId)
       .order("is_pinned", { ascending: false })
       .order("last_updated", { ascending: false });
 
@@ -96,17 +95,12 @@ export default function ThinkPage() {
     });
     const title = `Daily Note: ${dateStr}`;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
     // Try insert first — the unique index on (user_id, title) prevents duplicates.
     // If a race condition causes a conflict, fall back to fetching the existing thread.
     const { data: inserted } = await supabase
       .from("threads")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         title,
         color_accent: "#FBBF24",
         is_pinned: true,
@@ -124,7 +118,7 @@ export default function ThinkPage() {
       .from("threads")
       .select("id")
       .eq("title", title)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("status", "active")
       .limit(1);
 
@@ -134,15 +128,10 @@ export default function ThinkPage() {
   };
 
   const handleNewThread = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
     const { data, error } = await supabase
       .from("threads")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         title: "Untitled Thread",
         color_accent: "#E5B41E",
         is_pinned: false,
@@ -164,8 +153,6 @@ export default function ThinkPage() {
      page's handleDelete (moveItemToTrashPatch, no confirm per DS-11). */
   const deleteThread = useCallback(
     async (thread: Thread) => {
-      const { data: userSession } = await supabase.auth.getUser();
-      if (!userSession?.user) return;
       // Optimistic removal from the list
       setThreads((current) => current.filter((t) => t.id !== thread.id));
       try {
@@ -174,7 +161,7 @@ export default function ThinkPage() {
           .from("threads")
           .update(moveItemToTrashPatch())
           .eq("id", thread.id)
-          .eq("user_id", userSession.user.id);
+          .eq("user_id", userId);
         if (error) throw error;
         // BUG-08: the global trash lists trashed threads per-space
         toast.success("Thread moved to trash");
@@ -225,106 +212,66 @@ export default function ThinkPage() {
   };
 
   return (
-    <LenisProvider>
-      <div className="space-y-6">
-        <div className="mb-2 flex items-center justify-between">
-          <div>
-            <p className="text-caption mb-1 font-semibold tracking-widest text-[rgba(255,255,255,0.35)] uppercase">
-              Space
-            </p>
-            <div className="flex items-center gap-4">
-              <h1 className="text-[22px] font-medium tracking-tight text-[var(--color-text-1)]">
-                Think
-              </h1>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setShowArchive(false);
-                    setShowTrash(false);
-                    setThreads([]);
-                  }}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs transition-colors",
-                    !showArchive && !showTrash
-                      ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                      : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
-                  )}
-                >
-                  Active
-                </button>
-                <button
-                  onClick={() => {
-                    setShowArchive(true);
-                    setShowTrash(false);
-                    setThreads([]);
-                  }}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs transition-colors",
-                    showArchive
-                      ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                      : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
-                  )}
-                >
-                  Archive
-                </button>
-                <button
-                  onClick={() => {
-                    setShowTrash(true);
-                    setShowArchive(false);
-                    setThreads([]);
-                  }}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs transition-colors",
-                    showTrash
-                      ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                      : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
-                  )}
-                >
-                  Trash
-                </button>
-              </div>
+    <div className="space-y-6">
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <p className="text-caption mb-1 font-semibold tracking-widest text-[rgba(255,255,255,0.35)] uppercase">
+            Space
+          </p>
+          <div className="flex items-center gap-4">
+            <h1 className="text-[22px] font-medium tracking-tight text-[var(--color-text-1)]">
+              Think
+            </h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setShowArchive(false);
+                  setShowTrash(false);
+                  setThreads([]);
+                }}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  !showArchive && !showTrash
+                    ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+                )}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => {
+                  setShowArchive(true);
+                  setShowTrash(false);
+                  setThreads([]);
+                }}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  showArchive
+                    ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+                )}
+              >
+                Archive
+              </button>
+              <button
+                onClick={() => {
+                  setShowTrash(true);
+                  setShowArchive(false);
+                  setThreads([]);
+                }}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  showTrash
+                    ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+                )}
+              >
+                Trash
+              </button>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <UiIcon
-                size={13}
-                strokeWidth={1.5}
-                className="absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
-                icon={Search}
-              />
-              <input
-                type="text"
-                placeholder="Search threads..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-search hidden !w-48 md:block"
-              />
-            </div>
-            <Button
-              variant="secondary"
-              onClick={handleDailyNote}
-              className="hidden !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] !text-[#FBBF24] hover:!bg-[rgba(251,191,36,0.2)] sm:flex"
-            >
-              <UiIcon className="h-4 w-4" icon={Sparkles} /> Daily Note
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleNewThread}
-              className="!border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)]"
-            >
-              <UiIcon className="h-4 w-4" icon={Plus} /> New thread
-            </Button>
           </div>
         </div>
-
-        <ContextualTip
-          id="think_space"
-          title="Thoughts that stay"
-          description="This is the Think space. Create threads for ideas, journals, or long-term thoughts. We will resurface old threads to prompt new insights."
-        />
-
-        <div className="md:hidden">
+        <div className="flex items-center gap-2">
           <div className="relative">
             <UiIcon
               size={13}
@@ -337,115 +284,71 @@ export default function ThinkPage() {
               placeholder="Search threads..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-search w-full md:hidden"
+              className="input-search hidden !w-48 md:block"
             />
           </div>
+          <Button
+            variant="secondary"
+            onClick={handleDailyNote}
+            className="hidden !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] !text-[#FBBF24] hover:!bg-[rgba(251,191,36,0.2)] sm:flex"
+          >
+            <UiIcon className="h-4 w-4" icon={Sparkles} /> Daily Note
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleNewThread}
+            className="!border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)]"
+          >
+            <UiIcon className="h-4 w-4" icon={Plus} /> New thread
+          </Button>
         </div>
+      </div>
 
-        {loading ? (
-          <div className="py-6">
-            <PageSkeleton count={4} type="card" />
-          </div>
-        ) : (
-          <>
-            {filteredThreads.filter((t) => t.stale_prompt).length > 0 && (
-              <div className="mb-6">
-                <div className="mb-3 flex items-center gap-2">
-                  <UiIcon
-                    className="h-4 w-4 text-[var(--accent)]"
-                    icon={Sparkles}
-                  />
-                  <h2 className="text-sm font-semibold text-[var(--color-text-1)]">
-                    Stale Threads
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {filteredThreads
-                    .filter((t) => t.stale_prompt)
-                    .map((thread, i) => (
-                      <m.div
-                        key={thread.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="thread-row-wrapper"
-                      >
-                        <Link
-                          href={`/think/${thread.id}`}
-                          onClick={() => setPrefetchedThread(thread.id, thread)}
-                        >
-                          <GlassCard className="group relative h-full cursor-pointer border-[var(--accent-dim-hover)] bg-[var(--surface-input)] p-4 transition-colors hover:bg-[var(--surface-hover)]">
-                            {/* BUG-44 — hover/focus trash affordance; stops
-                                propagation so navigation doesn't fire. */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                deleteThread(thread);
-                              }}
-                              aria-label={`Move ${thread.title} to trash`}
-                              className="absolute top-3 right-3 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
-                            >
-                              <UiIcon className="h-4 w-4" icon={Trash2} />
-                            </button>
-                            <div className="flex items-start gap-3">
-                              <div className="w-1 shrink-0 self-stretch rounded-full bg-[var(--accent)]" />
-                              <div>
-                                <p className="mb-1 text-sm font-semibold text-[var(--color-text-1)]">
-                                  {thread.title}
-                                </p>
-                                <p className="text-xs leading-relaxed font-medium text-[var(--accent)]">
-                                  {thread.stale_prompt}
-                                </p>
-                              </div>
-                            </div>
-                          </GlassCard>
-                        </Link>
-                      </m.div>
-                    ))}
-                </div>
-              </div>
-            )}
+      <ContextualTip
+        id="think_space"
+        title="Thoughts that stay"
+        description="This is the Think space. Create threads for ideas, journals, or long-term thoughts. We will resurface old threads to prompt new insights."
+      />
 
-            {filteredThreads.length === 0 ? (
-              <GlassCard className="mt-6 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
-                  <UiIcon
-                    className="h-6 w-6 text-[var(--color-text-3)]"
-                    icon={Sparkles}
-                  />
-                </div>
-                <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
-                  No threads yet
-                </h3>
-                <p className="mb-2 max-w-sm text-sm text-[var(--color-text-3)]">
-                  Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I
-                  wonder...&rdquo; to start expanding your ideas.
-                </p>
-                {/* BUG-08 / CONF-10 (Option C): thin pointer to the global trash */}
-                <Link
-                  href="/trash?filter=thread"
-                  className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-3)] underline underline-offset-2 hover:text-[var(--color-accent)]"
-                >
-                  <UiIcon className="h-3 w-3" icon={Trash2} />
-                  Check the trash for deleted threads
-                </Link>
-                <Button
-                  variant="primary"
-                  onClick={handleNewThread}
-                  className="gap-2"
-                >
-                  <UiIcon size={16} icon={Plus} /> New Thought
-                </Button>
-              </GlassCard>
-            ) : (
-              <div>
-                <h2 className="mt-6 mb-3 text-sm font-semibold text-[var(--color-text-1)]">
-                  All Threads
+      <div className="md:hidden">
+        <div className="relative">
+          <UiIcon
+            size={13}
+            strokeWidth={1.5}
+            className="absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
+            icon={Search}
+          />
+          <input
+            type="text"
+            placeholder="Search threads..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-search w-full md:hidden"
+          />
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="py-6">
+          <PageSkeleton count={4} type="card" />
+        </div>
+      ) : (
+        <>
+          {filteredThreads.filter((t) => t.stale_prompt).length > 0 && (
+            <div className="mb-6">
+              <div className="mb-3 flex items-center gap-2">
+                <UiIcon
+                  className="h-4 w-4 text-[var(--accent)]"
+                  icon={Sparkles}
+                />
+                <h2 className="text-sm font-semibold text-[var(--color-text-1)]">
+                  Stale Threads
                 </h2>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {filteredThreads.map((thread, i) => (
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {filteredThreads
+                  .filter((t) => t.stale_prompt)
+                  .map((thread, i) => (
                     <m.div
                       key={thread.id}
                       initial={{ opacity: 0, y: 8 }}
@@ -457,98 +360,177 @@ export default function ThinkPage() {
                         href={`/think/${thread.id}`}
                         onClick={() => setPrefetchedThread(thread.id, thread)}
                       >
-                        <GlassCard className="group relative h-full cursor-pointer p-5 transition-transform duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
-                          {!showArchive && !showTrash && (
-                            <>
-                              {/* BUG-44 — hover/focus trash affordance; stops
-                                  propagation so navigation doesn't fire. */}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  deleteThread(thread);
-                                }}
-                                aria-label={`Move ${thread.title} to trash`}
-                                className="absolute top-3 right-11 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
-                              >
-                                <UiIcon className="h-4 w-4" icon={Trash2} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => togglePin(e, thread)}
-                                className={cn(
-                                  "absolute top-3 right-3 rounded-lg p-1.5 transition-all",
-                                  thread.is_pinned
-                                    ? "text-[var(--accent)] opacity-100 hover:bg-[var(--surface-hover)]"
-                                    : "text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:bg-[var(--color-surface)] hover:text-[var(--text-2)]",
-                                )}
-                              >
-                                <UiIcon
-                                  size={14}
-                                  strokeWidth={1.5}
-                                  className={cn(
-                                    thread.is_pinned && "fill-current",
-                                  )}
-                                  icon={Pin}
-                                />
-                              </button>
-                            </>
-                          )}
+                        <GlassCard className="group relative h-full cursor-pointer border-[var(--accent-dim-hover)] bg-[var(--surface-input)] p-4 transition-colors hover:bg-[var(--surface-hover)]">
+                          {/* BUG-44 — hover/focus trash affordance; stops
+                                propagation so navigation doesn't fire. */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              deleteThread(thread);
+                            }}
+                            aria-label={`Move ${thread.title} to trash`}
+                            className="absolute top-3 right-3 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+                          >
+                            <UiIcon className="h-4 w-4" icon={Trash2} />
+                          </button>
                           <div className="flex items-start gap-3">
-                            <div
-                              className="w-0.5 shrink-0 self-stretch rounded-full"
-                              style={{ backgroundColor: thread.color_accent }}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-2 flex items-center gap-2">
-                                {!showArchive &&
-                                  !showTrash &&
-                                  thread.is_pinned && (
-                                    <UiIcon
-                                      className="h-3.5 w-3.5 fill-current text-[var(--accent)]"
-                                      icon={Pin}
-                                    />
-                                  )}
-                                <p className="pr-6 text-sm leading-snug font-semibold text-[var(--color-text-1)]">
-                                  {thread.title}
-                                </p>
-                              </div>
-                              {thread.entries?.length > 0 && (
-                                <p className="line-clamp-2 text-xs leading-relaxed text-[var(--color-text-3)]">
-                                  {
-                                    thread.entries[thread.entries.length - 1]
-                                      ?.text
-                                  }
-                                </p>
-                              )}
-                              <div className="mt-3 flex items-center justify-between">
-                                <span className="text-meta text-[var(--color-text-3)]">
-                                  {thread.entries?.length ?? 0} entries ·
-                                  Updated {timeAgo(thread.last_updated)}
-                                </span>
-                                {thread.stale_prompt && (
-                                  <span className="text-caption flex items-center gap-1 text-[var(--accent)]">
-                                    <UiIcon
-                                      className="h-3 w-3"
-                                      icon={Sparkles}
-                                    />{" "}
-                                    Revisit
-                                  </span>
-                                )}
-                              </div>
+                            <div className="w-1 shrink-0 self-stretch rounded-full bg-[var(--accent)]" />
+                            <div>
+                              <p className="mb-1 text-sm font-semibold text-[var(--color-text-1)]">
+                                {thread.title}
+                              </p>
+                              <p className="text-xs leading-relaxed font-medium text-[var(--accent)]">
+                                {thread.stale_prompt}
+                              </p>
                             </div>
                           </div>
                         </GlassCard>
                       </Link>
                     </m.div>
                   ))}
-                </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
-    </LenisProvider>
+            </div>
+          )}
+
+          {filteredThreads.length === 0 ? (
+            <GlassCard className="mt-6 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
+                <UiIcon
+                  className="h-6 w-6 text-[var(--color-text-3)]"
+                  icon={Sparkles}
+                />
+              </div>
+              <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
+                No threads yet
+              </h3>
+              <p className="mb-2 max-w-sm text-sm text-[var(--color-text-3)]">
+                Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I
+                wonder...&rdquo; to start expanding your ideas.
+              </p>
+              {/* BUG-08 / CONF-10 (Option C): thin pointer to the global trash */}
+              <Link
+                href="/trash?filter=thread"
+                className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-3)] underline underline-offset-2 hover:text-[var(--color-accent)]"
+              >
+                <UiIcon className="h-3 w-3" icon={Trash2} />
+                Check the trash for deleted threads
+              </Link>
+              <Button
+                variant="primary"
+                onClick={handleNewThread}
+                className="gap-2"
+              >
+                <UiIcon size={16} icon={Plus} /> New Thought
+              </Button>
+            </GlassCard>
+          ) : (
+            <div>
+              <h2 className="mt-6 mb-3 text-sm font-semibold text-[var(--color-text-1)]">
+                All Threads
+              </h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {filteredThreads.map((thread, i) => (
+                  <m.div
+                    key={thread.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="thread-row-wrapper"
+                  >
+                    <Link
+                      href={`/think/${thread.id}`}
+                      onClick={() => setPrefetchedThread(thread.id, thread)}
+                    >
+                      <GlassCard className="group relative h-full cursor-pointer p-5 transition-transform duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
+                        {!showArchive && !showTrash && (
+                          <>
+                            {/* BUG-44 — hover/focus trash affordance; stops
+                                  propagation so navigation doesn't fire. */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteThread(thread);
+                              }}
+                              aria-label={`Move ${thread.title} to trash`}
+                              className="absolute top-3 right-11 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+                            >
+                              <UiIcon className="h-4 w-4" icon={Trash2} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => togglePin(e, thread)}
+                              className={cn(
+                                "absolute top-3 right-3 rounded-lg p-1.5 transition-all",
+                                thread.is_pinned
+                                  ? "text-[var(--accent)] opacity-100 hover:bg-[var(--surface-hover)]"
+                                  : "row-actions text-[var(--text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--text-2)]",
+                              )}
+                            >
+                              <UiIcon
+                                size={14}
+                                strokeWidth={1.5}
+                                className={cn(
+                                  thread.is_pinned && "fill-current",
+                                )}
+                                icon={Pin}
+                              />
+                            </button>
+                          </>
+                        )}
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="w-0.5 shrink-0 self-stretch rounded-full"
+                            style={{ backgroundColor: thread.color_accent }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-2 flex items-center gap-2">
+                              {!showArchive &&
+                                !showTrash &&
+                                thread.is_pinned && (
+                                  <UiIcon
+                                    className="h-3.5 w-3.5 fill-current text-[var(--accent)]"
+                                    icon={Pin}
+                                  />
+                                )}
+                              <p className="pr-6 text-sm leading-snug font-semibold text-[var(--color-text-1)]">
+                                {thread.title}
+                              </p>
+                            </div>
+                            {thread.entries?.length > 0 && (
+                              <p className="line-clamp-2 text-xs leading-relaxed text-[var(--color-text-3)]">
+                                {
+                                  thread.entries[thread.entries.length - 1]
+                                    ?.text
+                                }
+                              </p>
+                            )}
+                            <div className="mt-3 flex items-center justify-between">
+                              <span className="text-meta text-[var(--color-text-3)]">
+                                {thread.entries?.length ?? 0} entries · Updated{" "}
+                                {timeAgo(thread.last_updated)}
+                              </span>
+                              {thread.stale_prompt && (
+                                <span className="text-caption flex items-center gap-1 text-[var(--accent)]">
+                                  <UiIcon className="h-3 w-3" icon={Sparkles} />{" "}
+                                  Revisit
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    </Link>
+                  </m.div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

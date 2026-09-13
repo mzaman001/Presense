@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { useUserId } from "@/components/providers/SessionProvider";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createClient, safeMutate } from "@/lib/supabase";
 import {
@@ -108,7 +109,7 @@ const InboxItemCard = ({
           <p className="text-card-title flex-1 text-lg text-[var(--text-1)]">
             {item.title}
           </p>
-          <div className="flex w-full shrink-0 items-center gap-2 opacity-100 transition-opacity md:w-auto md:opacity-0 md:group-hover:opacity-100">
+          <div className="row-actions flex w-full shrink-0 items-center gap-2 md:w-auto">
             <Button
               variant="secondary"
               className="w-full"
@@ -222,6 +223,7 @@ const InboxItemCard = ({
 };
 
 export default function InboxPage() {
+  const userId = useUserId();
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
 
@@ -251,12 +253,10 @@ export default function InboxPage() {
     queryKey: ["inbox-tasks"],
     queryFn: async () => {
       // INFRA-18: explicit user_id filter for planner index usage.
-      const { data: userSession } = await supabase.auth.getUser();
-      if (!userSession?.user) return [];
       const { data, error } = await supabase
         .from("items")
         .select("*")
-        .eq("user_id", userSession.user.id)
+        .eq("user_id", userId)
         .eq("status", "inbox")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -340,13 +340,13 @@ export default function InboxPage() {
           // BUG-38: insert FIRST, trash original only on success
           const { data: inserted, error: insertError } = await supabase
             .from("explores")
-              .insert({
-                user_id: item.user_id,
-                title: item.title,
-                type: "other",
-              })
-              .select("id")
-              .single();
+            .insert({
+              user_id: item.user_id,
+              title: item.title,
+              type: "other",
+            })
+            .select("id")
+            .single();
 
           if (insertError) throw insertError;
           if (inserted) {
@@ -374,13 +374,13 @@ export default function InboxPage() {
           // BUG-38: insert FIRST, trash original only on success
           const { data: inserted, error: insertError } = await supabase
             .from("threads")
-              .insert({
-                user_id: item.user_id,
-                title: item.title,
-                color_accent: "#2DD4BF",
-              })
-              .select("id")
-              .single();
+            .insert({
+              user_id: item.user_id,
+              title: item.title,
+              color_accent: "#2DD4BF",
+            })
+            .select("id")
+            .single();
 
           if (insertError) throw insertError;
           if (inserted) {

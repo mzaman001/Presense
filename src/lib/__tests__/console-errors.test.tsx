@@ -1,5 +1,7 @@
 import React from "react";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act } from "./test-utils";
+import { TEST_USER } from "./test-utils";
+import { SessionProvider } from "@/components/providers/SessionProvider";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
@@ -55,7 +57,9 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <SessionProvider user={TEST_USER}>
+    <QueryClientProvider client={queryClient}> {children} </QueryClientProvider>
+  </SessionProvider>
 );
 
 function chainableQuery(data: unknown = null, error: unknown = null) {
@@ -113,7 +117,6 @@ describe("Console error regression — network failures and render-phase state",
         shutdown_time: "18:00",
         daily_capacity_minutes: 240,
       },
-      lastMutations: {},
       prefetchedThreads: {},
     });
   });

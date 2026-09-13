@@ -9,23 +9,38 @@ export function formatRRule(rrule: string | null | undefined): string {
   if (!rrule) return "";
   const intervalMatch = rrule.match(/INTERVAL=(\d+)/);
   const interval = intervalMatch ? parseInt(intervalMatch[1]) : 1;
-  
-  if (rrule.includes("FREQ=DAILY")) return interval === 2 ? "Every other day" : interval > 1 ? `Every ${interval} days` : "Every day";
-  if (rrule.includes("FREQ=MONTHLY")) return interval > 1 ? `Every ${interval} months` : "Every month";
+
+  if (rrule.includes("FREQ=DAILY"))
+    return interval === 2
+      ? "Every other day"
+      : interval > 1
+        ? `Every ${interval} days`
+        : "Every day";
+  if (rrule.includes("FREQ=MONTHLY"))
+    return interval > 1 ? `Every ${interval} months` : "Every month";
   if (rrule.includes("FREQ=WEEKLY")) {
     const match = rrule.match(/BYDAY=([A-Z,]+)/);
     if (match) {
-      const days = match[1].split(',').map(d => {
+      const days = match[1].split(",").map((d) => {
         /* @todo: Untyped usage justified per TOOL-01 */
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const map: any = { MO: "Mon", TU: "Tue", WE: "Wed", TH: "Thu", FR: "Fri", SA: "Sat", SU: "Sun" };
+        const map: any = {
+          MO: "Mon",
+          TU: "Tue",
+          WE: "Wed",
+          TH: "Thu",
+          FR: "Fri",
+          SA: "Sat",
+          SU: "Sun",
+        };
         return map[d] || d;
       });
-      if (days.length === 5 && match[1] === "MO,TU,WE,TH,FR") return "Every weekday";
-      if (days.length === 2) return `Every ${days.join(' & ')}`;
+      if (days.length === 5 && match[1] === "MO,TU,WE,TH,FR")
+        return "Every weekday";
+      if (days.length === 2) return `Every ${days.join(" & ")}`;
       if (days.length > 2) {
         const last = days.pop();
-        return `Every ${days.join(', ')} & ${last}`;
+        return `Every ${days.join(", ")} & ${last}`;
       }
       return `Every ${days[0]}`;
     }
@@ -36,7 +51,8 @@ export function formatRRule(rrule: string | null | undefined): string {
 
 export function extractMentions(text: string): string[] {
   const regex = /@\[[^\]]+\]\(([^)]+)\)/g;
-  const uuidRegex = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
+  const uuidRegex =
+    /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
   const matches: string[] = [];
   let match;
   while ((match = regex.exec(text)) !== null) {
@@ -46,4 +62,27 @@ export function extractMentions(text: string): string[] {
     }
   }
   return matches;
+}
+
+/**
+ * Escapes a user-supplied search term for use inside a PostgREST `or()`
+ * filter string.
+ *
+ * `or()` takes a mini-expression language where `,` separates conditions,
+ * `(` `)` group them and `.` separates column/operator/value. Interpolating
+ * raw input let a query like `a,b.eq.c` change the filter's structure rather
+ * than just its value — the request either errors out or matches rows the
+ * user did not ask for. RLS still confines results to the caller's own rows,
+ * so this is a correctness and robustness fix, not a data-leak one.
+ *
+ * PostgREST treats a double-quoted value as a literal, and backslash escapes
+ * a quote inside it.
+ */
+export function escapeFilterValue(term: string): string {
+  return `"${term.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+/** Builds a quoted `%term%` value for an `ilike` condition inside `or()`. */
+export function ilikeContains(term: string): string {
+  return escapeFilterValue(`%${term}%`);
 }

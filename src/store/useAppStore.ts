@@ -56,7 +56,11 @@ interface AppState {
     timer: { taskId?: string; taskTitle?: string } | null,
   ) => void;
 
-  lastMutations: Record<string, number>;
+  /**
+   * Records a local write so RealtimeProvider can ignore the echo it
+   * produces. The timestamps live in the provider, not here — this is a
+   * plain delegate so mutation sites keep one import.
+   */
   markMutation: (table?: string) => void;
   activeRitual: "morning" | "evening" | null;
   setActiveRitual: (ritual: "morning" | "evening" | null) => void;
@@ -88,15 +92,7 @@ export const useAppStore = create<AppState>((set) => ({
   activeTimer: null,
   setActiveTimer: (timer) => set({ activeTimer: timer }),
 
-  lastMutations: {},
-  markMutation: (table) =>
-    set((state) => {
-      const now = Date.now();
-      markProviderMutation(table);
-      return {
-        lastMutations: { ...state.lastMutations, [table || "_global"]: now },
-      };
-    }),
+  markMutation: (table) => markProviderMutation(table),
   activeRitual: null,
   setActiveRitual: (ritual) => set({ activeRitual: ritual }),
   prefetchedThreads: {},

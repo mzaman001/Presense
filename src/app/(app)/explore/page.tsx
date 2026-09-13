@@ -1,5 +1,6 @@
 "use client";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useUserId } from "@/components/providers/SessionProvider";
 
 import React, { useEffect, useState, useCallback } from "react";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
@@ -16,8 +17,7 @@ import { PageSkeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { ExploreDrawer } from "@/components/features/ExploreDrawer";
-import { LenisProvider } from "@/components/layout/LenisProvider";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
@@ -189,6 +189,7 @@ const ExploreItemCard = ({
 };
 
 export default function ExplorePage() {
+  const userId = useUserId();
   const supabase = createClient();
   const [items, setItems] = useState<ExploreItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,12 +202,10 @@ export default function ExplorePage() {
   const fetchItems = useCallback(async () => {
     // INFRA-18: explicit user_id filter lets the planner use the
     // user_id-leading explore indexes directly instead of only the RLS policy.
-    const { data: userSession } = await supabase.auth.getUser();
-    if (!userSession?.user) return;
     let query = supabase
       .from("explores")
       .select("*")
-      .eq("user_id", userSession.user.id)
+      .eq("user_id", userId)
       .order("saved_at", { ascending: false });
 
     if (showTrash) query = query.eq("status", "deleted");
@@ -274,137 +273,120 @@ export default function ExplorePage() {
   };
 
   return (
-    <LenisProvider>
-      <div className="space-y-6">
-        <PageHeader
-          title="Explore"
-          actions={
-            <Button
-              variant="secondary"
-              onClick={() => setIsAddDrawerOpen(true)}
-              className="!border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)]"
-            >
-              <UiIcon className="h-4 w-4" icon={Plus} /> Save item
-            </Button>
-          }
-        >
-          <Tabs
-            value={showTrash ? "trash" : showArchive ? "archive" : "active"}
-            onValueChange={(v) => {
-              setShowArchive(v === "archive");
-              setShowTrash(v === "trash");
-            }}
+    <div className="space-y-6">
+      <PageHeader
+        title="Explore"
+        actions={
+          <Button
+            variant="secondary"
+            onClick={() => setIsAddDrawerOpen(true)}
+            className="!border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)]"
           >
-            <TabsList variant="line" className="border-[var(--color-border)]">
-              <TabsTrigger
-                value="active"
-                className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]"
-              >
-                Active
-              </TabsTrigger>
-              <TabsTrigger
-                value="archive"
-                className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]"
-              >
-                Archive
-              </TabsTrigger>
-              <TabsTrigger
-                value="trash"
-                className="data-active:text-[var(--accent)] data-active:after:bg-[var(--accent)]"
-              >
-                Trash
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </PageHeader>
+            <UiIcon className="h-4 w-4" icon={Plus} /> Save item
+          </Button>
+        }
+      >
+        <SegmentedControl
+          label="Explore view"
+          value={showTrash ? "trash" : showArchive ? "archive" : "active"}
+          onChange={(v) => {
+            setShowArchive(v === "archive");
+            setShowTrash(v === "trash");
+          }}
+          options={[
+            { label: "Active", value: "active" },
+            { label: "Archive", value: "archive" },
+            { label: "Trash", value: "trash" },
+          ]}
+        />
+      </PageHeader>
 
-        <div className="flex flex-col gap-6">
-          <div className="space-y-6">
-            <ContextualTip
-              id="explore_space"
-              title="Things worth keeping"
-              description="This is the Explore space. Drop interesting links, quotes, or books here to revisit them later."
-            />
+      <div className="flex flex-col gap-6">
+        <div className="space-y-6">
+          <ContextualTip
+            id="explore_space"
+            title="Things worth keeping"
+            description="This is the Explore space. Drop interesting links, quotes, or books here to revisit them later."
+          />
 
-            {/* Filter pills */}
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs transition-all",
-                    filter === f
-                      ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[var(--color-background)]"
-                      : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]",
-                  )}
-                >
-                  {f}
-                </button>
+          {/* Filter pills */}
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs transition-all",
+                  filter === f
+                    ? "border-[var(--accent)] bg-[var(--accent)] font-semibold text-[var(--color-background)]"
+                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]",
+                )}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="py-6">
+              <PageSkeleton count={4} type="card" />
+            </div>
+          ) : items.length === 0 ? (
+            <GlassCard className="flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
+                <UiIcon
+                  className="h-6 w-6 text-[var(--color-text-3)]"
+                  icon={Link2}
+                />
+              </div>
+              <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
+                Nothing saved yet
+              </h3>
+              <p className="mb-2 max-w-sm text-sm text-[var(--color-text-3)]">
+                Capture &ldquo;interesting...&rdquo; or paste a URL to save
+                articles, tweets, and links.
+              </p>
+              {/* BUG-08 / CONF-10 (Option C): thin pointer to the global trash */}
+              <Link
+                href="/trash?filter=explore"
+                className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-3)] underline underline-offset-2 hover:text-[var(--color-accent)]"
+              >
+                <UiIcon className="h-3 w-3" icon={Trash2} />
+                Check the trash for deleted saves
+              </Link>
+              <Button
+                variant="primary"
+                onClick={() => setIsAddDrawerOpen(true)}
+                className="gap-2"
+              >
+                <UiIcon size={16} icon={Plus} /> Save Link
+              </Button>
+            </GlassCard>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {items.map((item) => (
+                <ExploreItemCard
+                  key={item.id}
+                  item={item}
+                  setEditItem={setEditItem}
+                  deleteExploreItem={deleteExploreItem}
+                  timeAgo={timeAgo}
+                />
               ))}
             </div>
-
-            {loading ? (
-              <div className="py-6">
-                <PageSkeleton count={4} type="card" />
-              </div>
-            ) : items.length === 0 ? (
-              <GlassCard className="flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
-                  <UiIcon
-                    className="h-6 w-6 text-[var(--color-text-3)]"
-                    icon={Link2}
-                  />
-                </div>
-                <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
-                  Nothing saved yet
-                </h3>
-                <p className="mb-2 max-w-sm text-sm text-[var(--color-text-3)]">
-                  Capture &ldquo;interesting...&rdquo; or paste a URL to save
-                  articles, tweets, and links.
-                </p>
-                {/* BUG-08 / CONF-10 (Option C): thin pointer to the global trash */}
-                <Link
-                  href="/trash?filter=explore"
-                  className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-3)] underline underline-offset-2 hover:text-[var(--color-accent)]"
-                >
-                  <UiIcon className="h-3 w-3" icon={Trash2} />
-                  Check the trash for deleted saves
-                </Link>
-                <Button
-                  variant="primary"
-                  onClick={() => setIsAddDrawerOpen(true)}
-                  className="gap-2"
-                >
-                  <UiIcon size={16} icon={Plus} /> Save Link
-                </Button>
-              </GlassCard>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {items.map((item) => (
-                  <ExploreItemCard
-                    key={item.id}
-                    item={item}
-                    setEditItem={setEditItem}
-                    deleteExploreItem={deleteExploreItem}
-                    timeAgo={timeAgo}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </div>
-
-        <ExploreDrawer
-          item={editItem}
-          isOpen={!!editItem || isAddDrawerOpen}
-          onClose={() => {
-            setEditItem(null);
-            setIsAddDrawerOpen(false);
-          }}
-          onSaved={fetchItems}
-        />
       </div>
-    </LenisProvider>
+
+      <ExploreDrawer
+        item={editItem}
+        isOpen={!!editItem || isAddDrawerOpen}
+        onClose={() => {
+          setEditItem(null);
+          setIsAddDrawerOpen(false);
+        }}
+        onSaved={fetchItems}
+      />
+    </div>
   );
 }

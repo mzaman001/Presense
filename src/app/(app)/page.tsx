@@ -1,6 +1,8 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import type { TaskRecord } from "@/lib/task-cache";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient, safeMutate } from "@/lib/supabase";
@@ -42,18 +44,8 @@ import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { CaptureShortcut } from "@/components/layout/CaptureShortcut";
 
-interface TaskItem {
-  id: string;
-  title: string;
-  priority: number | null;
-  deadline: string | null;
-  first_step: string | null;
-  status: string;
-  snoozed_until: string | null;
-  completed_at: string | null;
-  category: string | null;
-  user_id: string;
-}
+/** Shared with Do and TaskCard — one generated shape, not a local copy. */
+type TaskItem = TaskRecord;
 
 /* @todo: Untyped usage justified per TOOL-01 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,6 +102,7 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
 }
 
 export default function HomeDashboard() {
+  const userId = useUserId();
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   const { userSettings, setActiveTimer } = useAppStore(
@@ -142,11 +135,6 @@ export default function HomeDashboard() {
   const { data: dashboardData, isLoading: loading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user");
-
       const now = new Date();
       const currentDay = now.getDay() || 7;
       const mondayStart = new Date(
@@ -178,22 +166,27 @@ export default function HomeDashboard() {
         supabase
           .from("items")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .in("status", ["active", "overdue"])
           .range(0, 99),
-        supabase.from("items").select("*").eq("user_id", user.id).eq("status", "inbox").range(0, 99),
-        supabase.from("people").select("*").eq("user_id", user.id).range(0, 99),
-        supabase.from("threads").select("*").eq("user_id", user.id).range(0, 99),
+        supabase
+          .from("items")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("status", "inbox")
+          .range(0, 99),
+        supabase.from("people").select("*").eq("user_id", userId).range(0, 99),
+        supabase.from("threads").select("*").eq("user_id", userId).range(0, 99),
         supabase
           .from("explores")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .is("revisited_at", null)
           .range(0, 99),
         supabase
           .from("items")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("status", "done")
           .gte("completed_at", mondayStart.toISOString())
           .order("completed_at", { ascending: false })
@@ -201,7 +194,7 @@ export default function HomeDashboard() {
         supabase
           .from("session_logs")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .gte("completed_at", mondayStart.toISOString())
           .eq("type", "work")
           .range(0, 99),
@@ -209,7 +202,7 @@ export default function HomeDashboard() {
         supabase
           .from("items")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("status", "done")
           .gte("completed_at", lastMondayStart.toISOString())
           .lt("completed_at", mondayStart.toISOString())
@@ -217,7 +210,7 @@ export default function HomeDashboard() {
         supabase
           .from("session_logs")
           .select("duration_minutes")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .gte("completed_at", lastMondayStart.toISOString())
           .eq("type", "work")
           .range(0, 99),
@@ -343,8 +336,6 @@ export default function HomeDashboard() {
   const saveWeeklyReflection = async () => {
     const text = weeklyReflection.trim();
     if (!text) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
     // Monday-start week label, e.g. "Aug 10 – Aug 16".
     const mon = new Date(mondayStartForLabel());
     const sun = new Date(mon);
@@ -355,22 +346,26 @@ export default function HomeDashboard() {
       .from("threads")
       .select("id, entries")
       .eq("title", title)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("status", "active")
       .limit(1);
     /* @todo: Untyped usage justified per TOOL-01 */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (selError) { toast.error("Failed to save reflection"); return; }
+
+    if (selError) {
+      toast.error("Failed to save reflection");
+      return;
+    }
     const entry: { text: string; created_at: string } = {
       text,
       created_at: new Date().toISOString(),
     };
     /* @todo: Untyped usage justified per TOOL-01 */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     let threadId: string | null = null;
     if (existing && existing.length > 0) {
       threadId = existing[0].id;
-      const prev: { text: string; created_at: string }[] = (existing[0].entries as { text: string; created_at: string }[]) || [];
+      const prev: { text: string; created_at: string }[] =
+        (existing[0].entries as { text: string; created_at: string }[]) || [];
       if (prev.some((e) => e.text === text)) {
         toast.info("Reflection already saved for this week");
         setWeeklyReflection("");
@@ -378,16 +373,31 @@ export default function HomeDashboard() {
       }
       const { error } = await supabase
         .from("threads")
-        .update({ entries: [...prev, entry], last_updated: new Date().toISOString() })
+        .update({
+          entries: [...prev, entry],
+          last_updated: new Date().toISOString(),
+        })
         .eq("id", threadId);
-      if (error) { toast.error("Failed to save reflection"); return; }
+      if (error) {
+        toast.error("Failed to save reflection");
+        return;
+      }
     } else {
       const { data, error } = await supabase
         .from("threads")
-        .insert({ user_id: user.id, title, color_accent: "#E5B41E", is_pinned: true, entries: [entry] })
+        .insert({
+          user_id: userId,
+          title,
+          color_accent: "#E5B41E",
+          is_pinned: true,
+          entries: [entry],
+        })
         .select("id")
         .single();
-      if (error || !data) { toast.error("Failed to save reflection"); return; }
+      if (error || !data) {
+        toast.error("Failed to save reflection");
+        return;
+      }
       threadId = data.id;
     }
     toast.success("Weekly reflection saved");
@@ -400,7 +410,15 @@ export default function HomeDashboard() {
   const mondayStartForLabel = () => {
     const now = new Date();
     const currentDay = now.getDay() || 7;
-    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - currentDay + 1, 0, 0, 0, 0);
+    const monday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - currentDay + 1,
+      0,
+      0,
+      0,
+      0,
+    );
     return monday.getTime();
   };
 
@@ -409,8 +427,7 @@ export default function HomeDashboard() {
     try {
       if (space === "do") {
         const { success } = await safeMutate(
-          () =>
-            supabase.from("items").update(activateItemPatch()).eq("id", id),
+          () => supabase.from("items").update(activateItemPatch()).eq("id", id),
           "Failed to route to Do",
         );
         if (!success) return;
@@ -468,7 +485,8 @@ export default function HomeDashboard() {
         // INFRA-19: dismiss = trash with deleted_at; a bare status: "deleted"
         // write would break the trash contract (retention purge + restore rely
         // on deleted_at being set).
-        () => supabase.from("items").update(moveItemToTrashPatch()).eq("id", id),
+        () =>
+          supabase.from("items").update(moveItemToTrashPatch()).eq("id", id),
         "Failed to dismiss",
       );
       if (!success) return;
@@ -565,7 +583,10 @@ export default function HomeDashboard() {
         {showReview ? (
           <div className="space-y-6">
             <GlassCard className="flex items-center gap-3 p-4">
-              <UiIcon className="h-4 w-4 text-[var(--accent)]" icon={CalendarDays} />
+              <UiIcon
+                className="h-4 w-4 text-[var(--accent)]"
+                icon={CalendarDays}
+              />
               <div className="text-sm font-medium text-[var(--color-text-1)]">
                 {(() => {
                   const mon = new Date(mondayStartForLabel());
@@ -573,7 +594,9 @@ export default function HomeDashboard() {
                   sun.setDate(sun.getDate() + 6);
                   return `${mon.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${sun.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
                 })()}
-                <span className="ml-2 font-normal text-[var(--color-text-3)]">Week in Review</span>
+                <span className="ml-2 font-normal text-[var(--color-text-3)]">
+                  Week in Review
+                </span>
               </div>
             </GlassCard>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -602,7 +625,8 @@ export default function HomeDashboard() {
                 </div>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-3xl font-light text-[var(--color-text-1)]">
-                    {Math.floor(focusMinutesThisWeek / 60)}h {focusMinutesThisWeek % 60}m
+                    {Math.floor(focusMinutesThisWeek / 60)}h{" "}
+                    {focusMinutesThisWeek % 60}m
                   </span>
                   <span className="text-xs text-[var(--color-text-3)]">
                     {focusMinutesThisWeek > focusMinutesLastWeek
@@ -620,11 +644,22 @@ export default function HomeDashboard() {
               </div>
               <div className="flex items-end gap-1.5">
                 {dayCounts.map((count, i) => {
-                  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                  const labels = [
+                    "Mon",
+                    "Tue",
+                    "Wed",
+                    "Thu",
+                    "Fri",
+                    "Sat",
+                    "Sun",
+                  ];
                   const max = Math.max(1, ...dayCounts);
                   const h = Math.max(4, Math.round((count / max) * 56));
                   return (
-                    <div key={labels[i]} className="flex flex-1 flex-col items-center gap-1.5">
+                    <div
+                      key={labels[i]}
+                      className="flex flex-1 flex-col items-center gap-1.5"
+                    >
                       <div
                         className="w-full rounded-sm bg-[var(--accent)]/25"
                         style={{ height: count > 0 ? h : 4 }}
@@ -638,14 +673,15 @@ export default function HomeDashboard() {
               </div>
               {doneTasks.length === 0 && (
                 <p className="mt-3 text-xs text-[var(--color-text-3)]">
-                  No completions this week yet — data appears here as tasks are finished.
+                  No completions this week yet — data appears here as tasks are
+                  finished.
                 </p>
               )}
             </GlassCard>
             <GlassCard className="p-5">
               <div className="mb-3 text-xs tracking-wider text-[var(--color-text-3)] uppercase">
                 Reflection{" "}
-                <span className="font-normal normal-case tracking-normal">
+                <span className="font-normal tracking-normal normal-case">
                   (optional — write if you want to)
                 </span>
               </div>
@@ -1108,7 +1144,7 @@ export default function HomeDashboard() {
                         <p className="text-card-title flex-1 text-[var(--text-1)]">
                           {item.title}
                         </p>
-                        <div className="flex w-full shrink-0 items-center gap-2 opacity-100 transition-opacity md:w-auto md:opacity-0 md:group-hover:opacity-100">
+                        <div className="row-actions flex w-full shrink-0 items-center gap-2 md:w-auto">
                           <div className="relative flex-1 md:flex-none">
                             <Button
                               variant="secondary"

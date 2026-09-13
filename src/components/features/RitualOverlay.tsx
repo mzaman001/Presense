@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient, safeMutate } from "@/lib/supabase";
@@ -257,6 +258,7 @@ export function RitualOverlay({
   type,
   onClose,
 }: RitualOverlayProps = {}) {
+  const userId = useUserId();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -378,17 +380,12 @@ export function RitualOverlay({
     const fetchData = async () => {
       setLoading(true);
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
-
         if (activeRitual === "morning") {
           // INFRA-18: explicit user_id filter for planner index usage.
           const { data: tasks } = await supabase
             .from("items")
             .select("*")
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .in("status", ["inbox", "active", "overdue"]);
           if (tasks) {
             const todayStart = new Date().setHours(0, 0, 0, 0);
@@ -425,18 +422,18 @@ export function RitualOverlay({
               supabase
                 .from("items")
                 .select("*")
-                .eq("user_id", user.id)
+                .eq("user_id", userId)
                 .eq("status", "done")
                 .gte("completed_at", startISO),
               supabase
                 .from("items")
                 .select("*")
-                .eq("user_id", user.id)
+                .eq("user_id", userId)
                 .eq("status", "active"),
               supabase
                 .from("session_logs")
                 .select("*")
-                .eq("user_id", user.id)
+                .eq("user_id", userId)
                 .eq("type", "work")
                 .gte("completed_at", startISO),
             ]);
@@ -573,22 +570,17 @@ export function RitualOverlay({
   const handleFinishMorning = async () => {
     setSaving(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user");
-
       const { error } = await supabase
         .from("user_settings")
         .update({
           last_ritual_date: todayString,
         })
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
       if (error) throw error;
 
       const { error: logError } = await supabase
         .from("ritual_logs")
-        .insert({ user_id: user.id, ritual_type: "morning" });
+        .insert({ user_id: userId, ritual_type: "morning" });
       if (logError) console.error("Failed to log morning ritual:", logError);
 
       updateUserSetting("last_ritual_date", todayString);
@@ -652,10 +644,6 @@ export function RitualOverlay({
   const handleFinishEvening = async () => {
     setSaving(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user");
       if (reflection.trim()) {
         const dateStr = new Date().toLocaleDateString("en-US", {
           month: "short",
@@ -667,7 +655,7 @@ export function RitualOverlay({
           .from("threads")
           .select("*")
           .eq("title", title)
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("status", "active")
           .limit(1);
         /* @todo: Untyped usage justified per TOOL-01 */
@@ -682,7 +670,7 @@ export function RitualOverlay({
           const { data: ins, error: insError } = await supabase
             .from("threads")
             .insert({
-              user_id: user.id,
+              user_id: userId,
               title,
               color_accent: "#E5B41E",
               is_pinned: true,
@@ -720,12 +708,12 @@ export function RitualOverlay({
         .update({
           last_evening_ritual_date: todayString,
         })
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
       if (error) throw error;
 
       const { error: logError } = await supabase
         .from("ritual_logs")
-        .insert({ user_id: user.id, ritual_type: "evening" });
+        .insert({ user_id: userId, ritual_type: "evening" });
       if (logError) console.error("Failed to log evening ritual:", logError);
 
       updateUserSetting("last_evening_ritual_date", todayString);
@@ -743,10 +731,7 @@ export function RitualOverlay({
   };
 
   const handleSkip = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
+    if (userId) {
       // BUG-38: check error before claiming the skip succeeded
       if (activeRitual === "morning") {
         const { success } = await safeMutate(
@@ -754,7 +739,7 @@ export function RitualOverlay({
             supabase
               .from("user_settings")
               .update({ last_ritual_date: todayString })
-              .eq("user_id", user.id),
+              .eq("user_id", userId),
           "Failed to skip ritual",
         );
         if (!success) return;
@@ -765,7 +750,7 @@ export function RitualOverlay({
             supabase
               .from("user_settings")
               .update({ last_evening_ritual_date: todayString })
-              .eq("user_id", user.id),
+              .eq("user_id", userId),
           "Failed to skip ritual",
         );
         if (!success) return;

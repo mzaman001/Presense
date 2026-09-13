@@ -1,9 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
-export function useIsTouch() {
-  const [isTouch, setIsTouch] = useState(false);
-  useEffect(() => {
-    setIsTouch(window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window);
-  }, []);
-  return isTouch;
+/** True when the primary pointer is coarse (touch). */
+export function useIsTouch(): boolean {
+  return useMediaQuery("(pointer: coarse)");
 }

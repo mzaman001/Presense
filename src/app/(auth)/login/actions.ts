@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { getAuthCallbackUrl } from "@/lib/auth-redirect";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
+import * as Sentry from "@sentry/nextjs";
 
 const MAGIC_LINK_SENT_MESSAGE =
   "If an account exists for this email, a sign-in link has been sent.";
@@ -51,10 +52,14 @@ export async function sendMagicLink(formData: FormData) {
       ...(captchaToken ? { captchaToken } : {}),
     },
   });
-  // Supabase intentionally does not reveal whether an address has an account.
-  // Preserve that guarantee even when an upstream provider rejects delivery.
-  if (error)
-    return { error: null as string | null, message: MAGIC_LINK_SENT_MESSAGE };
+  // Supabase intentionally does not reveal whether an address has an account,
+  // so the caller always gets the same message. That is a deliberate
+  // anti-enumeration choice about what the *user* sees — it should not also
+  // hide a broken mail provider from us, which is what dropping the error
+  // entirely did. Report it, answer generically.
+  if (error) {
+    Sentry.captureException(error, { tags: { action: "sendMagicLink" } });
+  }
   return { error: null as string | null, message: MAGIC_LINK_SENT_MESSAGE };
 }
 

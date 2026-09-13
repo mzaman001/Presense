@@ -1,146 +1,149 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { ArrowLeft, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import { restoreItemPatch } from "@/lib/item-lifecycle";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { EmptyState } from "@/components/ui/EmptyState";
 
-const TYPE_LABELS: Record<string, string> = {
-  explore: "Explore",
-  item: "Task",
-  thread: "Thread",
-  person: "Person",
-  location: "Location",
-};
+/**
+ * The five soft-deletable entities. `table` is the Supabase table; `type` is
+ * the value per-space pointers pass as `?filter=`.
+ */
+const TRASH_SOURCES = [
+  { type: "explore", table: "explores", label: "Explore", nameColumn: "title" },
+  { type: "item", table: "items", label: "Task", nameColumn: "title" },
+  { type: "thread", table: "threads", label: "Thread", nameColumn: "title" },
+  { type: "person", table: "people", label: "Person", nameColumn: "name" },
+  {
+    type: "location",
+    table: "locations",
+    label: "Location",
+    nameColumn: "name",
+  },
+] as const;
+
+type TrashType = (typeof TRASH_SOURCES)[number]["type"];
+type TrashTable = (typeof TRASH_SOURCES)[number]["table"];
+
+interface TrashEntry {
+  id: string;
+  /** Display name, read from each table's own title/name column. */
+  label: string;
+  typeLabel: string;
+  deletedAt: string | null;
+  type: TrashType;
+  table: TrashTable;
+}
+
+function isTrashType(value: string | null): value is TrashType {
+  return TRASH_SOURCES.some((source) => source.type === value);
+}
 
 export default function TrashPage() {
-  const supabase = createClient();
+  const userId = useUserId();
+  const queryClient = useQueryClient();
+  const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
-  // BUG-08 / CONF-10 (Option C): per-space pointers link here with
-  // ?filter=<type> to show only that entity type in the trash.
-  const filterType = searchParams.get("filter");
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [itemToPermanentDelete, setItemToPermanentDelete] = useState<any>(null);
+  // Per-space pointers link here with ?filter=<type> to scope the view.
+  const filterParam = searchParams.get("filter");
+  const filterType = isTrashType(filterParam) ? filterParam : null;
 
-  const fetchTrash = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+  const [itemToPermanentDelete, setItemToPermanentDelete] =
+    useState<TrashEntry | null>(null);
 
-    // BUG-08: a single status value + deleted_at convention across all five
-    // tables. fetchType is only a *view* preference (all five are always
-    // fetched — per-space views are a browsing surface, not separate logic).
-    const fetchType =
-      filterType === "explore" ||
-      filterType === "item" ||
-      filterType === "thread" ||
-      filterType === "person" ||
-      filterType === "location"
-        ? filterType
-        : null;
+  const {
+    data: items = [],
+    isPending,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    // The filter is part of the key: a scoped view queries only its own
+    // table rather than fetching all five and discarding four client-side.
+    queryKey: ["trash", filterType],
+    queryFn: async (): Promise<TrashEntry[]> => {
+      const sources = filterType
+        ? TRASH_SOURCES.filter((source) => source.type === filterType)
+        : TRASH_SOURCES;
 
-    // Fetch deleted explores, items, threads, people, and locations
-    const [exploresRes, itemsRes, threadsRes, peopleRes, locationsRes] =
-      await Promise.all([
-        supabase
-          .from("explores")
-          .select("*")
-          .eq("user_id", user.id) // INFRA-18
-          .eq("status", "deleted")
-          .order("deleted_at", { ascending: false }),
-        supabase
-          .from("items")
-          .select("*")
-          .eq("user_id", user.id) // INFRA-18
-          .eq("status", "deleted")
-          .order("deleted_at", { ascending: false }),
-        supabase
-          .from("threads")
-          .select("*")
-          .eq("user_id", user.id) // INFRA-18
-          .eq("status", "deleted")
-          .order("deleted_at", { ascending: false }),
-        supabase
-          .from("people")
-          .select("*")
-          .eq("user_id", user.id) // INFRA-18
-          .eq("status", "deleted")
-          .order("deleted_at", { ascending: false }),
-        supabase
-          .from("locations")
-          .select("*")
-          .eq("user_id", user.id) // INFRA-18
-          .eq("status", "deleted")
-          .order("deleted_at", { ascending: false }),
-      ]);
+      const results = await Promise.all(
+        sources.map(async (source) => {
+          // Narrow projection: the list shows a name and a date, so there is
+          // no reason to pull whole rows across the wire. The select string
+          // is a literal per branch so the generated Database types still
+          // check the columns.
+          const query = supabase
+            .from(source.table)
+            .select(
+              source.nameColumn === "title"
+                ? "id, deleted_at, title"
+                : "id, deleted_at, name",
+            )
+            .eq("user_id", userId)
+            .eq("status", "deleted")
+            .order("deleted_at", { ascending: false })
+            .limit(200)
+            // The select string varies per table, so the generated row type
+            // widens to a union the builder cannot narrow. The columns are
+            // still checked against Database above; this only pins the shape
+            // the mapper below reads.
+            .overrideTypes<
+              {
+                id: string;
+                deleted_at: string | null;
+                title?: string | null;
+                name?: string | null;
+              }[]
+            >();
 
-    const combined = [
-      /* @todo: Untyped usage justified per TOOL-01 */
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(exploresRes.data || []).map((i: any) => ({
-        ...i,
-        __type: "explore",
-      })),
-      /* @todo: Untyped usage justified per TOOL-01 */
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(itemsRes.data || []).map((i: any) => ({ ...i, __type: "item" })),
-      /* @todo: Untyped usage justified per TOOL-01 */
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(threadsRes.data || []).map((i: any) => ({ ...i, __type: "thread" })),
-      /* @todo: Untyped usage justified per TOOL-01 */
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(peopleRes.data || []).map((i: any) => ({ ...i, __type: "person" })),
-      /* @todo: Untyped usage justified per TOOL-01 */
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(locationsRes.data || []).map((i: any) => ({
-        ...i,
-                __type: "location",
-      })),
-      /* @todo: Untyped usage justified per TOOL-01 */
-    ]
-      .filter((i: any) => (fetchType ? i.__type === fetchType : true))
-      .sort(
-        (a: any, b: any) =>
-          new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime(),
+          const { data, error: queryError } = await query;
+
+          // Surface the failure instead of rendering "Trash is empty" — the
+          // old code swallowed every error with `|| []`, so a broken query
+          // was indistinguishable from an actually empty trash.
+          if (queryError) throw queryError;
+
+          return (data ?? []).map((row): TrashEntry => ({
+            id: row.id,
+            label: row.title ?? row.name ?? "Untitled",
+            typeLabel: source.label,
+            deletedAt: row.deleted_at,
+            type: source.type,
+            table: source.table,
+          }));
+        }),
       );
 
-    setItems(combined);
-    setLoading(false);
-  }, [supabase, filterType]);
+      return results
+        .flat()
+        .sort(
+          (a, b) =>
+            new Date(b.deletedAt ?? 0).getTime() -
+            new Date(a.deletedAt ?? 0).getTime(),
+        );
+    },
+  });
 
-  useEffect(() => {
-    fetchTrash();
-  }, [fetchTrash]);
-
-  /* @todo: Untyped usage justified per TOOL-01 */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleRestore = async (item: any) => {
+  const handleRestore = async (entry: TrashEntry) => {
     try {
-      const table =
-        item.__type === "explore"
-          ? "explores"
-          : item.__type === "item"
-            ? "items"
-            : item.__type === "thread"
-              ? "threads"
-              : item.__type === "person"
-                ? "people"
-                : "locations";
-      const { error } = await supabase
-        .from(table)
+      const { error: restoreError } = await supabase
+        .from(entry.table)
         .update(restoreItemPatch())
-        .eq("id", item.id);
-      if (error) throw error;
-      setItems(items.filter((i) => i.id !== item.id));
-      toast.success("Item restored");
+        .eq("id", entry.id);
+      if (restoreError) throw restoreError;
+      // The restored row rejoins its own space, so invalidate broadly rather
+      // than splicing it out of one local array.
+      await queryClient.invalidateQueries({ queryKey: ["trash"] });
+      toast.success(`${entry.typeLabel} restored`);
     } catch (err: unknown) {
       toast.error("Failed to restore", {
         description: err instanceof Error ? err.message : "Unknown error",
@@ -151,22 +154,12 @@ export default function TrashPage() {
   const handlePermanentDelete = async () => {
     if (!itemToPermanentDelete) return;
     try {
-      const table =
-        itemToPermanentDelete.__type === "explore"
-          ? "explores"
-          : itemToPermanentDelete.__type === "item"
-            ? "items"
-            : itemToPermanentDelete.__type === "thread"
-              ? "threads"
-              : itemToPermanentDelete.__type === "person"
-                ? "people"
-                : "locations";
-      const { error } = await supabase
-        .from(table)
+      const { error: deleteError } = await supabase
+        .from(itemToPermanentDelete.table)
         .delete()
         .eq("id", itemToPermanentDelete.id);
-      if (error) throw error;
-      setItems(items.filter((i) => i.id !== itemToPermanentDelete.id));
+      if (deleteError) throw deleteError;
+      await queryClient.invalidateQueries({ queryKey: ["trash"] });
       toast.success("Permanently deleted");
     } catch (err: unknown) {
       toast.error("Failed to delete", {
@@ -188,66 +181,84 @@ export default function TrashPage() {
           Trash
         </h1>
         <p className="mt-1 text-[var(--color-text-3)]">
-          Items you've deleted. Restore or remove them permanently.
+          Items you&apos;ve deleted. Restore or remove them permanently.
         </p>
       </header>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
+      {isPending ? (
+        <div
+          className="flex items-center justify-center py-20"
+          role="status"
+          aria-label="Loading trash"
+        >
           <UiIcon
             className="h-8 w-8 animate-spin text-[var(--color-text-3)]"
             icon={Loader2}
           />
         </div>
-      ) : items.length === 0 ? (
+      ) : isError ? (
+        /* A failed query used to render as "Trash is empty", which quietly
+           told the user their deleted items were gone. Say what happened
+           and offer a retry instead. */
         <GlassCard className="border-dashed border-[var(--color-border)] p-12 text-center">
-          <UiIcon
-            className="mx-auto mb-4 h-8 w-8 text-[var(--color-text-3)]"
-            icon={Trash2}
-          />
           <h3 className="text-section-title mb-2 text-[var(--text-1)]">
-            Trash is empty
+            Couldn&apos;t load your trash
           </h3>
-          <p className="text-sm text-[var(--color-text-3)]">
-            Nothing to see here.
+          <p className="mb-4 text-sm text-[var(--color-text-3)]">
+            {error instanceof Error
+              ? error.message
+              : "Something went wrong reaching the server."}
           </p>
+          <button
+            onClick={() => refetch()}
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-[var(--color-accent)]/10 px-4 text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/20"
+          >
+            <UiIcon className="h-4 w-4" icon={RefreshCw} /> Try again
+          </button>
         </GlassCard>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={Trash2}
+          title="Trash is empty"
+          description="Items you delete land here first, so nothing is lost by accident."
+        />
       ) : (
         <div className="space-y-3">
-          {items.map((item) => (
+          {items.map((entry) => (
             <GlassCard
-              key={item.id}
-              className="group flex items-center justify-between p-4"
+              key={`${entry.type}-${entry.id}`}
+              className="group flex flex-wrap items-center justify-between gap-3 p-4"
             >
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-caption rounded border border-[var(--color-border)] px-2 py-0.5 tracking-widest text-[var(--color-text-3)] uppercase">
-                    {TYPE_LABELS[item.__type] ?? item.__type}
+                    {entry.typeLabel}
                   </span>
-                  <h4 className="text-card-title text-[var(--text-1)]">
-                    {item.title || item.name}
+                  <h4 className="text-card-title truncate text-[var(--text-1)]">
+                    {entry.label}
                   </h4>
                 </div>
                 <p className="mt-1 text-xs text-[var(--color-text-3)]">
                   Deleted:{" "}
-                  {item.deleted_at
-                    ? new Date(item.deleted_at).toLocaleDateString()
+                  {entry.deletedAt
+                    ? new Date(entry.deletedAt).toLocaleDateString()
                     : "Unknown"}
                 </p>
               </div>
-              <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="row-actions flex items-center gap-2">
                 <button
-                  onClick={() => handleRestore(item)}
-                  className="flex items-center gap-1.5 rounded-lg bg-[var(--color-accent)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/20"
+                  onClick={() => handleRestore(entry)}
+                  className="flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[var(--color-accent)]/10 px-3 text-xs font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/20"
                 >
-                  <UiIcon className="h-3.5 w-3.5" icon={RefreshCw} /> Restore
+                  <UiIcon className="h-3.5 w-3.5" icon={RefreshCw} />
+                  Restore
                 </button>
                 <button
-                  onClick={() => setItemToPermanentDelete(item)}
-                  className="flex items-center gap-1.5 rounded-lg bg-[#F87171]/10 px-3 py-1.5 text-xs font-medium text-[#F87171] transition-colors hover:bg-[#F87171]/20"
+                  onClick={() => setItemToPermanentDelete(entry)}
+                  className="flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#F87171]/10 px-3 text-xs font-medium text-[#F87171] transition-colors hover:bg-[#F87171]/20"
                 >
-                  <UiIcon className="h-3.5 w-3.5" icon={Trash2} /> Delete
-                  Forever
+                  <UiIcon className="h-3.5 w-3.5" icon={Trash2} />
+                  Delete forever
                 </button>
               </div>
             </GlassCard>

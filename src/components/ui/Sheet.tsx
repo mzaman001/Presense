@@ -17,16 +17,28 @@ interface SheetProps {
   className?: string;
 }
 
-export function Sheet({ isOpen, onClose, title, children, className }: SheetProps) {
+export function Sheet({
+  isOpen,
+  onClose,
+  title,
+  children,
+  className,
+}: SheetProps) {
   const dialogRef = useDialogFocus(isOpen);
   const vp = useVisualViewport();
   const dragControls = useDragControls();
   useBodyScrollLock(isOpen);
 
   // Calculate keyboard offset for mobile
-  const keyboardOffset = typeof window !== "undefined" && window.visualViewport
-    ? Math.max(0, (window.innerHeight || 0) - (vp.height || 0) - (window.visualViewport.offsetTop || 0))
-    : 0;
+  const keyboardOffset =
+    typeof window !== "undefined" && window.visualViewport
+      ? Math.max(
+          0,
+          (window.innerHeight || 0) -
+            (vp.height || 0) -
+            (window.visualViewport.offsetTop || 0),
+        )
+      : 0;
 
   // Handle escape key
   useEffect(() => {
@@ -53,7 +65,10 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
           />
 
           {/* Sheet Container */}
-          <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end md:justify-center md:items-center p-0 md:p-6" style={{ paddingBottom: `${keyboardOffset}px` }}>
+          <div
+            className="pointer-events-none fixed inset-0 z-[100] flex flex-col justify-end p-0 md:items-center md:justify-center md:p-6"
+            style={{ paddingBottom: `${keyboardOffset}px` }}
+          >
             <m.div
               ref={dialogRef}
               drag="y"
@@ -71,34 +86,38 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               exit={{ y: "100%", opacity: 0 }}
               transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               className={cn(
-                "modal pointer-events-auto w-full max-h-[90vh] flex flex-col",
-                "rounded-t-[24px] md:rounded-[20px] overflow-hidden",
-                "md:max-w-xl md:max-h-[85vh]",
-                className
+                "modal pointer-events-auto flex max-h-[90vh] w-full flex-col",
+                "overflow-hidden rounded-t-[24px] md:rounded-[20px]",
+                "md:max-h-[85vh] md:max-w-xl",
+                className,
               )}
-              style={{ paddingBottom: `${keyboardOffset}px`, backdropFilter: 'blur(48px)', WebkitBackdropFilter: 'blur(48px)' }}
+              style={{
+                paddingBottom: `${keyboardOffset}px`,
+                backdropFilter: "blur(48px)",
+                WebkitBackdropFilter: "blur(48px)",
+              }}
               role="dialog"
               aria-modal="true"
               aria-label={typeof title === "string" ? title : undefined}
             >
               {/* Mobile Drag Handle — only this element can initiate swipe-to-dismiss */}
               <div
-                className="w-full flex justify-center pt-3 pb-1 md:hidden touch-none cursor-grab active:cursor-grabbing"
+                className="flex w-full cursor-grab touch-none justify-center pt-3 pb-1 active:cursor-grabbing md:hidden"
                 onPointerDown={(e) => dragControls.start(e)}
               >
-                <div className="w-12 h-1.5 rounded-full bg-[var(--border-strong)] opacity-50" />
+                <div className="h-1.5 w-12 rounded-full bg-[var(--border-strong)] opacity-50" />
               </div>
 
               {/* Header - only show if title is provided */}
               {title && (
-                <div className="flex items-center justify-between px-4 py-3 md:p-5 border-b border-[var(--border-subtle)] shrink-0">
+                <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3 md:p-5">
                   <div className="text-title-lg font-semibold text-[var(--color-text-1)]">
                     {title}
                   </div>
                   <button
                     onClick={onClose}
                     aria-label="Close"
-                    className="p-1.5 rounded-full text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] transition-colors"
+                    className="rounded-full p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--color-text-1)]"
                   >
                     <UiIcon size={20} strokeWidth={2} icon={X} />
                   </button>
@@ -106,7 +125,7 @@ export function Sheet({ isOpen, onClose, title, children, className }: SheetProp
               )}
 
               {/* Content */}
-              <div className="p-4 md:p-5 overflow-y-auto overscroll-contain flex-1" data-lenis-prevent>
+              <div className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-5">
                 {children}
               </div>
             </m.div>

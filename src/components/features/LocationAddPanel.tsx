@@ -1,4 +1,5 @@
 import { Input } from "../ui/Input";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { logger } from "@/lib/logger";
 import React, { useState, useEffect, useRef } from "react";
 import { Loader2, Trash2 } from "lucide-react";
@@ -34,6 +35,7 @@ export function LocationAddPanel({
   itemToEdit,
   initialName,
 }: LocationAddPanelProps) {
+  const userId = useUserId();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
@@ -95,11 +97,8 @@ export function LocationAddPanel({
 
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
 
-      if (user) {
+      if (userId) {
         if (itemToEdit) {
           const { error } = await supabase
             .from("locations")
@@ -114,7 +113,7 @@ export function LocationAddPanel({
           toast.success("Location updated");
         } else {
           const { error } = await supabase.from("locations").insert({
-            user_id: user.id,
+            user_id: userId,
             item_name: data.itemName.trim(),
             location_text: data.locationText.trim(),
           });

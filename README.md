@@ -5,7 +5,7 @@
   <p>
     <a href="https://presense-kohl.vercel.app/"><b>Live demo</b></a> ·
     <a href="https://github.com/mzaman001/Presense/issues">Issues</a> ·
-    <a href="docs/plans/EXECUTION_SPEC.md">Roadmap</a>
+    <a href="docs/QUEUE.md">Current state</a>
   </p>
 </div>
 
@@ -41,7 +41,7 @@ npx supabase db push
 npm run dev                  # http://localhost:3000
 ```
 
-The schema is 29 migrations pushed with `db push`. For production, deploy the two edge functions (`cron_cleanup`, `cron_recurrence`) and schedule them from the Supabase dashboard — see `docs/architecture/` for the full setup guide.
+The schema is 31 migrations pushed with `db push`. For production, deploy the two edge functions (`cron_cleanup`, `cron_recurrence`) and schedule them from the Supabase dashboard.
 
 ## Stack
 
@@ -55,18 +55,18 @@ Built with [Next.js 16](https://nextjs.org) (App Router), [React 19](https://rea
 | Styling | Tailwind CSS 4 + Framer Motion 12 |
 | Capture | compromise 14 + chrono-node 2 (client-side) |
 | PWA | Serwist 9 |
-| Testing | Vitest 4 (181 tests) + Playwright |
+| Testing | Vitest 4 (213 tests) + Playwright |
 | CI | GitHub Actions: lint, typecheck, tests, build, osv-scanner, semgrep |
 
 Architecture details, the data model, and the design system are documented under [`docs/`](docs/).
 
 ## Roadmap
 
-Open work is tracked in [`docs/plans/EXECUTION_SPEC.md`](docs/plans/EXECUTION_SPEC.md); new issues go in [GitHub Issues](https://github.com/mzaman001/Presense/issues). The short-term focus is the remaining high-priority UI bugs (see Issues), followed by design-system consolidation.
+Current state and open work are in [`docs/QUEUE.md`](docs/QUEUE.md); new issues go in [GitHub Issues](https://github.com/mzaman001/Presense/issues). The largest remaining item is moving pages from Client to Server Components.
 
 ## Contributing
 
-Presense has a strict one-ticket-at-a-time development contract, written for both humans and AI agents. Before opening a PR, read [`AGENTS.md`](AGENTS.md) (the entry point) and [`docs/agents/EXECUTION_RULES.md`](docs/agents/EXECUTION_RULES.md) (the rules: one ticket per session, build + test after every change, conventional commits, status records in `EXECUTION_SPEC.md`). Pick an unblocked ticket from the spec, create a branch named after the ticket ID, and open a PR.
+Read [`AGENTS.md`](AGENTS.md) first — it is the entry point for both humans and AI agents, and it holds the architecture, the invariants and the quality bar. Before opening a PR, `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm test` and `npm run build` must all pass.
 
 ## License
 

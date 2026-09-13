@@ -1,15 +1,15 @@
 import React from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  act,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "./test-utils";
+import { TEST_USER } from "./test-utils";
+import { SessionProvider } from "@/components/providers/SessionProvider";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import { useRealtime } from "@/hooks/useRealtime";
+import {
+  RealtimeProvider,
+  resetMutationTracking,
+} from "@/components/providers/RealtimeProvider";
 
 // Import stubs/components to test
 import { RitualOverlay } from "@/components/features/RitualOverlay";
@@ -36,20 +36,24 @@ vi.mock("next/navigation", () => ({
 // Mock react-textarea-autosize
 vi.mock("react-textarea-autosize", () => {
   return {
-    // eslint-disable-next-line react/display-name, @typescript-eslint/no-explicit-any
-    default: React.forwardRef(
-      ({ minRows, maxRows, ...props }: any, ref: any) => {
-        return (
-          <textarea
-            ref={ref}
-            data-testid="autosize-textarea"
-            data-minrows={minRows}
-            data-maxrows={maxRows}
-            {...props}
-          />
-        );
-      },
-    ),
+    // eslint-disable-next-line react/display-name
+    default: React.forwardRef<
+      HTMLTextAreaElement,
+      React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+        minRows?: number;
+        maxRows?: number;
+      }
+    >(({ minRows, maxRows, ...props }, ref) => {
+      return (
+        <textarea
+          ref={ref}
+          data-testid="autosize-textarea"
+          data-minrows={minRows}
+          data-maxrows={maxRows}
+          {...props}
+        />
+      );
+    }),
   };
 });
 
@@ -90,7 +94,9 @@ const queryClient = new QueryClient({
 });
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <SessionProvider user={TEST_USER}>
+    <QueryClientProvider client={queryClient}> {children} </QueryClientProvider>
+  </SessionProvider>
 );
 
 // Helper function to build a chainable Supabase query mock
@@ -135,6 +141,19 @@ function TestRealtimeComponent({
   );
 }
 
+/**
+ * The hook subscribes only through RealtimeProvider, so these tests render
+ * inside one. Previously they rendered bare, which exercised a standalone
+ * fallback path that never ran in the real app.
+ */
+function RealtimeHarness(props: { table: string; onUpdate: () => void }) {
+  return (
+    <RealtimeProvider>
+      <TestRealtimeComponent {...props} />
+    </RealtimeProvider>
+  );
+}
+
 describe("Phase 4 - E2E & Integration Test Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -144,6 +163,9 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
     mockSupabase.from.mockImplementation(() => mockSupabaseQuery([]));
     vi.useFakeTimers();
     postgresChangesCallback = null;
+    // Echo-suppression timestamps are module state; under fake timers a mark
+    // from a previous test would still read as "just now" and swallow events.
+    resetMutationTracking();
 
     // Mock matchMedia for jsdom
     Object.defineProperty(window, "matchMedia", {
@@ -174,7 +196,6 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         daily_capacity_minutes: 240,
         last_ritual_date: "",
       },
-      lastMutations: {},
       prefetchedThreads: {},
     });
   });
@@ -192,7 +213,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
     describe("Tier 1: Happy Path", () => {
       it("should register a subscription on the specified table when mounted", () => {
         const onUpdate = vi.fn();
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
         expect(mockSupabase.channel).toHaveBeenCalledWith("realtime_items");
         expect(mockChannel.on).toHaveBeenCalledWith(
@@ -205,7 +226,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
       it("should call onUpdate when a Postgres change event occurs and no local mutation exists", async () => {
         const onUpdate = vi.fn();
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
         // Simulate incoming event
         act(() => {
@@ -224,7 +245,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
       it("should allow updates immediately if the local mutation was on a different table", async () => {
         const onUpdate = vi.fn();
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
         // Mark local mutation on 'people' table
         act(() => {
@@ -244,7 +265,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
       it("should allow updates if the local mutation on the same table occurred longer than 500ms ago", async () => {
         const onUpdate = vi.fn();
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
         // Mark local mutation
         act(() => {
@@ -270,7 +291,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       it("should clean up subscription and remove channel when unmounted", () => {
         const onUpdate = vi.fn();
         const { unmount } = render(
-          <TestRealtimeComponent table="items" onUpdate={onUpdate} />,
+          <RealtimeHarness table="items" onUpdate={onUpdate} />,
         );
 
         unmount();
@@ -282,7 +303,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
     describe("Tier 2: Boundary & Corner Cases", () => {
       it("should ignore Postgres changes if a local mutation occurred on the same table within 500ms (lockout)", async () => {
         const onUpdate = vi.fn();
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
         // Mark local mutation (0ms)
         act(() => {
@@ -303,7 +324,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
       it("should debounce rapid burst Postgres changes to trigger onUpdate only once", async () => {
         const onUpdate = vi.fn();
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
         // Trigger multiple changes in rapid succession
         act(() => {
@@ -337,7 +358,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
       it("should handle undefined or null payload events gracefully without throwing", async () => {
         const onUpdate = vi.fn();
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
         expect(() => {
           act(() => {
@@ -353,7 +374,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       it("should reset debouncing and lockout states correctly when table changes", async () => {
         const onUpdate = vi.fn();
         const { rerender } = render(
-          <TestRealtimeComponent table="items" onUpdate={onUpdate} />,
+          <RealtimeHarness table="items" onUpdate={onUpdate} />,
         );
 
         act(() => {
@@ -361,7 +382,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         });
 
         // Change table prop to "people"
-        rerender(<TestRealtimeComponent table="people" onUpdate={onUpdate} />);
+        rerender(<RealtimeHarness table="people" onUpdate={onUpdate} />);
 
         act(() => {
           if (postgresChangesCallback) {
@@ -376,7 +397,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
       it("should handle database error payloads or system events without breaking the listener", async () => {
         const onUpdate = vi.fn();
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
         expect(() => {
           act(() => {
@@ -1060,7 +1081,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
   describe("Tier 3: Cross-Feature Combinations", () => {
     it("should trigger debounced realtime update after a task is triaged in morning ritual", async () => {
       const onUpdate = vi.fn();
-      render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+      render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
       render(<RitualOverlay isOpen={true} type="morning" />, { wrapper });
 
       // Trigger change
@@ -1076,7 +1097,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
     it("should ignore realtime update on items table when swipe-to-delete in Inbox registers a local mutation", async () => {
       const onUpdate = vi.fn();
-      render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+      render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
       // Swipe-to-delete triggers local mutation marking
       act(() => {
@@ -1192,7 +1213,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
     it("should simulate network disruption: realtime updates fail or disconnect, fallback to local store state", () => {
       const onUpdate = vi.fn();
-      render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+      render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
       // Simulate channel subscription failure or drop
       mockChannel.subscribe.mockImplementationOnce(() => {
@@ -1200,7 +1221,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       });
 
       expect(() => {
-        render(<TestRealtimeComponent table="items" onUpdate={onUpdate} />);
+        render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
       }).not.toThrow();
     });
   });

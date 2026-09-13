@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { createClient, safeMutate } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
@@ -70,6 +71,7 @@ function loadTimerState(): PersistedState | null {
 }
 
 export function PomodoroTimer() {
+  const userId = useUserId();
   const { activeTimer, setActiveTimer, userSettings, markMutation } =
     useAppStore(
       useShallow((s) => ({
@@ -111,14 +113,10 @@ export function PomodoroTimer() {
     async (type: Phase, minutes: number) => {
       if (!activeTimer || minutes < 1) return;
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
         await safeMutate(
           () =>
             supabase.from("session_logs").insert({
-              user_id: user.id,
+              user_id: userId,
               task_id: activeTimer.taskId || null,
               duration_minutes: minutes,
               type,

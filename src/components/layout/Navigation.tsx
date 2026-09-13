@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useUserId } from "@/components/providers/SessionProvider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -100,16 +101,15 @@ function RailTooltip({
  * `useRealtime` refetch.
  */
 function useInboxCount(): number {
+  const userId = useUserId();
   const supabase = useMemo(() => createClient(), []);
   const { data: inboxItems = [], refetch } = useQuery({
     queryKey: ["inbox-tasks"],
     queryFn: async () => {
-      const { data: userSession } = await supabase.auth.getUser();
-      if (!userSession?.user) return [];
       const { data, error } = await supabase
         .from("items")
         .select("id")
-        .eq("user_id", userSession.user.id)
+        .eq("user_id", userId)
         .eq("status", "inbox");
       if (error) throw error;
       return data as { id: string }[];

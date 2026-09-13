@@ -1,5 +1,6 @@
 "use client";
 import { Input } from "../ui/Input";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
 import React, { useState } from "react";
@@ -53,6 +54,7 @@ export function AddPersonPanel({
   onClose,
   onPersonAdded,
 }: AddPersonPanelProps) {
+  const userId = useUserId();
   const [color, setColor] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
@@ -130,13 +132,10 @@ export function AddPersonPanel({
 
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
 
-      if (user) {
+      if (userId) {
         const { error } = await supabase.from("people").insert({
-          user_id: user.id,
+          user_id: userId,
           name: data.name.trim(),
           relationship: data.relationship || "friend",
           ...(color ? { color } : {}),

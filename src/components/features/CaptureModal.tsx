@@ -1,9 +1,16 @@
 "use client";
 import { Input } from "../ui/Input";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
@@ -12,7 +19,11 @@ import { routeCapture } from "@/lib/capture-router";
 import { formatRRule, cn, extractMentions } from "@/lib/utils";
 import { Sparkles, Loader2, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
-import { destinationIdToLabel, destinationToId, type RoutedItem } from "@/lib/capture-router";
+import {
+  destinationIdToLabel,
+  destinationToId,
+  type RoutedItem,
+} from "@/lib/capture-router";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
@@ -23,20 +34,24 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 function formatCaptureDeadline(iso: string) {
   const d = new Date(iso);
   const now = new Date();
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const time = d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
   const isToday = d.toDateString() === now.toDateString();
-  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
   const isTomorrow = d.toDateString() === tomorrow.toDateString();
-  
+
   if (isToday) return `Today ${time}`;
   if (isTomorrow) return `Tomorrow ${time}`;
-  
+
   const diffTime = d.getTime() - now.getTime();
   const diffDays = diffTime / (1000 * 3600 * 24);
   if (diffDays > 0 && diffDays < 7) {
-    return `Next ${d.toLocaleDateString('en-US', { weekday: 'long' })} ${time}`;
+    return `Next ${d.toLocaleDateString("en-US", { weekday: "long" })} ${time}`;
   }
-  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${time}`;
+  return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} ${time}`;
 }
 
 const SPACE_COLORS: Record<string, string> = {
@@ -55,7 +70,7 @@ const SPACE_OPTIONS = [
   { value: "Remember → People", label: "People" },
   { value: "Remember → Locations", label: "Locations" },
   { value: "Explore", label: "Explore" },
-  { value: "Inbox", label: "Inbox" }
+  { value: "Inbox", label: "Inbox" },
 ];
 
 const ROUTE_SPACE_COLORS: Record<string, string> = {
@@ -79,11 +94,12 @@ const ROUTE_SPACE_OPTIONS = [
 const toLocalISOString = (date: Date) => {
   // Use date-fns to format in local time as YYYY-MM-DDTHH:mm
   // This avoids timezone math issues around DST
-  const pad = (n: number) => n.toString().padStart(2, '0');
+  const pad = (n: number) => n.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
 export function CaptureModal() {
+  const userId = useUserId();
   const {
     isCaptureModalOpen,
     setCaptureModalOpen,
@@ -99,12 +115,16 @@ export function CaptureModal() {
       setCaptureModalPrefill: s.setCaptureModalPrefill,
     })),
   );
-  const [input, setInput] = useState("");
+  // Seeded from the store so a prefilled open (PWA shortcut, calendar slot)
+  // renders with its text already in place rather than setting it in an effect.
+  const [input, setInput] = useState(() => captureModalPrefill ?? "");
   const [lastRoutedInput, setLastRoutedInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [routedItems, setRoutedItems] = useState<RoutedItem[] | null>(null);
-  const [taskExtras, setTaskExtras] = useState<{ [idx: number]: { first_step: string; ifthen_trigger: string } }>({});
+  const [taskExtras, setTaskExtras] = useState<{
+    [idx: number]: { first_step: string; ifthen_trigger: string };
+  }>({});
   const [saved, setSaved] = useState(false);
   const supabase = useMemo(() => createClient(), []);
   const haptics = useHaptics();
@@ -119,42 +139,51 @@ export function CaptureModal() {
     if (!isCaptureModalOpen || !showPopover) return;
     let cancelled = false;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
-      const { data } = await supabase.from("people").select("id, name").eq("user_id", user.id).limit(50);
+      if (cancelled) return;
+      const { data } = await supabase
+        .from("people")
+        .select("id, name")
+        .eq("user_id", userId)
+        .limit(50);
       if (!cancelled) setPeople(data ?? []);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isCaptureModalOpen, showPopover, supabase]);
 
   const filteredPeople = useMemo(() => {
-    return people.filter(p =>
-      p.name.toLowerCase().includes(popoverSearch.toLowerCase())
+    return people.filter((p) =>
+      p.name.toLowerCase().includes(popoverSearch.toLowerCase()),
     );
   }, [people, popoverSearch]);
 
-  const handleSelectPerson = useCallback((person: { id: string; name: string }) => {
-    if (!inputRef.current) return;
-    const val = input;
-    const selectionStart = inputRef.current.selectionStart || 0;
-    const textBeforeCursor = val.slice(0, selectionStart);
-    const textAfterCursor = val.slice(selectionStart);
-    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+  const handleSelectPerson = useCallback(
+    (person: { id: string; name: string }) => {
+      if (!inputRef.current) return;
+      const val = input;
+      const selectionStart = inputRef.current.selectionStart || 0;
+      const textBeforeCursor = val.slice(0, selectionStart);
+      const textAfterCursor = val.slice(selectionStart);
+      const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
-    const mentionText = `@[${person.name}](${person.id})`;
-    const newVal = val.slice(0, lastAtIndex) + mentionText + " " + textAfterCursor;
-    setInput(newVal);
-    setShowPopover(false);
+      const mentionText = `@[${person.name}](${person.id})`;
+      const newVal =
+        val.slice(0, lastAtIndex) + mentionText + " " + textAfterCursor;
+      setInput(newVal);
+      setShowPopover(false);
 
-    // Focus input and move cursor
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-        const cursorPosition = lastAtIndex + mentionText.length + 1;
-        inputRef.current.setSelectionRange(cursorPosition, cursorPosition);
-      }
-    }, 0);
-  }, [input]);
+      // Focus input and move cursor
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          const cursorPosition = lastAtIndex + mentionText.length + 1;
+          inputRef.current.setSelectionRange(cursorPosition, cursorPosition);
+        }
+      }, 0);
+    },
+    [input],
+  );
 
   const handleInputChange = (val: string) => {
     setInput(val);
@@ -164,7 +193,10 @@ export function CaptureModal() {
     const textBeforeCursor = val.slice(0, selectionStart);
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
-    if (lastAtIndex !== -1 && (lastAtIndex === 0 || textBeforeCursor[lastAtIndex - 1] === " ")) {
+    if (
+      lastAtIndex !== -1 &&
+      (lastAtIndex === 0 || textBeforeCursor[lastAtIndex - 1] === " ")
+    ) {
       const search = textBeforeCursor.slice(lastAtIndex + 1);
       if (!search.includes(" ")) {
         setShowPopover(true);
@@ -183,7 +215,9 @@ export function CaptureModal() {
         setSelectedIndex((prev) => (prev + 1) % filteredPeople.length);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + filteredPeople.length) % filteredPeople.length);
+        setSelectedIndex(
+          (prev) => (prev - 1 + filteredPeople.length) % filteredPeople.length,
+        );
       } else if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
         handleSelectPerson(filteredPeople[selectedIndex]);
@@ -202,42 +236,15 @@ export function CaptureModal() {
     }
   };
 
+  // The modal unmounts when closed, so there is no stale state to reset and
+  // no need for a second global key listener: AppContentWrapper owns the
+  // open shortcut, and Sheet handles Escape. The prefill is seeded into the
+  // input's initial state (see useState above) and cleared here once.
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      const isInput = (e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA" || (e.target as HTMLElement).isContentEditable;
-      
-      if (!isInput && !e.metaKey && !e.ctrlKey) {
-        if (e.key === "c" || e.key === "n") {
-          e.preventDefault();
-          setCaptureModalOpen(true);
-        }
-      }
-
-      if (e.key === "Escape") setCaptureModalOpen(false);
-    };
-    window.addEventListener("keydown", down);
-    return () => window.removeEventListener("keydown", down);
-  }, [setCaptureModalOpen]);
-
-
-
-  useEffect(() => {
-    if (isCaptureModalOpen) {
-      // If a prefill string was set (e.g., from clicking a calendar slot), populate input
-      if (captureModalPrefill) {
-        setInput(captureModalPrefill);
-        setCaptureModalPrefill(null);
-      }
-    } else {
-      const timer = setTimeout(() => {
-        setInput("");
-        setRoutedItems(null);
-        setTaskExtras({});
-        setSaved(false);
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [isCaptureModalOpen, captureModalPrefill, setCaptureModalPrefill]);
+    if (captureModalPrefill) setCaptureModalPrefill(null);
+    // Consumed once, on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRoute = useCallback(async () => {
     if (!input.trim()) return;
@@ -245,11 +252,26 @@ export function CaptureModal() {
     setLastRoutedInput(input);
     try {
       const knownPeopleNames = people.map((p) => p.name);
-      const items = await routeCapture(input, knownPeopleNames, userSettings || {});
+      const items = await routeCapture(
+        input,
+        knownPeopleNames,
+        userSettings || {},
+      );
       setRoutedItems(items);
     } catch {
-      setRoutedItems([{ type: "unknown", title: input, destination: "Inbox", destinationId: "inbox", confidence: 0.1, reason: "route_request_failed" }]);
-      toast.error("Routing failed", { description: "Falling back to manual routing." });
+      setRoutedItems([
+        {
+          type: "unknown",
+          title: input,
+          destination: "Inbox",
+          destinationId: "inbox",
+          confidence: 0.1,
+          reason: "route_request_failed",
+        },
+      ]);
+      toast.error("Routing failed", {
+        description: "Falling back to manual routing.",
+      });
     } finally {
       setIsRouting(false);
     }
@@ -257,25 +279,33 @@ export function CaptureModal() {
 
   const changeDestination = (idx: number, destinationId: string) => {
     setRoutedItems((prev) =>
-      prev ? prev.map((item, i) => (i === idx ? {
-        ...item,
-        destinationId: destinationId as RoutedItem["destinationId"],
-        destination: destinationIdToLabel(destinationId as RoutedItem["destinationId"]),
-      } : item)) : prev
+      prev
+        ? prev.map((item, i) =>
+            i === idx
+              ? {
+                  ...item,
+                  destinationId: destinationId as RoutedItem["destinationId"],
+                  destination: destinationIdToLabel(
+                    destinationId as RoutedItem["destinationId"],
+                  ),
+                }
+              : item,
+          )
+        : prev,
     );
   };
 
   const updateRoutedItem = (idx: number, updates: Partial<RoutedItem>) => {
     setRoutedItems((prev) =>
-      prev ? prev.map((item, i) => (i === idx ? { ...item, ...updates } : item)) : prev
+      prev
+        ? prev.map((item, i) => (i === idx ? { ...item, ...updates } : item))
+        : prev,
     );
   };
 
   const handleConfirm = async () => {
     if (!routedItems) return;
     setIsSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setIsSaving(false); return; }
 
     try {
       await Promise.all(
@@ -284,14 +314,18 @@ export function CaptureModal() {
           if (item.destinationId === "do" || item.destinationId === "inbox") {
             const mentions = extractMentions(item.title);
             const { error } = await supabase.from("items").insert({
-              user_id: user.id,
+              user_id: userId,
               title: item.title,
               first_step: extras.first_step || null,
               ifthen_trigger: extras.ifthen_trigger
                 ? `When ${extras.ifthen_trigger}, I will ${extras.first_step || "do this"}`
                 : null,
-              deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
-              recurrence: (item as RoutedItem & { recurrence?: string }).recurrence ?? null,
+              deadline: item.deadline
+                ? new Date(item.deadline).toISOString()
+                : null,
+              recurrence:
+                (item as RoutedItem & { recurrence?: string }).recurrence ??
+                null,
               status: item.destinationId === "inbox" ? "inbox" : "active",
               linked_people_ids: mentions,
             });
@@ -300,33 +334,52 @@ export function CaptureModal() {
             const { data: person } = await supabase
               .from("people")
               .select("id, notes")
-              .eq("user_id", user.id)
+              .eq("user_id", userId)
               .ilike("name", `%${item.person ?? ""}%`)
               .maybeSingle();
             if (person) {
-              const newNote = { text: item.title, created_at: new Date().toISOString(), tag: "note" };
-              const { error } = await supabase.from("people").update({ notes: [...(person.notes ?? []), newNote] }).eq("id", person.id);
+              const newNote = {
+                text: item.title,
+                created_at: new Date().toISOString(),
+                tag: "note",
+              };
+              const { error } = await supabase
+                .from("people")
+                .update({ notes: [...(person.notes ?? []), newNote] })
+                .eq("id", person.id);
               if (error) throw new Error(`People: ${error.message}`);
             } else {
               const { error } = await supabase.from("people").insert({
-                user_id: user.id,
+                user_id: userId,
                 name: item.person || item.title.split(" ")[0],
-                notes: [{ text: item.title, created_at: new Date().toISOString(), tag: "note" }]
+                notes: [
+                  {
+                    text: item.title,
+                    created_at: new Date().toISOString(),
+                    tag: "note",
+                  },
+                ],
               });
               if (error) throw new Error(`People: ${error.message}`);
             }
           } else if (item.destinationId === "think") {
             const mentions = extractMentions(item.title);
             const { error } = await supabase.from("threads").insert({
-              user_id: user.id,
+              user_id: userId,
               title: item.title.slice(0, 60),
-              entries: [{ text: item.title, created_at: new Date().toISOString(), starred: false }],
+              entries: [
+                {
+                  text: item.title,
+                  created_at: new Date().toISOString(),
+                  starred: false,
+                },
+              ],
               linked_people_ids: mentions,
             });
             if (error) throw new Error(`Think: ${error.message}`);
           } else if (item.destinationId === "explore") {
             const { error } = await supabase.from("explores").insert({
-              user_id: user.id,
+              user_id: userId,
               title: item.title.slice(0, 100),
               type: item.url ? "link" : "concept",
               url: item.url ?? null,
@@ -335,13 +388,13 @@ export function CaptureModal() {
             if (error) throw new Error(`Explore: ${error.message}`);
           } else if (item.destinationId === "locations") {
             const { error } = await supabase.from("locations").insert({
-              user_id: user.id,
+              user_id: userId,
               item_name: item.item_name || item.title.split(" ")[0] || "Item",
               location_text: item.title,
             });
             if (error) throw new Error(`Locations: ${error.message}`);
           }
-        })
+        }),
       );
       setSaved(true);
       toast.success("Successfully captured!");
@@ -356,196 +409,279 @@ export function CaptureModal() {
   };
 
   return (
-    <ModalErrorBoundary modalName="Capture Modal" onClose={() => setCaptureModalOpen(false)}>
-      <Sheet isOpen={isCaptureModalOpen} onClose={() => setCaptureModalOpen(false)}>
-        <div className="relative w-full max-w-2xl mx-auto">
+    <ModalErrorBoundary
+      modalName="Capture Modal"
+      onClose={() => setCaptureModalOpen(false)}
+    >
+      <Sheet
+        isOpen={isCaptureModalOpen}
+        onClose={() => setCaptureModalOpen(false)}
+      >
+        <div className="relative mx-auto w-full max-w-2xl">
           {/* Input row */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgba(255,255,255,0.08)] rounded-t-2xl relative">
-              {routedItems ? (
-                <UiIcon className="w-5 h-5 text-[var(--color-accent)] shrink-0 animate-pulse" icon={Sparkles} />
-              ) : (
-                <UiIcon className="w-5 h-5 text-[var(--color-text-3)] shrink-0" icon={Search} />
-              )}
-              <input
-                ref={inputRef}
-                autoFocus
-                type="text"
-                inputMode="text"
-                autoComplete="off"
-                autoCapitalize="sentences"
-                autoCorrect="off"
-                placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
-                className="flex-1 bg-transparent border-none outline-none text-title-sm font-medium text-[var(--color-text-1)] placeholder:text-[rgba(255,255,255,0.25)]"
-                value={input}
-                onChange={(e) => handleInputChange(e.target.value)}
-                disabled={isRouting}
-                onKeyDown={handleKeyDown}
+          <div className="relative flex items-center gap-3 rounded-t-2xl border-b border-[rgba(255,255,255,0.08)] px-5 py-4">
+            {routedItems ? (
+              <UiIcon
+                className="h-5 w-5 shrink-0 animate-pulse text-[var(--color-accent)]"
+                icon={Sparkles}
               />
-              {input && !routedItems && !isRouting && (
-                <button onClick={() => { handleInputChange(""); inputRef.current?.focus(); }} aria-label="Clear input" className="p-1 mr-1 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] rounded hover:bg-[var(--color-surface)] transition-colors">
-                  <UiIcon className="w-4 h-4" icon={X} />
-                </button>
-              )}
-              {!routedItems && (
-                <kbd className="hidden sm:flex items-center gap-1 text-caption font-semibold text-[var(--color-text-3)] border border-[var(--color-border)] px-2 py-1 rounded-md bg-[var(--color-surface)]">
-                  Enter
-                </kbd>
-              )}
+            ) : (
+              <UiIcon
+                className="h-5 w-5 shrink-0 text-[var(--color-text-3)]"
+                icon={Search}
+              />
+            )}
+            <input
+              ref={inputRef}
+              autoFocus
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              autoCapitalize="sentences"
+              autoCorrect="off"
+              placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
+              className="text-title-sm flex-1 border-none bg-transparent font-medium text-[var(--color-text-1)] outline-none placeholder:text-[rgba(255,255,255,0.25)]"
+              value={input}
+              onChange={(e) => handleInputChange(e.target.value)}
+              disabled={isRouting}
+              onKeyDown={handleKeyDown}
+            />
+            {input && !routedItems && !isRouting && (
+              <button
+                onClick={() => {
+                  handleInputChange("");
+                  inputRef.current?.focus();
+                }}
+                aria-label="Clear input"
+                className="mr-1 rounded p-1 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
+              >
+                <UiIcon className="h-4 w-4" icon={X} />
+              </button>
+            )}
+            {!routedItems && (
+              <kbd className="text-caption hidden items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 font-semibold text-[var(--color-text-3)] sm:flex">
+                Enter
+              </kbd>
+            )}
 
-              {/* Mentions dropdown overlay */}
-              {showPopover && filteredPeople.length > 0 && (
-                <div
-                  className="absolute left-0 right-0 top-full z-50 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md shadow-lg max-h-60 overflow-y-auto" data-lenis-prevent
-                  data-testid="mentions-popover"
-                >
-                  {filteredPeople.map((person, idx) => (
-                    <button
-                      key={person.id}
-                      onClick={() => handleSelectPerson(person)}
-                      className={cn(
-                        "w-full px-4 py-2 text-left hover:bg-[rgba(255,255,255,0.05)] focus:outline-none text-sm text-[var(--color-text-1)]",
-                        idx === selectedIndex && "bg-[rgba(255,255,255,0.08)]"
-                      )}
-                      type="button"
-                    >
-                      {person.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Routing chips view */}
-            {routedItems && !saved && (
-              <div className="p-5 space-y-4">
-                <p className="text-caption uppercase tracking-wider text-[var(--color-text-3)] font-semibold">
-                  AI Extracted Context
-                </p>
-                {routedItems.map((item, idx) => (
-                  <div key={idx} className="space-y-3">
-                    <input
-                      value={item.title}
-                      onChange={(e) => updateRoutedItem(idx, { title: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleConfirm();
-                        }
-                      }}
-                      className="input-title bg-transparent border-none outline-none font-semibold text-lg text-[var(--color-text-1)] w-full placeholder:text-[rgba(255,255,255,0.25)]"
-                    />
-                    
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
-                      <span className="font-semibold">Space:</span>
-                      <Dropdown
-                        value={item.destinationId}
-                        onChange={(val) => changeDestination(idx, val)}
-                        options={ROUTE_SPACE_OPTIONS}
-                        colors={ROUTE_SPACE_COLORS}
-                        placeholder="Choose space..."
-                      />
-                      
-                      {item.destinationId === "do" && (
-                        <>
-                          {item.recurrence && (
-                            <>
-                              <span className="text-[var(--color-text-3)]">·</span>
-                              <span className="font-semibold">Recurrence:</span>
-                              <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)]">
-                                {formatRRule(item.recurrence)}
-                              </span>
-                            </>
-                          )}
-                          <span className="text-[var(--color-text-3)]">·</span>
-                          <span className="font-semibold">Deadline:</span>
-                          <div className="relative inline-flex items-center">
-                            <span className="px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-1)] pointer-events-none whitespace-nowrap">
-                              {item.deadline ? formatCaptureDeadline(item.deadline) : "No deadline"} ▼
-                            </span>
-                            <input
-                              type="datetime-local"
-                              value={item.deadline ? toLocalISOString(new Date(item.deadline)) : ""}
-                              onChange={(e) => updateRoutedItem(idx, { deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                          </div>
-                        </>
-                      )}
-                      
-                      {item.destinationId === "people" && (
-                        <>
-                          <span className="text-[var(--color-text-3)]">·</span>
-                          <span className="font-semibold">Person:</span>
-                          <input
-                            value={item.person || ""}
-                            onChange={(e) => updateRoutedItem(idx, { person: e.target.value })}
-                            className="px-2 py-1 rounded-full border border-[var(--color-border)] bg-transparent outline-none focus:border-[var(--color-accent)] text-xs text-[var(--color-text-1)]"
-                            placeholder="Name..."
-                          />
-                        </>
-                      )}
-                      
-                      {item.destinationId === "locations" && (
-                        <>
-                          <span className="text-[var(--color-text-3)]">·</span>
-                          <span className="font-semibold">Item:</span>
-                          <input
-                            value={item.item_name || ""}
-                            onChange={(e) => updateRoutedItem(idx, { item_name: e.target.value })}
-                            className="px-2 py-1 rounded-full border border-[var(--color-border)] bg-transparent outline-none focus:border-[var(--color-accent)] text-xs text-[var(--color-text-1)]"
-                            placeholder="Item name..."
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
+            {/* Mentions dropdown overlay */}
+            {showPopover && filteredPeople.length > 0 && (
+              <div
+                className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg"
+                data-testid="mentions-popover"
+              >
+                {filteredPeople.map((person, idx) => (
+                  <button
+                    key={person.id}
+                    onClick={() => handleSelectPerson(person)}
+                    className={cn(
+                      "w-full px-4 py-2 text-left text-sm text-[var(--color-text-1)] hover:bg-[rgba(255,255,255,0.05)] focus:outline-none",
+                      idx === selectedIndex && "bg-[rgba(255,255,255,0.08)]",
+                    )}
+                    type="button"
+                  >
+                    {person.name}
+                  </button>
                 ))}
               </div>
             )}
+          </div>
 
-            {/* Saved animation */}
-            {saved && (
-              <div className="flex items-center justify-center gap-2 p-6 text-[#4ADE80]">
-                <UiIcon className="w-5 h-5" icon={Check} />
-                <span className="text-sm font-medium">Saved!</span>
-              </div>
-            )}
+          {/* Routing chips view */}
+          {routedItems && !saved && (
+            <div className="space-y-4 p-5">
+              <p className="text-caption font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
+                AI Extracted Context
+              </p>
+              {routedItems.map((item, idx) => (
+                <div key={idx} className="space-y-3">
+                  <input
+                    value={item.title}
+                    onChange={(e) =>
+                      updateRoutedItem(idx, { title: e.target.value })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleConfirm();
+                      }
+                    }}
+                    className="input-title w-full border-none bg-transparent text-lg font-semibold text-[var(--color-text-1)] outline-none placeholder:text-[rgba(255,255,255,0.25)]"
+                  />
 
-            {/* Action bar */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] rounded-b-2xl">
-              {!routedItems ? (
-                <>
-                  <span className="text-xs text-[var(--color-text-3)] flex items-center gap-1.5">
-                    Press <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-[var(--border-default)] text-caption text-[var(--text-1)] border border-[var(--border-subtle)]">Enter</kbd> to auto-route
-                  </span>
-                  <Button variant="primary"
-                    onClick={handleRoute}
-                    disabled={!input.trim() || isRouting}
-                    className="disabled:opacity-50"
-                  >
-                    {isRouting ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Sparkles} />}
-                    {isRouting ? "Routing..." : "Route & Capture"}
-                  </Button>
-                </>
-              ) : !saved ? (
-                <>
-                  <Button variant="secondary"
-                    onClick={() => setRoutedItems(null)}
-                    className=""
-                  >
-                    <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={X} /> Start over
-                  </Button>
-                  <Button variant="primary"
-                    onClick={handleConfirm}
-                    disabled={isSaving || routedItems.some((i) => !i.destinationId)}
-                    className="disabled:opacity-50"
-                  >
-                    {isSaving ? <UiIcon size={14} strokeWidth={1.5} className="animate-spin shrink-0" icon={Loader2} /> : <UiIcon size={14} strokeWidth={1.5} className="shrink-0" icon={Check} />}
-                    {isSaving ? "Saving..." : "Confirm & Save"}
-                  </Button>
-                </>
-              ) : null}
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">
+                    <span className="font-semibold">Space:</span>
+                    <Dropdown
+                      value={item.destinationId}
+                      onChange={(val) => changeDestination(idx, val)}
+                      options={ROUTE_SPACE_OPTIONS}
+                      colors={ROUTE_SPACE_COLORS}
+                      placeholder="Choose space..."
+                    />
+
+                    {item.destinationId === "do" && (
+                      <>
+                        {item.recurrence && (
+                          <>
+                            <span className="text-[var(--color-text-3)]">
+                              ·
+                            </span>
+                            <span className="font-semibold">Recurrence:</span>
+                            <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium text-[var(--color-text-1)]">
+                              {formatRRule(item.recurrence)}
+                            </span>
+                          </>
+                        )}
+                        <span className="text-[var(--color-text-3)]">·</span>
+                        <span className="font-semibold">Deadline:</span>
+                        <div className="relative inline-flex items-center">
+                          <span className="pointer-events-none rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium whitespace-nowrap text-[var(--color-text-1)]">
+                            {item.deadline
+                              ? formatCaptureDeadline(item.deadline)
+                              : "No deadline"}{" "}
+                            ▼
+                          </span>
+                          <input
+                            type="datetime-local"
+                            value={
+                              item.deadline
+                                ? toLocalISOString(new Date(item.deadline))
+                                : ""
+                            }
+                            onChange={(e) =>
+                              updateRoutedItem(idx, {
+                                deadline: e.target.value
+                                  ? new Date(e.target.value).toISOString()
+                                  : null,
+                              })
+                            }
+                            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {item.destinationId === "people" && (
+                      <>
+                        <span className="text-[var(--color-text-3)]">·</span>
+                        <span className="font-semibold">Person:</span>
+                        <input
+                          value={item.person || ""}
+                          onChange={(e) =>
+                            updateRoutedItem(idx, { person: e.target.value })
+                          }
+                          className="rounded-full border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)]"
+                          placeholder="Name..."
+                        />
+                      </>
+                    )}
+
+                    {item.destinationId === "locations" && (
+                      <>
+                        <span className="text-[var(--color-text-3)]">·</span>
+                        <span className="font-semibold">Item:</span>
+                        <input
+                          value={item.item_name || ""}
+                          onChange={(e) =>
+                            updateRoutedItem(idx, { item_name: e.target.value })
+                          }
+                          className="rounded-full border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)]"
+                          placeholder="Item name..."
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
+          )}
+
+          {/* Saved animation */}
+          {saved && (
+            <div className="flex items-center justify-center gap-2 p-6 text-[#4ADE80]">
+              <UiIcon className="h-5 w-5" icon={Check} />
+              <span className="text-sm font-medium">Saved!</span>
+            </div>
+          )}
+
+          {/* Action bar */}
+          <div className="flex items-center justify-between rounded-b-2xl border-t border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
+            {!routedItems ? (
+              <>
+                <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-3)]">
+                  Press{" "}
+                  <kbd className="text-caption rounded-md border border-[var(--border-subtle)] bg-[var(--border-default)] px-1.5 py-0.5 font-sans text-[var(--text-1)]">
+                    Enter
+                  </kbd>{" "}
+                  to auto-route
+                </span>
+                <Button
+                  variant="primary"
+                  onClick={handleRoute}
+                  disabled={!input.trim() || isRouting}
+                  className="disabled:opacity-50"
+                >
+                  {isRouting ? (
+                    <UiIcon
+                      size={14}
+                      strokeWidth={1.5}
+                      className="shrink-0 animate-spin"
+                      icon={Loader2}
+                    />
+                  ) : (
+                    <UiIcon
+                      size={14}
+                      strokeWidth={1.5}
+                      className="shrink-0"
+                      icon={Sparkles}
+                    />
+                  )}
+                  {isRouting ? "Routing..." : "Route & Capture"}
+                </Button>
+              </>
+            ) : !saved ? (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => setRoutedItems(null)}
+                  className=""
+                >
+                  <UiIcon
+                    size={14}
+                    strokeWidth={1.5}
+                    className="shrink-0"
+                    icon={X}
+                  />{" "}
+                  Start over
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleConfirm}
+                  disabled={
+                    isSaving || routedItems.some((i) => !i.destinationId)
+                  }
+                  className="disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <UiIcon
+                      size={14}
+                      strokeWidth={1.5}
+                      className="shrink-0 animate-spin"
+                      icon={Loader2}
+                    />
+                  ) : (
+                    <UiIcon
+                      size={14}
+                      strokeWidth={1.5}
+                      className="shrink-0"
+                      icon={Check}
+                    />
+                  )}
+                  {isSaving ? "Saving..." : "Confirm & Save"}
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
       </Sheet>
     </ModalErrorBoundary>

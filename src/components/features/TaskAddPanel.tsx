@@ -1,5 +1,7 @@
 "use client";
 import { Input } from "../ui/Input";
+import { readSubtasks, type TaskRecord } from "@/lib/task-cache";
+import { useUserId } from "@/components/providers/SessionProvider";
 import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
 import React, { useState, useEffect, useRef } from "react";
@@ -35,27 +37,29 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
-import {
-  moveItemToTrashPatch,
-  newTaskInsert,
-} from "@/lib/item-lifecycle";
+import { moveItemToTrashPatch, newTaskInsert } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
-interface TaskEditData {
-  id: string;
-  title: string;
-  deadline?: string | null;
-  start_date?: string | null;
-  category?: string | null;
-  priority?: number | null;
-  notes?: string;
-  first_step?: string | null;
-  subtasks?: { id: string; text: string; completed: boolean }[];
-  recurrence?: string | null;
-  linked_people_ids?: string[] | null;
-  time_estimate?: number | null;
+/**
+ * The panel edits an `items` row. Callers pass the row straight through, so
+ * this is the generated shape with the columns the form does not touch made
+ * optional (creation flows build a partial).
+ */
+type TaskEditData = Partial<TaskRecord> & { id: string; title: string };
+
+/**
+ * The stored rows carry only { text, completed }; the form needs a stable
+ * client-side id for list keys and reordering.
+ */
+function withSubtaskIds(
+  subtasks: { text: string; completed: boolean }[],
+): { id: string; text: string; completed: boolean }[] {
+  return subtasks.map((subtask, index) => ({
+    id: `${index}-${subtask.text}`,
+    ...subtask,
+  }));
 }
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -91,6 +95,7 @@ export function TaskAddPanel({
   taskToEdit,
   initialDeadline,
 }: TaskAddPanelProps) {
+  const userId = useUserId();
   const queryClient = useQueryClient();
   const [parsedDeadline, setParsedDeadline] = useState<Date | null>(null);
   const [startDate, setStartDate] = useState("");
@@ -195,17 +200,14 @@ export function TaskAddPanel({
       setValue("category", name, { shouldValidate: true, shouldDirty: true });
 
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
+      if (userId) {
         // BUG-38: check error before committing the new category to state
         const { success } = await safeMutate(
           () =>
             supabase
               .from("user_settings")
               .update({ do_categories: newList })
-              .eq("user_id", user.id),
+              .eq("user_id", userId),
           "Failed to save category",
         );
         if (!success) {
@@ -277,12 +279,10 @@ export function TaskAddPanel({
   useEffect(() => {
     async function fetchPeople() {
       const supabase = createClient();
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
       const { data } = await supabase
         .from("people")
         .select("id, name, initials, color")
-        .eq("user_id", userData.user.id)
+        .eq("user_id", userId)
         .order("name");
       if (data)
         setPeopleList(
@@ -314,7 +314,7 @@ export function TaskAddPanel({
         });
         setIsManualDate(false);
         setTimeEstimate(taskToEdit.time_estimate || null);
-        setSubtasks(taskToEdit.subtasks || []);
+        setSubtasks(withSubtaskIds(readSubtasks(taskToEdit.subtasks)));
         setLinkedPeopleIds(taskToEdit.linked_people_ids || []);
 
         let nextFreq = "Does not repeat";
@@ -367,7 +367,7 @@ export function TaskAddPanel({
         }
 
         manualBaselineRef.current = {
-          subtasks: taskToEdit.subtasks || [],
+          subtasks: withSubtaskIds(readSubtasks(taskToEdit.subtasks)),
           timeEstimate: taskToEdit.time_estimate || null,
           linkedPeopleIds: taskToEdit.linked_people_ids || [],
           freq: nextFreq,
@@ -492,11 +492,8 @@ export function TaskAddPanel({
 
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
 
-      if (user) {
+      if (userId) {
         let finalRecurrence = null;
         if (freq === "Daily") finalRecurrence = "FREQ=DAILY";
         else if (freq === "Monthly") finalRecurrence = "FREQ=MONTHLY";
@@ -531,7 +528,7 @@ export function TaskAddPanel({
         }
 
         const payload: Database["public"]["Tables"]["items"]["Insert"] = {
-          user_id: user.id,
+          user_id: userId,
           title: finalTitle || data.title.trim(),
           first_step: data.first_step?.trim() || null,
           ifthen_trigger: null,
@@ -548,9 +545,7 @@ export function TaskAddPanel({
 
         // INFRA-19: the status field on a new task is owned by the
         // lifecycle module — hand-write never happens.
-        const insertPayload = taskToEdit
-          ? payload
-          : newTaskInsert(payload);
+        const insertPayload = taskToEdit ? payload : newTaskInsert(payload);
 
         if (taskToEdit && taskToEdit.deadline !== payload.deadline) {
           payload.notification_sent_72h = false;
@@ -569,9 +564,7 @@ export function TaskAddPanel({
             .eq("id", taskToEdit.id);
           error = res.error;
         } else {
-          const res = await supabase
-            .from("items")
-            .insert(insertPayload);
+          const res = await supabase.from("items").insert(insertPayload);
           error = res.error;
         }
 
@@ -608,10 +601,7 @@ export function TaskAddPanel({
           onSubmit={handleSubmit(onSubmit)}
           className="flex h-full flex-col"
         >
-          <div
-            className="flex-1 space-y-6 overflow-y-auto p-6"
-            data-lenis-prevent
-          >
+          <div className="flex-1 space-y-6 overflow-y-auto p-6">
             {/* Title */}
             <Input
               label={
@@ -693,7 +683,7 @@ export function TaskAddPanel({
                       onClick={() =>
                         setSubtasks(subtasks.filter((_, idx) => idx !== i))
                       }
-                      className="p-1 text-[var(--text-muted)] opacity-0 transition-all group-hover:opacity-100 hover:text-[#F87171]"
+                      className="row-actions p-1 text-[var(--text-muted)] transition-colors hover:text-[#F87171]"
                     >
                       <UiIcon size={14} icon={X} />
                     </button>

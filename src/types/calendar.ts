@@ -1,14 +1,8 @@
-export interface Task {
-  id: string;
-  title: string;
-  deadline: string | null;
-  status: string;
-  category: string;
-  priority?: number | null;
-  first_step: string | null;
-  ifthen_trigger: string | null;
-  snoozed_until?: string | null;
-  recurrence?: string | null;
-  linked_people_ids?: string[] | null;
-  time_estimate?: number | null;
-}
+import type { TaskRecord } from "@/lib/task-cache";
+
+/**
+ * The calendar renders the same `items` row every other task surface does.
+ * This alias used to be a hand-written subset that drifted from the column
+ * nullability and forced casts at each boundary.
+ */
+export type Task = TaskRecord;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/logger";
 
 interface AppErrorFallbackProps {
@@ -9,16 +10,24 @@ interface AppErrorFallbackProps {
   sectionName?: string;
 }
 
-export function AppErrorFallback({ error, reset, sectionName = "this section" }: AppErrorFallbackProps) {
+export function AppErrorFallback({
+  error,
+  reset,
+  sectionName = "this section",
+}: AppErrorFallbackProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
+    // Same reason as global-error.tsx: the boundary catches the error, so
+    // nothing else reports it. Every route-level error.tsx renders through
+    // this component, so one call covers them all.
+    Sentry.captureException(error, { tags: { section: sectionName } });
     logger.error(`App error in ${sectionName}:`, error);
   }, [error, sectionName]);
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center backdrop-blur-xl shadow-2xl">
+      <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-2xl backdrop-blur-xl">
         <div className="mb-4 text-4xl">⚠️</div>
         <h2 className="mb-2 text-xl font-semibold text-[var(--color-text-1)]">
           Something went wrong
@@ -29,21 +38,27 @@ export function AppErrorFallback({ error, reset, sectionName = "this section" }:
 
         <button
           onClick={() => setShowDetails(!showDetails)}
-          className="text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)] mb-6 underline transition-colors"
+          className="mb-6 text-xs text-[var(--color-text-3)] underline transition-colors hover:text-[var(--color-text-1)]"
         >
           {showDetails ? "Hide Error Details" : "Show Error Details"}
         </button>
 
         {showDetails && (
-          <div className="mb-6 p-4 rounded-lg bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.2)] text-left overflow-auto max-h-40">
-            <p className="text-[#F87171] text-sm font-mono whitespace-pre-wrap">{error.message || "Unknown error"}</p>
-            {error.digest && <p className="text-gray-500 text-xs mt-2">Digest: {error.digest}</p>}
+          <div className="mb-6 max-h-40 overflow-auto rounded-lg border border-[rgba(248,113,113,0.2)] bg-[rgba(248,113,113,0.1)] p-4 text-left">
+            <p className="font-mono text-sm whitespace-pre-wrap text-[#F87171]">
+              {error.message || "Unknown error"}
+            </p>
+            {error.digest && (
+              <p className="mt-2 text-xs text-gray-500">
+                Digest: {error.digest}
+              </p>
+            )}
           </div>
         )}
 
         <button
           onClick={() => reset()}
-          className="rounded-xl bg-[var(--accent)] px-6 py-2.5 text-sm font-medium text-[var(--color-background)] transition hover:opacity-90 w-full"
+          className="w-full rounded-xl bg-[var(--accent)] px-6 py-2.5 text-sm font-medium text-[var(--color-background)] transition hover:opacity-90"
         >
           Try again
         </button>

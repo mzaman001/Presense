@@ -1,5 +1,7 @@
 import React, { Suspense } from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "./test-utils";
+import { TEST_USER } from "./test-utils";
+import { SessionProvider } from "@/components/providers/SessionProvider";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { extractMentions } from "@/lib/utils";
 import { CaptureModal } from "@/components/features/CaptureModal";
@@ -46,16 +48,29 @@ const queryClient = new QueryClient({
 });
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>
-    <Suspense fallback={<div data-testid="suspense-loading">Loading...</div>}>
-      {children}
-    </Suspense>
-  </QueryClientProvider>
+  <SessionProvider user={TEST_USER}>
+    <QueryClientProvider client={queryClient}>
+      <Suspense fallback={<div data-testid="suspense-loading">Loading...</div>}>
+        {children}
+      </Suspense>
+    </QueryClientProvider>
+  </SessionProvider>
 );
 
+/**
+ * A chainable Supabase query stub: every builder method returns the same
+ * object, and awaiting it resolves to { data, error }.
+ */
+type MockQuery = Record<string, ReturnType<typeof vi.fn>> & {
+  then: ReturnType<typeof vi.fn>;
+};
+
 // Helper function to build a chainable Supabase query mock
-function mockSupabaseQuery(data: any = null, error: any = null) {
-  const query: any = {
+function mockSupabaseQuery(
+  data: unknown = null,
+  error: unknown = null,
+): MockQuery {
+  const query: MockQuery = {
     select: vi.fn().mockImplementation(() => query),
     eq: vi.fn().mockImplementation(() => query),
     in: vi.fn().mockImplementation(() => query),
@@ -72,14 +87,16 @@ function mockSupabaseQuery(data: any = null, error: any = null) {
       return Promise.resolve(onfulfilled({ data, error }));
     }),
   };
-  query.then = vi.fn().mockImplementation((resolve) => resolve({ data, error }));
+  query.then = vi
+    .fn()
+    .mockImplementation((resolve) => resolve({ data, error }));
   return query;
 }
 
 describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Mock matchMedia for jsdom
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -112,11 +129,17 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
     });
 
     it("handles special characters inside brackets (periods, slashes, etc.)", () => {
-      const text1 = "Review by @[Dr. Watson / Chief](550e8400-e29b-41d4-a716-446655440001)";
-      expect(extractMentions(text1)).toEqual(["550e8400-e29b-41d4-a716-446655440001"]);
+      const text1 =
+        "Review by @[Dr. Watson / Chief](550e8400-e29b-41d4-a716-446655440001)";
+      expect(extractMentions(text1)).toEqual([
+        "550e8400-e29b-41d4-a716-446655440001",
+      ]);
 
-      const text2 = "Assigned to @[Alice-Bob.Jr / Dev-Ops](550e8400-e29b-41d4-a716-446655440002)";
-      expect(extractMentions(text2)).toEqual(["550e8400-e29b-41d4-a716-446655440002"]);
+      const text2 =
+        "Assigned to @[Alice-Bob.Jr / Dev-Ops](550e8400-e29b-41d4-a716-446655440002)";
+      expect(extractMentions(text2)).toEqual([
+        "550e8400-e29b-41d4-a716-446655440002",
+      ]);
     });
 
     it("handles large numbers of mentions (100+)", () => {
@@ -134,11 +157,15 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
     });
 
     it("evaluates behavior on nested brackets (potential parser limitations)", () => {
-      const nestedInNameText = "@[Alice [nested]](550e8400-e29b-41d4-a716-446655440003)";
+      const nestedInNameText =
+        "@[Alice [nested]](550e8400-e29b-41d4-a716-446655440003)";
       expect(extractMentions(nestedInNameText)).toEqual([]);
 
-      const nestedMentionText = "@[Alice @[Bob](550e8400-e29b-41d4-a716-446655440004)](550e8400-e29b-41d4-a716-446655440005)";
-      expect(extractMentions(nestedMentionText)).toEqual(["550e8400-e29b-41d4-a716-446655440004"]);
+      const nestedMentionText =
+        "@[Alice @[Bob](550e8400-e29b-41d4-a716-446655440004)](550e8400-e29b-41d4-a716-446655440005)";
+      expect(extractMentions(nestedMentionText)).toEqual([
+        "550e8400-e29b-41d4-a716-446655440004",
+      ]);
     });
   });
 
@@ -163,7 +190,9 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
 
       render(<CaptureModal />, { wrapper });
 
-      const input = screen.getByPlaceholderText(/capture anything/i) as HTMLInputElement;
+      const input = screen.getByPlaceholderText(
+        /capture anything/i,
+      ) as HTMLInputElement;
       expect(input).toBeInTheDocument();
 
       fireEvent.change(input, { target: { value: "Call @" } });
@@ -182,11 +211,15 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       fireEvent.click(aliceBtn);
 
       expect(screen.queryByTestId("mentions-popover")).not.toBeInTheDocument();
-      expect(input.value).toBe("Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) ");
+      expect(input.value).toBe(
+        "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) ",
+      );
     });
 
     it("correctly maps mentioned UUID to linked_people in database insert on confirm (Do/Inbox destination)", async () => {
-      const mockInsert = vi.fn().mockReturnValue(mockSupabaseQuery({ success: true }));
+      const mockInsert = vi
+        .fn()
+        .mockReturnValue(mockSupabaseQuery({ success: true }));
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: "user-123" } },
       });
@@ -203,8 +236,15 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       useAppStore.setState({ isCaptureModalOpen: true });
       const { container } = render(<CaptureModal />, { wrapper });
 
-      const input = screen.getByPlaceholderText(/capture anything/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) tomorrow" } });
+      const input = screen.getByPlaceholderText(
+        /capture anything/i,
+      ) as HTMLInputElement;
+      fireEvent.change(input, {
+        target: {
+          value:
+            "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010) tomorrow",
+        },
+      });
 
       // Trigger Route
       const routeBtn = screen.getByRole("button", { name: /route/i });
@@ -219,14 +259,15 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
           expect.objectContaining({
             linked_people_ids: ["550e8400-e29b-41d4-a716-446655440010"],
             title: "Call @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)",
-          })
+          }),
         );
       });
-
     });
 
     it("correctly maps mentioned UUID to linked_people in database insert on confirm (Think destination)", async () => {
-      const mockInsert = vi.fn().mockReturnValue(mockSupabaseQuery({ success: true }));
+      const mockInsert = vi
+        .fn()
+        .mockReturnValue(mockSupabaseQuery({ success: true }));
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: "user-123" } },
       });
@@ -243,17 +284,29 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       useAppStore.setState({ isCaptureModalOpen: true });
       render(<CaptureModal />, { wrapper });
 
-      const input = screen.getByPlaceholderText(/capture anything/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "idea: about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)" } });
+      const input = screen.getByPlaceholderText(
+        /capture anything/i,
+      ) as HTMLInputElement;
+      fireEvent.change(input, {
+        target: {
+          value:
+            "idea: about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)",
+        },
+      });
 
-      const mockRouteCapture = vi.spyOn(captureRouter, "routeCapture").mockResolvedValue([{
-        type: "thought",
-        title: "idea: about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)",
-        destination: "Think",
-        destinationId: "think",
-        confidence: 0.9,
-        reason: "mock"
-      }]);
+      const mockRouteCapture = vi
+        .spyOn(captureRouter, "routeCapture")
+        .mockResolvedValue([
+          {
+            type: "thought",
+            title:
+              "idea: about @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)",
+            destination: "Think",
+            destinationId: "think",
+            confidence: 0.9,
+            reason: "mock",
+          },
+        ]);
 
       // Trigger Route
       const routeBtn = screen.getByRole("button", { name: /route/i });
@@ -268,7 +321,7 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
         expect(mockInsert).toHaveBeenCalledWith(
           expect.objectContaining({
             linked_people_ids: ["550e8400-e29b-41d4-a716-446655440011"],
-          })
+          }),
         );
       });
 
@@ -288,19 +341,24 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
         title: "Project Brainstorm",
         color_accent: "#FBBF24",
         entries: [
-          { text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)", created_at: new Date().toISOString() }
+          {
+            text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)",
+            created_at: new Date().toISOString(),
+          },
         ],
         stale_prompt: null,
         status: "active",
         is_pinned: false,
       };
 
-      const mockUpdate = vi.fn().mockReturnValue(mockSupabaseQuery({ success: true }));
+      const mockUpdate = vi
+        .fn()
+        .mockReturnValue(mockSupabaseQuery({ success: true }));
 
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: "user-123" } },
       });
-      
+
       mockSupabase.from.mockImplementation((table) => {
         if (table === "people") {
           return mockSupabaseQuery(mockPeople);
@@ -320,7 +378,10 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       let unmount: () => void;
       // Render ThreadDetailPage
       await act(async () => {
-        const res = render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+        const res = render(
+          <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
+          { wrapper },
+        );
         unmount = res.unmount;
       });
 
@@ -330,9 +391,16 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
 
       // Add a new entry mentioning both people again
       const textarea = screen.getByPlaceholderText(/continue the thought/i);
-      fireEvent.change(textarea, { target: { value: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011) and @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)" } });
+      fireEvent.change(textarea, {
+        target: {
+          value:
+            "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011) and @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)",
+        },
+      });
 
-      const submitBtn = textarea.closest("form")!.querySelector('button[type="submit"]') as HTMLButtonElement;
+      const submitBtn = textarea
+        .closest("form")!
+        .querySelector('button[type="submit"]') as HTMLButtonElement;
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -343,10 +411,14 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
               "550e8400-e29b-41d4-a716-446655440011",
             ]),
             entries: expect.arrayContaining([
-              expect.objectContaining({ text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)" }),
-              expect.objectContaining({ text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011) and @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)" }),
+              expect.objectContaining({
+                text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)",
+              }),
+              expect.objectContaining({
+                text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011) and @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)",
+              }),
             ]),
-          })
+          }),
         );
         expect(mockUpdate.mock.calls[0][0].linked_people_ids.length).toBe(2);
       });
@@ -356,9 +428,15 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
       const threadWithTwoEntries = {
         ...initialThread,
         entries: [
-          { text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)", created_at: new Date().toISOString() },
-          { text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)", created_at: new Date().toISOString() }
-        ]
+          {
+            text: "We need to talk to @[Alice Smith](550e8400-e29b-41d4-a716-446655440010)",
+            created_at: new Date().toISOString(),
+          },
+          {
+            text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)",
+            created_at: new Date().toISOString(),
+          },
+        ],
       };
 
       useAppStore.setState({
@@ -379,7 +457,10 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
 
       await act(async () => {
         unmount();
-        render(<ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />, { wrapper });
+        render(
+          <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
+          { wrapper },
+        );
       });
       await screen.findByDisplayValue("Project Brainstorm");
 
@@ -388,7 +469,9 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
 
       fireEvent.click(deleteButtons[0]);
 
-      const confirmDeleteBtn = await screen.findByRole("button", { name: "Delete" });
+      const confirmDeleteBtn = await screen.findByRole("button", {
+        name: "Delete",
+      });
       fireEvent.click(confirmDeleteBtn);
 
       await waitFor(() => {
@@ -396,9 +479,11 @@ describe("Phase 5 Challenger - Mentions and UI Popover Verification", () => {
           expect.objectContaining({
             linked_people_ids: ["550e8400-e29b-41d4-a716-446655440011"],
             entries: [
-              expect.objectContaining({ text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)" })
+              expect.objectContaining({
+                text: "Follow up with @[Bob Jones](550e8400-e29b-41d4-a716-446655440011)",
+              }),
             ],
-          })
+          }),
         );
       });
     });

@@ -1,5 +1,6 @@
 "use client";
 import { logger } from "@/lib/logger";
+import { useUserId } from "@/components/providers/SessionProvider";
 
 import React, { useEffect, useState, useCallback, use } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -53,6 +54,7 @@ export default function ThreadDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const userId = useUserId();
   const { id } = use(params);
   const router = useRouter();
   const supabase = createClient();
@@ -74,14 +76,10 @@ export default function ThreadDetailPage({
 
   useEffect(() => {
     async function fetchPeople() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
       const { data } = await supabase
         .from("people")
         .select("id, name")
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
       if (data && Array.isArray(data)) {
         setPeople(data);
       }
@@ -564,7 +562,7 @@ export default function ThreadDetailPage({
                 </div>
                 <button
                   onClick={() => setDeleteEntryIndex(i)}
-                  className="absolute top-4 right-4 rounded p-1.5 text-[var(--color-text-3)] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[rgba(248,113,113,0.1)] hover:text-[#F87171]"
+                  className="row-actions absolute top-4 right-4 rounded p-1.5 text-[var(--color-text-3)] hover:bg-[rgba(248,113,113,0.1)] hover:text-[#F87171]"
                   title="Delete entry"
                 >
                   <UiIcon className="h-4 w-4" icon={Trash2} />

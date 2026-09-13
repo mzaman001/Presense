@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from "react";
 import { useAppStore } from "@/store/useAppStore";
+import { useSessionUser } from "@/components/providers/SessionProvider";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
@@ -256,7 +257,7 @@ function CategoryItem({
         </label>
         <button
           onClick={() => handleDelete(cat)}
-          className="ml-1 rounded-lg p-1.5 text-[var(--color-text-3)] opacity-0 transition-all group-hover:opacity-100 hover:bg-red-400/10 hover:text-red-400"
+          className="row-actions ml-1 rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-red-400/10 hover:text-red-400"
         >
           <UiIcon className="h-4 w-4" icon={Trash2} />
         </button>
@@ -355,6 +356,7 @@ function SettingsModalContent({
 }: {
   onClose: (open: boolean) => void;
 }) {
+  const { id: userId, email: userAccountEmail } = useSessionUser();
   const { setUserSettings, settingsActiveTab, setSettingsActiveTab } =
     useAppStore(
       useShallow((s) => ({
@@ -545,16 +547,12 @@ function SettingsModalContent({
     async function loadSettings() {
       setLoading(true);
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
-        setUserEmail(user.email || "");
+        setUserEmail(userAccountEmail);
 
         const { data, error } = await supabase
           .from("user_settings")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .single();
         if (error) throw error;
         if (data) {
@@ -597,10 +595,6 @@ function SettingsModalContent({
 
     const save = async () => {
       setSaveStatus("saving");
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
 
       const {
         user_id: _,
@@ -615,7 +609,7 @@ function SettingsModalContent({
         /* @todo: Untyped usage justified per TOOL-01 */
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .update(updateData as any)
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       if (error) {
         toast.error("Failed to save settings", { description: error.message });
@@ -688,29 +682,25 @@ function SettingsModalContent({
 
   const handleExportData = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
       toast.info("Preparing export...");
 
       const [items, people, threads, explores, locations, settings] =
         await Promise.all([
-          supabase.from("items").select("*").eq("user_id", user.id),
-          supabase.from("people").select("*").eq("user_id", user.id),
-          supabase.from("threads").select("*").eq("user_id", user.id),
-          supabase.from("explores").select("*").eq("user_id", user.id),
-          supabase.from("locations").select("*").eq("user_id", user.id),
+          supabase.from("items").select("*").eq("user_id", userId),
+          supabase.from("people").select("*").eq("user_id", userId),
+          supabase.from("threads").select("*").eq("user_id", userId),
+          supabase.from("explores").select("*").eq("user_id", userId),
+          supabase.from("locations").select("*").eq("user_id", userId),
           supabase
             .from("user_settings")
             .select("*")
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .single(),
         ]);
 
       const exportData = {
         exported_at: new Date().toISOString(),
-        user_id: user.id,
+        user_id: userId,
         items: items.data ?? [],
         people: people.data ?? [],
         threads: threads.data ?? [],
@@ -737,17 +727,13 @@ function SettingsModalContent({
 
   const handleClearCompleted = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
       const { error } = await supabase
         // INFRA-19: clear-completed = trash with deleted_at, per lifecycle
         // vocabulary; the stale completed_at is cleared too so a later
         // restore doesn't rank as done in the archive view.
         .from("items")
         .update({ ...moveItemToTrashPatch(), completed_at: null })
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("status", "done");
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -763,15 +749,11 @@ function SettingsModalContent({
 
   const handleClearStaleLocations = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
       const { error } = await supabase
         .from("locations")
         .delete()
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .lt("updated_at", thirtyDaysAgo);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["locations"] });
@@ -785,17 +767,13 @@ function SettingsModalContent({
   };
   const handleDeleteAccount = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
       // The server route owns the complete deletion flow with a service-role
       // client and reports partial purges. Deleting in the browser first made
       // this irreversible operation split across two unreliable authorities.
       const res = await fetch("/api/account", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmToken: user.email ?? "" }),
+        body: JSON.stringify({ confirmToken: userAccountEmail }),
       });
       if (!res.ok) {
         const { error } = await res.json();
@@ -910,10 +888,7 @@ function SettingsModalContent({
               </div>
 
               {/* Main Content Area */}
-              <div
-                className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
-                data-lenis-prevent
-              >
+              <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <Button
                   variant="icon"
                   onClick={() => onClose(false)}

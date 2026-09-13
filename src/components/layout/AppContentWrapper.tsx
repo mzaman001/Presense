@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { SearchModal } from "@/components/layout/DynamicModals";
+import { CaptureModal, SearchModal } from "@/components/layout/DynamicModals";
 
 export function AppContentWrapper({ children }: { children: React.ReactNode }) {
   const { setCaptureModalOpen, setSearchModalOpen, setSettingsModalOpen } =
@@ -71,7 +71,13 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
             router.push("/");
             break;
           case "c":
+          case "n":
             e.preventDefault();
+            // Same preload trick as ⌘K: fetch the chunk before the modal
+            // mounts so the first open isn't a blank frame.
+            (
+              CaptureModal as typeof CaptureModal & { preload: () => void }
+            ).preload();
             setCaptureModalOpen(true);
             break;
           case "/":

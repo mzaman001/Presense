@@ -1,5 +1,7 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "./test-utils";
+import { TEST_USER, makeTask } from "./test-utils";
+import { SessionProvider } from "@/components/providers/SessionProvider";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ExploreDrawer } from "@/components/features/ExploreDrawer";
 import { SearchModal } from "@/components/features/SearchModal";
@@ -42,15 +44,23 @@ const queryClient = new QueryClient({
 });
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>
-    {children}
-  </QueryClientProvider>
+  <SessionProvider user={TEST_USER}>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  </SessionProvider>
 );
+
+/**
+ * A chainable Supabase query stub: every builder method returns the same
+ * object, and awaiting it resolves to { data, error }.
+ */
+type MockQuery = Record<string, ReturnType<typeof vi.fn>> & {
+  then: ReturnType<typeof vi.fn>;
+};
 
 describe("Phase 3 - Integration Test Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Mock matchMedia for jsdom
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -65,7 +75,7 @@ describe("Phase 3 - Integration Test Suite", () => {
         dispatchEvent: vi.fn(),
       })),
     });
-    
+
     // Reset Zustand store state
     useAppStore.setState({
       isCaptureModalOpen: false,
@@ -76,8 +86,11 @@ describe("Phase 3 - Integration Test Suite", () => {
   });
 
   // Helper function to build a chainable Supabase query mock
-  function mockSupabaseQuery(data: any = null, error: any = null) {
-    const query: any = {
+  function mockSupabaseQuery(
+    data: unknown = null,
+    error: unknown = null,
+  ): MockQuery {
+    const query: MockQuery = {
       select: vi.fn().mockImplementation(() => query),
       eq: vi.fn().mockImplementation(() => query),
       in: vi.fn().mockImplementation(() => query),
@@ -92,7 +105,9 @@ describe("Phase 3 - Integration Test Suite", () => {
         return Promise.resolve(onfulfilled({ data, error }));
       }),
     };
-    query.then = vi.fn().mockImplementation((resolve) => resolve({ data, error }));
+    query.then = vi
+      .fn()
+      .mockImplementation((resolve) => resolve({ data, error }));
     return query;
   }
 
@@ -113,14 +128,14 @@ describe("Phase 3 - Integration Test Suite", () => {
           onSaved={onSaved}
           item={null}
         />,
-        { wrapper }
+        { wrapper },
       );
 
       // Verify the type input is rendered via the Dropdown combobox
       const typeInput = screen.getByPlaceholderText("e.g. link, note, book");
       expect(typeInput).toBeInTheDocument();
       expect(typeInput).not.toHaveAttribute("list", "preset-explore-types");
-      
+
       const dataList = container.querySelector("#preset-explore-types");
       expect(dataList).toBeNull(); // The native datalist should no longer exist
     });
@@ -137,7 +152,11 @@ describe("Phase 3 - Integration Test Suite", () => {
         }
         if (table === "explores") {
           return mockSupabaseQuery([
-            { id: "explore-1", title: "Atomic Habits", tags: ["book", "productivity"] },
+            {
+              id: "explore-1",
+              title: "Atomic Habits",
+              tags: ["book", "productivity"],
+            },
           ]);
         }
         return mockSupabaseQuery([]);
@@ -175,19 +194,23 @@ describe("Phase 3 - Integration Test Suite", () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: "user-123", email: "test@example.com" } },
       });
-      mockSupabase.from.mockReturnValue(mockSupabaseQuery({
-        user_id: "user-123",
-        routing_confidence: "Medium",
-        nlp_date_parsing: true,
-        notif_briefing: true,
-      }));
+      mockSupabase.from.mockReturnValue(
+        mockSupabaseQuery({
+          user_id: "user-123",
+          routing_confidence: "Medium",
+          nlp_date_parsing: true,
+          notif_briefing: true,
+        }),
+      );
 
       useAppStore.setState({ isSettingsModalOpen: true });
 
       render(<SettingsModal />, { wrapper });
 
       await waitFor(() => {
-        expect(screen.queryByText(/routing confidence/i)).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(/routing confidence/i),
+        ).not.toBeInTheDocument();
         expect(screen.queryByText(/nlp date parsing/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/people briefings/i)).not.toBeInTheDocument();
       });
@@ -197,9 +220,11 @@ describe("Phase 3 - Integration Test Suite", () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: "user-123", email: "test@example.com" } },
       });
-      mockSupabase.from.mockReturnValue(mockSupabaseQuery({
-        auto_start_breaks: true,
-      }));
+      mockSupabase.from.mockReturnValue(
+        mockSupabaseQuery({
+          auto_start_breaks: true,
+        }),
+      );
 
       useAppStore.setState({ isSettingsModalOpen: true });
 
@@ -210,7 +235,9 @@ describe("Phase 3 - Integration Test Suite", () => {
         fireEvent.click(focusTab);
       });
 
-      const timerDurationsCard = screen.getByText("Timer Durations").closest(".p-5, .space-y-5, .rounded-xl");
+      const timerDurationsCard = screen
+        .getByText("Timer Durations")
+        .closest(".p-5, .space-y-5, .rounded-xl");
       expect(timerDurationsCard).toBeInTheDocument();
 
       const autoStartToggle = screen.getByText("Auto-start Breaks");
@@ -223,9 +250,9 @@ describe("Phase 3 - Integration Test Suite", () => {
       });
       mockSupabase.from.mockReturnValue(mockSupabaseQuery({}));
 
-      useAppStore.setState({ 
+      useAppStore.setState({
         isSettingsModalOpen: true,
-        settingsActiveTab: "focus" as any 
+        settingsActiveTab: "focus",
       });
 
       render(<SettingsModal />, { wrapper });
@@ -239,13 +266,13 @@ describe("Phase 3 - Integration Test Suite", () => {
 
   describe("R3: TaskCard & Think Detail Page Requirements", () => {
     it("should verify that TaskCard styles overlapping avatars with a border color matching the background, and does not clip on hover", () => {
-      const task = {
+      const task = makeTask({
         id: "task-1",
         title: "Test Task",
         category: "work",
         priority: 4,
         linked_people_ids: ["person-1", "person-2"],
-      };
+      });
       const peopleMap = {
         "person-1": { name: "Alice Smith", initials: "AS", color: "#F472B6" },
         "person-2": { name: "Bob Jones", initials: "BJ", color: "#4ADE80" },
@@ -260,7 +287,7 @@ describe("Phase 3 - Integration Test Suite", () => {
           fetchTasks={vi.fn()}
           peopleMap={peopleMap}
         />,
-        { wrapper }
+        { wrapper },
       );
 
       const avatars = container.querySelectorAll(".flex.-space-x-1\\.5 div");
@@ -279,25 +306,31 @@ describe("Phase 3 - Integration Test Suite", () => {
         id: "thread-123",
         title: "Prefetched Thread Title",
         color_accent: "#FBBF24",
-        entries: [{ text: "Initial entry", created_at: new Date().toISOString() }],
+        entries: [
+          { text: "Initial entry", created_at: new Date().toISOString() },
+        ],
         stale_prompt: null,
         status: "active",
         is_pinned: false,
       };
 
       mockSupabase.from.mockReturnValue(mockSupabaseQuery(prefetchedThread));
-      
-      useAppStore.setState({ prefetchedThreads: { [prefetchedThread.id]: prefetchedThread } });
+
+      useAppStore.setState({
+        prefetchedThreads: { [prefetchedThread.id]: prefetchedThread },
+      });
 
       await act(async () => {
         render(
           <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
-          { wrapper }
+          { wrapper },
         );
       });
 
       expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-      const titleInput = await screen.findByDisplayValue("Prefetched Thread Title");
+      const titleInput = await screen.findByDisplayValue(
+        "Prefetched Thread Title",
+      );
       expect(titleInput).toBeInTheDocument();
 
       const entryElements = screen.getAllByText("Initial entry");
@@ -306,23 +339,26 @@ describe("Phase 3 - Integration Test Suite", () => {
 
     it("should verify that the thread color picker is click-triggered on mobile / touch viewports", async () => {
       const originalOntouchstart = window.ontouchstart;
-      (window as any).ontouchstart = () => {};
+      (window as Window & { ontouchstart?: () => void }).ontouchstart =
+        () => {};
 
-      mockSupabase.from.mockReturnValue(mockSupabaseQuery({
-        id: "thread-123",
-        title: "Mobile Thread",
-        color_accent: "#FBBF24",
-        entries: [],
-        stale_prompt: null,
-        status: "active",
-        is_pinned: false,
-      }));
+      mockSupabase.from.mockReturnValue(
+        mockSupabaseQuery({
+          id: "thread-123",
+          title: "Mobile Thread",
+          color_accent: "#FBBF24",
+          entries: [],
+          stale_prompt: null,
+          status: "active",
+          is_pinned: false,
+        }),
+      );
 
       let container: HTMLElement = document.body;
       await act(async () => {
         const result = render(
           <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
-          { wrapper }
+          { wrapper },
         );
         container = result.container;
       });
@@ -334,11 +370,13 @@ describe("Phase 3 - Integration Test Suite", () => {
 
       fireEvent.click(colorBar!);
 
-      const colorButton = container.querySelector("button[style*='background-color']");
+      const colorButton = container.querySelector(
+        "button[style*='background-color']",
+      );
       expect(colorButton).toBeInTheDocument();
 
       if (originalOntouchstart === undefined) {
-        delete (window as any).ontouchstart;
+        delete (window as Window & { ontouchstart?: () => void }).ontouchstart;
       } else {
         window.ontouchstart = originalOntouchstart;
       }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useUserId } from "@/components/providers/SessionProvider";
 import TextareaAutosize from "react-textarea-autosize";
 import {
   X,
@@ -56,6 +57,7 @@ export function ExploreDrawer({
   onClose,
   onSaved,
 }: ExploreDrawerProps) {
+  const userId = useUserId();
   const supabase = createClient();
   const { userSettings, setUserSettings } = useAppStore(
     useShallow((s) => ({
@@ -157,16 +159,16 @@ export function ExploreDrawer({
       // Fetch threads (INFRA-18: explicit user_id filter for planner index usage)
       /* @todo: Untyped usage justified per TOOL-01 */
       (async () => {
-        const { data: userSession } = await supabase.auth.getUser();
-        if (!userSession?.user) return;
         supabase
           .from("threads")
           .select("id, title")
-          .eq("user_id", userSession.user.id)
+          .eq("user_id", userId)
           .eq("status", "active")
-          .then(({ data }: { data: { id: string; title: string }[] | null }) => {
-            setThreads(data || []);
-          });
+          .then(
+            ({ data }: { data: { id: string; title: string }[] | null }) => {
+              setThreads(data || []);
+            },
+          );
       })();
     }
   }, [item, isOpen, supabase]);
@@ -212,13 +214,8 @@ export function ExploreDrawer({
     setSaving(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
       const payload = {
-        user_id: user.id,
+        user_id: userId,
         title,
         url: url || null,
         note,

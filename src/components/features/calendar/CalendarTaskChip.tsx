@@ -5,7 +5,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
-import { DEFAULT_DO_COLORS } from "@/lib/constants";
+import { resolveCategoryColor } from "@/lib/constants";
 import { format } from "date-fns";
 
 import { Task } from "@/types/calendar";
@@ -45,10 +45,11 @@ export function CalendarTaskChip({
     data: { task },
   });
 
-  const categoryColor =
-    userSettings?.do_category_colors?.[task.category] ||
-    DEFAULT_DO_COLORS[task.category] ||
-    "var(--color-text-3)";
+  const categoryColor = resolveCategoryColor(
+    task.category,
+    userSettings?.do_category_colors,
+    "var(--color-text-3)",
+  );
 
   const priorityColor = getPriorityColor(task.priority);
 
@@ -180,7 +181,7 @@ export function CalendarTaskChip({
         </p>
       )}
       {/* Resize handle visual affordance */}
-      <div className="absolute right-0 bottom-0 left-0 flex h-[6px] cursor-s-resize items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="row-actions absolute right-0 bottom-0 left-0 flex h-[6px] cursor-s-resize items-center justify-center">
         <div className="h-[2px] w-6 rounded-full bg-[rgba(255,255,255,0.3)]" />
       </div>
     </div>
@@ -190,10 +191,11 @@ export function CalendarTaskChip({
 /** Ghost overlay shown during drag across the whole DndContext */
 export function CalendarTaskChipOverlay({ task }: { task: Task }) {
   const userSettings = useAppStore((s) => s.userSettings);
-  const categoryColor =
-    userSettings?.do_category_colors?.[task.category] ||
-    DEFAULT_DO_COLORS[task.category] ||
-    "var(--color-text-3)";
+  const categoryColor = resolveCategoryColor(
+    task.category,
+    userSettings?.do_category_colors,
+    "var(--color-text-3)",
+  );
 
   return (
     <div

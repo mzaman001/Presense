@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { X, Lightbulb } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { Icon as UiIcon } from "@/components/ui/Icon";
@@ -11,18 +11,44 @@ interface ContextualTipProps {
   description: string;
 }
 
+// Dismissals live in localStorage. A tiny external store lets the component
+// read them during render (hydration-safe via getServerSnapshot) instead of
+// flashing the tip in and then hiding it from an effect.
+const dismissListeners = new Set<() => void>();
+
+function subscribeDismissals(onChange: () => void) {
+  dismissListeners.add(onChange);
+  return () => dismissListeners.delete(onChange);
+}
+
+function isDismissed(id: string): boolean {
+  try {
+    return localStorage.getItem(`hide_tip_${id}`) !== null;
+  } catch {
+    // Private mode / storage blocked — show the tip rather than crash.
+    return false;
+  }
+}
+
 export function ContextualTip({ id, title, description }: ContextualTipProps) {
-  const [isVisible, setIsVisible] = useState(false);
+  const getSnapshot = useCallback(() => isDismissed(id), [id]);
+  // Server renders nothing; the tip appears on the client only if not dismissed.
+  const getServerSnapshot = useCallback(() => true, []);
+  const dismissed = useSyncExternalStore(
+    subscribeDismissals,
+    getSnapshot,
+    getServerSnapshot,
+  );
+  const isVisible = !dismissed;
 
-  useEffect(() => {
-    const hidden = localStorage.getItem(`hide_tip_${id}`);
-    if (!hidden) setIsVisible(true);
+  const handleDismiss = useCallback(() => {
+    try {
+      localStorage.setItem(`hide_tip_${id}`, "true");
+    } catch {
+      // Storage unavailable — the tip simply reappears next visit.
+    }
+    dismissListeners.forEach((listener) => listener());
   }, [id]);
-
-  const handleDismiss = () => {
-    setIsVisible(false);
-    localStorage.setItem(`hide_tip_${id}`, "true");
-  };
 
   return (
     <AnimatePresence>
@@ -31,20 +57,24 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
           initial={{ opacity: 0, y: -10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.2 } }}
-          className="relative mb-6 overflow-hidden rounded-xl bg-gradient-to-r from-[rgba(229,180,30,0.1)] to-[rgba(235,66,51,0.05)] border border-[rgba(229,180,30,0.2)] p-4 shadow-lg flex items-start gap-3"
+          className="relative mb-6 flex items-start gap-3 overflow-hidden rounded-xl border border-[rgba(229,180,30,0.2)] bg-gradient-to-r from-[rgba(229,180,30,0.1)] to-[rgba(235,66,51,0.05)] p-4 shadow-lg"
         >
-          <div className="mt-0.5 w-8 h-8 rounded-full bg-[rgba(229,180,30,0.2)] flex items-center justify-center flex-shrink-0 text-[#E5B41E]">
-            <UiIcon className="w-4 h-4" icon={Lightbulb} />
+          <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[rgba(229,180,30,0.2)] text-[#E5B41E]">
+            <UiIcon className="h-4 w-4" icon={Lightbulb} />
           </div>
           <div className="flex-1 pr-6">
-            <h4 className="text-sm font-semibold text-[#E5B41E] mb-1">{title}</h4>
-            <p className="text-sm text-[var(--color-text-2)] leading-relaxed">{description}</p>
+            <h4 className="mb-1 text-sm font-semibold text-[#E5B41E]">
+              {title}
+            </h4>
+            <p className="text-sm leading-relaxed text-[var(--color-text-2)]">
+              {description}
+            </p>
           </div>
           <button
             onClick={handleDismiss}
-            className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-[var(--color-surface)] transition-colors text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
+            className="absolute top-3 right-3 rounded-full p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
           >
-            <UiIcon className="w-4 h-4" icon={X} />
+            <UiIcon className="h-4 w-4" icon={X} />
           </button>
         </m.div>
       )}

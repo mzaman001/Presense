@@ -6,8 +6,15 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Check, Clock, Play, Timer, Trash2 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
-import { DEFAULT_DO_COLORS } from "@/lib/constants";
+import { resolveCategoryColor } from "@/lib/constants";
 import { toast } from "sonner";
+import {
+  addTaskToCaches,
+  removeTaskFromCaches,
+  updateTaskInCaches,
+  readSubtasks,
+  type TaskRecord,
+} from "@/lib/task-cache";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHaptics } from "@/hooks/useHaptics";
 import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
@@ -48,13 +55,13 @@ export const TaskCard = React.memo(
     peopleMap,
   }: {
     /* @todo: Untyped usage justified per TOOL-01 */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    task: any;
+
+    task: TaskRecord;
     completing: string | null;
     completeTask: (e: React.MouseEvent, id: string) => void;
     /* @todo: Untyped usage justified per TOOL-01 */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    openEditPanel: (task: any) => void;
+
+    openEditPanel: (task: TaskRecord) => void;
     fetchTasks: () => void;
     peopleMap?: Record<
       string,
@@ -94,7 +101,7 @@ export const TaskCard = React.memo(
 
     const label = formatDeadline(task.deadline);
     const isOverdue = label === "Overdue";
-    const subtasks: { completed: boolean }[] = task.subtasks || [];
+    const subtasks = readSubtasks(task.subtasks);
     const completedSubtasks = subtasks.filter((st) => st.completed).length;
     const priority = Number(task.priority) || 4;
 
@@ -119,28 +126,7 @@ export const TaskCard = React.memo(
        optimistic cache removal → moveItemToTrashPatch() → toast with Undo.
        DS-11: soft delete never shows a confirmation dialog. */
     const handleTaskDelete = async () => {
-      // Save current caches for possible rollback
-      const previousTasks = queryClient.getQueryData<any[]>(["tasks"]);
-      const previousDashboard = queryClient.getQueryData<any>(["dashboard"]);
-
-      // Optimistically update ["tasks"]
-      queryClient.setQueryData<any[]>(
-        ["tasks"],
-        (old) => old?.filter((t) => t.id !== task.id) ?? [],
-      );
-
-      // Optimistically update ["dashboard"]
-      /* @todo: Untyped usage justified per TOOL-01 */
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      queryClient.setQueryData<any>(["dashboard"], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          tasks: old.tasks?.filter((t: any) => t.id !== task.id) ?? [],
-        };
-      });
+      const rollback = removeTaskFromCaches(queryClient, task.id);
 
       try {
         const { error } = await supabase
@@ -156,26 +142,7 @@ export const TaskCard = React.memo(
           action: {
             label: "Undo",
             onClick: async () => {
-              const currentTasks = queryClient.getQueryData<any[]>(["tasks"]);
-              const currentDashboard = queryClient.getQueryData<any>([
-                "dashboard",
-              ]);
-
-              // Optimistic restore
-              queryClient.setQueryData<any[]>(["tasks"], (old) => [
-                ...(old ?? []),
-                task,
-              ]);
-              /* @todo: Untyped usage justified per TOOL-01 */
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              queryClient.setQueryData<any>(["dashboard"], (old: any) => {
-                if (!old) return old;
-                return {
-                  ...old,
-                  tasks: [...(old.tasks ?? []), task],
-                };
-              });
-
+              const undoRollback = addTaskToCaches(queryClient, task);
               try {
                 const { error: undoError } = await supabase
                   .from("items")
@@ -184,18 +151,14 @@ export const TaskCard = React.memo(
                 if (undoError) throw undoError;
                 fetchTasks();
               } catch {
-                // Rollback undo
-                queryClient.setQueryData(["tasks"], currentTasks);
-                queryClient.setQueryData(["dashboard"], currentDashboard);
+                undoRollback();
                 toast.error("Failed to restore task");
               }
             },
           },
         });
       } catch {
-        // Rollback on failure
-        queryClient.setQueryData(["tasks"], previousTasks);
-        queryClient.setQueryData(["dashboard"], previousDashboard);
+        rollback();
 
         animate(dragX, 0, { duration: 0.3 });
         setDeleted(false);
@@ -368,10 +331,11 @@ export const TaskCard = React.memo(
                   <span
                     className="text-caption font-semibold capitalize"
                     style={{
-                      color:
-                        (userSettings?.do_category_colors?.[task.category] ||
-                          DEFAULT_DO_COLORS[task.category]) ??
+                      color: resolveCategoryColor(
+                        task.category,
+                        userSettings?.do_category_colors,
                         "var(--text-muted)",
+                      ),
                     }}
                   >
                     {task.category}
@@ -495,7 +459,7 @@ export const TaskCard = React.memo(
               </div>
 
               <div className="flex items-center gap-2">
-                {task.time_spent_minutes > 0 && (
+                {(task.time_spent_minutes ?? 0) > 0 && (
                   <div
                     className="flex items-center gap-1 rounded-md px-1.5 py-0.5"
                     style={{ background: "rgba(229,180,30,0.08)" }}
@@ -543,46 +507,10 @@ export const TaskCard = React.memo(
                         onClick={async (e) => {
                           e.stopPropagation();
 
-                          const previousTasks = queryClient.getQueryData<any[]>(
-                            ["tasks"],
-                          );
-                          const previousDashboard =
-                            queryClient.getQueryData<any>(["dashboard"]);
-
-                          // Optimistically set task.snoozed_until = null in ["tasks"]
-                          /* @todo: Untyped usage justified per TOOL-01 */
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          queryClient.setQueryData<any[]>(
-                            ["tasks"],
-                            (old: any) =>
-                              /* @todo: Untyped usage justified per TOOL-01 */
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              old?.map((t: any) =>
-                                t.id === task.id
-                                  ? { ...t, snoozed_until: null }
-                                  : t,
-                              ) ?? [],
-                          );
-
-                          // Optimistically set task.snoozed_until = null in ["dashboard"]
-                          /* @todo: Untyped usage justified per TOOL-01 */
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          queryClient.setQueryData<any>(
-                            ["dashboard"],
-                            (old: any) => {
-                              if (!old) return old;
-                              return {
-                                ...old,
-                                /* @todo: Untyped usage justified per TOOL-01 */
-                                 
-                                tasks:
-                                  old.tasks?.map((t: any) =>
-                                    t.id === task.id
-                                      ? { ...t, snoozed_until: null }
-                                      : t,
-                                  ) ?? [],
-                              };
-                            },
+                          const rollback = updateTaskInCaches(
+                            queryClient,
+                            task.id,
+                            { snoozed_until: null },
                           );
 
                           try {
@@ -594,12 +522,7 @@ export const TaskCard = React.memo(
                             if (error) throw error;
                             fetchTasks();
                           } catch {
-                            // Rollback on failure
-                            queryClient.setQueryData(["tasks"], previousTasks);
-                            queryClient.setQueryData(
-                              ["dashboard"],
-                              previousDashboard,
-                            );
+                            rollback();
                             toast.error("Failed to cancel snooze");
                           }
                         }}
@@ -701,12 +624,13 @@ export const TaskCard = React.memo(
     const prevSub = prevTask.subtasks;
     const nextSub = nextTask.subtasks;
     if (prevSub !== nextSub) {
-      if (!prevSub || !nextSub) return false;
-      if (prevSub.length !== nextSub.length) return false;
-      for (let i = 0; i < prevSub.length; i++) {
+      const prevList = readSubtasks(prevSub);
+      const nextList = readSubtasks(nextSub);
+      if (prevList.length !== nextList.length) return false;
+      for (let i = 0; i < prevList.length; i++) {
         if (
-          prevSub[i].completed !== nextSub[i].completed ||
-          prevSub[i].text !== nextSub[i].text
+          prevList[i].completed !== nextList[i].completed ||
+          prevList[i].text !== nextList[i].text
         ) {
           return false;
         }
