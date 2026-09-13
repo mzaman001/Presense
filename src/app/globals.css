@@ -200,7 +200,6 @@
   --glass-blur: var(--blur-dropdown);
   --glass-blur-heavy: var(--blur-elevated);
   --glass-blur-light: var(--blur-card);
-  --glass-noise: url("data:image/svg+xml,..."); /* noise SVG inline */
 
   /* === MOTION SYSTEM === */
   --dur-fast: 120ms;
@@ -228,37 +227,6 @@
   --elev-overlay-shadow: var(--shadow-modal);
   --elev-overlay-blur: var(--blur-elevated);
   --elev-overlay-border: rgba(255, 255, 255, 0.22);
-
-  /* DS-29 (Aug 17, 2026) — Glassmorphism 2.0 additions, attached to the
-     existing elevation tiers so every tier gains the same frost fill and
-     specular edge. The frost fill is a subtle top-brighter alpha gradient
-     (flat rgba reads washed out per 2026 guidance); the specular edge is a
-     1px inset highlight at the top, strongest at overlay tier. Shared once,
-     consumed by all glass surfaces — never duplicated per component. */
-  --elev-flat-frost: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.035),
-    transparent 45%
-  );
-  --elev-flat-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
-  --elev-raised-frost: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.05),
-    transparent 45%
-  );
-  --elev-raised-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
-  --elev-floating-frost: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.07),
-    transparent 45%
-  );
-  --elev-floating-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.16);
-  --elev-overlay-frost: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.09),
-    transparent 45%
-  );
-  --elev-overlay-specular: inset 0 0.5px 0 rgba(255, 255, 255, 0.22);
 
   /* === SHADOW SYSTEM — flat mode uses shadows only for real elevation
      (dialogs), never for glow === */
@@ -504,15 +472,9 @@ h6 {
 /* Glassmorphism Utilities */
 .glass-panel {
   background: var(--color-surface);
-  backdrop-filter: var(--blur-elevated);
-  contain: paint; /* PERF-04/08: isolate blur repaints from siblings */
-  -webkit-backdrop-filter: var(--blur-elevated);
-  border: 0.5px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
-    0 8px 32px 0 rgba(0, 0, 0, 0.3);
-  transition: all 0.2s ease-in-out;
+  box-shadow: var(--shadow-card);
 }
 
 .glass-panel:hover,
@@ -593,15 +555,11 @@ h6 {
 /* === GLASS CARD SYSTEM === */
 @layer components {
   .glass-card {
-    contain: paint; /* PERF-04/08 */
     background: var(--surface-card);
-    backdrop-filter: var(--glass-blur-light);
-    -webkit-backdrop-filter: var(--glass-blur-light);
-    border: 0.5px solid var(--border-card);
+    border: 1px solid var(--border-card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
     position: relative;
-    overflow: hidden;
     transition:
       box-shadow var(--transition-base),
       border-color var(--transition-base),
@@ -609,87 +567,11 @@ h6 {
   }
 
   .glass-card-elevated {
-    contain: paint; /* PERF-04/08 */
     background: var(--surface-card);
-    backdrop-filter: var(--blur-elevated);
-    -webkit-backdrop-filter: var(--blur-elevated);
-    border: 0.5px solid var(--border-card);
+    border: 1px solid var(--border-card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card-hover);
     position: relative;
-    overflow: hidden;
-  }
-
-  .glass-card::before,
-  .glass-card-elevated::before,
-  .modal::before,
-  .sidebar::before,
-  .glass-panel::before,
-  .dropdown-panel::before,
-  .mobile-top-bar::before,
-  .bottom-nav::before,
-  .mobile-drawer::before,
-  [data-sonner-toast]::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.05;
-    mix-blend-mode: overlay;
-  }
-  /* DS-29 (Aug 17, 2026): the frost fill ::after — alpha-gradient surface, on
-     top of the grain ::before. Z-index 0 keeps content above both; a new
-     .glass-fill-z class exists for surfaces whose children need ::before below
-     them but this layer above (none needed today). */
-  .glass-card::after,
-  .glass-card-elevated::after,
-  .glass-panel::after,
-  .dropdown-panel::after,
-  .modal::after,
-  .sidebar::after,
-  .mobile-top-bar::after,
-  .bottom-nav::after,
-  .mobile-drawer::after,
-  [data-sonner-toast]::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    background-image: var(--elev-floating-frost);
-    mix-blend-mode: normal;
-  }
-  .glass-card::after,
-  .glass-card-elevated::after,
-  .glass-panel::after {
-    background-image: var(--elev-raised-frost);
-  }
-  .modal::after,
-  .mobile-drawer::after {
-    background-image: var(--elev-overlay-frost);
-  }
-  /* DS-29 (Aug 17, 2026): the specular edge — a brighter top edge simulating
-     light catching a physical glass edge. Merged into the surface's existing
-     box-shadow via box-shadow augmentation on the same elements. */
-  .glass-card,
-  .glass-panel {
-    box-shadow: var(--shadow-card), var(--elev-raised-specular);
-  }
-  .glass-card-elevated {
-    box-shadow: var(--shadow-card-hover), var(--elev-raised-specular);
-  }
-  .dropdown-panel {
-    box-shadow: var(--shadow-dropdown), var(--elev-floating-specular);
-  }
-  .mobile-drawer {
-    box-shadow: var(--shadow-modal), var(--elev-overlay-specular);
-  }
-  .sidebar,
-  .mobile-top-bar,
-  .bottom-nav {
-    box-shadow: none, var(--elev-floating-specular);
   }
 
   .card-overdue {
@@ -710,10 +592,7 @@ h6 {
 
   .sidebar {
     background: var(--surface-sidebar);
-    contain: paint; /* PERF-04/08: isolate sidebar blur from page content */
-    backdrop-filter: var(--glass-blur-heavy);
-    -webkit-backdrop-filter: var(--glass-blur-heavy);
-    border-right: 0.5px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
   }
   /* DS-15 — collapsed-rail tooltip pill: hover/focus reveal within ~300ms. */
   .sidebar-tooltip {
@@ -853,35 +732,23 @@ h6 {
 
   .modal {
     background: var(--surface-modal);
-    contain: paint; /* PERF-04/08: isolate modal blur from the page behind it */
-    backdrop-filter: var(--blur-modal);
-    -webkit-backdrop-filter: var(--blur-modal);
-    border: 0.5px solid var(--border-default);
-    border-top: 0.5px solid var(--border-strong);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-modal), var(--elev-overlay-specular);
+    box-shadow: var(--shadow-modal);
     position: relative;
-    overflow: hidden;
   }
 
   [data-sonner-toast] {
     background: var(--surface-toast);
-    contain: paint; /* PERF-04/08 */
-    backdrop-filter: var(--blur-dropdown);
-    -webkit-backdrop-filter: var(--blur-dropdown);
-    border: 0.5px solid var(--border-default);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-toast), var(--elev-floating-specular);
+    box-shadow: var(--shadow-toast);
     position: relative;
-    overflow: hidden;
   }
 
   .dropdown-panel {
-    contain: paint; /* PERF-04/08 */
     background: var(--surface-dropdown);
-    backdrop-filter: var(--blur-dropdown);
-    -webkit-backdrop-filter: var(--blur-dropdown);
-    border: 0.5px solid var(--border-strong);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-dropdown);
     position: relative;
@@ -889,24 +756,18 @@ h6 {
   }
 
   .mobile-top-bar {
-    contain: paint; /* PERF-04/08 */
-    backdrop-filter: var(--blur-chrome);
-    -webkit-backdrop-filter: var(--blur-chrome);
+    background: var(--surface-sidebar);
+    border-bottom: 1px solid var(--border-subtle);
     position: relative;
   }
 
   .bottom-nav {
-    contain: paint; /* PERF-04/08 */
-    backdrop-filter: var(--blur-chrome);
-    -webkit-backdrop-filter: var(--blur-chrome);
+    background: var(--surface-sidebar);
     position: relative;
   }
 
   .mobile-drawer {
-    contain: paint; /* PERF-04/08 */
     background: var(--surface-sidebar);
-    backdrop-filter: var(--blur-elevated);
-    -webkit-backdrop-filter: var(--blur-elevated);
     position: relative;
     overflow: hidden;
   }
@@ -1131,86 +992,6 @@ h6 {
   }
 }
 
-/* === AMBIENT BACKGROUND SYSTEM === */
-.ambient-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  animation: orb-breathe var(--orb-animation-duration) ease-in-out infinite
-    alternate;
-}
-
-.orb-1 {
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, var(--orb-1) 0%, transparent 70%);
-  top: -200px;
-  left: -100px;
-  opacity: 0.55;
-  animation-delay: 0s;
-}
-
-.orb-2 {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, var(--orb-2) 0%, transparent 70%);
-  top: 100px;
-  right: -150px;
-  opacity: 0.45;
-  animation-delay: -3s;
-}
-
-.orb-3 {
-  width: 450px;
-  height: 450px;
-  background: radial-gradient(circle, var(--orb-3) 0%, transparent 70%);
-  bottom: -100px;
-  left: 28%;
-  opacity: 0.4;
-  animation-delay: -6s;
-}
-
-.orb-4 {
-  width: 320px;
-  height: 320px;
-  background: radial-gradient(circle, var(--orb-4) 0%, transparent 70%);
-  bottom: 160px;
-  right: 8%;
-  opacity: 0.5;
-  animation-delay: -9s;
-}
-
-@keyframes orb-breathe {
-  0% {
-    transform: scale(1) translate(0, 0);
-  }
-  33% {
-    transform: scale(1.06) translate(8px, -12px);
-  }
-  66% {
-    transform: scale(0.97) translate(-6px, 8px);
-  }
-  100% {
-    transform: scale(1.04) translate(4px, -6px);
-  }
-}
-
-.noise-layer {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity: var(--noise-opacity);
-  mix-blend-mode: overlay;
-}
-
 /* Animations */
 @keyframes spin-slow {
   to {
@@ -1281,135 +1062,6 @@ h6 {
   transform: none !important;
 }
 
-/* === REDUCED TRANSPARENCY OVERRIDES === */
-@media (prefers-reduced-transparency: reduce) {
-  body {
-    --blur-modal: none !important;
-    --blur-elevated: none !important;
-    --blur-dropdown: none !important;
-    --blur-card: none !important;
-    --blur-chrome: none !important;
-    /* Aliases also null via cascade from canonical tokens */
-
-    /* Make the surfaces fully opaque by blending them with bg-elevated */
-    --surface-1: color-mix(in srgb, white 5.5%, var(--bg-elevated)) !important;
-    --surface-2: color-mix(in srgb, white 8.5%, var(--bg-elevated)) !important;
-    --surface-3: color-mix(in srgb, white 12%, var(--bg-elevated)) !important;
-    --surface-hover: color-mix(
-      in srgb,
-      white 9.5%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-active: color-mix(
-      in srgb,
-      white 14%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-sidebar: var(--bg-elevated) !important;
-    --surface-modal: color-mix(
-      in srgb,
-      white 5%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-dropdown: color-mix(
-      in srgb,
-      white 8%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-toast: color-mix(
-      in srgb,
-      white 6%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-input: color-mix(
-      in srgb,
-      white 6.5%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-input-focus: color-mix(
-      in srgb,
-      white 9.5%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-card: color-mix(
-      in srgb,
-      white 5.5%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-card-hover: color-mix(
-      in srgb,
-      white 9%,
-      var(--bg-elevated)
-    ) !important;
-  }
-
-  :root[data-mode="light"] body {
-    --surface-1: color-mix(in srgb, black 3%, var(--bg-elevated)) !important;
-    --surface-2: color-mix(in srgb, black 5%, var(--bg-elevated)) !important;
-    --surface-3: color-mix(in srgb, black 8%, var(--bg-elevated)) !important;
-    --surface-hover: color-mix(
-      in srgb,
-      black 6%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-active: color-mix(
-      in srgb,
-      black 10%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-sidebar: var(--bg-elevated) !important;
-    --surface-modal: color-mix(
-      in srgb,
-      black 2%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-dropdown: color-mix(
-      in srgb,
-      black 4%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-toast: color-mix(
-      in srgb,
-      black 3%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-input: color-mix(
-      in srgb,
-      black 4%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-input-focus: color-mix(
-      in srgb,
-      black 6.5%,
-      var(--bg-elevated)
-    ) !important;
-    --surface-card: color-mix(
-      in srgb,
-      black 50%,
-      var(--bg-elevated)
-    ) !important;
-  }
-
-  .glass-card,
-  .glass-card-elevated,
-  .glass-panel,
-  .sidebar,
-  .modal,
-  [data-sonner-toast],
-  .dropdown-panel,
-  .mobile-top-bar,
-  .bottom-nav,
-  .mobile-drawer,
-  [class*="backdrop-blur"] {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
-  .orb {
-    display: none !important;
-  }
-}
-
 /* ============================================================ */
 /* PART 17: SCROLLBAR SYSTEM                                     */
 /* ============================================================ */
@@ -1436,53 +1088,9 @@ h6 {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-/* ============================================================ */
-/* ONBOARDING BACKGROUND KEYFRAMES                               */
-/* ============================================================ */
-@keyframes orb-pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.55;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.08);
-    opacity: 0.65;
-  }
-}
-
-@keyframes drift-column {
-  0% {
-    transform: translateX(0px);
-  }
-  100% {
-    transform: translateX(8px);
-  }
-}
-
-@keyframes glow-burst {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.6);
-  }
-  40% {
-    opacity: 0.8;
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.8);
-  }
-}
-
-.onboarding-glow-burst {
-  animation: glow-burst 600ms ease-out forwards;
-}
-
 /* === TOAST NOTIFICATION SYSTEM === */
 [data-sonner-toast] {
   background: var(--surface-toast) !important;
-  contain: paint !important; /* PERF-04/08 */
-  backdrop-filter: var(--glass-blur) !important;
   border: 0.5px solid var(--border-default) !important;
   border-radius: var(--radius-md) !important;
   box-shadow: var(--shadow-toast) !important;
