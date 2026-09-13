@@ -69,3 +69,4 @@ docs/AGENT_PROMPT.md
 
 lh-authed-report.json
 .superpowers/
+.worktrees/
