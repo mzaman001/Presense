@@ -575,27 +575,33 @@ function SettingsModalContent({
        the guard so the effect's deps stay honest if wiring changes. */
     async function loadSettings() {
       setLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserEmail(user.email || "");
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+        setUserEmail(user.email || "");
 
-      const { data } = await supabase
-        .from("user_settings")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      if (data) {
-        /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        reset(data as any);
-        /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setUserSettings(data as any);
+        const { data, error } = await supabase
+          .from("user_settings")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+        if (error) throw error;
+        if (data) {
+          /* @todo: Untyped usage justified per TOOL-01 */
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          reset(data as any);
+          /* @todo: Untyped usage justified per TOOL-01 */
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setUserSettings(data as any);
+        }
+      } catch {
+        toast.error("Couldn't load settings. Please try again.");
+      } finally {
+        setLoading(false);
+        setTimeout(() => setInitialLoaded(true), 100);
       }
-      setLoading(false);
-      setTimeout(() => setInitialLoaded(true), 100);
     }
     loadSettings();
   }, [supabase, setUserSettings, reset]);

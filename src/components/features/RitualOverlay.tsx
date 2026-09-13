@@ -377,98 +377,104 @@ export function RitualOverlay({
     setStep(1);
     const fetchData = async () => {
       setLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
 
-      if (activeRitual === "morning") {
-        // INFRA-18: explicit user_id filter for planner index usage.
-        const { data: tasks } = await supabase
-          .from("items")
-          .select("*")
-          .eq("user_id", user.id)
-          .in("status", ["inbox", "active", "overdue"]);
-        if (tasks) {
+        if (activeRitual === "morning") {
+          // INFRA-18: explicit user_id filter for planner index usage.
+          const { data: tasks } = await supabase
+            .from("items")
+            .select("*")
+            .eq("user_id", user.id)
+            .in("status", ["inbox", "active", "overdue"]);
+          if (tasks) {
+            const todayStart = new Date().setHours(0, 0, 0, 0);
+            /* @todo: Untyped usage justified per TOOL-01 */
+
+            setTriageTasks(
+              tasks.filter(
+                (t) =>
+                  t.status === "inbox" ||
+                  t.status === "overdue" ||
+                  (t.status === "active" &&
+                    t.deadline &&
+                    new Date(t.deadline).getTime() < todayStart),
+              ),
+            );
+            /* @todo: Untyped usage justified per TOOL-01 */
+
+            setTodayTasks(
+              tasks.filter(
+                (t) =>
+                  t.status === "active" &&
+                  t.deadline &&
+                  new Date(t.deadline).getTime() >= todayStart &&
+                  new Date(t.deadline).getTime() < todayStart + 86400000,
+              ),
+            );
+          }
+        } else {
           const todayStart = new Date().setHours(0, 0, 0, 0);
+          const startISO = new Date(todayStart).toISOString();
+          // INFRA-18: explicit user_id filter for planner index usage.
+          const [{ data: completed }, { data: incomplete }, { data: logs }] =
+            await Promise.all([
+              supabase
+                .from("items")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("status", "done")
+                .gte("completed_at", startISO),
+              supabase
+                .from("items")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("status", "active"),
+              supabase
+                .from("session_logs")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("type", "work")
+                .gte("completed_at", startISO),
+            ]);
+          setCompletedTasks(completed || []);
           /* @todo: Untyped usage justified per TOOL-01 */
 
           setTriageTasks(
-            tasks.filter(
+            (incomplete || []).filter(
               (t) =>
-                t.status === "inbox" ||
-                t.status === "overdue" ||
-                (t.status === "active" &&
-                  t.deadline &&
-                  new Date(t.deadline).getTime() < todayStart),
+                t.deadline &&
+                new Date(t.deadline).getTime() < todayStart + 86400000,
             ),
           );
           /* @todo: Untyped usage justified per TOOL-01 */
 
-          setTodayTasks(
-            tasks.filter(
+          setTomorrowTasks(
+            (incomplete || []).filter(
               (t) =>
-                t.status === "active" &&
                 t.deadline &&
-                new Date(t.deadline).getTime() >= todayStart &&
-                new Date(t.deadline).getTime() < todayStart + 86400000,
+                new Date(t.deadline).getTime() >= todayStart + 86400000 &&
+                new Date(t.deadline).getTime() < todayStart + 86400000 * 2,
             ),
           );
+          /* @todo: Untyped usage justified per TOOL-01 */
+
+          setFocusMinutes(
+            (logs || []).reduce(
+              (s: number, l) => s + (l.duration_minutes || 0),
+              0,
+            ),
+          );
+          setReflection("");
         }
-      } else {
-        const todayStart = new Date().setHours(0, 0, 0, 0);
-        const startISO = new Date(todayStart).toISOString();
-        // INFRA-18: explicit user_id filter for planner index usage.
-        const [{ data: completed }, { data: incomplete }, { data: logs }] =
-          await Promise.all([
-            supabase
-              .from("items")
-              .select("*")
-              .eq("user_id", user.id)
-              .eq("status", "done")
-              .gte("completed_at", startISO),
-            supabase.from("items").select("*").eq("user_id", user.id).eq("status", "active"),
-            supabase
-              .from("session_logs")
-              .select("*")
-              .eq("user_id", user.id)
-              .eq("type", "work")
-              .gte("completed_at", startISO),
-          ]);
-        setCompletedTasks(completed || []);
-        /* @todo: Untyped usage justified per TOOL-01 */
-
-        setTriageTasks(
-          (incomplete || []).filter(
-            (t) =>
-              t.deadline &&
-              new Date(t.deadline).getTime() < todayStart + 86400000,
-          ),
-        );
-        /* @todo: Untyped usage justified per TOOL-01 */
-
-        setTomorrowTasks(
-          (incomplete || []).filter(
-            (t) =>
-              t.deadline &&
-              new Date(t.deadline).getTime() >= todayStart + 86400000 &&
-              new Date(t.deadline).getTime() < todayStart + 86400000 * 2,
-          ),
-        );
-        /* @todo: Untyped usage justified per TOOL-01 */
-
-        setFocusMinutes(
-          (logs || []).reduce(
-            (s: number, l) => s + (l.duration_minutes || 0),
-            0,
-          ),
-        );
-        setReflection("");
+      } catch {
+        toast.error("Couldn't load your ritual. Please try again.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchData();
   }, [activeRitual, supabase, todayString]);

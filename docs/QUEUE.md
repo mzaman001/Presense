@@ -7,7 +7,7 @@ This is the **only** file an agent reads to find their next task. One ticket at 
 | ID | Ticket | Priority | Status |
 |---|---|---|---|
 | RESET-01 | **Governance Reset Execution** | Critical | 🔄 In Progress |
-| SEC2-03 | Magic-link rate limit + enumeration closure | High | ⬜ Open |
+| SEC2-03 | Magic-link rate limit + enumeration closure | High | ✅ Closed |
 | INFRA-24 | Dependabot triage & vulnerability closure | Medium | ⬜ Open |
 | PERF-14 | Zustand selector reads sweep | Medium | ⬜ Open |
 | TOOL-11 | Sentry secret wiring (Human action) | Medium | ⬜ Blocked |
