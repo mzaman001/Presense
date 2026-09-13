@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
-import { createClient, safeMutate } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import {
@@ -789,54 +789,9 @@ function SettingsModalContent({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      // Delete all user data across tables
-      const deletions = await Promise.all([
-        safeMutate(
-          () => supabase.from("items").delete().eq("user_id", user.id),
-          "Failed to clear tasks",
-        ),
-        safeMutate(
-          () => supabase.from("people").delete().eq("user_id", user.id),
-          "Failed to clear people",
-        ),
-        safeMutate(
-          () => supabase.from("threads").delete().eq("user_id", user.id),
-          "Failed to clear threads",
-        ),
-        safeMutate(
-          () => supabase.from("explores").delete().eq("user_id", user.id),
-          "Failed to clear explores",
-        ),
-        safeMutate(
-          () => supabase.from("locations").delete().eq("user_id", user.id),
-          "Failed to clear locations",
-        ),
-        safeMutate(
-          () => supabase.from("session_logs").delete().eq("user_id", user.id),
-          "Failed to clear session logs",
-        ),
-        safeMutate(
-          () =>
-            supabase.from("push_subscriptions").delete().eq("user_id", user.id),
-          "Failed to clear subscriptions",
-        ),
-        safeMutate(
-          () => supabase.from("user_settings").delete().eq("user_id", user.id),
-          "Failed to clear settings",
-        ),
-        safeMutate(
-          () => supabase.from("categories").delete().eq("user_id", user.id),
-          "Failed to clear categories",
-        ),
-        safeMutate(
-          () => supabase.from("ritual_logs").delete().eq("user_id", user.id),
-          "Failed to clear ritual logs",
-        ),
-      ]);
-      if (!deletions.every((r) => r.success)) {
-        throw new Error("One or more tables could not be cleared");
-      }
-      // Delete the auth user via server-side API
+      // The server route owns the complete deletion flow with a service-role
+      // client and reports partial purges. Deleting in the browser first made
+      // this irreversible operation split across two unreliable authorities.
       const res = await fetch("/api/account", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
