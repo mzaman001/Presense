@@ -318,9 +318,6 @@
   /* === NOISE LAYER OPACITY === */
   --noise-opacity: 0.035;
 
-  /* === ORB ANIMATION === */
-  --orb-animation-duration: 12s;
-
   --bg-backdrop: rgba(0, 0, 0, 0.6);
 
   color-scheme: dark;
@@ -1013,10 +1010,6 @@ h6 {
     transition-duration: 0.01ms !important;
   }
 
-  .orb {
-    animation: none !important;
-  }
-
   /* DS-14: Strip hover transforms to prevent instant jumping */
   [class*="hover:scale"]:hover,
   [class*="hover:-translate"]:hover,
@@ -1040,10 +1033,6 @@ h6 {
 :root.reduce-motion *::after {
   animation-duration: 0.01ms !important;
   transition-duration: 0.01ms !important;
-}
-
-:root.reduce-motion .orb {
-  animation: none !important;
 }
 
 :root.reduce-motion [class*="hover:scale"]:hover,
