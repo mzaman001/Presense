@@ -168,8 +168,45 @@ test.describe("Accessibility Audits (Axe WCAG)", () => {
     }) => {
       // /do's task deletion is a silent soft-delete with no confirmation
       // dialog — the design-foundation plan found this. /trash's "Delete
-      // Forever" flow is the actual place ConfirmModal renders, so seed one
-      // trashed item there (idempotent: fixed id, upserted) to open it.
+      // Forever" flow is the actual place ConfirmModal renders, so we'd
+      // seed one trashed item there (idempotent: fixed id, upserted) to
+      // open it — but only after confirming /trash actually loads: it's
+      // currently broken for every account (see comment below), so check
+      // that first and skip before touching the shared test account.
+      await page.goto("/trash", { waitUntil: "networkidle" });
+
+      // Found while wiring this test: /trash's own query is currently
+      // broken for every account, unrelated to this plan's tokens —
+      // src/app/(app)/trash/page.tsx queries `locations.name`, but that
+      // column doesn't exist (confirmed directly against Supabase: "column
+      // locations.name does not exist", code 42703), so the page always
+      // renders "Couldn't load your trash" instead of any row to click.
+      // That's a real, pre-existing bug outside this task's file list
+      // (only the spec file is in scope) — skip with a clear reason rather
+      // than timing out or silently patching trash/page.tsx.
+      const errorState = page.getByText("Couldn't load your trash");
+      const deleteButtonBeforeSeed = page.getByText("Delete forever").first();
+      // Both states render after an async client fetch resolves — wait for
+      // whichever comes first rather than snapshotting immediately (which
+      // would race the loading spinner and always read as "not failed").
+      await Promise.race([
+        errorState
+          .waitFor({ state: "visible", timeout: 15000 })
+          .catch(() => {}),
+        deleteButtonBeforeSeed
+          .waitFor({ state: "visible", timeout: 15000 })
+          .catch(() => {}),
+      ]);
+      const loadFailed = await errorState.isVisible().catch(() => false);
+      test.skip(
+        loadFailed,
+        "/trash query is broken independent of this plan's tokens: " +
+          "locations.name does not exist (see comment above) — reported " +
+          "in task-6-report.md instead of being patched here.",
+      );
+
+      // /trash loaded successfully — now, and only now, seed a trashed item
+      // into the shared Supabase test account via the service-role client.
       const env = loadEnvLocal();
       const url =
         process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
@@ -192,38 +229,11 @@ test.describe("Accessibility Audits (Axe WCAG)", () => {
       );
       expect(upsertError).toBeNull();
 
-      await page.goto("/trash", { waitUntil: "networkidle" });
+      // Reload so the freshly seeded row appears in the page's query.
+      await page.reload({ waitUntil: "networkidle" });
 
-      // Found while wiring this test: /trash's own query is currently
-      // broken for every account, unrelated to this plan's tokens —
-      // src/app/(app)/trash/page.tsx queries `locations.name`, but that
-      // column doesn't exist (confirmed directly against Supabase: "column
-      // locations.name does not exist", code 42703), so the page always
-      // renders "Couldn't load your trash" instead of any row to click.
-      // That's a real, pre-existing bug outside this task's file list
-      // (only the spec file is in scope) — skip with a clear reason rather
-      // than timing out or silently patching trash/page.tsx.
-      const errorState = page.getByText("Couldn't load your trash");
       const deleteButton = page.getByText("Delete forever").first();
-      // Both states render after an async client fetch resolves — wait for
-      // whichever comes first rather than snapshotting immediately (which
-      // would race the loading spinner and always read as "not failed").
-      await Promise.race([
-        errorState
-          .waitFor({ state: "visible", timeout: 15000 })
-          .catch(() => {}),
-        deleteButton
-          .waitFor({ state: "visible", timeout: 15000 })
-          .catch(() => {}),
-      ]);
-      const loadFailed = await errorState.isVisible().catch(() => false);
-      test.skip(
-        loadFailed,
-        "/trash query is broken independent of this plan's tokens: " +
-          "locations.name does not exist (see comment above) — reported " +
-          "in task-6-report.md instead of being patched here.",
-      );
-
+      await deleteButton.waitFor({ state: "visible", timeout: 15000 });
       await deleteButton.click();
 
       const dialog = page.getByRole("dialog");
