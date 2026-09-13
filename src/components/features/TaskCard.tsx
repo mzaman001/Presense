@@ -535,7 +535,7 @@ export const TaskCard = React.memo(
                   )}
 
                 <Button
-                  variant="icon"
+                  variant="ghost"
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveTimer({ taskId: task.id, taskTitle: task.title });

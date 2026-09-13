@@ -890,7 +890,7 @@ function SettingsModalContent({
               {/* Main Content Area */}
               <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <Button
-                  variant="icon"
+                  variant="ghost"
                   onClick={() => onClose(false)}
                   aria-label="Close settings"
                   className="absolute top-4 right-4 z-10"
@@ -1033,34 +1033,6 @@ function SettingsModalContent({
 
                     {activeTab === "appearance" && (
                       <div className="space-y-6">
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Theme Accent
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Select your primary colour palette
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => updateSetting("theme", "warm")}
-                              className={`h-8 w-8 rounded-full border-2 bg-[#E5B41E] transition-all ${normalizeThemeId(settings.theme) === "warm" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                              title="Warm"
-                            />
-                            <button
-                              onClick={() => updateSetting("theme", "navy")}
-                              className={`h-8 w-8 rounded-full border-2 bg-[#7692FF] transition-all ${normalizeThemeId(settings.theme) === "navy" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                              title="Navy"
-                            />
-                            <button
-                              onClick={() => updateSetting("theme", "forest")}
-                              className={`h-8 w-8 rounded-full border-2 bg-[#EFDD8D] transition-all ${normalizeThemeId(settings.theme) === "forest" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                              title="Forest"
-                            />
-                          </div>
-                        </div>
-
                         <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
                           <div>
                             <div className="font-medium text-[var(--color-text-1)]">
@@ -1289,7 +1261,7 @@ function SettingsModalContent({
                             <div className="flex flex-wrap gap-2">
                               {[15, 20, 25, 30, 45, 60].map((mins) => (
                                 <Button
-                                  variant="preset"
+                                  variant="secondary"
                                   key={mins}
                                   onClick={() =>
                                     updateSetting("pomodoro_duration", mins)
@@ -1313,7 +1285,7 @@ function SettingsModalContent({
                             <div className="flex flex-wrap gap-2">
                               {[3, 5, 10, 15].map((mins) => (
                                 <Button
-                                  variant="preset"
+                                  variant="secondary"
                                   key={mins}
                                   onClick={() =>
                                     updateSetting("short_break_duration", mins)
@@ -1337,7 +1309,7 @@ function SettingsModalContent({
                             <div className="flex flex-wrap gap-2">
                               {[15, 20, 30].map((mins) => (
                                 <Button
-                                  variant="preset"
+                                  variant="secondary"
                                   key={mins}
                                   onClick={() =>
                                     updateSetting("long_break_duration", mins)
@@ -1385,7 +1357,7 @@ function SettingsModalContent({
                           <div className="flex flex-wrap gap-2">
                             {[2, 3, 4, 5].map((n) => (
                               <Button
-                                variant="preset"
+                                variant="secondary"
                                 key={n}
                                 onClick={() =>
                                   updateSetting(

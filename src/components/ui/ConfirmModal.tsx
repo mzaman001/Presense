@@ -1,9 +1,13 @@
 import React from "react";
-import { m, AnimatePresence } from "framer-motion";
-import { X, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Sheet } from "@/components/ui/Sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ConfirmModalProps {
@@ -40,7 +44,9 @@ export function ConfirmModal({
   }, [isOpen]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const isConfirmDisabled = inputRequired ? inputValue !== inputRequired : false;
+  const isConfirmDisabled = inputRequired
+    ? inputValue !== inputRequired
+    : false;
 
   const handleConfirm = async () => {
     if (isConfirmDisabled || isConfirming) return;
@@ -56,44 +62,51 @@ export function ConfirmModal({
   };
 
   return (
-    <Sheet isOpen={isOpen} onClose={isConfirming ? () => {} : onClose} title={title}>
-      <div className="flex flex-col h-full">
-        <div className="mb-6">
-          <p className="text-[var(--color-text-2)] text-sm">{description}</p>
-        </div>
-            {inputRequired && (
-              <div className="mb-6">
-                <label className="block text-xs font-semibold text-[var(--color-text-3)] mb-2">
-                  Type <span className="text-[var(--color-text-1)] font-bold">{inputRequired}</span> to confirm
-                </label>
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder={inputRequired}
-                  disabled={isConfirming}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] focus:border-[var(--color-accent)] focus:outline-none transition-colors disabled:opacity-50"
-                />
-              </div>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !open && !isConfirming && onClose()}
+    >
+      <DialogContent showClose={!isConfirming}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        {inputRequired && (
+          <div className="mb-6">
+            <label className="mb-2 block text-xs font-semibold text-[var(--text-3)]">
+              Type{" "}
+              <span className="font-bold text-[var(--text-1)]">
+                {inputRequired}
+              </span>{" "}
+              to confirm
+            </label>
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder={inputRequired}
+              disabled={isConfirming}
+              className="input"
+            />
+          </div>
+        )}
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="secondary" onClick={onClose} disabled={isConfirming}>
+            Cancel
+          </Button>
+          <Button
+            variant={confirmDestructive ? "danger" : "primary"}
+            disabled={isConfirmDisabled || isConfirming}
+            onClick={handleConfirm}
+            className="inline-flex items-center gap-2"
+          >
+            {isConfirming && (
+              <UiIcon size={14} className="animate-spin" icon={Loader2} />
             )}
-            <div className="flex items-center justify-end gap-3">
-              <Button variant="secondary"
-                onClick={onClose}
-                disabled={isConfirming}
-                className="disabled:opacity-50"
-              >
-                Cancel
-              </Button>
-              <Button variant={confirmDestructive ? "danger" : "primary"}
-                disabled={isConfirmDisabled || isConfirming}
-                onClick={handleConfirm}
-                className="disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {isConfirming && <UiIcon size={14} className="animate-spin" icon={Loader2} />}
-                {confirmLabel}
-              </Button>
-            </div>
-      </div>
-    </Sheet>
+            {confirmLabel}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

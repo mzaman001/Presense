@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 type OnboardingPhase = 1 | 2 | 3 | 4 | 5;
@@ -69,19 +69,6 @@ export function OnboardingBackground({
 }: OnboardingBackgroundProps) {
   const glowRef = useRef<HTMLDivElement>(null);
 
-  // Phase 4 glow burst
-  const prevPhaseRef = useRef(phase);
-  useEffect(() => {
-    if (phase === 4 && prevPhaseRef.current !== 4 && glowRef.current) {
-      glowRef.current.classList.add("onboarding-glow-burst");
-      const t = setTimeout(() => {
-        glowRef.current?.classList.remove("onboarding-glow-burst");
-      }, 650);
-      return () => clearTimeout(t);
-    }
-    prevPhaseRef.current = phase;
-  }, [phase]);
-
   const cfg = PHASE_CONFIG[phase];
 
   return (
@@ -121,7 +108,6 @@ export function OnboardingBackground({
           opacity: cfg.glowOpacity,
           transition:
             "opacity 400ms ease, background 400ms ease, left 400ms ease",
-          animation: "orb-pulse 4s ease-in-out infinite alternate",
           transformOrigin: "center center",
         }}
       />
@@ -137,7 +123,6 @@ export function OnboardingBackground({
             "linear-gradient(to top, var(--accent) 0%, transparent 100%)",
           filter: "blur(4px)",
           opacity: 0.4,
-          animation: "drift-column 6s ease-in-out infinite alternate",
         }}
       />
       <div
@@ -150,7 +135,6 @@ export function OnboardingBackground({
             "linear-gradient(to top, var(--accent) 0%, transparent 100%)",
           filter: "blur(4px)",
           opacity: 0.4,
-          animation: "drift-column 6s ease-in-out infinite alternate-reverse",
         }}
       />
 
