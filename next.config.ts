@@ -74,4 +74,11 @@ export default withSentryConfig(analyze(withSerwist(nextConfig)), {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   release: { name: sentryRelease },
   silent: !process.env.CI,
+  // We use Sentry for error capture only, not performance tracing (see
+  // instrumentation-client.ts — no tracesSampleRate/tracesSampler is set).
+  // Without this, @sentry/nextjs bundles browserTracingIntegration into the
+  // client build regardless, at ~115KB gzip.
+  webpack: {
+    treeshake: { removeTracing: true },
+  },
 });
