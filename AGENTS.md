@@ -55,7 +55,7 @@ Modals in `DynamicModals.tsx` are rendered **conditionally on their open state**
 ## 2. Invariants
 
 1. `src/lib/env.ts` must never throw. Missing required vars log and return `""`; genuinely optional vars (Sentry DSN, Turnstile sitekey) stay silent.
-2. `ThemeId` values are strictly `"warm" | "navy" | "forest"`.
+2. There is one theme (light/dark only, per the 2026-09-13 design overhaul spec) — `normalizeThemeId()` always returns `"warm"` regardless of input. The `ThemeId` type still lists `"navy" | "forest"` for now because a handful of call sites key lookup tables by it; don't add new code that treats them as selectable themes.
 3. `Dropdown.tsx` and `Popover.tsx` render through a portal. No z-index hacks.
 4. `MotionProvider` uses `LazyMotion domMax strict`.
 5. Never drop a DB column and never delete a file in `supabase/migrations/`. (Deleting a genuinely unreferenced UI component *is* allowed — prove it is unreferenced first.)

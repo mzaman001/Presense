@@ -4,36 +4,36 @@ export type ColorMode = "dark" | "light" | "system";
 export const DEFAULT_THEME_ID: ThemeId = "warm";
 export const DEFAULT_COLOR_MODE: ColorMode = "dark";
 
-const LEGACY_THEME_MAP: Record<string, ThemeId> = {
-  orange: "warm",
-  wahala: "warm",
-  sunset: "warm",
-  blue: "navy",
-  midnight: "navy",
-  navy: "navy",
-  forest: "forest",
-  meadow: "forest",
-};
-
-export function normalizeThemeId(value: unknown): ThemeId {
-  if (typeof value !== "string") return DEFAULT_THEME_ID;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "warm" || normalized === "navy" || normalized === "forest") {
-    return normalized;
-  }
-  return LEGACY_THEME_MAP[normalized] ?? DEFAULT_THEME_ID;
+/**
+ * There is one theme now (design overhaul spec §4/§6 — the warm/navy/
+ * forest selector is retired). Every input, including previously-valid
+ * theme ids, normalizes to "warm" — the name is kept internally (rather
+ * than renaming the type to a single literal) so callers that key a
+ * lookup table by ThemeId, like the sidebar's avatar-accent fallback in
+ * Navigation.tsx, don't need to change in this pass.
+ */
+export function normalizeThemeId(_value: unknown): ThemeId {
+  return DEFAULT_THEME_ID;
 }
 
 export function normalizeColorMode(value: unknown): ColorMode {
-  return value === "light" || value === "system" || value === "dark" ? value : DEFAULT_COLOR_MODE;
+  return value === "light" || value === "system" || value === "dark"
+    ? value
+    : DEFAULT_COLOR_MODE;
 }
 
-export function applyDocumentTheme(themeValue: unknown, modeValue: unknown, reduceMotion = false, densityValue?: unknown) {
+export function applyDocumentTheme(
+  themeValue: unknown,
+  modeValue: unknown,
+  reduceMotion = false,
+  densityValue?: unknown,
+) {
   if (typeof document === "undefined") return;
-  const prefersLight = typeof window !== "undefined"
-    ? window.matchMedia("(prefers-color-scheme: light)").matches
-    : false;
-  
+  const prefersLight =
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-color-scheme: light)").matches
+      : false;
+
   const theme = normalizeThemeId(themeValue);
   let mode = normalizeColorMode(modeValue);
   if (mode === "system") {
@@ -41,7 +41,7 @@ export function applyDocumentTheme(themeValue: unknown, modeValue: unknown, redu
   }
 
   const html = document.documentElement;
-  
+
   // Clear legacy classes
   html.classList.remove(
     "theme-blue",
@@ -49,13 +49,13 @@ export function applyDocumentTheme(themeValue: unknown, modeValue: unknown, redu
     "theme-midnight",
     "theme-forest",
     "theme-meadow",
-    "light"
+    "light",
   );
-  
+
   // Set modern attributes
   html.setAttribute("data-theme", theme);
   html.setAttribute("data-mode", mode);
-  
+
   if (reduceMotion) {
     html.classList.add("reduce-motion");
   } else {
@@ -65,7 +65,9 @@ export function applyDocumentTheme(themeValue: unknown, modeValue: unknown, redu
   if (densityValue === "comfortable" || densityValue === "compact") {
     html.setAttribute("data-density", densityValue as string);
   } else {
-    const isTouch = typeof window !== "undefined" && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+    const isTouch =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window || navigator.maxTouchPoints > 0);
     html.setAttribute("data-density", isTouch ? "comfortable" : "compact");
   }
 }

@@ -1036,34 +1036,6 @@ function SettingsModalContent({
                         <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
                           <div>
                             <div className="font-medium text-[var(--color-text-1)]">
-                              Theme Accent
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Select your primary colour palette
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => updateSetting("theme", "warm")}
-                              className={`h-8 w-8 rounded-full border-2 bg-[#E5B41E] transition-all ${normalizeThemeId(settings.theme) === "warm" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                              title="Warm"
-                            />
-                            <button
-                              onClick={() => updateSetting("theme", "navy")}
-                              className={`h-8 w-8 rounded-full border-2 bg-[#7692FF] transition-all ${normalizeThemeId(settings.theme) === "navy" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                              title="Navy"
-                            />
-                            <button
-                              onClick={() => updateSetting("theme", "forest")}
-                              className={`h-8 w-8 rounded-full border-2 bg-[#EFDD8D] transition-all ${normalizeThemeId(settings.theme) === "forest" ? "scale-110 border-[var(--color-text-1)]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                              title="Forest"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
                               Color Mode
                             </div>
                             <div className="text-sm text-[var(--color-text-3)]">
