@@ -26,8 +26,14 @@ const TRASH_SOURCES = [
   {
     type: "location",
     table: "locations",
+    // `locations` has no `name` column — its display-name column is
+    // `item_name` (see `src/types/database.types.ts`). The prior value
+    // here ("name") made every /trash load for a `location` row 42703
+    // ("column locations.name does not exist"), which surfaced as the
+    // whole page's isError branch since all five sources are queried
+    // together in one Promise.all.
     label: "Location",
-    nameColumn: "name",
+    nameColumn: "item_name",
   },
 ] as const;
 
@@ -36,7 +42,7 @@ type TrashTable = (typeof TRASH_SOURCES)[number]["table"];
 
 interface TrashEntry {
   id: string;
-  /** Display name, read from each table's own title/name column. */
+  /** Display name, read from each table's own title/name/item_name column. */
   label: string;
   typeLabel: string;
   deletedAt: string | null;
@@ -79,14 +85,17 @@ export default function TrashPage() {
         sources.map(async (source) => {
           // Narrow projection: the list shows a name and a date, so there is
           // no reason to pull whole rows across the wire. The select string
-          // is a literal per branch so the generated Database types still
+          // is a literal per branch (not a template interpolation of
+          // `source.nameColumn`) so the generated Database types still
           // check the columns.
           const query = supabase
             .from(source.table)
             .select(
               source.nameColumn === "title"
                 ? "id, deleted_at, title"
-                : "id, deleted_at, name",
+                : source.nameColumn === "item_name"
+                  ? "id, deleted_at, item_name"
+                  : "id, deleted_at, name",
             )
             .eq("user_id", userId)
             .eq("status", "deleted")
@@ -102,6 +111,7 @@ export default function TrashPage() {
                 deleted_at: string | null;
                 title?: string | null;
                 name?: string | null;
+                item_name?: string | null;
               }[]
             >();
 
@@ -114,7 +124,7 @@ export default function TrashPage() {
 
           return (data ?? []).map((row): TrashEntry => ({
             id: row.id,
-            label: row.title ?? row.name ?? "Untitled",
+            label: row.title ?? row.name ?? row.item_name ?? "Untitled",
             typeLabel: source.label,
             deletedAt: row.deleted_at,
             type: source.type,
@@ -255,7 +265,7 @@ export default function TrashPage() {
                 </button>
                 <button
                   onClick={() => setItemToPermanentDelete(entry)}
-                  className="flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#F87171]/10 px-3 text-xs font-medium text-[#F87171] transition-colors hover:bg-[#F87171]/20"
+                  className="flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[var(--status-danger-dim)] px-3 text-xs font-medium text-[var(--status-danger)] transition-colors hover:bg-[var(--status-danger-border)]"
                 >
                   <UiIcon className="h-3.5 w-3.5" icon={Trash2} />
                   Delete forever
