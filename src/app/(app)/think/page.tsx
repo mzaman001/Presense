@@ -133,7 +133,7 @@ export default function ThinkPage() {
       .insert({
         user_id: userId,
         title: "Untitled Thread",
-        color_accent: "#E5B41E",
+        color_accent: "#d97757",
         is_pinned: false,
       })
       .select()
@@ -215,7 +215,7 @@ export default function ThinkPage() {
     <div className="space-y-6">
       <div className="mb-2 flex items-center justify-between">
         <div>
-          <p className="text-caption mb-1 font-semibold tracking-widest text-[rgba(255,255,255,0.35)] uppercase">
+          <p className="text-caption mb-1 font-semibold tracking-widest text-[var(--text-muted)] uppercase">
             Space
           </p>
           <div className="flex items-center gap-4">
@@ -290,7 +290,7 @@ export default function ThinkPage() {
           <Button
             variant="secondary"
             onClick={handleDailyNote}
-            className="hidden !border-[rgba(251,191,36,0.25)] !bg-[rgba(251,191,36,0.12)] !text-[#FBBF24] hover:!bg-[rgba(251,191,36,0.2)] sm:flex"
+            className="hidden !border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)] sm:flex"
           >
             <UiIcon className="h-4 w-4" icon={Sparkles} /> Daily Note
           </Button>
@@ -371,7 +371,7 @@ export default function ThinkPage() {
                               deleteThread(thread);
                             }}
                             aria-label={`Move ${thread.title} to trash`}
-                            className="absolute top-3 right-3 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+                            className="absolute top-3 right-3 hidden h-7 w-7 items-center justify-center rounded-lg text-[var(--status-danger)] opacity-0 transition-opacity hover:bg-[var(--status-danger)]/15 focus-visible:opacity-100 md:flex"
                           >
                             <UiIcon className="h-4 w-4" icon={Trash2} />
                           </button>
@@ -395,8 +395,8 @@ export default function ThinkPage() {
           )}
 
           {filteredThreads.length === 0 ? (
-            <GlassCard className="mt-6 flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
+            <GlassCard className="mt-6 flex flex-col items-center justify-center border-dashed border-[var(--border-subtle)] p-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-1)]">
                 <UiIcon
                   className="h-6 w-6 text-[var(--color-text-3)]"
                   icon={Sparkles}
@@ -456,7 +456,7 @@ export default function ThinkPage() {
                                 deleteThread(thread);
                               }}
                               aria-label={`Move ${thread.title} to trash`}
-                              className="absolute top-3 right-11 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+                              className="absolute top-3 right-11 hidden h-7 w-7 items-center justify-center rounded-lg text-[var(--status-danger)] opacity-0 transition-opacity hover:bg-[var(--status-danger)]/15 focus-visible:opacity-100 md:flex"
                             >
                               <UiIcon className="h-4 w-4" icon={Trash2} />
                             </button>
