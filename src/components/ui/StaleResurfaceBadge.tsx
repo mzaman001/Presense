@@ -4,7 +4,7 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
 interface StaleResurfaceBadgeProps {
-  /** The staleness message to display (e.g. a stale-prompt string or a computed "hasn't moved in 30 days" note). Falsy values render nothing (unless `actionLabel` is set — see below). */
+  /** The staleness message to display (e.g. a stale-prompt string or a computed "hasn't moved in 30 days" note). Falsy values render nothing (unless `actionLabel` and `onAction` are both set — see below). */
   message: string | null | undefined;
   /**
    * "badge" (default) is the bordered pill with an accent wash and a Sparkles
@@ -49,7 +49,6 @@ export function StaleResurfaceBadge({
   if (!message && !isInteractive) return null;
 
   if (variant === "text") {
-    if (!message) return null;
     return (
       <p
         className={cn(
@@ -79,8 +78,6 @@ export function StaleResurfaceBadge({
       </button>
     );
   }
-
-  if (!message) return null;
 
   return (
     <div
