@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { env } from "@/lib/env";
-import {
-  OnboardingBackground,
-  PresenseLogo,
-} from "@/components/layout/OnboardingBackground";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { sendMagicLink, startGoogleSignIn } from "./actions";
 import { TurnstileWidget } from "@/components/features/TurnstileWidget";
 import { Button } from "@/components/ui/button";
@@ -76,27 +73,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden p-4">
-      {/* Atmospheric background */}
-      <OnboardingBackground phase={1} />
-
-      {/* Centred glass card */}
+    <div className="flex min-h-dvh items-center justify-center bg-[var(--bg-base)] p-4">
+      {/* Centred card — flat, no gradient/blur behind it */}
       <div
-        className="relative z-10 w-full max-w-[400px] rounded-[var(--radius-xl)] p-8"
+        className="w-full max-w-[400px] rounded-[var(--radius-xl)] p-8"
         style={{
           background: "var(--surface-modal)",
-          backdropFilter: "blur(32px)",
           border: "0.5px solid var(--border-strong)",
           boxShadow: "var(--shadow-modal)",
         }}
       >
-        {/* Logo */}
-        <div className="mb-8 flex items-center gap-2.5">
-          <PresenseLogo size={28} />
-          <span
-            className="text-title-lg font-semibold tracking-tight"
-            style={{ color: "var(--text-1)" }}
-          >
+        {/* Mark + wordmark */}
+        <div className="mb-8 flex items-center gap-2.5 text-[var(--accent)]">
+          <BrandMark size={28} />
+          <span className="text-title-lg font-heading font-semibold tracking-tight text-[var(--text-1)]">
             Presense
           </span>
         </div>
@@ -107,14 +97,14 @@ export default function LoginPage() {
             <div
               className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full"
               style={{
-                background: "rgba(45,212,191,0.10)",
-                border: "0.5px solid rgba(45,212,191,0.25)",
+                background: "var(--status-done-dim)",
+                border: "0.5px solid var(--accent-border)",
               }}
             >
               <UiIcon
                 size={22}
                 strokeWidth={1.5}
-                className="text-[#2DD4BF]"
+                className="text-[var(--status-done)]"
                 icon={Mail}
               />
             </div>
@@ -140,10 +130,7 @@ export default function LoginPage() {
           <>
             {/* Heading */}
             <div className="mb-7">
-              <h1
-                className="mb-1 text-[22px] font-semibold tracking-tight"
-                style={{ color: "var(--text-1)" }}
-              >
+              <h1 className="font-heading mb-1 text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
                 Sign in
               </h1>
               <p className="text-body" style={{ color: "var(--text-3)" }}>
