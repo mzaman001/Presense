@@ -115,7 +115,7 @@ const Column = React.memo(
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
           {colTasks.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.08)] py-8 text-center text-sm text-[var(--color-text-3)]">
+            <div className="rounded-xl border border-dashed border-[var(--border-subtle)] py-8 text-center text-sm text-[var(--color-text-3)]">
               Nothing here
             </div>
           ) : (
@@ -529,7 +529,7 @@ export default function DoPage() {
               icon={CheckCircle2}
               title="No completed tasks yet"
               description="When you finish tasks, they will appear here in your archive."
-              className="border-[rgba(255,255,255,0.08)] bg-transparent"
+              className="border-[var(--border-subtle)] bg-transparent"
             />
           ) : (
             archivedTasks
@@ -545,18 +545,18 @@ export default function DoPage() {
                   <div>
                     <div className="mb-1 flex items-center gap-2">
                       <span
-                        className="text-caption font-semibold text-[rgba(255,255,255,0.35)] capitalize"
+                        className="text-caption font-semibold text-[var(--text-muted)] capitalize"
                         style={{
                           color: resolveCategoryColor(
                             task.category,
                             userSettings?.do_category_colors,
-                            "rgba(255,255,255,0.35)",
+                            "var(--text-muted)",
                           ),
                         }}
                       >
                         {task.category}
                       </span>
-                      <span className="text-caption text-[rgba(255,255,255,0.35)]">
+                      <span className="text-caption text-[var(--text-muted)]">
                         • Completed{" "}
                         {new Date(task.completed_at!).toLocaleDateString()}
                       </span>
