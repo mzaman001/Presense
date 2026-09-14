@@ -107,19 +107,12 @@ export const TaskCard = React.memo(
 
     const priorityDotColor =
       priority === 1
-        ? "#ef4444" // red
+        ? "var(--priority-urgent)"
         : priority === 2
-          ? "#eab308" // yellow
+          ? "var(--priority-high)"
           : priority === 3
-            ? "#22c55e" // green
-            : "var(--text-muted)"; // grey
-
-    const priorityGlow =
-      priority === 1
-        ? "0 0 6px rgba(239, 68, 68, 0.5)"
-        : priority === 2
-          ? "0 0 6px rgba(234, 179, 8, 0.5)"
-          : "none";
+            ? "var(--priority-medium)"
+            : "var(--text-muted)";
     const isCompleting = completing === task.id;
 
     /* BUG-44 — swipe and hover trash button share one soft-delete path:
@@ -203,13 +196,11 @@ export const TaskCard = React.memo(
           opacity: isCompleting ? 0.6 : 1,
           y: 0,
           scale: isCompleting ? 0.98 : 1,
-          filter: isCompleting ? "blur(1px)" : "blur(0px)",
         }}
         exit={{
           opacity: 0,
           scale: 0.95,
           x: -20,
-          filter: "blur(4px)",
           transition: { duration: 0.3, ease: [0.4, 0, 1, 1] },
         }}
         whileHover={{ y: -2 }}
@@ -218,29 +209,27 @@ export const TaskCard = React.memo(
       >
         {/* Swipe-to-complete reveal layer */}
         <m.div
-          className="absolute inset-0 flex items-center justify-start overflow-hidden rounded-2xl pl-5"
-          style={{
-            background:
-              "linear-gradient(-90deg, transparent 0%, rgba(74,222,128,0.15) 60%, rgba(34,197,94,0.25) 100%)",
-            opacity: completeOpacity,
-          }}
+          className="absolute inset-0 flex items-center justify-start overflow-hidden rounded-2xl bg-[var(--status-done-dim)] pl-5"
+          style={{ opacity: completeOpacity }}
         >
           <m.div style={{ scale: completeScale }}>
-            <UiIcon className="h-5 w-5 text-green-400" icon={Check} />
+            <UiIcon
+              className="h-5 w-5 text-[var(--status-done)]"
+              icon={Check}
+            />
           </m.div>
         </m.div>
 
         {/* Swipe-to-delete reveal layer */}
         <m.div
-          className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-2xl pr-5"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
-            opacity: deleteOpacity,
-          }}
+          className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-2xl bg-[var(--status-danger-dim)] pr-5"
+          style={{ opacity: deleteOpacity }}
         >
           <m.div style={{ scale: deleteScale }}>
-            <UiIcon className="h-5 w-5 text-red-400" icon={Trash2} />
+            <UiIcon
+              className="h-5 w-5 text-[var(--status-danger)]"
+              icon={Trash2}
+            />
           </m.div>
         </m.div>
 
@@ -258,18 +247,15 @@ export const TaskCard = React.memo(
             onClick={() => openEditPanel(task)}
             className={cn(
               "group relative cursor-pointer !rounded-2xl p-4 transition-all",
-              isOverdue && "border-[rgba(248,113,113,0.3)]",
+              isOverdue && "border-[var(--status-overdue)]/30",
               isCompleting &&
-                "border-[rgba(74,222,128,0.4)] bg-[rgba(74,222,128,0.06)]",
+                "border-[var(--status-done)]/40 bg-[var(--status-done)]/[0.06]",
             )}
           >
             {priority < 4 && (
               <div
                 className="absolute top-3 right-9 h-2 w-2 rounded-full"
-                style={{
-                  background: priorityDotColor,
-                  boxShadow: priorityGlow,
-                }}
+                style={{ background: priorityDotColor }}
               />
             )}
 
@@ -279,7 +265,7 @@ export const TaskCard = React.memo(
               type="button"
               onClick={handleHoverDeleteClick}
               aria-label={`Move ${String(task.title ?? "task").slice(0, 40)} to trash`}
-              className="absolute top-2 right-2 hidden h-7 w-7 items-center justify-center rounded-lg text-red-400 opacity-0 transition-opacity hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+              className="absolute top-2 right-2 hidden h-7 w-7 items-center justify-center rounded-lg text-[var(--status-danger)] opacity-0 transition-opacity hover:bg-[var(--status-danger)]/15 focus-visible:opacity-100 md:flex"
             >
               <UiIcon className="h-4 w-4" icon={Trash2} />
             </button>

@@ -193,6 +193,11 @@
   --status-danger-dim: rgba(248, 113, 113, 0.1);
   --status-danger-border: rgba(248, 113, 113, 0.25);
 
+  /* === PRIORITY COLOURS === */
+  --priority-urgent: #ef4444;
+  --priority-high: #eab308;
+  --priority-medium: #22c55e;
+
   /* === GLASS RECIPE — canonical blur tokens === */
   --blur-modal: blur(
     24px
@@ -423,6 +428,15 @@
      6.47:1 vs --surface-1). Only the text color needs the override —
      -dim/-border stay shared since they're non-text, 3:1-exempt fills. */
   --status-danger: #b91c1c;
+
+  /* === PRIORITY COLOURS — light-mode override ===
+     No light-mode contrast measurement has been taken for these (unlike
+     --status-danger above); reusing the dark-mode hex until one is done,
+     matching every other --status-* token in this block that isn't
+     overridden. */
+  --priority-urgent: #ef4444;
+  --priority-high: #eab308;
+  --priority-medium: #22c55e;
 
   /* === TOGGLE === */
   --toggle-track-off: rgba(33, 29, 23, 0.15);
