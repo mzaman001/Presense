@@ -406,7 +406,7 @@ export default function HomeDashboard() {
         .insert({
           user_id: userId,
           title,
-          color_accent: "#E5B41E",
+          color_accent: "#d97757",
           is_pinned: true,
           entries: [entry],
         })
