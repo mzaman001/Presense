@@ -37,6 +37,7 @@ import {
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { PageSkeleton } from "@/components/ui/Skeleton";
+import { StaleResurfaceBadge } from "@/components/ui/StaleResurfaceBadge";
 import { cn, ilikeContains } from "@/lib/utils";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
 import { Button } from "@/components/ui/button";
@@ -295,7 +296,7 @@ export default function LocationsPage() {
                     )}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)]">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-1)]">
                         {React.createElement(getIcon(item.item_name), {
                           className: "w-4 h-4 text-[var(--color-text-2)]",
                         })}
@@ -309,7 +310,7 @@ export default function LocationsPage() {
                           deleteLocationItem(item);
                         }}
                         aria-label={`Move ${item.item_name} to trash`}
-                        className="row-actions relative z-10 hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-[rgba(248,113,113,0.15)] focus-visible:opacity-100 md:flex"
+                        className="row-actions relative z-10 hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--status-danger)] hover:bg-[var(--status-danger)]/15 focus-visible:opacity-100 md:flex"
                       >
                         <UiIcon className="h-4 w-4" icon={Trash2} />
                       </button>
@@ -333,15 +334,15 @@ export default function LocationsPage() {
                             Probably moved?
                           </span>
                         ) : isStale ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
+                          <StaleResurfaceBadge
+                            message={null}
+                            actionLabel="Stale · Still here"
+                            onAction={(e) => {
+                              e?.stopPropagation?.();
                               markStillHere(item.id);
                             }}
-                            className="text-caption relative z-10 flex items-center gap-1 rounded-full border border-[rgba(251,191,36,0.3)] px-2 py-0.5 text-[#FBBF24] transition-colors hover:text-[var(--color-text-1)]"
-                          >
-                            Stale · Still here
-                          </button>
+                            className="relative z-10 !px-2 !py-0.5"
+                          />
                         ) : (
                           <span className="text-meta flex items-center gap-1 text-[var(--color-text-3)]">
                             <UiIcon className="h-3 w-3" icon={Clock} />{" "}
