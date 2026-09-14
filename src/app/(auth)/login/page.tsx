@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
-import { env } from "@/lib/env";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { sendMagicLink, startGoogleSignIn } from "./actions";
 import { TurnstileWidget } from "@/components/features/TurnstileWidget";
@@ -13,7 +12,15 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 // widget renders nothing and no captcha token is sent, matching a project where
 // backend captcha enforcement is not yet enabled. Do NOT enable the backend
 // Turnstile secret until this wiring is deployed with a sitekey set.
-const captchaEnabled = Boolean(env.NEXT_PUBLIC_TURNSTILE_SITEKEY);
+//
+// PERF (2026-09-15): read directly from process.env instead of importing the
+// shared `env` object — `env.ts` builds one zod-validated object covering
+// both server and client schemas, so importing it here (a client component)
+// pulled the entire zod validation graph into this page's bundle (measured
+// ~64 KiB gz). NEXT_PUBLIC_* vars are statically inlined by Next.js at build
+// time, so no import or runtime validation is needed for this client-only read.
+const TURNSTILE_SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY || "";
+const captchaEnabled = Boolean(TURNSTILE_SITEKEY);
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -164,7 +171,7 @@ export default function LoginPage() {
               </div>
               {captchaEnabled && (
                 <TurnstileWidget
-                  sitekey={env.NEXT_PUBLIC_TURNSTILE_SITEKEY}
+                  sitekey={TURNSTILE_SITEKEY}
                   onTokenChange={setCaptchaToken}
                 />
               )}
