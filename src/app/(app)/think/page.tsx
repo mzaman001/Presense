@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { StaleResurfaceBadge } from "@/components/ui/StaleResurfaceBadge";
 
 interface Thread {
   id: string;
@@ -381,9 +382,9 @@ export default function ThinkPage() {
                               <p className="mb-1 text-sm font-semibold text-[var(--color-text-1)]">
                                 {thread.title}
                               </p>
-                              <p className="text-xs leading-relaxed font-medium text-[var(--accent)]">
-                                {thread.stale_prompt}
-                              </p>
+                              <StaleResurfaceBadge
+                                message={thread.stale_prompt ?? ""}
+                              />
                             </div>
                           </div>
                         </GlassCard>
