@@ -124,10 +124,12 @@ export function SearchModal() {
           title: p.name,
           type: "person" as const,
           icon: Users,
-          // People results route to Locations, the generic Remember-space
-          // destination now that People is slated for removal in a
-          // separate rollout step — not a leftover 404-avoidance hack.
-          path: "/remember/locations",
+          // Person search results route to the People list, not the
+          // generic "go to Remember" destination (which now correctly
+          // points at /remember/locations elsewhere in the codebase).
+          // People's pages are still a real, reachable space until a
+          // separate, later rollout step removes them.
+          path: "/remember/people",
         })),
         ...(threads.data ?? []).map((t) => ({
           id: t.id,

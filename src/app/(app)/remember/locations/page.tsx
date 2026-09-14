@@ -291,7 +291,7 @@ export default function LocationsPage() {
                     onClick={() => setEditingItem(item)}
                     className={cn(
                       "group relative cursor-pointer px-4 py-3 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:shadow-[var(--shadow-card-hover)]",
-                      isStale && "border-[var(--status-today-border)]",
+                      isStale && "border-[var(--status-stale-border)]",
                       isVeryStale && "opacity-50",
                     )}
                   >

@@ -181,6 +181,7 @@
   --status-today: #f59e0b;
   --status-today-dim: rgba(245, 158, 11, 0.1);
   --status-today-border: rgba(245, 158, 11, 0.25);
+  --status-stale-border: var(--status-today-border);
   --status-upcoming: #2dd4bf;
   --status-upcoming-dim: rgba(45, 212, 191, 0.1);
   --status-upcoming-border: rgba(45, 212, 191, 0.25);
