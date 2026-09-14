@@ -494,7 +494,7 @@ export default function HomeDashboard() {
       <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-500">
         <header className="mb-8 flex items-end justify-between">
           <div className="space-y-2">
-            <h1 className="text-page-greeting text-[var(--text-1)]">
+            <h1 className="text-page-greeting font-heading text-[var(--text-1)]">
               {greeting}
               <span className="text-[var(--text-3)]">
                 {userSettings?.display_name
