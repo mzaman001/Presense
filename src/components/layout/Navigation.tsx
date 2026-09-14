@@ -168,9 +168,12 @@ export function Sidebar() {
   /* DS-16 — relative so the inbox badge offsets to the tile corner */
   const iconClass =
     "relative flex h-10 w-10 shrink-0 items-center justify-center";
-  /* DS-16 — active row: accent-dim pill + left accent bar, rest muted */
-  const activeRowClass =
-    "nav-row-active bg-[var(--accent-dim)] text-[var(--accent)]";
+  /* Phase 2 (design overhaul) — left accent bar (from the .nav-row-active
+     CSS class) plus accent-colored text/icon is enough on its own now
+     that every --space-* token is aliased to the one --accent (Foundation
+     Phase 1): a colored background pill behind an already-accent-colored
+     row was redundant, not an extra signal. */
+  const activeRowClass = "nav-row-active text-[var(--accent)]";
 
   return (
     <aside
