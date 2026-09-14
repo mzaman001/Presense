@@ -198,6 +198,13 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // `icon` (no extension) is Next.js's special-file convention for the
+    // dynamically-generated favicon (src/app/icon.tsx, rendered via
+    // next/og) — it doesn't match favicon.ico or any of the static image
+    // extensions below, so without this exclusion an unauthenticated
+    // request for it (e.g. a browser fetching the favicon while the
+    // visitor is on the public /login page) was 307-redirected to
+    // /login instead of receiving the actual icon.
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|icon$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
