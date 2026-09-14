@@ -47,7 +47,7 @@ const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
   light: "#9c4a2e",
 };
 
-function avatarAccentFallback(): string {
+export function avatarAccentFallback(): string {
   // Client-only: color mode lives on `data-mode`; default to the dark
   // ("sunset") accent, matching the app's default color mode.
   if (typeof document === "undefined") return "#d97757";
@@ -630,8 +630,11 @@ export function Sidebar() {
               <div className="flex w-full min-w-0 items-center">
                 {/* DS-16 — account tile mirrors the brand tile: a rounded-square
                   container anchoring the bottom of the rail when collapsed.
-                  DS-17 — fallback avatar color is the theme accent (warm
-                  amber default), never the off-theme blue. */}
+                  DS-17 — fallback avatar color is the current single theme's
+                  accent (terracotta family: #d97757 dark / #9c4a2e light,
+                  mode-aware), never a stale retired-theme color. MobileTopBar.tsx
+                  imports this same `avatarAccentFallback()` so the desktop and
+                  mobile fallbacks can never drift apart again. */}
                 <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
                   <Avatar
                     name={displayName}
