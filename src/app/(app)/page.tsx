@@ -88,7 +88,7 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
     <div className="mt-3 flex items-center gap-2">
       <button
         onClick={() => setActiveRitual("morning")}
-        className="text-ui group inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 font-medium text-orange-400 transition-colors hover:bg-orange-500/20"
+        className="text-ui group inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1 font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-border)]"
       >
         <UiIcon className="h-3.5 w-3.5" icon={Sparkles} /> You haven&apos;t
         planned your day yet
@@ -549,7 +549,7 @@ export default function HomeDashboard() {
       <CaptureShortcut />
       <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-500">
         <header className="mb-8 flex items-end justify-between">
-          <div>
+          <div className="space-y-2">
             <h1 className="text-page-greeting text-[var(--text-1)]">
               {greeting}
               <span className="text-[var(--text-3)]">
