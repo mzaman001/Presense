@@ -61,7 +61,7 @@ function RitualStatusBadge({
 
   if (morningDone && eveningDone) {
     return (
-      <div className="text-ui inline-flex items-center gap-1.5 rounded-full border border-[var(--status-done)]/20 bg-[var(--status-done)]/10 px-3 py-1 font-medium text-[var(--status-done)]">
+      <div className="text-ui inline-flex items-center gap-1.5 font-medium text-[var(--status-done)]">
         <UiIcon className="h-3.5 w-3.5" icon={CheckCircle2} /> Day complete —
         Great work today
         {streak > 1 && (
@@ -73,7 +73,7 @@ function RitualStatusBadge({
 
   if (morningDone) {
     return (
-      <div className="text-ui inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)]/10 px-3 py-1 font-medium text-[var(--text-3)]">
+      <div className="text-ui inline-flex items-center gap-1.5 text-[var(--text-3)]">
         <UiIcon
           className="h-3.5 w-3.5 text-[var(--accent)]"
           icon={CheckCircle2}
@@ -88,19 +88,17 @@ function RitualStatusBadge({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => setActiveRitual("morning")}
-        className="text-ui group inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1 font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-dim-hover)]"
-      >
-        <UiIcon className="h-3.5 w-3.5" icon={Sparkles} /> You haven&apos;t
-        planned your day yet
-        <UiIcon
-          className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
-          icon={ArrowRight}
-        />
-      </button>
-    </div>
+    <button
+      onClick={() => setActiveRitual("morning")}
+      className="text-ui group inline-flex items-center gap-1.5 font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-hot)]"
+    >
+      <UiIcon className="h-3.5 w-3.5" icon={Sparkles} /> You haven&apos;t
+      planned your day yet
+      <UiIcon
+        className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+        icon={ArrowRight}
+      />
+    </button>
   );
 }
 
