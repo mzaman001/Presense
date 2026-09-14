@@ -448,7 +448,7 @@ export const TaskCard = React.memo(
                 {(task.time_spent_minutes ?? 0) > 0 && (
                   <div
                     className="flex items-center gap-1 rounded-md px-1.5 py-0.5"
-                    style={{ background: "rgba(229,180,30,0.08)" }}
+                    style={{ background: "var(--accent-dim)" }}
                     title="Time spent on this task"
                   >
                     <UiIcon
@@ -528,7 +528,7 @@ export const TaskCard = React.memo(
                   }}
                   className=""
                   style={{
-                    background: "rgba(229,180,30,0.08)",
+                    background: "var(--accent-dim)",
                     color: "var(--accent)",
                     border: "none",
                   }}

@@ -76,4 +76,28 @@ describe("TaskCard", () => {
       /background:\s*var\(--priority-urgent\)/,
     );
   });
+
+  it("never applies a blur filter on the card's enter/exit transition", () => {
+    const task = makeTask({
+      id: "task-3",
+      title: "Test task",
+      priority: 1,
+      status: "active",
+    });
+
+    const { container } = render(
+      <TaskCard
+        task={task}
+        completing={null}
+        completeTask={vi.fn()}
+        openEditPanel={vi.fn()}
+        fetchTasks={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    const wrapperEl = container.querySelector(".task-card-wrapper");
+    expect(wrapperEl).toBeTruthy();
+    expect(wrapperEl?.getAttribute("style")).not.toMatch(/blur\(/i);
+  });
 });
