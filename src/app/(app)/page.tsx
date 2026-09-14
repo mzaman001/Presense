@@ -43,13 +43,20 @@ import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { CaptureShortcut } from "@/components/layout/CaptureShortcut";
+import { computeRitualStreak } from "@/lib/ritualStreak";
 
 /** Shared with Do and TaskCard — one generated shape, not a local copy. */
 type TaskItem = TaskRecord;
 
 /* @todo: Untyped usage justified per TOOL-01 */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RitualStatusBadge({ userSettings }: { userSettings: any }) {
+function RitualStatusBadge({
+  userSettings,
+  streak,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userSettings: any;
+  streak: number;
+}) {
   const setActiveRitual = useAppStore((s) => s.setActiveRitual);
   const now = new Date();
   const todayStr = now.toLocaleDateString("en-CA");
@@ -67,6 +74,9 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
       <div className="text-ui mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--status-done)]/20 bg-[var(--status-done)]/10 px-3 py-1 font-medium text-[var(--status-done)]">
         <UiIcon className="h-3.5 w-3.5" icon={CheckCircle2} /> Day complete —
         Great work today
+        {streak > 1 && (
+          <span className="ml-1 opacity-80">· {streak}-day streak</span>
+        )}
       </div>
     );
   }
@@ -80,6 +90,9 @@ function RitualStatusBadge({ userSettings }: { userSettings: any }) {
         />{" "}
         Day planned <span className="mx-1 opacity-50">•</span> Evening review at{" "}
         {shutdownAmPm}
+        {streak > 1 && (
+          <span className="ml-1 opacity-50">· {streak}-day streak</span>
+        )}
       </div>
     );
   }
@@ -161,6 +174,7 @@ export default function HomeDashboard() {
         sessionsRes,
         doneLastWeekRes,
         sessionsLastWeekRes,
+        ritualLogsRes,
       ] = await Promise.all([
         // INFRA-18: explicit user_id filter for planner index usage
         supabase
@@ -214,6 +228,18 @@ export default function HomeDashboard() {
           .gte("completed_at", lastMondayStart.toISOString())
           .eq("type", "work")
           .range(0, 99),
+        // Ritual streak: last 60 days of morning completions is enough
+        // slack for any real streak while keeping the query cheap.
+        supabase
+          .from("ritual_logs")
+          .select("completed_at")
+          .eq("user_id", userId)
+          .eq("ritual_type", "morning")
+          .gte(
+            "completed_at",
+            new Date(now.getTime() - 60 * 86400000).toISOString(),
+          )
+          .range(0, 199),
       ]);
 
       let upNext: TaskItem[] = [];
@@ -283,6 +309,10 @@ export default function HomeDashboard() {
         const day = (new Date(task.completed_at).getDay() + 6) % 7;
         if (day >= 0 && day <= 6) dayCounts[day]++;
       }
+      const ritualDateKeys = (ritualLogsRes.data || []).map((row) =>
+        new Date(row.completed_at).toLocaleDateString("en-CA"),
+      );
+      const ritualStreak = computeRitualStreak(ritualDateKeys, now);
       return {
         tasks: upNext,
         inboxItems: inboxRes.data || [],
@@ -295,6 +325,7 @@ export default function HomeDashboard() {
         focusMinutesThisWeek,
         focusMinutesLastWeek,
         dayCounts,
+        ritualStreak,
       };
     },
   });
@@ -311,6 +342,7 @@ export default function HomeDashboard() {
     focusMinutesThisWeek = 0,
     focusMinutesLastWeek = 0,
     dayCounts = [],
+    ritualStreak = 0,
   } = dashboardData || {};
 
   const completeTask = async (e: React.MouseEvent, id: string) => {
@@ -559,7 +591,10 @@ export default function HomeDashboard() {
                 .
               </span>
             </h1>
-            <RitualStatusBadge userSettings={userSettings} />
+            <RitualStatusBadge
+              userSettings={userSettings}
+              streak={ritualStreak}
+            />
           </div>
           <button
             onClick={() => setShowReview(!showReview)}
