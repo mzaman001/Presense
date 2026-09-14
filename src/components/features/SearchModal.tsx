@@ -124,10 +124,10 @@ export function SearchModal() {
           title: p.name,
           type: "person" as const,
           icon: Users,
-          // People and Locations live under /remember — the old "/people"
-          // and "/locations" paths are not routes, so selecting either of
-          // those results navigated to a 404.
-          path: "/remember/people",
+          // People results route to Locations, the generic Remember-space
+          // destination now that People is slated for removal in a
+          // separate rollout step — not a leftover 404-avoidance hack.
+          path: "/remember/locations",
         })),
         ...(threads.data ?? []).map((t) => ({
           id: t.id,

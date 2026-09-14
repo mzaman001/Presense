@@ -62,7 +62,7 @@ const navItems = [
   { href: "/", label: "Home", icon: Home, exact: true },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/do", label: "Do", icon: Check },
-  { href: "/remember/people", label: "Remember", icon: Brain },
+  { href: "/remember/locations", label: "Remember", icon: Brain },
   { href: "/think", label: "Think", icon: MessageSquare },
   { href: "/explore", label: "Explore", icon: Compass },
 ];
@@ -372,7 +372,7 @@ export function Sidebar() {
         {navItems.map((item) => {
           const isActive =
             pathname === item.href ||
-            (item.href === "/remember/people"
+            (item.href.startsWith("/remember")
               ? pathname.startsWith("/remember")
               : pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;

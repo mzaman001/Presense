@@ -59,7 +59,7 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
             router.push("/do");
             break;
           case "3":
-            router.push("/remember/people");
+            router.push("/remember/locations");
             break;
           case "4":
             router.push("/think");
