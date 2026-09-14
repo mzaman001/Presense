@@ -1,7 +1,7 @@
 "use client";
 import { logger } from "@/lib/logger";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { createClient, safeMutate } from "@/lib/supabase";
@@ -9,74 +9,43 @@ import {
   ArrowRight,
   Loader2,
   Brain,
-  Users,
-  Lightbulb,
-  Bookmark,
+  MessageSquare,
   CheckCircle2,
   Zap,
-  Compass,
-  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { routeCapture, type RoutedItem } from "@/lib/capture-router";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { BrandMark } from "@/components/ui/BrandMark";
+import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/ui/GlassCard";
 
 interface OnboardingWizardProps {
   initialName: string;
 }
 
-const STRUGGLES = [
-  { id: "do", icon: Brain, label: "Things I need to do keep slipping" },
-  { id: "remember", icon: Users, label: "I forget what people told me" },
-  {
-    id: "think",
-    icon: Lightbulb,
-    label: "Ideas disappear before I capture them",
-  },
-  {
-    id: "explore",
-    icon: Bookmark,
-    label: "I save things but never come back to them",
-  },
-];
-
-const TOUR_CARDS = [
+const SPACES = [
   {
     id: "do",
     icon: CheckCircle2,
     title: "Do",
-    desc: "Your tasks, shown one step at a time. No overwhelm.",
-    color: "var(--accent)",
+    desc: "One task at a time. No overwhelm.",
   },
   {
     id: "think",
-    icon: Brain,
+    icon: MessageSquare,
     title: "Think",
-    desc: "Ongoing thoughts, plans, and a daily note. Your mind on paper.",
-    color: "var(--accent)",
+    desc: "Ongoing thoughts and a daily note.",
   },
   {
     id: "remember",
-    icon: Users,
+    icon: Brain,
     title: "Remember",
-    desc: "What people told you. Where you left things. Never forget again.",
-    color: "var(--accent)",
-  },
-  {
-    id: "explore",
-    icon: Compass,
-    title: "Explore",
-    desc: "Links, books, quotes, ideas. Saved and resurfaced every Sunday.",
-    color: "var(--accent)",
-  },
-  {
-    id: "ready",
-    icon: Check,
-    title: "You're ready",
-    desc: "",
-    color: "var(--status-done)",
+    desc: "What people told you. Where you left things.",
   },
 ];
+
+const LARGE_BUTTON = "h-14 w-full text-[length:var(--text-lg)]";
 
 export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
   const router = useRouter();
@@ -84,22 +53,15 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
 
-  // Screen 1: Name
+  // Step 1: Welcome + name
   const [name, setName] = useState(initialName || "");
-  const [nameError, setNameError] = useState("");
 
-  // Screen 2: Struggles
-  const [selectedStruggles, setSelectedStruggles] = useState<string[]>([]);
-
-  // Screen 3: Day Shape
+  // Step 2: Ritual loop setup
   const [wakeTime, setWakeTime] = useState("07:00");
 
-  // Screen 4: First Capture
+  // Step 3: First capture
   const [captureInput, setCaptureInput] = useState("");
   const [routedItem, setRoutedItem] = useState<RoutedItem | null>(null);
-
-  // Screen 5: Tour
-  const [tourIndex, setTourIndex] = useState(0);
 
   // Auto-route on capture input
   useEffect(() => {
@@ -114,24 +76,19 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
     routeItem();
   }, [captureInput]);
 
-  const handleNext1 = async () => {
-    if (!name.trim()) {
-      setNameError("Please enter your name");
-      return;
-    }
-    setNameError("");
+  const handleStep1Next = async () => {
     setSaving(true);
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
+      if (user && name.trim()) {
         const { success } = await safeMutate(
           () =>
             supabase.from("user_settings").upsert(
               {
                 user_id: user.id,
-                display_name: name,
+                display_name: name.trim(),
               },
               { onConflict: "user_id" },
             ),
@@ -142,45 +99,13 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       setStep(2);
     } catch (e) {
       logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to save name");
+      toast.error("Failed to save your name");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleNext2 = async () => {
-    if (selectedStruggles.length === 0) {
-      toast.error("Please select at least one item");
-      return;
-    }
-    setSaving(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { success } = await safeMutate(
-          () =>
-            supabase
-              .from("user_settings")
-              .update({
-                primary_struggles: selectedStruggles,
-              })
-              .eq("user_id", user.id),
-          "Failed to save your struggles",
-        );
-        if (!success) return;
-      }
-      setStep(3);
-    } catch (e) {
-      logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to save struggles");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleNext3 = async () => {
+  const handleStep2Next = async () => {
     setSaving(true);
     try {
       const {
@@ -208,20 +133,33 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
         );
         if (!success) return;
       }
-      setStep(4);
+      setStep(3);
     } catch (e) {
       logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to save preferences");
+      toast.error("Failed to save your preferences");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleNext4 = async () => {
-    if (!captureInput.trim()) {
-      toast.error("Please enter a thought to capture");
-      return;
-    }
+  const completeOnboarding = async (user: { id: string }) => {
+    const { success } = await safeMutate(
+      () =>
+        supabase.from("user_settings").upsert(
+          {
+            user_id: user.id,
+            onboarding_complete: true,
+          },
+          { onConflict: "user_id" },
+        ),
+      "Failed to complete onboarding",
+    );
+    if (!success) return false;
+    router.push("/");
+    return true;
+  };
+
+  const handleStep3Finish = async () => {
     setSaving(true);
     try {
       const {
@@ -229,161 +167,140 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
 
-      const item = routedItem || (await routeCapture(captureInput))[0];
-      if (item) {
-        if (item.destination === "Do" || item.destination === "Inbox") {
-          const { success } = await safeMutate(
-            () =>
-              supabase.from("items").insert({
-                user_id: user.id,
-                title: item.title,
-                status: item.destination === "Inbox" ? "inbox" : "active",
-                deadline: item.deadline || null,
-              }),
-            "Failed to save your thought",
-          );
-          if (!success) return;
-        } else if (item.destination.startsWith("Remember")) {
-          if (item.type === "person_note") {
-            const { data: person } = await supabase
-              .from("people")
-              .select("*")
-              .eq("name", item.person || item.title.split(" ")[0])
-              .maybeSingle();
-            if (person) {
-              const { success } = await safeMutate(
-                () =>
-                  supabase
-                    .from("people")
-                    .update({
+      if (captureInput.trim()) {
+        const item = routedItem || (await routeCapture(captureInput))[0];
+        if (item) {
+          if (item.destination === "Do" || item.destination === "Inbox") {
+            const { success } = await safeMutate(
+              () =>
+                supabase.from("items").insert({
+                  user_id: user.id,
+                  title: item.title,
+                  status: item.destination === "Inbox" ? "inbox" : "active",
+                  deadline: item.deadline || null,
+                }),
+              "Failed to save your thought",
+            );
+            if (!success) return;
+          } else if (item.destination.startsWith("Remember")) {
+            if (item.type === "person_note") {
+              const { data: person } = await supabase
+                .from("people")
+                .select("*")
+                .eq("name", item.person || item.title.split(" ")[0])
+                .maybeSingle();
+              if (person) {
+                const { success } = await safeMutate(
+                  () =>
+                    supabase
+                      .from("people")
+                      .update({
+                        notes: [
+                          ...(person.notes ?? []),
+                          {
+                            text: item.title,
+                            created_at: new Date().toISOString(),
+                            tag: "note",
+                          },
+                        ],
+                      })
+                      .eq("id", person.id),
+                  "Failed to save your note",
+                );
+                if (!success) return;
+              } else {
+                const { success } = await safeMutate(
+                  () =>
+                    supabase.from("people").insert({
+                      user_id: user.id,
+                      name: item.person || item.title.split(" ")[0],
                       notes: [
-                        ...(person.notes ?? []),
                         {
                           text: item.title,
                           created_at: new Date().toISOString(),
                           tag: "note",
                         },
                       ],
-                    })
-                    .eq("id", person.id),
-                "Failed to save your note",
-              );
-              if (!success) return;
+                    }),
+                  "Failed to save your note",
+                );
+                if (!success) return;
+              }
             } else {
               const { success } = await safeMutate(
                 () =>
-                  supabase.from("people").insert({
+                  supabase.from("locations").insert({
                     user_id: user.id,
-                    name: item.person || item.title.split(" ")[0],
-                    notes: [
-                      {
-                        text: item.title,
-                        created_at: new Date().toISOString(),
-                        tag: "note",
-                      },
-                    ],
+                    item_name:
+                      item.item_name || item.title.split(" ")[0] || "Item",
+                    location_text: item.title,
                   }),
-                "Failed to save your note",
+                "Failed to save your item",
               );
               if (!success) return;
             }
-          } else {
+          } else if (item.destination === "Think") {
             const { success } = await safeMutate(
               () =>
-                supabase.from("locations").insert({
+                supabase.from("threads").insert({
                   user_id: user.id,
-                  item_name:
-                    item.item_name || item.title.split(" ")[0] || "Item",
-                  location_text: item.title,
+                  title: item.title.slice(0, 60),
+                  entries: [
+                    {
+                      text: item.title,
+                      created_at: new Date().toISOString(),
+                      starred: false,
+                    },
+                  ],
+                }),
+              "Failed to save your thought",
+            );
+            if (!success) return;
+          } else if (item.destination === "Explore") {
+            const { success } = await safeMutate(
+              () =>
+                supabase.from("explores").insert({
+                  user_id: user.id,
+                  title: item.title.slice(0, 100),
+                  type: item.url ? "link" : "concept",
+                  url: item.url ?? null,
+                  note: item.title,
                 }),
               "Failed to save your item",
             );
             if (!success) return;
           }
-        } else if (item.destination === "Think") {
-          const { success } = await safeMutate(
-            () =>
-              supabase.from("threads").insert({
-                user_id: user.id,
-                title: item.title.slice(0, 60),
-                entries: [
-                  {
-                    text: item.title,
-                    created_at: new Date().toISOString(),
-                    starred: false,
-                  },
-                ],
-              }),
-            "Failed to save your thought",
-          );
-          if (!success) return;
-        } else if (item.destination === "Explore") {
-          const { success } = await safeMutate(
-            () =>
-              supabase.from("explores").insert({
-                user_id: user.id,
-                title: item.title.slice(0, 100),
-                type: item.url ? "link" : "concept",
-                url: item.url ?? null,
-                note: item.title,
-              }),
-            "Failed to save your item",
-          );
-          if (!success) return;
+          toast.success(`Saved to ${item.destination}`);
         }
-        toast.success(`Saved to ${item.destination}`);
       }
-      setStep(5);
+
+      await completeOnboarding(user);
     } catch (e) {
       logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to capture");
-    } finally {
+      toast.error("Failed to finish setup");
       setSaving(false);
     }
   };
 
-  const handleFinish = async () => {
+  const handleSkipToFinish = async () => {
     setSaving(true);
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
-        const { success } = await safeMutate(
-          () =>
-            supabase.from("user_settings").upsert(
-              {
-                user_id: user.id,
-                onboarding_complete: true,
-              },
-              { onConflict: "user_id" },
-            ),
-          "Failed to complete onboarding",
-        );
-        if (!success) {
-          setSaving(false);
-          return;
-        }
-      }
-      router.push("/");
+      if (!user) throw new Error("Not logged in");
+      const completed = await completeOnboarding(user);
+      if (!completed) setSaving(false);
     } catch (e) {
       logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to complete onboarding");
+      toast.error("Failed to finish setup");
       setSaving(false);
-    }
-  };
-
-  const toggleStruggle = (id: string) => {
-    if (selectedStruggles.includes(id)) {
-      setSelectedStruggles(selectedStruggles.filter((s) => s !== id));
-    } else {
-      setSelectedStruggles([...selectedStruggles, id]);
     }
   };
 
   return (
     <div
-      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden p-6 font-sans"
+      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[var(--bg-base)] p-6 font-sans"
       style={{ zIndex: 1 }}
     >
       <AnimatePresence mode="wait">
@@ -393,37 +310,68 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-md space-y-6"
+            className="w-full max-w-xl space-y-7"
           >
-            <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-1)] sm:text-4xl">
-              What should we call you?
-            </h1>
+            <div className="flex items-center gap-2.5 text-[var(--accent)]">
+              <BrandMark size={26} />
+              <span className="font-heading text-title-lg font-semibold tracking-tight text-[var(--text-1)]">
+                Presense
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="font-heading text-3xl font-semibold tracking-tight text-[var(--text-1)] sm:text-4xl">
+                Your external brain, finally somewhere calm.
+              </h1>
+              <p className="text-body text-[var(--text-3)]">
+                Presense captures what you&apos;d otherwise forget — tasks,
+                thoughts, and things you&apos;re keeping track of — and brings
+                it back to you at the right moment.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {SPACES.map((space) => (
+                <GlassCard key={space.id} className="flex flex-col gap-2">
+                  <UiIcon
+                    size={20}
+                    strokeWidth={1.5}
+                    className="text-[var(--accent)]"
+                    icon={space.icon}
+                  />
+                  <div className="text-card-title text-[var(--text-1)]">
+                    {space.title}
+                  </div>
+                  <p className="text-sm text-[var(--text-3)]">{space.desc}</p>
+                </GlassCard>
+              ))}
+            </div>
+
             <div className="space-y-2">
               <input
                 autoFocus
-                placeholder="What should I call you?"
+                placeholder="Your name (optional)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleNext1()}
+                onKeyDown={(e) => e.key === "Enter" && handleStep1Next()}
                 className="input !rounded-2xl !px-5 !py-4 !text-xl"
               />
-              {nameError && (
-                <p className="px-2 text-sm text-red-400">{nameError}</p>
-              )}
             </div>
-            <button
-              onClick={handleNext1}
+
+            <Button
+              variant="primary"
+              onClick={handleStep1Next}
               disabled={saving}
-              className="hover:bg-opacity-90 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-text-1)] py-4 text-lg font-semibold text-[var(--color-background)] transition-opacity disabled:opacity-50"
+              className={LARGE_BUTTON}
             >
               {saving ? (
                 <UiIcon className="h-6 w-6 animate-spin" icon={Loader2} />
               ) : (
                 <>
-                  Next <UiIcon className="h-5 w-5" icon={ArrowRight} />
+                  Continue <UiIcon className="h-5 w-5" icon={ArrowRight} />
                 </>
               )}
-            </button>
+            </Button>
           </m.div>
         )}
 
@@ -433,50 +381,53 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-lg space-y-8"
+            className="w-full max-w-md space-y-8"
           >
-            <h1 className="text-center text-3xl font-bold tracking-tight text-[var(--color-text-1)]">
-              What keeps slipping through the cracks?
-            </h1>
-            <div className="grid grid-cols-2 gap-4">
-              {STRUGGLES.map((s) => {
-                const isSelected = selectedStruggles.includes(s.id);
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => toggleStruggle(s.id)}
-                    className={`flex flex-col items-center justify-center gap-4 rounded-2xl border p-6 text-center transition-all ${isSelected ? "border-amber-500 bg-amber-500/10 text-amber-500" : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-2)] hover:border-[var(--color-text-3)]"}`}
-                  >
-                    <s.icon
-                      className={`h-8 w-8 ${isSelected ? "text-amber-500" : "text-[var(--color-text-3)]"}`}
-                    />
-                    <span className="text-sm leading-tight font-medium">
-                      {s.label}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="space-y-2">
+              <h1 className="font-heading text-3xl font-semibold tracking-tight text-[var(--text-1)]">
+                Presense works in a loop, not a list.
+              </h1>
+              <p className="text-body text-[var(--text-3)]">
+                Each morning, Presense helps you plan the day. Each evening, a
+                quick review closes the loop. It only takes a minute, and
+                it&apos;s the one habit that makes everything else here work.
+              </p>
             </div>
+
+            <div className="space-y-2 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-1)] p-5">
+              <label className="block text-sm font-semibold tracking-wider text-[var(--text-2)] uppercase">
+                When should your morning planning nudge arrive?
+              </label>
+              <input
+                type="time"
+                value={wakeTime}
+                onChange={(e) => setWakeTime(e.target.value)}
+                className="w-full bg-transparent text-2xl font-bold text-[var(--text-1)] outline-none"
+              />
+            </div>
+
             <div className="flex gap-4">
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => setStep(1)}
-                className="flex-1 rounded-2xl border border-[var(--color-border)] py-4 text-lg font-semibold text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-surface)]"
+                className="h-14 flex-1 text-[length:var(--text-lg)]"
               >
                 Back
-              </button>
-              <button
-                onClick={handleNext2}
-                disabled={saving || selectedStruggles.length === 0}
-                className="hover:bg-opacity-90 flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-[var(--color-text-1)] py-4 text-lg font-semibold text-[var(--color-background)] transition-opacity disabled:opacity-50"
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleStep2Next}
+                disabled={saving}
+                className="h-14 flex-[2] text-[length:var(--text-lg)]"
               >
                 {saving ? (
                   <UiIcon className="h-6 w-6 animate-spin" icon={Loader2} />
                 ) : (
                   <>
-                    Next <UiIcon className="h-5 w-5" icon={ArrowRight} />
+                    Continue <UiIcon className="h-5 w-5" icon={ArrowRight} />
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </m.div>
         )}
@@ -487,58 +438,10 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-md space-y-8"
-          >
-            <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-1)]">
-              When do you usually start your day?
-            </h1>
-            <div className="space-y-6">
-              <div className="space-y-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                <label className="block text-sm font-semibold tracking-wider text-[var(--color-text-2)] uppercase">
-                  I&apos;m usually up by
-                </label>
-                <input
-                  type="time"
-                  value={wakeTime}
-                  onChange={(e) => setWakeTime(e.target.value)}
-                  className="w-full bg-transparent text-2xl font-bold text-[var(--color-text-1)] outline-none"
-                />
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setStep(2)}
-                className="flex-1 rounded-2xl border border-[var(--color-border)] py-4 text-lg font-semibold text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-surface)]"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleNext3}
-                disabled={saving}
-                className="hover:bg-opacity-90 flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-[var(--color-text-1)] py-4 text-lg font-semibold text-[var(--color-background)] transition-opacity disabled:opacity-50"
-              >
-                {saving ? (
-                  <UiIcon className="h-6 w-6 animate-spin" icon={Loader2} />
-                ) : (
-                  <>
-                    Next <UiIcon className="h-5 w-5" icon={ArrowRight} />
-                  </>
-                )}
-              </button>
-            </div>
-          </m.div>
-        )}
-
-        {step === 4 && (
-          <m.div
-            key="step4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
             className="w-full max-w-xl space-y-8"
           >
-            <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-1)]">
-              Let&apos;s try it. What&apos;s one thing on your mind right now?
+            <h1 className="font-heading text-3xl font-semibold tracking-tight text-[var(--text-1)]">
+              Let&apos;s try it. What&apos;s on your mind right now?
             </h1>
             <div className="relative">
               <textarea
@@ -546,7 +449,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                 placeholder="Remind me to call Mom on Sunday..."
                 value={captureInput}
                 onChange={(e) => setCaptureInput(e.target.value)}
-                className="h-32 w-full resize-none rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-xl text-[var(--color-text-1)] transition-colors outline-none placeholder:text-[var(--color-text-3)] focus:border-[var(--color-accent)]"
+                className="h-32 w-full resize-none rounded-2xl border border-[var(--border-default)] bg-[var(--surface-1)] p-5 text-xl text-[var(--text-1)] transition-colors outline-none placeholder:text-[var(--text-3)] focus:border-[var(--accent)]"
               />
               <AnimatePresence>
                 {routedItem && (
@@ -554,7 +457,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="absolute bottom-4 left-4 flex items-center gap-2 rounded-lg border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-3 py-1.5 text-sm font-medium text-[var(--color-accent)]"
+                    className="absolute bottom-4 left-4 flex items-center gap-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1.5 text-sm font-medium text-[var(--accent)]"
                   >
                     <UiIcon className="h-4 w-4" icon={Zap} /> → This will go to{" "}
                     {routedItem.destination}
@@ -563,106 +466,36 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
               </AnimatePresence>
             </div>
             <div className="flex gap-4">
-              <button
-                onClick={() => setStep(3)}
-                className="flex-1 rounded-2xl border border-[var(--color-border)] py-4 text-lg font-semibold text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-surface)]"
+              <Button
+                variant="secondary"
+                onClick={() => setStep(2)}
+                className="h-14 flex-1 text-[length:var(--text-lg)]"
               >
                 Back
-              </button>
-              <button
-                onClick={handleNext4}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleStep3Finish}
                 disabled={saving || !captureInput.trim()}
-                className="hover:bg-opacity-90 flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-[var(--color-text-1)] py-4 text-lg font-semibold text-[var(--color-background)] transition-opacity disabled:opacity-50"
+                className="h-14 flex-[2] text-[length:var(--text-lg)]"
               >
                 {saving ? (
                   <UiIcon className="h-6 w-6 animate-spin" icon={Loader2} />
                 ) : (
-                  "Capture & continue"
+                  "Save & start using Presense"
                 )}
-              </button>
+              </Button>
             </div>
-          </m.div>
-        )}
-
-        {step === 5 && (
-          <m.div
-            key="step5"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex w-full max-w-sm flex-col items-center space-y-8 text-center"
-          >
-            <div className="relative flex h-64 w-full flex-col items-center justify-center overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8">
-              <AnimatePresence mode="wait">
-                <m.div
-                  key={tourIndex}
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  className="flex flex-col items-center text-center"
-                >
-                  {React.createElement(TOUR_CARDS[tourIndex].icon, {
-                    className: "w-16 h-16 mb-6",
-                    style: { color: TOUR_CARDS[tourIndex].color },
-                  })}
-                  <h2 className="mb-3 text-2xl font-bold text-[var(--color-text-1)]">
-                    {TOUR_CARDS[tourIndex].id === "ready"
-                      ? `Presense is set up for you, ${name.split(" ")[0]}. Let's go.`
-                      : TOUR_CARDS[tourIndex].title}
-                  </h2>
-                  <p className="text-[var(--color-text-2)]">
-                    {TOUR_CARDS[tourIndex].desc}
-                  </p>
-                </m.div>
-              </AnimatePresence>
-            </div>
-
-            <div className="mb-8 flex gap-2">
-              {TOUR_CARDS.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setTourIndex(idx)}
-                  className={`h-2 w-2 rounded-full transition-all ${idx === tourIndex ? "w-6 bg-[var(--color-accent)]" : "bg-[var(--color-border)] hover:bg-[var(--color-text-3)]"}`}
-                />
-              ))}
-            </div>
-
-            <div className="w-full space-y-4">
-              {tourIndex < TOUR_CARDS.length - 1 ? (
-                <button
-                  onClick={() => setTourIndex(tourIndex + 1)}
-                  className="hover:bg-opacity-90 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-text-1)] py-4 text-lg font-semibold text-[var(--color-background)] transition-opacity"
-                >
-                  Next <UiIcon className="h-5 w-5" icon={ArrowRight} />
-                </button>
-              ) : (
-                <button
-                  onClick={handleFinish}
-                  disabled={saving}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] py-4 text-lg font-bold text-[var(--text-on-accent)] transition-colors hover:bg-[var(--accent-hot)] disabled:opacity-50"
-                >
-                  {saving ? (
-                    <UiIcon className="h-6 w-6 animate-spin" icon={Loader2} />
-                  ) : (
-                    "Start using Presense"
-                  )}
-                </button>
-              )}
-              <button
-                onClick={handleFinish}
-                className="text-sm font-medium text-[var(--color-text-3)] transition-colors hover:text-[var(--color-text-1)]"
-              >
-                Skip tour →
-              </button>
-            </div>
+            <button
+              onClick={handleSkipToFinish}
+              disabled={saving}
+              className="text-ui block w-full text-center text-[var(--text-3)] transition-colors hover:text-[var(--text-1)] disabled:opacity-50"
+            >
+              Skip and start using Presense
+            </button>
           </m.div>
         )}
       </AnimatePresence>
-      <button
-        onClick={handleFinish}
-        className="mt-8 text-sm text-[var(--color-text-3)] transition-colors hover:text-[var(--color-text-1)]"
-      >
-        Skip setup →
-      </button>
     </div>
   );
 }
