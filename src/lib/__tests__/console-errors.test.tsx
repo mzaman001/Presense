@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor, act } from "./test-utils";
+import { render, screen, waitFor, act, fireEvent } from "./test-utils";
 import { TEST_USER } from "./test-utils";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -265,6 +265,60 @@ describe("Console error regression — network failures and render-phase state",
         expect.stringContaining("hasn't mounted"),
         expect.anything(),
       );
+    });
+
+    it("SettingsModal autosave sends a real object to user_settings.update(), not an array's numeric indices", async () => {
+      vi.useRealTimers();
+      useAppStore.setState({
+        isSettingsModalOpen: true,
+        settingsActiveTab: "account",
+      });
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: TEST_USER },
+        error: null,
+      });
+
+      const updateSpy = vi
+        .fn()
+        .mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+      mockSupabase.from.mockImplementation(() => ({
+        ...chainableQuery({
+          user_id: TEST_USER.id,
+          display_name: "Old Name",
+          avatar_color: "blue",
+          theme: "orange",
+          color_mode: "dark",
+        }),
+        update: updateSpy,
+      }));
+
+      render(<SettingsModal />, { wrapper });
+
+      const nameInput = await screen.findByPlaceholderText(
+        "How should we call you?",
+      );
+      // Let the initial load complete (SettingsModal flips `initialLoaded`
+      // ~100ms after load resolves) before the autosave effect starts
+      // watching for changes.
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 200));
+      });
+
+      fireEvent.change(nameInput, { target: { value: "New Name" } });
+
+      // Autosave debounces 1000ms.
+      await waitFor(() => expect(updateSpy).toHaveBeenCalled(), {
+        timeout: 3000,
+      });
+
+      const payload = updateSpy.mock.calls[0][0];
+      // Regression guard: `watch([fields])` returns an array of values, not
+      // an object keyed by field name. Destructuring it with `{...rest}`
+      // spreads the array's own numeric-index properties instead, producing
+      // {0: ..., 1: ..., ...} — which Postgrest rejects with "Could not find
+      // the '0' column of 'user_settings'".
+      expect(payload).not.toHaveProperty("0");
+      expect(payload).toMatchObject({ display_name: "New Name" });
     });
   });
 });

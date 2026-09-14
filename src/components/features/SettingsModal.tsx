@@ -57,6 +57,38 @@ import {
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
+/* BUG-45 — the fields the autosave debounce watches. `watch(AUTOSAVE_FIELDS)`
+   returns an array of values in this same order (react-hook-form's array-arg
+   overload), not an object keyed by field name — the array must be zipped
+   back into an object before it can be sent as a Supabase update payload. */
+const AUTOSAVE_FIELDS = [
+  "display_name",
+  "avatar_color",
+  "timezone",
+  "ambient_bg",
+  "notifications_enabled",
+  "notif_overdue",
+  "notif_stale_threads",
+  "daily_briefing",
+  "pomodoro_sound",
+  "pomodoro_duration",
+  "short_break_duration",
+  "long_break_duration",
+  "auto_start_breaks",
+  "default_view",
+  "auto_archive_days",
+  "smart_routing_enabled",
+  "nlp_date_parsing",
+  "nudge_time",
+  "shutdown_time",
+  "pomodoro_long_break_interval",
+  "daily_capacity_minutes",
+  "do_categories",
+  "do_category_colors",
+  "people_categories",
+  "relationship_colors",
+] as const satisfies readonly (keyof SettingsFormValues)[];
+
 const TABS = [
   { id: "account", label: "Account", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -386,34 +418,19 @@ function SettingsModalContent({
      persistence-relevant surface, and the theme effect only needs the
      three theme fields. Unselective `watch()` returns a new object every
      render and was the engine of the setState-in-render warning. */
+  const watchedAutosaveValues = watch(AUTOSAVE_FIELDS);
   const [debouncedSettings] = useDebounce(
-    watch([
-      "display_name",
-      "avatar_color",
-      "timezone",
-      "ambient_bg",
-      "notifications_enabled",
-      "notif_overdue",
-      "notif_stale_threads",
-      "daily_briefing",
-      "pomodoro_sound",
-      "pomodoro_duration",
-      "short_break_duration",
-      "long_break_duration",
-      "auto_start_breaks",
-      "default_view",
-      "auto_archive_days",
-      "smart_routing_enabled",
-      "nlp_date_parsing",
-      "nudge_time",
-      "shutdown_time",
-      "pomodoro_long_break_interval",
-      "daily_capacity_minutes",
-      "do_categories",
-      "do_category_colors",
-      "people_categories",
-      "relationship_colors",
-    ]),
+    useMemo(
+      () =>
+        Object.fromEntries(
+          AUTOSAVE_FIELDS.map((name, i) => [name, watchedAutosaveValues[i]]),
+        ) as Pick<SettingsFormValues, (typeof AUTOSAVE_FIELDS)[number]>,
+      // watch() returns a new array every render; spreading its elements as
+      // the deps array (rather than `[watchedAutosaveValues]`) is what makes
+      // this memo stable when the field values themselves haven't changed.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      watchedAutosaveValues,
+    ),
     1000,
   );
   /* BUG-45 — selective useWatch subscriptions replace the unselective
@@ -596,19 +613,11 @@ function SettingsModalContent({
     const save = async () => {
       setSaveStatus("saving");
 
-      const {
-        user_id: _,
-        created_at: __,
-        ...updateData
-        /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } = debouncedSettings as any;
-
       const { error } = await supabase
         .from("user_settings")
         /* @todo: Untyped usage justified per TOOL-01 */
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .update(updateData as any)
+        .update(debouncedSettings as any)
         .eq("user_id", userId);
 
       if (error) {
