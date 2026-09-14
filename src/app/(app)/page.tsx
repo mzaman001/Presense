@@ -783,20 +783,10 @@ export default function HomeDashboard() {
             {/* Focus Now Hero Card */}
             {primaryTask ? (
               <GlassCard className="relative overflow-hidden p-8">
-                <div className="absolute top-0 right-0 p-8">
-                  <div
-                    className="animate-spin-slow relative h-24 w-24 rounded-full"
-                    style={{
-                      background:
-                        "conic-gradient(from 0deg, var(--accent), var(--accent-hot), var(--accent-deep), var(--accent))",
-                      filter: "blur(1px)",
-                      WebkitMaskImage:
-                        "radial-gradient(circle, transparent 40px, black 41px)",
-                      maskImage:
-                        "radial-gradient(circle, transparent 40px, black 41px)",
-                    }}
-                  />
-                </div>
+                <div
+                  aria-hidden="true"
+                  className="absolute top-8 right-8 h-24 w-24 rounded-full border-2 border-[var(--accent-border)]"
+                />
 
                 <div className="relative z-10 flex h-full flex-col items-center justify-center p-10 text-center">
                   <span className="text-caption mb-4 rounded-full border border-[var(--accent)]/20 bg-[var(--accent)]/10 px-3 py-1 font-bold tracking-widest text-[var(--accent)] uppercase">

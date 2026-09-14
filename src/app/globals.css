@@ -1012,16 +1012,6 @@ h6 {
 }
 
 /* Animations */
-@keyframes spin-slow {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin-slow {
-  animation: spin-slow 8s linear infinite;
-}
-
 /* === REDUCED MOTION OVERRIDES === */
 @media (prefers-reduced-motion: reduce) {
   *,
