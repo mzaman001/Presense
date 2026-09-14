@@ -35,7 +35,7 @@
 - Test: `src/components/ui/__tests__/BrandMark.test.tsx`
 
 **Interfaces:**
-- Produces: `BrandMark({ size?: number; className?: string })` — a React component rendering an inline `<svg>`. Default `size` is `24`. Color is driven entirely by `currentColor` (the same convention `Icon.tsx`/Lucide icons in this app already use — color comes from the parent's `text-[var(...)]` className, not a prop).
+- Produces: `BrandMark({ size?: number; className?: string })` — a React component rendering an inline `<svg>`. Default `size` is `24`. Color is driven entirely by `currentColor` (the same convention `Icon.tsx`/Lucide icons in this app already use — color comes from a parent element's own `text-[var(--accent)]`-style className, not a prop).
 
 - [ ] **Step 1: Write the failing test**
 

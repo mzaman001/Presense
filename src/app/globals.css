@@ -1,6 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Tailwind v4's zero-config content scan otherwise includes the whole
+   repo (respecting .gitignore) — including docs/**\/*.md. A doc using
+   Tailwind-bracket-shaped example text (e.g. describing a className
+   pattern in prose) can get scanned as a real utility candidate and,
+   if the bracketed content isn't valid CSS, break compilation for
+   every page (discovered: a doc's illustrative `text-[var(...)]`
+   broke /login's CSS build entirely). Docs aren't a styling source —
+   exclude them. */
+@source not "../../docs";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {

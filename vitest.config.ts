@@ -7,7 +7,20 @@ export default defineConfig({
     globals: true,
     setupFiles: ["src/lib/__tests__/setup.ts"],
     testTimeout: 15000,
-    exclude: ["**/node_modules/**", "**/tests/**", "**/e2e/**"],
+    // .worktrees/**: git worktrees created for isolated branch work live
+    // as real subdirectories under the repo root, each with their own
+    // node_modules and copies of every test file. Without excluding them,
+    // Vitest's recursive discovery double-runs (or triple-runs) the whole
+    // suite against stale/foreign node_modules the moment more than one
+    // worktree exists on disk — a repeated, confusing false-failure
+    // pattern in practice, not a hypothetical.
+    exclude: [
+      "**/node_modules/**",
+      "**/tests/**",
+      "**/e2e/**",
+      "**/.worktrees/**",
+      "**/.claude/worktrees/**",
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
