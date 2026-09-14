@@ -1,24 +1,19 @@
 "use client";
 
-import { createPortal } from "react-dom";
 import type { TaskRecord } from "@/lib/task-cache";
 import { useUserId } from "@/components/providers/SessionProvider";
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient, safeMutate } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import {
   Play,
   ArrowRight,
   CheckCircle2,
   MessageSquare,
-  Compass,
   Loader2,
-  FolderInput,
-  X,
   Check,
   Sparkles,
-  Brain,
   MapPin,
   CalendarDays,
   Save,
@@ -32,11 +27,7 @@ import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 // INFRA-19: all status writes on entity tables go through item-lifecycle.ts
-import {
-  completeTaskPatch,
-  activateItemPatch,
-  moveItemToTrashPatch,
-} from "@/lib/item-lifecycle";
+import { completeTaskPatch } from "@/lib/item-lifecycle";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { Button } from "@/components/ui/button";
@@ -132,17 +123,6 @@ export default function HomeDashboard() {
   // pattern as RitualOverlay's daily note.
   const [weeklyReflection, setWeeklyReflection] = useState("");
   const [completing, setCompleting] = useState<string | null>(null);
-  const [activeRouteItem, setActiveRouteItem] = useState<string | null>(null);
-  const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if ((e.target as HTMLElement).closest(".dropdown-trigger")) return;
-      setActiveRouteItem(null);
-    };
-    window.addEventListener("click", handleClick);
-    return () => window.removeEventListener("click", handleClick);
-  }, []);
 
   const { data: dashboardData, isLoading: loading } = useQuery({
     queryKey: ["dashboard"],
@@ -458,80 +438,6 @@ export default function HomeDashboard() {
       0,
     );
     return monday.getTime();
-  };
-
-  const routeInboxItem = async (id: string, space: string) => {
-    if (!space) return;
-    try {
-      if (space === "do") {
-        const { success } = await safeMutate(
-          () => supabase.from("items").update(activateItemPatch()).eq("id", id),
-          "Failed to route to Do",
-        );
-        if (!success) return;
-      } else if (space === "explore") {
-        /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = inboxItems.find((i: any) => i.id === id);
-        if (!item) return;
-        const { success } = await safeMutate(
-          () =>
-            supabase.from("explores").insert({
-              user_id: item.user_id,
-              title: item.title,
-              type: "other",
-            }),
-          "Failed to route to Explore",
-        );
-        if (!success) return;
-        const { success: removed } = await safeMutate(
-          () => supabase.from("items").delete().eq("id", id),
-          "Routed, but failed to remove from Inbox",
-        );
-        if (!removed) return;
-      } else if (space === "think") {
-        /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = inboxItems.find((i: any) => i.id === id);
-        if (!item) return;
-        const { success } = await safeMutate(
-          () =>
-            supabase.from("threads").insert({
-              user_id: item.user_id,
-              title: item.title,
-              color_accent: "#2DD4BF",
-            }),
-          "Failed to route to Think",
-        );
-        if (!success) return;
-        const { success: removed } = await safeMutate(
-          () => supabase.from("items").delete().eq("id", id),
-          "Routed, but failed to remove from Inbox",
-        );
-        if (!removed) return;
-      }
-      toast.success(`Routed to ${space}`);
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    } catch {
-      toast.error("Failed to route item");
-    }
-  };
-
-  const dismissInboxItem = async (id: string) => {
-    try {
-      const { success } = await safeMutate(
-        // INFRA-19: dismiss = trash with deleted_at; a bare status: "deleted"
-        // write would break the trash contract (retention purge + restore rely
-        // on deleted_at being set).
-        () =>
-          supabase.from("items").update(moveItemToTrashPatch()).eq("id", id),
-        "Failed to dismiss",
-      );
-      if (!success) return;
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    } catch {
-      toast.error("Failed to dismiss");
-    }
   };
 
   const refreshData = () =>
@@ -1150,7 +1056,7 @@ export default function HomeDashboard() {
                         <h3 className="text-section-title text-[var(--text-1)]">
                           Inbox
                         </h3>
-                        <div className="text-caption rounded-full bg-amber-500/20 px-2 py-0.5 font-bold tracking-wider text-amber-500">
+                        <div className="text-caption rounded-full bg-[var(--accent-dim)] px-2 py-0.5 font-bold tracking-wider text-[var(--accent)]">
                           {inboxItems.length} NEW
                         </div>
                       </div>
@@ -1162,130 +1068,10 @@ export default function HomeDashboard() {
                         <UiIcon className="h-3 w-3" icon={ArrowRight} />
                       </Link>
                     </div>
-                    {/* @todo: Untyped usage justified per TOOL-01 */}
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {inboxItems.map((item: any) => (
-                      <GlassCard
-                        key={item.id}
-                        className="group flex flex-col items-start justify-between gap-4 border-amber-500/20 bg-amber-500/5 p-4 md:flex-row md:items-center"
-                      >
-                        <p className="text-card-title flex-1 text-[var(--text-1)]">
-                          {item.title}
-                        </p>
-                        <div className="row-actions flex w-full shrink-0 items-center gap-2 md:w-auto">
-                          <div className="relative flex-1 md:flex-none">
-                            <Button
-                              variant="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const rect = (
-                                  e.currentTarget as HTMLElement
-                                ).getBoundingClientRect();
-                                setDropdownRect(rect);
-                                setActiveRouteItem(
-                                  activeRouteItem === item.id ? null : item.id,
-                                );
-                              }}
-                              className="dropdown-trigger w-full"
-                            >
-                              <UiIcon
-                                className="h-3.5 w-3.5"
-                                icon={FolderInput}
-                              />
-                              Route it
-                            </Button>
-                            {activeRouteItem === item.id &&
-                              dropdownRect &&
-                              createPortal(
-                                <div
-                                  className="dropdown-panel animate-in fade-in zoom-in-95 z-[9999] w-48 p-1 duration-100"
-                                  style={{
-                                    position: "fixed",
-                                    top: dropdownRect.bottom + 4,
-                                    left: dropdownRect.right - 192,
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <button
-                                    onClick={() => {
-                                      routeInboxItem(item.id, "do");
-                                      setActiveRouteItem(null);
-                                    }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                  >
-                                    <UiIcon
-                                      className="h-4 w-4 text-[var(--color-do)]"
-                                      icon={CheckCircle2}
-                                    />{" "}
-                                    Do (Task)
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      routeInboxItem(item.id, "think");
-                                      setActiveRouteItem(null);
-                                    }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                  >
-                                    <UiIcon
-                                      className="h-4 w-4 text-[var(--color-think)]"
-                                      icon={MessageSquare}
-                                    />{" "}
-                                    Think (Thread)
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      routeInboxItem(item.id, "explore");
-                                      setActiveRouteItem(null);
-                                    }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                  >
-                                    <UiIcon
-                                      className="h-4 w-4 text-[var(--color-explore)]"
-                                      icon={Compass}
-                                    />{" "}
-                                    Explore (Saved)
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      routeInboxItem(item.id, "remember");
-                                      setActiveRouteItem(null);
-                                    }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                  >
-                                    <UiIcon
-                                      className="h-4 w-4 text-[var(--color-people)]"
-                                      icon={Brain}
-                                    />{" "}
-                                    Remember (Person)
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      routeInboxItem(item.id, "location");
-                                      setActiveRouteItem(null);
-                                    }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                                  >
-                                    <UiIcon
-                                      className="h-4 w-4 text-[var(--color-people)]"
-                                      icon={MapPin}
-                                    />{" "}
-                                    Locations
-                                  </button>
-                                </div>,
-                                document.body,
-                              )}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            onClick={() => dismissInboxItem(item.id)}
-                            className="shrink-0 !border-transparent !bg-transparent hover:!bg-red-500/10 hover:!text-red-400"
-                            title="Dismiss"
-                          >
-                            <UiIcon className="h-4 w-4" icon={X} />
-                          </Button>
-                        </div>
-                      </GlassCard>
-                    ))}
+                    <p className="text-sm text-[var(--color-text-3)]">
+                      {inboxItems.length} item
+                      {inboxItems.length === 1 ? "" : "s"} waiting to be sorted.
+                    </p>
                   </div>
                 )}
 
