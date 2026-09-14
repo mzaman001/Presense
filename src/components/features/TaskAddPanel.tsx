@@ -1113,7 +1113,7 @@ export function TaskAddPanel({
                 ) : (
                   <button
                     onClick={() => setIsAddingCategory(true)}
-                    className="rounded-full border border-dashed border-[var(--color-border)] bg-transparent px-3 py-1.5 text-xs text-[var(--color-text-3)] transition-all hover:border-[rgba(255,255,255,0.5)] hover:text-[var(--color-text-1)]"
+                    className="rounded-full border border-dashed border-[var(--color-border)] bg-transparent px-3 py-1.5 text-xs text-[var(--color-text-3)] transition-all hover:border-[var(--border-strong)] hover:text-[var(--color-text-1)]"
                   >
                     + Add new category
                   </button>
@@ -1146,7 +1146,7 @@ export function TaskAddPanel({
           </div>
 
           {/* Sticky Bottom Bar */}
-          <div className="flex gap-3 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] p-4 md:rounded-b-2xl">
+          <div className="flex gap-3 border-t border-[var(--color-border)] bg-[var(--surface-1)] p-4 md:rounded-b-2xl">
             {taskToEdit && (
               <Button
                 variant="danger"
