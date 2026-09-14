@@ -453,16 +453,16 @@ export default function ThreadDetailPage({
                   e.currentTarget.blur();
                 }
               }}
-              className="-ml-2 w-full rounded-lg border-none bg-transparent px-2 py-1 text-[26px] leading-snug font-semibold tracking-tight text-[var(--color-text-1)] transition-colors outline-none placeholder:text-[var(--color-text-3)] hover:bg-[rgba(255,255,255,0.05)] focus:bg-[rgba(255,255,255,0.05)]"
+              className="-ml-2 w-full rounded-lg border-none bg-transparent px-2 py-1 text-[26px] leading-snug font-semibold tracking-tight text-[var(--color-text-1)] transition-colors outline-none placeholder:text-[var(--color-text-3)] hover:bg-[var(--surface-hover)] focus:bg-[var(--surface-hover)]"
               placeholder="Thread Title"
             />
             {thread.stale_prompt && (
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-[rgba(45,212,191,0.2)] bg-[rgba(45,212,191,0.1)] px-3 py-1">
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1">
                 <UiIcon
-                  className="h-3.5 w-3.5 text-[#2DD4BF]"
+                  className="h-3.5 w-3.5 text-[var(--accent)]"
                   icon={Sparkles}
                 />
-                <span className="text-xs font-medium text-[#2DD4BF]">
+                <span className="text-xs font-medium text-[var(--accent)]">
                   {thread.stale_prompt}
                 </span>
               </div>
@@ -475,7 +475,7 @@ export default function ThreadDetailPage({
             className={cn(
               "rounded-lg p-2 transition-colors",
               thread.is_pinned
-                ? "bg-[rgba(45,212,191,0.1)] text-[#2DD4BF]"
+                ? "bg-[var(--accent-dim)] text-[var(--accent)]"
                 : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
             )}
             title={thread.is_pinned ? "Unpin thread" : "Pin thread"}
@@ -499,7 +499,7 @@ export default function ThreadDetailPage({
           </button>
           <button
             onClick={() => setDeleteThreadOpen(true)}
-            className="rounded-lg p-2 text-[var(--color-text-3)] transition-colors hover:bg-[rgba(248,113,113,0.1)] hover:text-[#F87171]"
+            className="rounded-lg p-2 text-[var(--color-text-3)] transition-colors hover:bg-[var(--status-danger)]/10 hover:text-[var(--status-danger)]"
             title={
               thread.status === "deleted"
                 ? "Delete permanently"
@@ -520,7 +520,7 @@ export default function ThreadDetailPage({
             {linkedExplores.map((item) => (
               <Link key={item.id} href={`/explore/${item.id}`}>
                 <GlassCard className="flex items-center gap-2 px-4 py-2 transition-colors hover:bg-[var(--color-surface)]">
-                  <div className="h-2 w-2 rounded-full bg-[#FBBF24]" />
+                  <div className="h-2 w-2 rounded-full bg-[var(--accent)]" />
                   <span className="text-sm font-medium text-[var(--color-text-1)]">
                     {item.title}
                   </span>
@@ -545,7 +545,7 @@ export default function ThreadDetailPage({
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              <GlassCard className="group relative border-l-2 border-l-transparent p-5 transition-all hover:border-l-[#2DD4BF]">
+              <GlassCard className="group relative border-l-2 border-l-transparent p-5 transition-all hover:border-l-[var(--accent)]">
                 <p className="text-title-sm pr-8 leading-relaxed whitespace-pre-wrap text-[var(--color-text-1)]">
                   {entry.text}
                 </p>
@@ -562,7 +562,7 @@ export default function ThreadDetailPage({
                 </div>
                 <button
                   onClick={() => setDeleteEntryIndex(i)}
-                  className="row-actions absolute top-4 right-4 rounded p-1.5 text-[var(--color-text-3)] hover:bg-[rgba(248,113,113,0.1)] hover:text-[#F87171]"
+                  className="row-actions absolute top-4 right-4 rounded p-1.5 text-[var(--color-text-3)] hover:bg-[var(--status-danger)]/10 hover:text-[var(--status-danger)]"
                   title="Delete entry"
                 >
                   <UiIcon className="h-4 w-4" icon={Trash2} />
@@ -587,8 +587,8 @@ export default function ThreadDetailPage({
                     key={person.id}
                     onClick={() => handleSelectPerson(person)}
                     className={cn(
-                      "w-full px-4 py-2 text-left text-sm text-[var(--color-text-1)] hover:bg-[rgba(255,255,255,0.05)] focus:outline-none",
-                      idx === selectedIndex && "bg-[rgba(255,255,255,0.08)]",
+                      "w-full px-4 py-2 text-left text-sm text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] focus:outline-none",
+                      idx === selectedIndex && "bg-[var(--surface-hover)]",
                     )}
                     type="button"
                   >
@@ -614,7 +614,7 @@ export default function ThreadDetailPage({
               <button
                 type="submit"
                 disabled={!newEntry.trim() || saving}
-                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(45,212,191,0.15)] text-[#2DD4BF] transition-colors hover:bg-[rgba(45,212,191,0.25)] disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-dim)] text-[var(--accent)] transition-colors hover:bg-[var(--accent-dim-hover)] disabled:opacity-50"
               >
                 {saving ? (
                   <UiIcon className="h-4 w-4 animate-spin" icon={Loader2} />
