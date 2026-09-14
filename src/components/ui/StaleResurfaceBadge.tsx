@@ -1,8 +1,17 @@
+import { Sparkles } from "lucide-react";
+import { Icon as UiIcon } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
 interface StaleResurfaceBadgeProps {
-  /** The staleness message to display (e.g. a stale-prompt string or a computed "hasn't moved in 30 days" note). */
-  message: string;
+  /** The staleness message to display (e.g. a stale-prompt string or a computed "hasn't moved in 30 days" note). Falsy values render nothing. */
+  message: string | null | undefined;
+  /**
+   * "badge" (default) is the bordered pill with an accent wash and a Sparkles
+   * icon — the representative treatment. "text" is the bare accent-colored
+   * text with no border/background/icon, for contexts that already provide
+   * their own visual chrome (e.g. a card that already has a border).
+   */
+  variant?: "badge" | "text";
   className?: string;
 }
 
@@ -17,16 +26,35 @@ interface StaleResurfaceBadgeProps {
  */
 export function StaleResurfaceBadge({
   message,
+  variant = "badge",
   className,
 }: StaleResurfaceBadgeProps) {
+  if (!message) return null;
+
+  if (variant === "text") {
+    return (
+      <p
+        className={cn(
+          "text-xs leading-relaxed font-medium text-[var(--accent)]",
+          className,
+        )}
+      >
+        {message}
+      </p>
+    );
+  }
+
   return (
-    <p
+    <div
       className={cn(
-        "text-xs leading-relaxed font-medium text-[var(--accent)]",
+        "inline-flex items-center gap-1.5 rounded-md border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1",
         className,
       )}
     >
-      {message}
-    </p>
+      <UiIcon className="h-3.5 w-3.5 text-[var(--accent)]" icon={Sparkles} />
+      <span className="text-xs font-medium text-[var(--accent)]">
+        {message}
+      </span>
+    </div>
   );
 }

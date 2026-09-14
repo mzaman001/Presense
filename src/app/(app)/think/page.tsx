@@ -383,7 +383,8 @@ export default function ThinkPage() {
                                 {thread.title}
                               </p>
                               <StaleResurfaceBadge
-                                message={thread.stale_prompt ?? ""}
+                                message={thread.stale_prompt}
+                                variant="text"
                               />
                             </div>
                           </div>

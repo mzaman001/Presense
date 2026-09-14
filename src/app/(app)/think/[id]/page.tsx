@@ -7,11 +7,11 @@ import TextareaAutosize from "react-textarea-autosize";
 import { m, AnimatePresence } from "framer-motion";
 import { createClient, safeMutate } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { StaleResurfaceBadge } from "@/components/ui/StaleResurfaceBadge";
 import {
   ArrowLeft,
   Loader2,
   Send,
-  Sparkles,
   Trash2,
   Archive,
   Pin,
@@ -456,17 +456,10 @@ export default function ThreadDetailPage({
               className="-ml-2 w-full rounded-lg border-none bg-transparent px-2 py-1 text-[26px] leading-snug font-semibold tracking-tight text-[var(--color-text-1)] transition-colors outline-none placeholder:text-[var(--color-text-3)] hover:bg-[var(--surface-hover)] focus:bg-[var(--surface-hover)]"
               placeholder="Thread Title"
             />
-            {thread.stale_prompt && (
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1">
-                <UiIcon
-                  className="h-3.5 w-3.5 text-[var(--accent)]"
-                  icon={Sparkles}
-                />
-                <span className="text-xs font-medium text-[var(--accent)]">
-                  {thread.stale_prompt}
-                </span>
-              </div>
-            )}
+            <StaleResurfaceBadge
+              message={thread.stale_prompt}
+              className="mt-2"
+            />
           </div>
         </div>
         <div className="flex items-center gap-2">
