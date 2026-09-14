@@ -61,7 +61,7 @@ function RitualStatusBadge({
 
   if (morningDone && eveningDone) {
     return (
-      <div className="text-ui mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--status-done)]/20 bg-[var(--status-done)]/10 px-3 py-1 font-medium text-[var(--status-done)]">
+      <div className="text-ui inline-flex items-center gap-1.5 rounded-full border border-[var(--status-done)]/20 bg-[var(--status-done)]/10 px-3 py-1 font-medium text-[var(--status-done)]">
         <UiIcon className="h-3.5 w-3.5" icon={CheckCircle2} /> Day complete —
         Great work today
         {streak > 1 && (
@@ -73,7 +73,7 @@ function RitualStatusBadge({
 
   if (morningDone) {
     return (
-      <div className="text-ui mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)]/10 px-3 py-1 font-medium text-[var(--text-3)]">
+      <div className="text-ui inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)]/10 px-3 py-1 font-medium text-[var(--text-3)]">
         <UiIcon
           className="h-3.5 w-3.5 text-[var(--accent)]"
           icon={CheckCircle2}
@@ -88,10 +88,10 @@ function RitualStatusBadge({
   }
 
   return (
-    <div className="mt-3 flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <button
         onClick={() => setActiveRitual("morning")}
-        className="text-ui group inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1 font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-border)]"
+        className="text-ui group inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1 font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-dim-hover)]"
       >
         <UiIcon className="h-3.5 w-3.5" icon={Sparkles} /> You haven&apos;t
         planned your day yet
@@ -146,9 +146,7 @@ export default function HomeDashboard() {
       const [
         tasksRes,
         inboxRes,
-        peopleRes,
         threadsRes,
-        exploresRes,
         doneRes,
         sessionsRes,
         doneLastWeekRes,
@@ -169,14 +167,7 @@ export default function HomeDashboard() {
           .eq("user_id", userId)
           .eq("status", "inbox")
           .range(0, 99),
-        supabase.from("people").select("*").eq("user_id", userId).range(0, 99),
         supabase.from("threads").select("*").eq("user_id", userId).range(0, 99),
-        supabase
-          .from("explores")
-          .select("*")
-          .eq("user_id", userId)
-          .is("revisited_at", null)
-          .range(0, 99),
         supabase
           .from("items")
           .select("*")
@@ -302,9 +293,7 @@ export default function HomeDashboard() {
       return {
         tasks: upNext,
         inboxItems: inboxRes.data || [],
-        people: peopleRes.data || [],
         threads: threadsRes.data || [],
-        explores: exploresRes.data || [],
         doneTasks: doneRes.data || [],
         pomodorosThisWeek: sessionsThisWeek.length,
         doneTasksLastWeek,
@@ -444,9 +433,7 @@ export default function HomeDashboard() {
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
 
   useRealtime("items", refreshData);
-  useRealtime("people", refreshData);
   useRealtime("threads", refreshData);
-  useRealtime("explores", refreshData);
 
   const primaryTask = tasks.length > 0 ? tasks[0] : null;
 
@@ -694,7 +681,10 @@ export default function HomeDashboard() {
 
             {/* Focus Now Hero Card */}
             {primaryTask ? (
-              <GlassCard className="relative overflow-hidden p-8">
+              <GlassCard
+                variant="hero"
+                className="relative overflow-hidden p-8"
+              >
                 <div
                   aria-hidden="true"
                   className="absolute top-8 right-8 h-24 w-24 rounded-full border-2 border-[var(--accent-border)]"
@@ -894,7 +884,7 @@ export default function HomeDashboard() {
                   </div>
                 </GlassCard>
               </Link>
-              <div className="block">
+              <div>
                 <GlassCard className="flex h-full flex-col justify-between">
                   <UiIcon
                     size={20}
@@ -941,7 +931,7 @@ export default function HomeDashboard() {
                   <UiIcon
                     size={20}
                     strokeWidth={1.5}
-                    className="mb-4 shrink-0 text-[var(--color-people)]"
+                    className="mb-4 shrink-0 text-[var(--accent)]"
                     icon={MapPin}
                   />
                   <div>
@@ -1069,8 +1059,7 @@ export default function HomeDashboard() {
                       </Link>
                     </div>
                     <p className="text-sm text-[var(--color-text-3)]">
-                      {inboxItems.length} item
-                      {inboxItems.length === 1 ? "" : "s"} waiting to be sorted.
+                      Items waiting to be sorted.
                     </p>
                   </div>
                 )}

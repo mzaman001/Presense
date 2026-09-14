@@ -19,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin"],
-  style: ["normal", "italic"],
+  style: ["normal"],
   display: "swap",
 });
 
