@@ -39,6 +39,8 @@ const BACKGROUNDS_IN_USE = [
   "#6B7280",
   "#10B981",
   "#9CA3AF",
+  "#d97757", // avatarAccentFallback() dark-mode accent (Navigation.tsx/MobileTopBar.tsx)
+  "#9c4a2e", // avatarAccentFallback() light-mode accent (Navigation.tsx/MobileTopBar.tsx)
 ];
 
 describe("Avatar", () => {

@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { Avatar } from "@/components/ui/Avatar";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { Kbd } from "@/components/ui/Kbd";
 import { m } from "framer-motion";
 import { useIsTouch } from "@/hooks/useIsTouch";
@@ -32,27 +33,28 @@ import { createClient } from "@/lib/supabase";
 import { useRealtime } from "@/hooks/useRealtime";
 import { getRitualDecision } from "@/lib/rituals";
 
-/* AUDIT-01 (Aug 19, 2026): fallback avatar accent resolved from the
-   canonical accent for each frozen theme id (AGENTS invariant 2, values
-   copied from `:root` / `:root[data-theme="*"]` / `:root[data-mode="light"]`
-   blocks in `globals.css`). Previously the fallback read
-   `getComputedStyle(document.documentElement)` — a DOM read that errored
-   during SSR with `ReferenceError: getComputedStyle is not defined`
-   (Vercel production, 7 events Aug 17–18 on `/` and `/trash`). */
-const AVATAR_ACCENT_BY_THEME: Record<string, string> = {
-  warm: "#e5b41e",
-  navy: "#7692ff",
-  forest: "#efdd8d",
+/* AUDIT-01 (Aug 19, 2026), updated for the single-theme system (design
+   overhaul Phase 2): fallback avatar accent for a user with no
+   `avatar_color` set, resolved from the current theme's own accent —
+   keyed by color MODE now, since there's one theme with a light and a
+   dark accent value, not three theme ids. Still a plain lookup table
+   plus a client-only DOM read (never `getComputedStyle`) for the same
+   SSR-safety reason as the original fix: this ran into
+   `ReferenceError: getComputedStyle is not defined` in production
+   (Vercel, Aug 17-18) when it tried to read computed styles at SSR. */
+const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
+  dark: "#d97757",
+  light: "#9c4a2e",
 };
 
-function avatarAccentFallback(): string {
-  // Client-only: the theme lives on `data-theme`; default to the warm-dark
-  // canonical accent (the SSR-safe table above covers the theme ids).
-  if (typeof document === "undefined") return "#e5b41e";
+export function avatarAccentFallback(): string {
+  // Client-only: color mode lives on `data-mode`; default to the dark
+  // ("sunset") accent, matching the app's default color mode.
+  if (typeof document === "undefined") return "#d97757";
   return (
-    AVATAR_ACCENT_BY_THEME[
-      document.documentElement.getAttribute("data-theme") ?? ""
-    ] ?? "#e5b41e"
+    AVATAR_ACCENT_BY_MODE[
+      document.documentElement.getAttribute("data-mode") ?? ""
+    ] ?? "#d97757"
   );
 }
 
@@ -166,9 +168,12 @@ export function Sidebar() {
   /* DS-16 — relative so the inbox badge offsets to the tile corner */
   const iconClass =
     "relative flex h-10 w-10 shrink-0 items-center justify-center";
-  /* DS-16 — active row: accent-dim pill + left accent bar, rest muted */
-  const activeRowClass =
-    "nav-row-active bg-[var(--accent-dim)] text-[var(--accent)]";
+  /* Phase 2 (design overhaul) — left accent bar (from the .nav-row-active
+     CSS class) plus accent-colored text/icon is enough on its own now
+     that every --space-* token is aliased to the one --accent (Foundation
+     Phase 1): a colored background pill behind an already-accent-colored
+     row was redundant, not an extra signal. */
+  const activeRowClass = "nav-row-active text-[var(--accent)]";
 
   return (
     <aside
@@ -184,31 +189,8 @@ export function Sidebar() {
         <div className="flex w-full min-w-0 items-center">
           {/* DS-16 — brand tile: a rounded-square container so the top of
               the rail is anchored in both collapsed and expanded states */}
-          <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              className="shrink-0"
-            >
-              <defs>
-                <linearGradient
-                  id="brand-gradient"
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor="var(--accent)" />
-                  <stop offset="100%" stopColor="var(--accent-deep)" />
-                </linearGradient>
-              </defs>
-              <circle cx="12" cy="12" r="12" fill="url(#brand-gradient)" />
-              <path
-                d="M8.5 6.5h4.2c2.4 0 4 1.4 4 3.4s-1.6 3.4-4 3.4H11V17H8.5V6.5Zm2.5 2v2.8h1.5c1 0 1.6-.5 1.6-1.4s-.6-1.4-1.6-1.4H11Z"
-                fill="var(--text-on-accent)"
-              />
-            </svg>
+          <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center text-[var(--accent)]">
+            <BrandMark size={22} />
           </div>
           <span
             className={cn(
@@ -648,8 +630,11 @@ export function Sidebar() {
               <div className="flex w-full min-w-0 items-center">
                 {/* DS-16 — account tile mirrors the brand tile: a rounded-square
                   container anchoring the bottom of the rail when collapsed.
-                  DS-17 — fallback avatar color is the theme accent (warm
-                  amber default), never the off-theme blue. */}
+                  DS-17 — fallback avatar color is the current single theme's
+                  accent (terracotta family: #d97757 dark / #9c4a2e light,
+                  mode-aware), never a stale retired-theme color. MobileTopBar.tsx
+                  imports this same `avatarAccentFallback()` so the desktop and
+                  mobile fallbacks can never drift apart again. */}
                 <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
                   <Avatar
                     name={displayName}

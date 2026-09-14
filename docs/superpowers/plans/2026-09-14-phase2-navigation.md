@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - No gradients, glow, or glassmorphism in anything this plan touches (spec §4).
-- Never write a one-off hex value in a `.tsx` file *except* `src/app/icon.tsx`, which runs in an edge/OG-image context with no CSS cascade — its hardcoded hex is a documented, deliberate exception, not a violation to fix.
+- Never write a one-off hex value in a `.tsx` file *except* `src/app/icon.tsx`, which runs in an edge/OG-image context with no CSS cascade — its hardcoded hex is a documented, deliberate exception, not a violation to fix. `Navigation.tsx`'s `avatarAccentFallback()` (and `MobileTopBar.tsx`, which imports it) is a second documented exception, for a different reason: SSR-safety, per `AUDIT-01` — it can't read computed CSS custom properties server-side (this crashed production with `getComputedStyle is not defined` before the fix), so it falls back to a plain hardcoded lookup table instead.
 - Touch targets stay ≥44px primary, ≥36px otherwise (AGENTS.md §3) — unchanged by this plan, verify nothing regresses.
 - `npm run build`, `npm run lint`, `npx tsc --noEmit`, `npm test` must all stay green after every task.
 - Working tree is CRLF — the repo's `prettier --write` pre-commit hook handles this automatically; don't fight it.
@@ -452,5 +452,7 @@
 ## Deferred, not part of this plan
 
 - Static PWA manifest icons (`public/icon-*.png` and maskable variants) — need rasterizing the new mark at each declared size; a deliberate asset-export step for a follow-up, not a code task.
+- `public/icon.svg` — the PWA manifest's primary icon, still the old gradient design (`#E5B41E`/`#EB4233`); needs the same asset-export follow-up as the PNG icons above, not a code task in this plan.
+- `manifest.json`'s `theme_color`/`background_color` fields — still hardcoded to the old retired palette's hex values; needs updating to the current single-theme accent as part of the same follow-up pass, not part of this plan.
 - Dropdown/Popover positioning-glitch investigation — moved to whichever future phase (Do/Remember/Think, or Settings) actually owns the pages where `Popover`/`Dropdown` are used; no such usage exists in `Navigation.tsx`.
 - The `/remember/people` nav href — changes when People is actually removed (rollout step 5), not before.
