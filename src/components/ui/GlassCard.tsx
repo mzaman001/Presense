@@ -3,7 +3,10 @@ import { cn } from "@/lib/utils";
 
 interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   hoverable?: boolean;
-  /** "list" = no blur, for list items. "elevated" = blur, for modals/sidebar. "hero" = gradient/glow. Default: "list" */
+  /** "list" = default flat card. "elevated" = modals/sidebar surfaces.
+   *  "hero" = the single largest card on a page (e.g. Home's Focus Now).
+   *  All three are flat: no blur, no gradient, no glow — a background,
+   *  a hairline border, and a shadow token only. Default: "list" */
   variant?: "list" | "elevated" | "hero";
 }
 
@@ -19,20 +22,20 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
           // rather than grows, so nothing is ever clipped mid-hover —
           // not inside a Kanban column, not inside a scrollable list.
           variant === "hero"
-            ? "relative overflow-hidden transition-all duration-200 p-6"
+            ? "relative overflow-hidden p-6 transition-all duration-200"
             : "relative p-6 transition-[transform,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
 
-          // Background & Border & Radius
+          // Background & Border & Radius — flat surfaces only, no gradient.
           variant === "hero"
-            ? "bg-[linear-gradient(135deg,var(--accent-dim)_0%,var(--surface-card)_100%)] border-[0.5px] border-[var(--accent-border)] rounded-[var(--radius-xl)]"
-            : "bg-[var(--elev-raised-bg,var(--surface-card))] border border-[var(--elev-raised-border,rgba(255,255,255,0.14))] rounded-[var(--radius-lg)]",
+            ? "rounded-[var(--radius-xl)] border-[0.5px] border-[var(--accent-border)] bg-[var(--accent-dim)]"
+            : "rounded-[var(--radius-lg)] border border-[var(--elev-raised-border,rgba(255,255,255,0.14))] bg-[var(--elev-raised-bg,var(--surface-card))]",
 
-          // Blur & Shadow
+          // Shadow — flat shadow tokens only, no blur, no glow.
           variant === "hero"
-            ? "[backdrop-filter:var(--glass-blur-heavy)] [-webkit-backdrop-filter:var(--glass-blur-heavy)] shadow-[var(--shadow-card),var(--shadow-accent-glow)]"
+            ? "shadow-[var(--shadow-card)]"
             : variant === "elevated"
-              ? "[backdrop-filter:var(--glass-blur)] [-webkit-backdrop-filter:var(--glass-blur)] shadow-[var(--shadow-card-hover)]"
-              : "shadow-[var(--elev-raised-shadow,var(--shadow-card))] [backdrop-filter:var(--elev-raised-blur,blur(12px))] [-webkit-backdrop-filter:var(--elev-raised-blur,blur(12px))]",
+              ? "shadow-[var(--shadow-card-hover)]"
+              : "shadow-[var(--elev-raised-shadow,var(--shadow-card))]",
 
           /* DS-30 — the one hover system: translateY lift only, matching
              TaskCard's `whileHover={{ y: -2 }}` exactly (same distance,
