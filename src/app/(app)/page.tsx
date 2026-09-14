@@ -11,7 +11,6 @@ import {
   Play,
   ArrowRight,
   CheckCircle2,
-  Users,
   MessageSquare,
   Compass,
   Loader2,
@@ -175,6 +174,7 @@ export default function HomeDashboard() {
         doneLastWeekRes,
         sessionsLastWeekRes,
         ritualLogsRes,
+        locationsCountRes,
       ] = await Promise.all([
         // INFRA-18: explicit user_id filter for planner index usage
         supabase
@@ -240,6 +240,12 @@ export default function HomeDashboard() {
             new Date(now.getTime() - 60 * 86400000).toISOString(),
           )
           .range(0, 199),
+        // count-only: the bento tile needs a number, not the rows.
+        supabase
+          .from("locations")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .is("deleted_at", null),
       ]);
 
       let upNext: TaskItem[] = [];
@@ -326,6 +332,7 @@ export default function HomeDashboard() {
         focusMinutesLastWeek,
         dayCounts,
         ritualStreak,
+        locationsCount: locationsCountRes.count || 0,
       };
     },
   });
@@ -333,9 +340,7 @@ export default function HomeDashboard() {
   const {
     tasks = [],
     inboxItems = [],
-    people = [],
     threads = [],
-    explores = [],
     doneTasks = [],
     pomodorosThisWeek = 0,
     doneTasksLastWeek = [],
@@ -343,6 +348,7 @@ export default function HomeDashboard() {
     focusMinutesLastWeek = 0,
     dayCounts = [],
     ritualStreak = 0,
+    locationsCount = 0,
   } = dashboardData || {};
 
   const completeTask = async (e: React.MouseEvent, id: string) => {
@@ -982,27 +988,24 @@ export default function HomeDashboard() {
                   </div>
                 </GlassCard>
               </Link>
-              <Link href="/remember/people" className="block">
-                <GlassCard
-                  hoverable
-                  className="flex h-full flex-col justify-between"
-                >
+              <div className="block">
+                <GlassCard className="flex h-full flex-col justify-between">
                   <UiIcon
                     size={20}
                     strokeWidth={1.5}
-                    className="mb-4 shrink-0 text-[var(--color-people)]"
-                    icon={Users}
+                    className="mb-4 shrink-0 text-[var(--accent)]"
+                    icon={Sparkles}
                   />
                   <div>
                     <div className="text-2xl font-light text-[var(--color-text-1)]">
-                      <AnimatedNumber value={people.length} />
+                      <AnimatedNumber value={ritualStreak} />
                     </div>
                     <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                      People Tracked
+                      Day Streak
                     </div>
                   </div>
                 </GlassCard>
-              </Link>
+              </div>
               <Link href="/think" className="block">
                 <GlassCard
                   hoverable
@@ -1024,7 +1027,7 @@ export default function HomeDashboard() {
                   </div>
                 </GlassCard>
               </Link>
-              <Link href="/explore" className="block">
+              <Link href="/remember/locations" className="block">
                 <GlassCard
                   hoverable
                   className="flex h-full flex-col justify-between"
@@ -1032,15 +1035,15 @@ export default function HomeDashboard() {
                   <UiIcon
                     size={20}
                     strokeWidth={1.5}
-                    className="mb-4 shrink-0 text-[var(--color-explore)]"
-                    icon={Compass}
+                    className="mb-4 shrink-0 text-[var(--color-people)]"
+                    icon={MapPin}
                   />
                   <div>
                     <div className="text-2xl font-light text-[var(--color-text-1)]">
-                      <AnimatedNumber value={explores.length} />
+                      <AnimatedNumber value={locationsCount} />
                     </div>
                     <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                      Saved Items
+                      Locations
                     </div>
                   </div>
                 </GlassCard>
