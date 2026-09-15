@@ -13,13 +13,23 @@ const DialogClose = DialogPrimitive.Close;
 
 function DialogOverlay({
   className,
+  zIndexClassName = "z-50",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+}: React.ComponentProps<typeof DialogPrimitive.Overlay> & {
+  /**
+   * Stacking-context override. Defaults to the shared dialog layer (z-50).
+   * Pass a higher value when this dialog must render above another fixed
+   * full-screen overlay (e.g. the Pomodoro timer at z-[200]) — see
+   * PomodoroTimer.tsx for the motivating case.
+   */
+  zIndexClassName?: string;
+}) {
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-[var(--bg-overlay)]",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 bg-[var(--bg-overlay)]",
+        zIndexClassName,
         className,
       )}
       {...props}
@@ -31,17 +41,21 @@ function DialogContent({
   className,
   children,
   showClose = true,
+  zIndexClassName = "z-50",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showClose?: boolean;
+  /** See {@link DialogOverlay}'s `zIndexClassName` — applied to both the overlay and the content. */
+  zIndexClassName?: string;
 }) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay zIndexClassName={zIndexClassName} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "modal fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-6",
+          "modal fixed top-1/2 left-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-6",
+          zIndexClassName,
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,
         )}

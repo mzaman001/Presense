@@ -344,6 +344,22 @@ export function PomodoroTimer() {
       document.removeEventListener("visibilitychange", handleVisibility);
   }, [activeTimer, phase, sessionCount, duration]);
 
+  // Escape opens the same confirm-end flow as the X / End-session buttons —
+  // keyboard parity for exiting the overlay. Deliberately not an instant
+  // close: ending a running focus session should still be confirmed. When
+  // the confirm dialog is already open, its own Radix Escape handler closes
+  // it instead, so this listener steps aside in that case.
+  useEffect(() => {
+    if (!activeTimer) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !showConfirmEnd) {
+        setShowConfirmEnd(true);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [activeTimer, showConfirmEnd]);
+
   const handleSkip = () => {
     const spent = duration - displayTime;
     if (spent > 60) logSession(phase, Math.round(spent / 60));
@@ -560,6 +576,19 @@ export function PomodoroTimer() {
           </div>
         </div>
 
+        {/*
+          The Pomodoro overlay renders at z-[200], above the shared Dialog
+          system's default z-50 — without this override the confirm dialog
+          would be mounted but invisible/unclickable underneath the opaque
+          backdrop above, leaving no way to exit an active session short of
+          a page refresh. z-[250] keeps it above the overlay's own z-10
+          content layer too.
+
+          Click-outside is intentionally left at Radix's default (dismiss the
+          confirm, not the session) rather than disabled — accidentally
+          closing this confirmation is low-cost since it doesn't end the
+          timer by itself; only "End Session" does that.
+        */}
         <ConfirmModal
           isOpen={showConfirmEnd}
           onClose={() => setShowConfirmEnd(false)}
@@ -573,6 +602,7 @@ export function PomodoroTimer() {
               : "This will close the timer."
           }
           confirmLabel={phase === "work" ? "End Session" : "Close Timer"}
+          zIndexClassName="z-[250]"
         />
       </m.div>
     </AnimatePresence>

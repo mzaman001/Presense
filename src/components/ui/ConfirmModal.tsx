@@ -19,6 +19,12 @@ interface ConfirmModalProps {
   inputRequired?: string;
   onConfirm: () => void | Promise<void>;
   onClose: () => void;
+  /**
+   * Stacking-context override passed through to the underlying Dialog.
+   * Use when this confirm modal is opened from inside another fixed
+   * full-screen overlay that sits above the default dialog layer (z-50).
+   */
+  zIndexClassName?: string;
 }
 
 export function ConfirmModal({
@@ -30,6 +36,7 @@ export function ConfirmModal({
   inputRequired,
   onConfirm,
   onClose,
+  zIndexClassName,
 }: ConfirmModalProps) {
   const [inputValue, setInputValue] = React.useState("");
   const [isConfirming, setIsConfirming] = React.useState(false);
@@ -66,7 +73,10 @@ export function ConfirmModal({
       open={isOpen}
       onOpenChange={(open) => !open && !isConfirming && onClose()}
     >
-      <DialogContent showClose={!isConfirming}>
+      <DialogContent
+        showClose={!isConfirming}
+        zIndexClassName={zIndexClassName}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
