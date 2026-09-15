@@ -28,7 +28,7 @@ const TRASH_SOURCES = [
     // `item_name` (see `src/types/database.types.ts`). The prior value
     // here ("name") made every /trash load for a `location` row 42703
     // ("column locations.name does not exist"), which surfaced as the
-    // whole page's isError branch since all five sources are queried
+    // whole page's isError branch since all three sources are queried
     // together in one Promise.all.
     label: "Location",
     nameColumn: "item_name",

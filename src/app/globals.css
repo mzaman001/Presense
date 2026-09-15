@@ -164,12 +164,6 @@
   --space-think: var(--accent);
   --space-think-dim: var(--accent-dim);
   --space-think-border: var(--accent-border);
-  --space-remember: var(--accent);
-  --space-remember-dim: var(--accent-dim);
-  --space-remember-border: var(--accent-border);
-  --space-explore: var(--accent);
-  --space-explore-dim: var(--accent-dim);
-  --space-explore-border: var(--accent-border);
   --space-inbox: var(--text-3);
 
   /* === STATUS COLOURS === */
@@ -397,12 +391,6 @@
   --space-think: var(--accent);
   --space-think-dim: var(--accent-dim);
   --space-think-border: var(--accent-border);
-  --space-remember: var(--accent);
-  --space-remember-dim: var(--accent-dim);
-  --space-remember-border: var(--accent-border);
-  --space-explore: var(--accent);
-  --space-explore-dim: var(--accent-dim);
-  --space-explore-border: var(--accent-border);
   --space-inbox: var(--text-3);
 
   /* === SHADOW SYSTEM — flat mode uses shadows only for real elevation

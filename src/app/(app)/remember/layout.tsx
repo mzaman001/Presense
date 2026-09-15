@@ -23,7 +23,7 @@ export default function RememberLayout({
       <ContextualTip
         id="remember_space"
         title="Your personal CRM & Inventory"
-        description="Track people you meet and where you put things. Switch between People and Locations below."
+        description="Track where you put things and check on items you haven't seen in a while."
       />
 
       <div className="flex items-center gap-2 border-b border-[var(--border-default)] pb-4">
