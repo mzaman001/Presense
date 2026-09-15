@@ -27,6 +27,7 @@ import { BrandMark } from "@/components/ui/BrandMark";
 import { Kbd } from "@/components/ui/Kbd";
 import { m } from "framer-motion";
 import { useIsTouch } from "@/hooks/useIsTouch";
+import { useHaptics } from "@/hooks/useHaptics";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { createClient } from "@/lib/supabase";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -660,6 +661,7 @@ export function Sidebar() {
 export function BottomNav() {
   const pathname = usePathname();
   const setCaptureModalOpen = useAppStore((s) => s.setCaptureModalOpen);
+  const haptics = useHaptics();
 
   const mobileNavItems = [
     { href: "/", label: "Home", icon: Home },
@@ -677,9 +679,7 @@ export function BottomNav() {
               <button
                 key="capture"
                 onClick={() => {
-                  if (typeof navigator !== "undefined" && navigator.vibrate) {
-                    navigator.vibrate([15]);
-                  }
+                  haptics.light();
                   setCaptureModalOpen(true);
                 }}
                 className="flex min-h-[56px] min-w-[44px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-2 text-[var(--color-text-1)] transition-all active:scale-95"

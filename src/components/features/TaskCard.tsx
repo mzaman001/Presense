@@ -165,6 +165,22 @@ export const TaskCard = React.memo(
         setDeleted(true);
 
         await handleTaskDelete();
+      } else if (
+        info.offset.x > SWIPE_COMPLETE_THRESHOLD &&
+        !deleted &&
+        !isCompleting
+      ) {
+        /* BUG-44 follow-up: the swipe-to-complete reveal layer above was
+           purely cosmetic — releasing past SWIPE_COMPLETE_THRESHOLD never
+           called completeTask, so the gesture did nothing and no haptic
+           ever fired for it. Route it through the same completeTask used
+           by the checkbox tap so both paths share one behavior (and its
+           haptics.success() call, do/page.tsx). */
+        animate(dragX, 300, { duration: 0.25 });
+        completeTask(
+          { stopPropagation: () => {} } as React.MouseEvent,
+          task.id,
+        );
       } else {
         animate(dragX, 0, { type: "spring", stiffness: 400, damping: 30 });
       }
