@@ -967,7 +967,7 @@ export function TaskAddPanel({
                     e.target.value ? parseInt(e.target.value) : null,
                   )
                 }
-
+                className="input"
                 min={1}
               />
             </div>
