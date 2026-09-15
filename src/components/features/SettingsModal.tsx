@@ -239,7 +239,7 @@ function CategoryItem({
         onChange={(e) => setEditName(e.target.value)}
         onBlur={handleRename}
         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-        className="min-w-[80px] flex-1 rounded bg-transparent px-2 py-1 text-sm font-bold tracking-wide text-[var(--color-text-1)] capitalize focus:bg-white/5 focus:outline-none"
+        className="min-w-[80px] flex-1 rounded bg-transparent px-2 py-1 text-sm font-bold tracking-wide text-[var(--color-text-1)] capitalize focus:bg-[var(--surface-hover)] focus:outline-none"
       />
       <div className="flex shrink-0 items-center justify-end gap-1.5">
         {[
@@ -963,7 +963,7 @@ function SettingsModalContent({
                                 onClick={() =>
                                   updateSetting("avatar_color", color)
                                 }
-                                className={`h-8 w-8 rounded-full transition-transform ${settings.avatar_color === color ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-[var(--bg-base)]" : "opacity-70 hover:opacity-100"}`}
+                                className={`h-8 w-8 rounded-full transition-transform ${settings.avatar_color === color ? "scale-110 ring-2 ring-[var(--text-1)] ring-offset-2 ring-offset-[var(--bg-base)]" : "opacity-70 hover:opacity-100"}`}
                                 style={{ backgroundColor: color }}
                               />
                             ))}
