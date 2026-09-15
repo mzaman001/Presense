@@ -349,12 +349,24 @@ git commit -m "feat(explore-people-removal): remove cross-cutting Linked People 
 
 ---
 
-### Task 7: Clean up remaining tokens, realtime wiring, and tests
+### Task 7: Clean up remaining tokens, realtime wiring, tests, and two Task-3/prior-phase gaps
 
 **Files:**
 - Modify: `src/app/globals.css`
 - Modify: `src/hooks/useRealtime.ts`
 - Modify: `tests/realtime.spec.ts`
+- Modify: `src/app/(app)/think/[id]/page.tsx` — remove a whole second cross-cutting mechanism this plan's original investigation missed (see Step 0 below)
+- Modify: `src/app/(app)/remember/layout.tsx` — remove one dead nav tab (a narrow, surgical exception to this plan's "never touch remember/layout.tsx" constraint — that constraint was about not re-touching the prior phase's Locations work, not about leaving a nav link pointing at a route this plan itself deletes)
+
+- [ ] **Step 0: Remove the "Linked Explores" mechanism from `think/[id]/page.tsx`, and the dead People tab from `remember/layout.tsx`**
+
+Task 6's implementer surfaced two real gaps while doing its own final sweep, both confirmed real by the plan owner and ruled in-scope for Task 7:
+
+**Linked Explores** (a whole feature this plan's original investigation never found — it's the Explore-side mirror of the Linked People mechanism Task 6 just removed, but on Think threads instead of Do tasks): `think/[id]/page.tsx` still has `linkedExplores`-related state, a `.from("explores")` fetch run alongside the thread fetch, a `useRealtime("explores", fetchThread)` subscription, and a "Linked Resources" UI block rendering `<Link href={`/explore/${item.id}`}>` — a link that has 404'd since Task 3 deleted the `/explore` route tree. None of this is a `tsc`-level error (it's a live Supabase table read, not a broken import), so it never blocked a commit — but it will hard-break in Task 8 once the `explores` table itself is dropped, so it cannot wait past this task. Remove the state, the fetch, the realtime subscription, and the UI block entirely — same shape as Task 6's removal of the mention system from this same file (grep for `explores`/`linkedExplores`/`Explore` in this file first to find every site, remove surgically, confirm zero remain afterward). If any test file exercises this (check `phase3.test.tsx`/`phase4.test.tsx`/`challenger.test.tsx` per this branch's now-well-established pattern of hidden test dependencies), trim only the specific test case(s) involved.
+
+**Dead People tab**: `remember/layout.tsx` has a `<Link href="/remember/people">...People</Link>` tab (lines ~41-51) left over from before Task 1 deleted `/remember/people`. Remove just this tab/link — leave every other part of this file (the Locations tab, the shared Remember layout chrome) untouched.
+
+Do both of these BEFORE the rest of this task's steps, since Step 4's full-repo sweep assumes they're already gone.
 
 **Interfaces:**
 - Consumes: Task 6's completion — by this point `grep -rn "people\|explore" src/ --include=*.tsx --include=*.ts -i` (excluding this task's own remaining target files, `database.types.ts`, and this plan's own artifacts) should turn up only the items listed below.
