@@ -964,6 +964,7 @@ function SettingsModalContent({
                           </label>
                           <Dropdown
                             variant="select"
+                            trackAnimatedAncestor
                             value={settings.timezone || "UTC"}
                             onChange={(val) => updateSetting("timezone", val)}
                             options={
@@ -1039,6 +1040,7 @@ function SettingsModalContent({
                           <div className="w-40">
                             <Dropdown
                               variant="select"
+                              trackAnimatedAncestor
                               value={settings.color_mode || "dark"}
                               onChange={(val) =>
                                 updateSetting("color_mode", val)
@@ -1070,6 +1072,7 @@ function SettingsModalContent({
                           <div className="w-40">
                             <Dropdown
                               variant="select"
+                              trackAnimatedAncestor
                               value={localDensity}
                               onChange={(val) =>
                                 setLocalDensity(
@@ -1387,6 +1390,7 @@ function SettingsModalContent({
                               </label>
                               <Dropdown
                                 variant="select"
+                                trackAnimatedAncestor
                                 value={settings.nudge_time || "10:00"}
                                 onChange={(val) =>
                                   updateSetting("nudge_time", val)
@@ -1408,6 +1412,7 @@ function SettingsModalContent({
                               </label>
                               <Dropdown
                                 variant="select"
+                                trackAnimatedAncestor
                                 value={settings.shutdown_time || "17:00"}
                                 onChange={(val) =>
                                   updateSetting("shutdown_time", val)
@@ -1498,6 +1503,7 @@ function SettingsModalContent({
                                 </div>
                                 <Dropdown
                                   variant="select"
+                                  trackAnimatedAncestor
                                   value={String(
                                     settings.auto_archive_days ?? 7,
                                   )}

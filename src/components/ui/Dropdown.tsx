@@ -27,6 +27,18 @@ interface DropdownProps {
   colors?: Record<string, string>;
   className?: string;
   variant?: "chip" | "select" | "combobox";
+  /**
+   * Opt-in fix for dropdowns rendered inside a container that may still be
+   * mid-transform-animation (e.g. a framer-motion modal's spring-in) when
+   * opened. Passes `{ animationFrame: true }` to floating-ui's `autoUpdate`,
+   * which polls via requestAnimationFrame so the floating panel keeps
+   * tracking the reference element's position through the ancestor's
+   * transform animation instead of snapshotting a stale/mid-animation rect.
+   * Per floating-ui's docs this should be used "sparingly" since it costs
+   * continuous rAF work while the dropdown is open — only set it on
+   * instances known to live inside an animated ancestor (e.g. SettingsModal).
+   */
+  trackAnimatedAncestor?: boolean;
 }
 
 export function Dropdown({
@@ -37,6 +49,7 @@ export function Dropdown({
   colors = {},
   className = "",
   variant = "select",
+  trackAnimatedAncestor = false,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -47,7 +60,12 @@ export function Dropdown({
     open: isOpen,
     onOpenChange: setIsOpen,
     middleware: [offset(4), flip(), shift({ padding: 8 })],
-    whileElementsMounted: autoUpdate,
+    whileElementsMounted: trackAnimatedAncestor
+      ? (referenceEl, floatingEl, update) =>
+          autoUpdate(referenceEl, floatingEl, update, {
+            animationFrame: true,
+          })
+      : autoUpdate,
     strategy: "fixed",
   });
   const { setReference, setFloating, reference, floating } = refs;
@@ -72,8 +90,12 @@ export function Dropdown({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      
-      if (e.key === "Enter" && variant === "combobox" && document.activeElement?.tagName.toLowerCase() === "input") {
+
+      if (
+        e.key === "Enter" &&
+        variant === "combobox" &&
+        document.activeElement?.tagName.toLowerCase() === "input"
+      ) {
         e.preventDefault();
         setIsOpen(false);
         return;
@@ -264,7 +286,7 @@ export function Dropdown({
           <m.div
             animate={{ rotate: isOpen ? 180 : 0 }}
             transition={{ duration: 0.2 }}
-            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2"
+            className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2"
           >
             <UiIcon
               className="h-4 w-4 text-[var(--color-text-3)]"
@@ -280,7 +302,9 @@ export function Dropdown({
         >
           <span
             className={
-              !value || value === placeholder ? "text-[var(--color-text-3)]" : ""
+              !value || value === placeholder
+                ? "text-[var(--color-text-3)]"
+                : ""
             }
           >
             {selectedOption.label || placeholder}
@@ -314,15 +338,20 @@ export function Dropdown({
                   if (variant === "combobox" && value) {
                     const query = value.toLowerCase();
                     filtered = filtered.filter((opt) => {
-                      const optLabel = typeof opt === "string" ? opt : opt.label;
+                      const optLabel =
+                        typeof opt === "string" ? opt : opt.label;
                       return optLabel.toLowerCase().includes(query);
                     });
                     const hasExactMatch = filtered.some((opt) => {
-                      const optLabel = typeof opt === "string" ? opt : opt.label;
+                      const optLabel =
+                        typeof opt === "string" ? opt : opt.label;
                       return optLabel.toLowerCase() === query;
                     });
                     if (!hasExactMatch) {
-                      filtered = [...filtered, { value, label: `Create '${value}'` }];
+                      filtered = [
+                        ...filtered,
+                        { value, label: `Create '${value}'` },
+                      ];
                     }
                   }
 
@@ -335,51 +364,56 @@ export function Dropdown({
                   }
 
                   return filtered.map((opt) => {
-                  const optValue = typeof opt === "string" ? opt : opt.value;
-                  const optLabel = typeof opt === "string" ? opt : opt.label;
-                  const optColor =
-                    (typeof opt !== "string" ? opt.color : undefined) ||
-                    colors[optValue] ||
-                    "currentColor";
-                  return (
-                    <button
-                      key={optValue}
-                      type="button"
-                      onClick={() => {
-                        onChange(optValue);
-                        setIsOpen(false);
-                      }}
-                      className={cn(
-                        "dropdown-item w-full text-left",
-                        value === optValue && "selected",
-                      )}
-                      style={
-                        variant === "select" &&
-                        value === optValue &&
-                        optColor !== "currentColor"
-                          ? { borderColor: optColor, color: optColor }
-                          : {}
-                      }
-                    >
-                      <div
+                    const optValue = typeof opt === "string" ? opt : opt.value;
+                    const optLabel = typeof opt === "string" ? opt : opt.label;
+                    const optColor =
+                      (typeof opt !== "string" ? opt.color : undefined) ||
+                      colors[optValue] ||
+                      "currentColor";
+                    return (
+                      <button
+                        key={optValue}
+                        type="button"
+                        onClick={() => {
+                          onChange(optValue);
+                          setIsOpen(false);
+                        }}
                         className={cn(
-                          "h-2 w-2 shrink-0 rounded-full border border-current",
-                          value === optValue ? "bg-current" : "bg-transparent",
+                          "dropdown-item w-full text-left",
+                          value === optValue && "selected",
                         )}
                         style={
-                          variant === "select"
-                            ? {
-                                borderColor: optColor,
-                                backgroundColor:
-                                  value === optValue ? optColor : "transparent",
-                              }
+                          variant === "select" &&
+                          value === optValue &&
+                          optColor !== "currentColor"
+                            ? { borderColor: optColor, color: optColor }
                             : {}
                         }
-                      />
-                      {optLabel}
-                    </button>
-                  );
-                })})()}
+                      >
+                        <div
+                          className={cn(
+                            "h-2 w-2 shrink-0 rounded-full border border-current",
+                            value === optValue
+                              ? "bg-current"
+                              : "bg-transparent",
+                          )}
+                          style={
+                            variant === "select"
+                              ? {
+                                  borderColor: optColor,
+                                  backgroundColor:
+                                    value === optValue
+                                      ? optColor
+                                      : "transparent",
+                                }
+                              : {}
+                          }
+                        />
+                        {optLabel}
+                      </button>
+                    );
+                  });
+                })()}
               </m.div>
             )}
           </AnimatePresence>
