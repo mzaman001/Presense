@@ -84,15 +84,14 @@ const InboxItemCard = ({
     >
       {/* Swipe-to-delete reveal layer */}
       <m.div
-        className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-2xl pr-5"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent 0%, rgba(248,113,113,0.15) 60%, rgba(239,68,68,0.25) 100%)",
-          opacity: deleteOpacity,
-        }}
+        className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-2xl bg-[var(--status-danger-dim)] pr-5"
+        style={{ opacity: deleteOpacity }}
       >
         <m.div style={{ scale: deleteScale }}>
-          <UiIcon className="h-5 w-5 text-red-400" icon={Trash2} />
+          <UiIcon
+            className="h-5 w-5 text-[var(--status-danger)]"
+            icon={Trash2}
+          />
         </m.div>
       </m.div>
 
@@ -105,7 +104,7 @@ const InboxItemCard = ({
         style={{ x: dragX }}
         className="relative"
       >
-        <div className="glass-card group flex flex-col items-start justify-between gap-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-amber-500/40 hover:bg-amber-500/10 hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center">
+        <div className="glass-card group flex flex-col items-start justify-between gap-4 rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-dim)] p-4 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:bg-[var(--accent-dim-hover)] hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center">
           <p className="text-card-title flex-1 text-lg text-[var(--text-1)]">
             {item.title}
           </p>
@@ -210,7 +209,7 @@ const InboxItemCard = ({
             <Button
               variant="ghost"
               onClick={() => dismissInboxItem(item.id)}
-              className="shrink-0 !border-transparent !bg-transparent hover:!bg-red-500/10 hover:!text-red-400"
+              className="shrink-0 !border-transparent !bg-transparent hover:!bg-[var(--status-danger)]/10 hover:!text-[var(--status-danger)]"
               title="Dismiss"
             >
               <UiIcon className="h-4 w-4" icon={X} />
@@ -610,7 +609,7 @@ export default function InboxPage() {
     <div className="space-y-6">
       <div className="mb-2 flex items-center justify-between">
         <div>
-          <p className="text-caption mb-1 font-semibold tracking-widest text-[rgba(255,255,255,0.35)] uppercase">
+          <p className="text-caption mb-1 font-semibold tracking-widest text-[var(--text-muted)] uppercase">
             Space
           </p>
           <div className="flex items-center gap-4">
@@ -638,8 +637,8 @@ export default function InboxPage() {
       ) : (
         <div className="mx-auto max-w-2xl space-y-4 pt-4">
           {inboxItems.length === 0 ? (
-            <GlassCard className="flex flex-col items-center justify-center border-dashed border-[rgba(255,255,255,0.08)] p-12 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)]">
+            <GlassCard className="flex flex-col items-center justify-center border-dashed border-[var(--border-subtle)] p-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-1)]">
                 <UiIcon
                   className="h-6 w-6 text-[var(--color-text-3)]"
                   icon={CheckCircle2}
