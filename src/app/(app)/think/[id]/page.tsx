@@ -1,6 +1,5 @@
 "use client";
 import { logger } from "@/lib/logger";
-import { useUserId } from "@/components/providers/SessionProvider";
 
 import React, { useEffect, useState, useCallback, use } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -20,7 +19,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
-import { cn, extractMentions } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Kbd } from "@/components/ui/Kbd";
@@ -54,7 +53,6 @@ export default function ThreadDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const userId = useUserId();
   const { id } = use(params);
   const router = useRouter();
   const supabase = createClient();
@@ -68,112 +66,16 @@ export default function ThreadDetailPage({
     { id: string; title: string; type: string | null }[]
   >([]);
 
-  const [people, setPeople] = useState<{ id: string; name: string }[]>([]);
-  const [showPopover, setShowPopover] = useState(false);
-  const [popoverSearch, setPopoverSearch] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    async function fetchPeople() {
-      const { data } = await supabase
-        .from("people")
-        .select("id, name")
-        .eq("user_id", userId);
-      if (data && Array.isArray(data)) {
-        setPeople(data);
-      }
-    }
-    fetchPeople();
-  }, [supabase]);
-
-  const filteredPeople = React.useMemo(() => {
-    return people.filter((p) =>
-      p.name.toLowerCase().includes(popoverSearch.toLowerCase()),
-    );
-  }, [people, popoverSearch]);
-
-  const handleSelectPerson = useCallback(
-    (person: { id: string; name: string }) => {
-      if (!textareaRef.current) return;
-      const val = newEntry;
-      const selectionStart = textareaRef.current.selectionStart || 0;
-      const textBeforeCursor = val.slice(0, selectionStart);
-      const textAfterCursor = val.slice(selectionStart);
-      const lastAtIndex = textBeforeCursor.lastIndexOf("@");
-
-      const mentionText = `@[${person.name}](${person.id})`;
-      const newVal =
-        val.slice(0, lastAtIndex) + mentionText + " " + textAfterCursor;
-      setNewEntry(newVal);
-      setShowPopover(false);
-
-      // Focus textarea and move cursor
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          const cursorPosition = lastAtIndex + mentionText.length + 1;
-          textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
-        }
-      }, 0);
-    },
-    [newEntry],
-  );
 
   const handleInputChange = (val: string) => {
     setNewEntry(val);
-
-    if (!textareaRef.current) return;
-    const selectionStart = textareaRef.current.selectionStart || 0;
-    const textBeforeCursor = val.slice(0, selectionStart);
-    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
-
-    if (
-      lastAtIndex !== -1 &&
-      (lastAtIndex === 0 ||
-        textBeforeCursor[lastAtIndex - 1] === " " ||
-        textBeforeCursor[lastAtIndex - 1] === "\n")
-    ) {
-      const search = textBeforeCursor.slice(lastAtIndex + 1);
-      if (!search.includes(" ") && !search.includes("\n")) {
-        setShowPopover(true);
-        setPopoverSearch(search);
-        setSelectedIndex(0);
-        return;
-      }
-    }
-    setShowPopover(false);
-  };
-
-  const getLinkedPeople = (entriesList: ThreadEntry[]) => {
-    const allMentions = entriesList.flatMap((e) =>
-      extractMentions(e.text || ""),
-    );
-    return Array.from(new Set(allMentions));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (showPopover && filteredPeople.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % filteredPeople.length);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedIndex(
-          (prev) => (prev - 1 + filteredPeople.length) % filteredPeople.length,
-        );
-      } else if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        handleSelectPerson(filteredPeople[selectedIndex]);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        setShowPopover(false);
-      }
-    } else {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        handleAddEntry(e);
-      }
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleAddEntry(e);
     }
   };
 
@@ -314,7 +216,6 @@ export default function ThreadDetailPage({
         created_at: new Date().toISOString(),
       };
       const updatedEntries = [...(thread.entries || []), entry];
-      const linkedPeople = getLinkedPeople(updatedEntries);
 
       const { error } = await supabase
         .from("threads")
@@ -322,7 +223,6 @@ export default function ThreadDetailPage({
           entries: updatedEntries,
           last_updated: new Date().toISOString(),
           stale_prompt: null, // Clear stale prompt if they revisit
-          linked_people_ids: linkedPeople,
         })
         .eq("id", thread.id);
 
@@ -366,14 +266,12 @@ export default function ThreadDetailPage({
       const updatedEntries = thread.entries.filter(
         (_, i) => i !== deleteEntryIndex,
       );
-      const linkedPeople = getLinkedPeople(updatedEntries);
       const { error } = await supabase
         .from("threads")
         .update({
           /* @todo: Untyped usage justified per TOOL-01 */
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           entries: updatedEntries as any,
-          linked_people_ids: linkedPeople,
         })
         .eq("id", thread.id);
       if (error) throw error;
@@ -570,26 +468,6 @@ export default function ThreadDetailPage({
       <div className="fixed right-0 bottom-0 left-0 z-40 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent p-4 md:pl-[220px]">
         <div className="mx-auto max-w-2xl">
           <form onSubmit={handleAddEntry} className="relative">
-            {showPopover && filteredPeople.length > 0 && (
-              <div
-                className="absolute right-0 bottom-full left-0 z-50 mb-2 max-h-60 overflow-y-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg"
-                data-testid="mentions-popover"
-              >
-                {filteredPeople.map((person, idx) => (
-                  <button
-                    key={person.id}
-                    onClick={() => handleSelectPerson(person)}
-                    className={cn(
-                      "w-full px-4 py-2 text-left text-sm text-[var(--color-text-1)] hover:bg-[var(--surface-hover)] focus:outline-none",
-                      idx === selectedIndex && "bg-[var(--surface-hover)]",
-                    )}
-                    type="button"
-                  >
-                    {person.name}
-                  </button>
-                ))}
-              </div>
-            )}
             <TextareaAutosize
               ref={textareaRef}
               placeholder="Continue the thought..."

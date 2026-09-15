@@ -52,7 +52,6 @@ export const TaskCard = React.memo(
     completeTask,
     openEditPanel,
     fetchTasks,
-    peopleMap,
   }: {
     /* @todo: Untyped usage justified per TOOL-01 */
 
@@ -63,10 +62,6 @@ export const TaskCard = React.memo(
 
     openEditPanel: (task: TaskRecord) => void;
     fetchTasks: () => void;
-    peopleMap?: Record<
-      string,
-      { initials: string | null; color: string | null; name: string }
-    >;
   }) => {
     const userSettings = useAppStore((s) => s.userSettings);
     const setActiveTimer = useAppStore((s) => s.setActiveTimer);
@@ -404,44 +399,6 @@ export const TaskCard = React.memo(
                       ? ""
                       : "No deadline"}
                 </span>
-
-                {/* Linked People Avatars */}
-                {peopleMap &&
-                  task.linked_people_ids &&
-                  task.linked_people_ids.length > 0 && (
-                    <div
-                      className="flex -space-x-1.5"
-                      title={task.linked_people_ids
-                        .map((id: string) => peopleMap[id]?.name)
-                        .filter(Boolean)
-                        .join(", ")}
-                    >
-                      {task.linked_people_ids.map(
-                        (id: string, index: number) => {
-                          const person = peopleMap[id];
-                          if (!person) return null;
-                          return (
-                            <div
-                              key={id}
-                              className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--color-background)] text-[9px] font-bold text-white"
-                              style={{
-                                backgroundColor: person.color as string,
-                                zIndex: 10 - index,
-                              }}
-                            >
-                              {person.initials ||
-                                person.name
-                                  .split(" ")
-                                  .map((w: string) => w[0])
-                                  .slice(0, 2)
-                                  .join("")
-                                  .toUpperCase()}
-                            </div>
-                          );
-                        },
-                      )}
-                    </div>
-                  )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -552,28 +509,7 @@ export const TaskCard = React.memo(
     // 1. Check simple properties passed directly to the card
     if (prevProps.completing !== nextProps.completing) return false;
 
-    // 2. Shallow check peopleMap if references changed
-    if (prevProps.peopleMap !== nextProps.peopleMap) {
-      if (!prevProps.peopleMap || !nextProps.peopleMap) return false;
-      const prevKeys = Object.keys(prevProps.peopleMap);
-      const nextKeys = Object.keys(nextProps.peopleMap);
-      if (prevKeys.length !== nextKeys.length) return false;
-      for (const key of prevKeys) {
-        const p = prevProps.peopleMap[key];
-        const n = nextProps.peopleMap[key];
-        if (
-          !p ||
-          !n ||
-          p.name !== n.name ||
-          p.initials !== n.initials ||
-          p.color !== n.color
-        ) {
-          return false;
-        }
-      }
-    }
-
-    // 3. Shallow check task fields
+    // 2. Shallow check task fields
     const prevTask = prevProps.task;
     const nextTask = nextProps.task;
 
@@ -593,17 +529,6 @@ export const TaskCard = React.memo(
       prevTask.snoozed_until !== nextTask.snoozed_until
     ) {
       return false;
-    }
-
-    // Reference/Shallow-array comparison of linked_people_ids
-    const prevPeople = prevTask.linked_people_ids;
-    const nextPeople = nextTask.linked_people_ids;
-    if (prevPeople !== nextPeople) {
-      if (!prevPeople || !nextPeople) return false;
-      if (prevPeople.length !== nextPeople.length) return false;
-      for (let i = 0; i < prevPeople.length; i++) {
-        if (prevPeople[i] !== nextPeople[i]) return false;
-      }
     }
 
     // Reference/Shallow-array comparison of subtasks

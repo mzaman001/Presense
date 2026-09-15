@@ -78,7 +78,6 @@ const Column = React.memo(
     openEditPanel,
     fetchTasks,
     newTaskIds,
-    peopleMap,
   }: {
     title: string;
     tasks: Task[];
@@ -89,10 +88,6 @@ const Column = React.memo(
     openEditPanel: (task: Task) => void;
     fetchTasks: () => void;
     newTaskIds: Set<string>;
-    peopleMap?: Record<
-      string,
-      { initials: string | null; color: string | null; name: string }
-    >;
   }) => (
     <div className="min-w-0 flex-1">
       <div className="mb-4 flex items-center gap-2">
@@ -137,7 +132,6 @@ const Column = React.memo(
                   completeTask={completeTask}
                   openEditPanel={openEditPanel}
                   fetchTasks={fetchTasks}
-                  peopleMap={peopleMap}
                 />
               </m.div>
             ))
@@ -190,30 +184,6 @@ export default function DoPage() {
       return data as Task[];
     },
   });
-
-  const { data: peopleList = [], refetch: fetchPeopleList } = useQuery({
-    queryKey: ["people_minimal"],
-    queryFn: async () => {
-      // INFRA-18: explicit user_id filter for planner index usage.
-      const { data, error } = await supabase
-        .from("people")
-        .select("id, name, initials, color")
-        .eq("user_id", userId);
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const peopleMap = useMemo(() => {
-    const map: Record<
-      string,
-      { initials: string | null; color: string | null; name: string }
-    > = {};
-    for (const p of peopleList) {
-      map[p.id] = p;
-    }
-    return map;
-  }, [peopleList]);
 
   useEffect(() => {
     const currentIds = new Set(tasks.map((t) => t.id));
@@ -272,7 +242,6 @@ export default function DoPage() {
   }, [fetchArchived, showArchive]);
 
   useRealtime("items", fetchTasks);
-  useRealtime("people", fetchPeopleList);
 
   const completeTask = useCallback(
     async (e: React.MouseEvent, id: string) => {
@@ -602,7 +571,6 @@ export default function DoPage() {
               openEditPanel={openEditPanel}
               fetchTasks={fetchTasks}
               newTaskIds={newTaskIds}
-              peopleMap={peopleMap}
             />
           )}
           <Column
@@ -615,7 +583,6 @@ export default function DoPage() {
             openEditPanel={openEditPanel}
             fetchTasks={fetchTasks}
             newTaskIds={newTaskIds}
-            peopleMap={peopleMap}
           />
           {overdue.length === 0 && today.length === 0 && (
             <EmptyState
@@ -672,7 +639,6 @@ export default function DoPage() {
               openEditPanel={openEditPanel}
               fetchTasks={fetchTasks}
               newTaskIds={newTaskIds}
-              peopleMap={peopleMap}
             />
           ) : null}
           {today.length > 0 || isBoardView ? (
@@ -686,7 +652,6 @@ export default function DoPage() {
               openEditPanel={openEditPanel}
               fetchTasks={fetchTasks}
               newTaskIds={newTaskIds}
-              peopleMap={peopleMap}
             />
           ) : null}
           {upcoming.length > 0 || isBoardView ? (
@@ -700,7 +665,6 @@ export default function DoPage() {
               openEditPanel={openEditPanel}
               fetchTasks={fetchTasks}
               newTaskIds={newTaskIds}
-              peopleMap={peopleMap}
             />
           ) : null}
           {someday.length > 0 || isBoardView ? (
@@ -714,7 +678,6 @@ export default function DoPage() {
               openEditPanel={openEditPanel}
               fetchTasks={fetchTasks}
               newTaskIds={newTaskIds}
-              peopleMap={peopleMap}
             />
           ) : null}
           {overdue.length === 0 &&

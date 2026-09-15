@@ -1,11 +1,10 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "./test-utils";
-import { TEST_USER, makeTask } from "./test-utils";
+import { TEST_USER } from "./test-utils";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SearchModal } from "@/components/features/SearchModal";
 import { SettingsModal } from "@/components/features/SettingsModal";
-import { TaskCard } from "@/components/features/TaskCard";
 import ThreadDetailPage from "@/app/(app)/think/[id]/page";
 import { useAppStore } from "@/store/useAppStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -216,42 +215,6 @@ describe("Phase 3 - Integration Test Suite", () => {
   });
 
   describe("R3: TaskCard & Think Detail Page Requirements", () => {
-    it("should verify that TaskCard styles overlapping avatars with a border color matching the background, and does not clip on hover", () => {
-      const task = makeTask({
-        id: "task-1",
-        title: "Test Task",
-        category: "work",
-        priority: 4,
-        linked_people_ids: ["person-1", "person-2"],
-      });
-      const peopleMap = {
-        "person-1": { name: "Alice Smith", initials: "AS", color: "#F472B6" },
-        "person-2": { name: "Bob Jones", initials: "BJ", color: "#4ADE80" },
-      };
-
-      const { container } = render(
-        <TaskCard
-          task={task}
-          completing={null}
-          completeTask={vi.fn()}
-          openEditPanel={vi.fn()}
-          fetchTasks={vi.fn()}
-          peopleMap={peopleMap}
-        />,
-        { wrapper },
-      );
-
-      const avatars = container.querySelectorAll(".flex.-space-x-1\\.5 div");
-      expect(avatars.length).toBe(2);
-      avatars.forEach((avatar) => {
-        expect(avatar).toHaveClass("border-[var(--color-background)]");
-      });
-
-      const cardContainer = container.querySelector(".group.relative");
-      expect(cardContainer).toBeInTheDocument();
-      expect(cardContainer).not.toHaveClass("hover:overflow-hidden");
-    });
-
     it("should verify that Think thread detail page page transitions/lag are optimized", async () => {
       const prefetchedThread = {
         id: "thread-123",

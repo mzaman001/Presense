@@ -14,7 +14,6 @@ import { z } from "zod";
 import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
-import { Avatar } from "@/components/ui/Avatar";
 import { toast } from "sonner";
 import { createClient, safeMutate } from "@/lib/supabase";
 import type { Database } from "@/types/database.types";
@@ -69,7 +68,6 @@ type TaskFormValues = z.infer<typeof taskSchema>;
 interface ManualSnapshot {
   subtasks: { id: string; text: string; completed: boolean }[];
   timeEstimate: number | null;
-  linkedPeopleIds: string[];
   freq: string;
   days: string[];
   customRRule: string;
@@ -105,11 +103,6 @@ export function TaskAddPanel({
   const [subtasks, setSubtasks] = useState<
     { id: string; text: string; completed: boolean }[]
   >([]);
-  const [linkedPeopleIds, setLinkedPeopleIds] = useState<string[]>([]);
-  const [peopleList, setPeopleList] = useState<
-    { id: string; name: string; initials: string; color: string }[]
-  >([]);
-
   const {
     register,
     handleSubmit,
@@ -155,7 +148,6 @@ export function TaskAddPanel({
   const manualSnapshot = (): ManualSnapshot => ({
     subtasks,
     timeEstimate,
-    linkedPeopleIds,
     freq,
     days,
     customRRule,
@@ -277,29 +269,6 @@ export function TaskAddPanel({
   };
 
   useEffect(() => {
-    async function fetchPeople() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("people")
-        .select("id, name, initials, color")
-        .eq("user_id", userId)
-        .order("name");
-      if (data)
-        setPeopleList(
-          data.map((p) => ({
-            id: p.id,
-            name: p.name,
-            initials: p.initials ?? "",
-            color: p.color ?? "",
-          })),
-        );
-    }
-    if (isOpen) {
-      fetchPeople();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
     if (isOpen) {
       if (taskToEdit) {
         reset({
@@ -315,7 +284,6 @@ export function TaskAddPanel({
         setIsManualDate(false);
         setTimeEstimate(taskToEdit.time_estimate || null);
         setSubtasks(withSubtaskIds(readSubtasks(taskToEdit.subtasks)));
-        setLinkedPeopleIds(taskToEdit.linked_people_ids || []);
 
         let nextFreq = "Does not repeat";
         let nextDays: string[] = [];
@@ -369,7 +337,6 @@ export function TaskAddPanel({
         manualBaselineRef.current = {
           subtasks: withSubtaskIds(readSubtasks(taskToEdit.subtasks)),
           timeEstimate: taskToEdit.time_estimate || null,
-          linkedPeopleIds: taskToEdit.linked_people_ids || [],
           freq: nextFreq,
           days: nextDays,
           customRRule: nextCustomRRule,
@@ -397,11 +364,9 @@ export function TaskAddPanel({
         setIsManualDate(false);
         setTimeEstimate(null);
         setSubtasks([]);
-        setLinkedPeopleIds([]);
         manualBaselineRef.current = {
           subtasks: [],
           timeEstimate: null,
-          linkedPeopleIds: [],
           freq: "Does not repeat",
           days: [],
           customRRule: "",
@@ -540,7 +505,6 @@ export function TaskAddPanel({
           time_estimate: timeEstimate,
           notes: data.notes?.trim() || null,
           subtasks: subtasks.filter((st) => st.text.trim() !== ""),
-          linked_people_ids: linkedPeopleIds,
         };
 
         // INFRA-19: the status field on a new task is owned by the
@@ -1007,57 +971,6 @@ export function TaskAddPanel({
                 min={1}
               />
             </div>
-
-            {/* Linked People */}
-            {peopleList.length > 0 && (
-              <div>
-                <label className="text-label mb-2 block text-[var(--text-3)]">
-                  Linked People
-                </label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {peopleList.map((person) => {
-                    const isLinked = linkedPeopleIds.includes(person.id);
-                    return (
-                      <button
-                        key={person.id}
-                        onClick={() => {
-                          if (isLinked) {
-                            setLinkedPeopleIds((prev) =>
-                              prev.filter((id) => id !== person.id),
-                            );
-                          } else {
-                            setLinkedPeopleIds((prev) => [...prev, person.id]);
-                          }
-                        }}
-                        className={cn(
-                          "flex items-center gap-2 rounded-full border px-2 py-1.5 transition-all",
-                          isLinked
-                            ? "border-[var(--accent)] bg-[var(--accent-dim)]"
-                            : "border-transparent hover:bg-[var(--color-surface-hover)]",
-                        )}
-                      >
-                        <Avatar
-                          name={person.name}
-                          initials={person.initials}
-                          color={person.color}
-                          size="sm"
-                        />
-                        <span
-                          className={cn(
-                            "text-sm",
-                            isLinked
-                              ? "font-medium text-[var(--accent)]"
-                              : "text-[var(--text-2)]",
-                          )}
-                        >
-                          {person.name.split(" ")[0]}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* Category */}
             <div>
