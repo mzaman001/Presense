@@ -63,62 +63,6 @@ export type Database = {
         }
         Relationships: []
       }
-      explores: {
-        Row: {
-          deleted_at: string | null
-          digest_at: string | null
-          id: string
-          linked_thread_id: string | null
-          note: string | null
-          revisited_at: string | null
-          saved_at: string | null
-          status: string | null
-          tags: string[] | null
-          title: string
-          type: string | null
-          url: string | null
-          user_id: string
-        }
-        Insert: {
-          deleted_at?: string | null
-          digest_at?: string | null
-          id?: string
-          linked_thread_id?: string | null
-          note?: string | null
-          revisited_at?: string | null
-          saved_at?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title: string
-          type?: string | null
-          url?: string | null
-          user_id: string
-        }
-        Update: {
-          deleted_at?: string | null
-          digest_at?: string | null
-          id?: string
-          linked_thread_id?: string | null
-          note?: string | null
-          revisited_at?: string | null
-          saved_at?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: string
-          type?: string | null
-          url?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "explores_linked_thread_id_fkey"
-            columns: ["linked_thread_id"]
-            isOneToOne: false
-            referencedRelation: "threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       items: {
         Row: {
           category: string | null
@@ -129,7 +73,6 @@ export type Database = {
           first_step: string | null
           id: string
           ifthen_trigger: string | null
-          linked_people_ids: string[] | null
           notes: string | null
           notification_sent_1h: boolean | null
           notification_sent_24h: boolean | null
@@ -156,7 +99,6 @@ export type Database = {
           first_step?: string | null
           id?: string
           ifthen_trigger?: string | null
-          linked_people_ids?: string[] | null
           notes?: string | null
           notification_sent_1h?: boolean | null
           notification_sent_24h?: boolean | null
@@ -183,7 +125,6 @@ export type Database = {
           first_step?: string | null
           id?: string
           ifthen_trigger?: string | null
-          linked_people_ids?: string[] | null
           notes?: string | null
           notification_sent_1h?: boolean | null
           notification_sent_24h?: boolean | null
@@ -235,54 +176,6 @@ export type Database = {
           photo_url?: string | null
           status?: string | null
           updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      people: {
-        Row: {
-          color: string | null
-          created_at: string | null
-          deleted_at: string | null
-          id: string
-          initials: string | null
-          last_seen: string | null
-          name: string
-          next_meeting: string | null
-          notes: Json[] | null
-          relationship: string | null
-          sort_order: number | null
-          status: string | null
-          user_id: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string | null
-          deleted_at?: string | null
-          id?: string
-          initials?: string | null
-          last_seen?: string | null
-          name: string
-          next_meeting?: string | null
-          notes?: Json[] | null
-          relationship?: string | null
-          sort_order?: number | null
-          status?: string | null
-          user_id: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string | null
-          deleted_at?: string | null
-          id?: string
-          initials?: string | null
-          last_seen?: string | null
-          name?: string
-          next_meeting?: string | null
-          notes?: Json[] | null
-          relationship?: string | null
-          sort_order?: number | null
-          status?: string | null
           user_id?: string
         }
         Relationships: []
@@ -379,7 +272,6 @@ export type Database = {
           id: string
           is_pinned: boolean | null
           last_updated: string | null
-          linked_people_ids: string[] | null
           stale_prompt: string | null
           stale_prompt_at: string | null
           status: string | null
@@ -394,7 +286,6 @@ export type Database = {
           id?: string
           is_pinned?: boolean | null
           last_updated?: string | null
-          linked_people_ids?: string[] | null
           stale_prompt?: string | null
           stale_prompt_at?: string | null
           status?: string | null
@@ -409,7 +300,6 @@ export type Database = {
           id?: string
           is_pinned?: boolean | null
           last_updated?: string | null
-          linked_people_ids?: string[] | null
           stale_prompt?: string | null
           stale_prompt_at?: string | null
           status?: string | null
@@ -434,7 +324,6 @@ export type Database = {
           display_name: string | null
           do_categories: string[] | null
           do_category_colors: Json | null
-          explore_custom_types: string[] | null
           last_evening_ritual_date: string | null
           last_ritual_date: string | null
           location_detection: boolean | null
@@ -453,7 +342,6 @@ export type Database = {
           ollama_enabled: boolean | null
           ollama_url: string | null
           onboarding_complete: boolean | null
-          people_categories: Json | null
           pomodoro_duration: number | null
           pomodoro_long_break_interval: number | null
           pomodoro_sound: boolean | null
@@ -486,7 +374,6 @@ export type Database = {
           display_name?: string | null
           do_categories?: string[] | null
           do_category_colors?: Json | null
-          explore_custom_types?: string[] | null
           last_evening_ritual_date?: string | null
           last_ritual_date?: string | null
           location_detection?: boolean | null
@@ -505,7 +392,6 @@ export type Database = {
           ollama_enabled?: boolean | null
           ollama_url?: string | null
           onboarding_complete?: boolean | null
-          people_categories?: Json | null
           pomodoro_duration?: number | null
           pomodoro_long_break_interval?: number | null
           pomodoro_sound?: boolean | null
@@ -538,7 +424,6 @@ export type Database = {
           display_name?: string | null
           do_categories?: string[] | null
           do_category_colors?: Json | null
-          explore_custom_types?: string[] | null
           last_evening_ritual_date?: string | null
           last_ritual_date?: string | null
           location_detection?: boolean | null
@@ -557,7 +442,6 @@ export type Database = {
           ollama_enabled?: boolean | null
           ollama_url?: string | null
           onboarding_complete?: boolean | null
-          people_categories?: Json | null
           pomodoro_duration?: number | null
           pomodoro_long_break_interval?: number | null
           pomodoro_sound?: boolean | null

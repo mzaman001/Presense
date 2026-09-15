@@ -795,7 +795,6 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         title: "Existing task",
         subtasks: [{ id: "st-1", text: "Existing subtask", completed: false }],
         time_estimate: 30,
-        linked_people_ids: [],
       });
       fireEvent.click(screen.getByLabelText("Close"));
 

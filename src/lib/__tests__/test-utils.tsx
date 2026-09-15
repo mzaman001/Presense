@@ -40,7 +40,6 @@ export function makeTask(
     deleted_at: null,
     first_step: null,
     ifthen_trigger: null,
-    linked_people_ids: null,
     notes: null,
     notification_sent_1h: null,
     notification_sent_24h: null,
