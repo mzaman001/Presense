@@ -19,7 +19,6 @@ export interface UserSettings {
   auto_archive_days?: number;
   do_categories?: string[];
   do_category_colors?: Record<string, string>;
-  people_categories?: string[];
   relationship_colors?: Record<string, string>;
   smart_routing_enabled?: boolean;
   nlp_date_parsing?: boolean;

@@ -26,7 +26,6 @@ import {
   CheckSquare,
   Brain,
   Database,
-  Users,
   Plus,
   Trash2,
   Sparkles,
@@ -84,7 +83,6 @@ const AUTOSAVE_FIELDS = [
   "daily_capacity_minutes",
   "do_categories",
   "do_category_colors",
-  "people_categories",
   "relationship_colors",
 ] as const satisfies readonly (keyof SettingsFormValues)[];
 
@@ -95,7 +93,6 @@ const TABS = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "focus", label: "Focus", icon: Timer },
   { id: "tasks", label: "Tasks", icon: CheckSquare },
-  { id: "people", label: "People", icon: Users },
   { id: "routing", label: "Smart Routing", icon: Brain },
   { id: "data", label: "Data", icon: Database },
 ];
@@ -132,7 +129,6 @@ interface SettingsState {
   auto_archive_days?: number;
   do_categories?: string[];
   do_category_colors?: Record<string, string>;
-  people_categories?: string[];
   relationship_colors?: Record<string, string>;
   smart_routing_enabled?: boolean;
   nlp_date_parsing?: boolean;
@@ -688,27 +684,22 @@ function SettingsModalContent({
     try {
       toast.info("Preparing export...");
 
-      const [items, people, threads, explores, locations, settings] =
-        await Promise.all([
-          supabase.from("items").select("*").eq("user_id", userId),
-          supabase.from("people").select("*").eq("user_id", userId),
-          supabase.from("threads").select("*").eq("user_id", userId),
-          supabase.from("explores").select("*").eq("user_id", userId),
-          supabase.from("locations").select("*").eq("user_id", userId),
-          supabase
-            .from("user_settings")
-            .select("*")
-            .eq("user_id", userId)
-            .single(),
-        ]);
+      const [items, threads, locations, settings] = await Promise.all([
+        supabase.from("items").select("*").eq("user_id", userId),
+        supabase.from("threads").select("*").eq("user_id", userId),
+        supabase.from("locations").select("*").eq("user_id", userId),
+        supabase
+          .from("user_settings")
+          .select("*")
+          .eq("user_id", userId)
+          .single(),
+      ]);
 
       const exportData = {
         exported_at: new Date().toISOString(),
         user_id: userId,
         items: items.data ?? [],
-        people: people.data ?? [],
         threads: threads.data ?? [],
-        explores: explores.data ?? [],
         locations: locations.data ?? [],
         settings: settings.data ?? {},
       };
@@ -1556,39 +1547,6 @@ function SettingsModalContent({
                                 </label>
                               </div>
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "people" && (
-                      <div className="space-y-8">
-                        <div>
-                          <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-[var(--color-text-1)]">
-                            <UiIcon
-                              icon={Users}
-                              size={20}
-                              className="text-[var(--color-accent)]"
-                            />
-                            People & Relationships
-                          </h3>
-                          <div className="space-y-6">
-                            <CategoryManager
-                              title="Relationship Types"
-                              categoriesKey="people_categories"
-                              colorsKey="relationship_colors"
-                              defaultCategories={[
-                                "family",
-                                "friend",
-                                "colleague",
-                                "client",
-                                "acquaintance",
-                              ]}
-                              settings={settings as SettingsState}
-                              updateSetting={updateSetting}
-                              setSettings={setSettings}
-                              supabase={supabase}
-                            />
                           </div>
                         </div>
                       </div>
