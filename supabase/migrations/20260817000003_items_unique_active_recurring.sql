@@ -10,16 +10,17 @@
 -- (user_id, title, recurrence) group among active recurring rows, keep the
 -- oldest row by created_at and permanently delete the rest (they are exact
 -- duplicates from previous race windows).
+-- `min(id)` on a uuid column has no aggregate defined in Postgres, and even
+-- if it did, an independent min(id) doesn't identify "the row with the
+-- earliest created_at" — it just picks whichever id sorts lowest, unrelated
+-- to created_at. DISTINCT ON correctly returns the actual id belonging to
+-- the earliest-created row per group (ties broken by id for determinism).
 DELETE FROM items
 WHERE id NOT IN (
-  SELECT first_id FROM (
-    SELECT user_id, title, recurrence,
-      min(created_at) AS first_created_at,
-      min(id) AS first_id
-    FROM items
-    WHERE status = 'active' AND recurrence IS NOT NULL
-    GROUP BY user_id, title, recurrence
-  ) survivors
+  SELECT DISTINCT ON (user_id, title, recurrence) id
+  FROM items
+  WHERE status = 'active' AND recurrence IS NOT NULL
+  ORDER BY user_id, title, recurrence, created_at ASC, id ASC
 )
 AND status = 'active' AND recurrence IS NOT NULL;
 
