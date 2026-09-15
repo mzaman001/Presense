@@ -65,7 +65,6 @@ const AUTOSAVE_FIELDS = [
   "display_name",
   "avatar_color",
   "timezone",
-  "ambient_bg",
   "notifications_enabled",
   "notif_overdue",
   "notif_stale_threads",
@@ -121,7 +120,6 @@ interface SettingsState {
   timezone?: string;
   theme?: string;
   color_mode?: string;
-  ambient_bg?: boolean;
   reduce_motion?: boolean;
   notifications_enabled?: boolean;
   daily_briefing?: boolean;
@@ -441,7 +439,6 @@ function SettingsModalContent({
   const reduceMotionValue = useWatch({ control, name: "reduce_motion" });
   const avatarColorValue = useWatch({ control, name: "avatar_color" });
   const timezoneValue = useWatch({ control, name: "timezone" });
-  const ambientBgValue = useWatch({ control, name: "ambient_bg" });
   const notificationsEnabledValue = useWatch({
     control,
     name: "notifications_enabled",
@@ -499,7 +496,6 @@ function SettingsModalContent({
       reduce_motion: reduceMotionValue,
       avatar_color: avatarColorValue,
       timezone: timezoneValue,
-      ambient_bg: ambientBgValue,
       notifications_enabled: notificationsEnabledValue,
       daily_briefing: dailyBriefingValue,
       pomodoro_sound: pomodoroSoundValue,
@@ -523,7 +519,6 @@ function SettingsModalContent({
       reduceMotionValue,
       avatarColorValue,
       timezoneValue,
-      ambientBgValue,
       notificationsEnabledValue,
       dailyBriefingValue,
       pomodoroSoundValue,
@@ -1102,24 +1097,6 @@ function SettingsModalContent({
                               ]}
                             />
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Ambient Background
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Show moving gradients in the background
-                            </div>
-                          </div>
-                          <button
-                            onClick={() =>
-                              updateSetting("ambient_bg", !settings.ambient_bg)
-                            }
-                            className={`toggle-track ${settings.ambient_bg ? "on" : ""}`}
-                          >
-                            <div className="toggle-thumb" />
-                          </button>
                         </div>
                         <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
                           <div>

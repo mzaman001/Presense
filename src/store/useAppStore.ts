@@ -7,7 +7,6 @@ export interface UserSettings {
   timezone?: string;
   theme?: string;
   color_mode?: string;
-  ambient_bg?: boolean;
   reduce_motion?: boolean;
   notifications_enabled?: boolean;
   daily_briefing?: boolean;
