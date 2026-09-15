@@ -161,31 +161,6 @@ function routedItem(
   };
 }
 
-/**
- * Decides which Remember-adjacent table an item belongs in, reusing the same
- * person/location keyword detection routeCapture() applies to fresh capture
- * text. Used by Inbox's "Route it → Remember" action, where the user has
- * already manually chosen "Remember" as the destination for an existing
- * item's fixed title — the rest of routeCapture()'s pipeline (URL/task/
- * thought detection) doesn't apply once that choice is already made.
- * Defaults to "locations" when neither keyword set matches: Locations is
- * Remember's promoted primary meaning, so an ambiguous capture belongs
- * there rather than in the being-phased-out People space.
- */
-export function classifyRememberDestination(
-  text: string,
-  knownPeople: string[] = [],
-): "people" | "locations" {
-  const lower = text.toLowerCase().trim();
-
-  const matchedKnown = knownPeople.find((p) => lower.includes(p.toLowerCase()));
-  if (matchedKnown && PERSON_KW.some((k) => lower.includes(k))) {
-    return "people";
-  }
-
-  return "locations";
-}
-
 // ─── Main router ────────────────────────────────────────────────────────────
 
 export async function routeCapture(

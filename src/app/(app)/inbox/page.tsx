@@ -14,7 +14,6 @@ import {
   X,
   Trash2,
 } from "lucide-react";
-import { classifyRememberDestination } from "@/lib/capture-router";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -103,7 +102,7 @@ const InboxItemCard = ({
         style={{ x: dragX }}
         className="relative"
       >
-        <div className="glass-card group flex flex-col items-start justify-between gap-4 rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-dim)] p-4 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:bg-[var(--accent-dim-hover)] hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center">
+        <div className="glass-card group flex flex-col items-start justify-between gap-4 rounded-2xl p-4 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center">
           <p className="text-card-title flex-1 text-lg text-[var(--text-1)]">
             {item.title}
           </p>
@@ -255,7 +254,6 @@ export default function InboxPage() {
 
       try {
         let routedId: string | null = null;
-        let rememberDestination: "people" | "locations" = "locations";
 
         if (space === "do") {
           // BUG-38: check error — was fire-and-forget before
@@ -269,34 +267,16 @@ export default function InboxPage() {
           // PERF-17: item.user_id is already in hand from the inbox query
           // — drop the redundant supabase.auth.getUser() round trip.
           if (item.user_id) {
-            rememberDestination = classifyRememberDestination(item.title, []);
             // BUG-38: insert FIRST, trash original only on success
-            const { data: inserted, error: insertError } =
-              rememberDestination === "people"
-                ? await supabase
-                    .from("people")
-                    .insert({
-                      user_id: item.user_id,
-                      name: item.title,
-                      notes: [
-                        {
-                          text: item.title,
-                          created_at: new Date().toISOString(),
-                          tag: "note",
-                        },
-                      ],
-                    })
-                    .select("id")
-                    .single()
-                : await supabase
-                    .from("locations")
-                    .insert({
-                      user_id: item.user_id,
-                      item_name: item.title,
-                      location_text: item.title,
-                    })
-                    .select("id")
-                    .single();
+            const { data: inserted, error: insertError } = await supabase
+              .from("locations")
+              .insert({
+                user_id: item.user_id,
+                item_name: item.title,
+                location_text: item.title,
+              })
+              .select("id")
+              .single();
 
             if (insertError) throw insertError;
             if (inserted) {
@@ -313,50 +293,12 @@ export default function InboxPage() {
                 const destId = routedId;
                 if (destId) {
                   await safeMutate(
-                    () =>
-                      supabase
-                        .from(rememberDestination)
-                        .delete()
-                        .eq("id", destId),
+                    () => supabase.from("locations").delete().eq("id", destId),
                     "Failed to undo route",
                   );
                 }
                 throw new Error("Failed to remove from Inbox");
               }
-            }
-          }
-        } else if (space === "explore") {
-          // BUG-38: insert FIRST, trash original only on success
-          const { data: inserted, error: insertError } = await supabase
-            .from("explores")
-            .insert({
-              user_id: item.user_id,
-              title: item.title,
-              type: "other",
-            })
-            .select("id")
-            .single();
-
-          if (insertError) throw insertError;
-          if (inserted) {
-            routedId = inserted.id;
-            const { success: trashed } = await safeMutate(
-              () =>
-                supabase
-                  .from("items")
-                  .update(moveItemToTrashPatch())
-                  .eq("id", id),
-              "Routed, but failed to remove from Inbox",
-            );
-            if (!trashed) {
-              const destId = routedId;
-              if (destId) {
-                await safeMutate(
-                  () => supabase.from("explores").delete().eq("id", destId),
-                  "Failed to undo route",
-                );
-              }
-              throw new Error("Failed to remove from Inbox");
             }
           }
         } else if (space === "think") {
@@ -414,26 +356,7 @@ export default function InboxPage() {
                   if (routedId) {
                     await safeMutate(
                       () =>
-                        supabase
-                          .from(rememberDestination)
-                          .delete()
-                          .eq("id", routedId),
-                      "Failed to undo route",
-                    );
-                  }
-                  await safeMutate(
-                    () =>
-                      supabase
-                        .from("items")
-                        .update(restoreItemPatch("inbox"))
-                        .eq("id", id),
-                    "Failed to restore to inbox",
-                  );
-                } else if (space === "explore") {
-                  if (routedId) {
-                    await safeMutate(
-                      () =>
-                        supabase.from("explores").delete().eq("id", routedId),
+                        supabase.from("locations").delete().eq("id", routedId),
                       "Failed to undo route",
                     );
                   }
