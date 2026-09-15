@@ -243,9 +243,9 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         const onUpdate = vi.fn();
         render(<RealtimeHarness table="items" onUpdate={onUpdate} />);
 
-        // Mark local mutation on 'people' table
+        // Mark local mutation on 'locations' table
         act(() => {
-          useAppStore.getState().markMutation("people");
+          useAppStore.getState().markMutation("locations");
         });
 
         // Trigger change event on 'items' table
@@ -377,8 +377,8 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
           useAppStore.getState().markMutation("items");
         });
 
-        // Change table prop to "people"
-        rerender(<RealtimeHarness table="people" onUpdate={onUpdate} />);
+        // Change table prop to "locations"
+        rerender(<RealtimeHarness table="locations" onUpdate={onUpdate} />);
 
         act(() => {
           if (postgresChangesCallback) {
@@ -387,7 +387,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
           vi.advanceTimersByTime(400);
         });
 
-        // Should trigger update since lockout was on 'items', not 'people'
+        // Should trigger update since lockout was on 'items', not 'locations'
         expect(onUpdate).toHaveBeenCalledTimes(1);
       });
 

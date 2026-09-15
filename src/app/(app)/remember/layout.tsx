@@ -22,7 +22,7 @@ export default function RememberLayout({
 
       <ContextualTip
         id="remember_space"
-        title="Your personal CRM & Inventory"
+        title="Your personal inventory"
         description="Track where you put things and check on items you haven't seen in a while."
       />
 

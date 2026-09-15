@@ -73,7 +73,7 @@ export async function DELETE(request: Request) {
     }
 
     // AUDIT-06 (Aug 19, 2026): deleteUser alone orphaned every user-owned
-    // row (10 tables) forever — a retention/GDPR gap. Now every table with a
+    // row (8 tables) forever — a retention/GDPR gap. Now every table with a
     // user_id FK is swept after the auth deletion succeeds. Per AGENTS
     // invariant 7 every mutation's error is checked; the final response
     // reports per-table outcomes and only {success:true} when the sweep is

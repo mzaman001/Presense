@@ -72,7 +72,7 @@ export default function TrashPage() {
     refetch,
   } = useQuery({
     // The filter is part of the key: a scoped view queries only its own
-    // table rather than fetching all five and discarding four client-side.
+    // table rather than fetching all three and discarding two client-side.
     queryKey: ["trash", filterType],
     queryFn: async (): Promise<TrashEntry[]> => {
       const sources = filterType

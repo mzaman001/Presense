@@ -26,7 +26,7 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   title: "Presense — Your External Brain",
   description:
-    "Presense is a personal productivity web app that captures tasks, people, thoughts, and memories — and surfaces them back to you at the right moment.",
+    "Presense is a personal productivity web app that captures tasks, thoughts, and memories — and surfaces them back to you at the right moment.",
   keywords: ["productivity", "second brain", "tasks", "notes", "capture"],
   icons: {
     icon: "/icon.svg",

@@ -1061,8 +1061,6 @@ export default function HomeDashboard() {
                     </p>
                   </div>
                 )}
-
-                {/* Removed People Briefing Preview */}
               </div>
             )}
           </>

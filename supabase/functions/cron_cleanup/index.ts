@@ -61,22 +61,6 @@ Deno.serve(async (req) => {
         .not("deleted_at", "is", null)
         .lte("deleted_at", cutoffDate),
 
-      // Explores
-      supabase
-        .from("explores")
-        .delete()
-        .eq("status", "deleted")
-        .not("deleted_at", "is", null)
-        .lte("deleted_at", cutoffDate),
-
-      // People
-      supabase
-        .from("people")
-        .delete()
-        .eq("status", "deleted")
-        .not("deleted_at", "is", null)
-        .lte("deleted_at", cutoffDate),
-
       // Locations
       supabase
         .from("locations")
@@ -92,7 +76,7 @@ Deno.serve(async (req) => {
     // Each table now reports independently: `{ status: "ok" | "failed",
     // error? }` per table, with an overall status. A run is only
     // considered complete when every table succeeded.
-    const tables = ["items", "threads", "explores", "people", "locations"];
+    const tables = ["items", "threads", "locations"];
     const tableResults = tables.map((table, i) => {
       const res = results[i];
       return {

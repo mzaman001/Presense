@@ -41,7 +41,7 @@ const SPACES = [
     id: "remember",
     icon: Brain,
     title: "Remember",
-    desc: "What people told you. Where you left things.",
+    desc: "Where you left things.",
   },
 ];
 
