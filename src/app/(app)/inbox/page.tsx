@@ -10,12 +10,11 @@ import {
   FolderInput,
   CheckCircle2,
   MessageSquare,
-  Compass,
   Brain,
   X,
-  MapPin,
   Trash2,
 } from "lucide-react";
+import { classifyRememberDestination } from "@/lib/capture-router";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -153,6 +152,19 @@ const InboxItemCard = ({
                   </button>
                   <button
                     onClick={() => {
+                      routeInboxItem(item.id, "remember");
+                      setActiveRouteItem(null);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
+                  >
+                    <UiIcon
+                      className="h-4 w-4 text-[var(--color-people)]"
+                      icon={Brain}
+                    />{" "}
+                    Remember
+                  </button>
+                  <button
+                    onClick={() => {
                       routeInboxItem(item.id, "think");
                       setActiveRouteItem(null);
                     }}
@@ -163,45 +175,6 @@ const InboxItemCard = ({
                       icon={MessageSquare}
                     />{" "}
                     Think (Thread)
-                  </button>
-                  <button
-                    onClick={() => {
-                      routeInboxItem(item.id, "explore");
-                      setActiveRouteItem(null);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                  >
-                    <UiIcon
-                      className="h-4 w-4 text-[var(--color-explore)]"
-                      icon={Compass}
-                    />{" "}
-                    Explore (Saved)
-                  </button>
-                  <button
-                    onClick={() => {
-                      routeInboxItem(item.id, "remember");
-                      setActiveRouteItem(null);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                  >
-                    <UiIcon
-                      className="h-4 w-4 text-[var(--color-people)]"
-                      icon={Brain}
-                    />{" "}
-                    Remember (Person)
-                  </button>
-                  <button
-                    onClick={() => {
-                      routeInboxItem(item.id, "location");
-                      setActiveRouteItem(null);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
-                  >
-                    <UiIcon
-                      className="h-4 w-4 text-[var(--color-people)]"
-                      icon={MapPin}
-                    />{" "}
-                    Locations
                   </button>
                 </div>,
                 document.body,
@@ -282,6 +255,7 @@ export default function InboxPage() {
 
       try {
         let routedId: string | null = null;
+        let rememberDestination: "people" | "locations" = "locations";
 
         if (space === "do") {
           // BUG-38: check error — was fire-and-forget before
@@ -295,22 +269,34 @@ export default function InboxPage() {
           // PERF-17: item.user_id is already in hand from the inbox query
           // — drop the redundant supabase.auth.getUser() round trip.
           if (item.user_id) {
+            rememberDestination = classifyRememberDestination(item.title, []);
             // BUG-38: insert FIRST, trash original only on success
-            const { data: inserted, error: insertError } = await supabase
-              .from("people")
-              .insert({
-                user_id: item.user_id,
-                name: item.title,
-                notes: [
-                  {
-                    text: item.title,
-                    created_at: new Date().toISOString(),
-                    tag: "note",
-                  },
-                ],
-              })
-              .select("id")
-              .single();
+            const { data: inserted, error: insertError } =
+              rememberDestination === "people"
+                ? await supabase
+                    .from("people")
+                    .insert({
+                      user_id: item.user_id,
+                      name: item.title,
+                      notes: [
+                        {
+                          text: item.title,
+                          created_at: new Date().toISOString(),
+                          tag: "note",
+                        },
+                      ],
+                    })
+                    .select("id")
+                    .single()
+                : await supabase
+                    .from("locations")
+                    .insert({
+                      user_id: item.user_id,
+                      item_name: item.title,
+                      location_text: item.title,
+                    })
+                    .select("id")
+                    .single();
 
             if (insertError) throw insertError;
             if (inserted) {
@@ -327,7 +313,11 @@ export default function InboxPage() {
                 const destId = routedId;
                 if (destId) {
                   await safeMutate(
-                    () => supabase.from("people").delete().eq("id", destId),
+                    () =>
+                      supabase
+                        .from(rememberDestination)
+                        .delete()
+                        .eq("id", destId),
                     "Failed to undo route",
                   );
                 }
@@ -376,7 +366,7 @@ export default function InboxPage() {
             .insert({
               user_id: item.user_id,
               title: item.title,
-              color_accent: "#2DD4BF",
+              color_accent: "#d97757",
             })
             .select("id")
             .single();
@@ -403,44 +393,6 @@ export default function InboxPage() {
               throw new Error("Failed to remove from Inbox");
             }
           }
-        } else if (space === "location") {
-          // PERF-17: item.user_id is already in hand from the inbox query
-          // — drop the redundant supabase.auth.getUser() round trip.
-          if (item.user_id) {
-            // BUG-38: insert FIRST, trash original only on success
-            const { data: inserted, error: insertError } = await supabase
-              .from("locations")
-              .insert({
-                user_id: item.user_id,
-                item_name: item.title,
-                location_text: item.title,
-              })
-              .select("id")
-              .single();
-
-            if (insertError) throw insertError;
-            if (inserted) {
-              routedId = inserted.id;
-              const { success: trashed } = await safeMutate(
-                () =>
-                  supabase
-                    .from("items")
-                    .update(moveItemToTrashPatch())
-                    .eq("id", id),
-                "Routed, but failed to remove from Inbox",
-              );
-              if (!trashed) {
-                const destId = routedId;
-                if (destId) {
-                  await safeMutate(
-                    () => supabase.from("locations").delete().eq("id", destId),
-                    "Failed to undo route",
-                  );
-                }
-                throw new Error("Failed to remove from Inbox");
-              }
-            }
-          }
         }
 
         toast.success(`Routed to ${space}`, {
@@ -461,7 +413,11 @@ export default function InboxPage() {
                 } else if (space === "remember") {
                   if (routedId) {
                     await safeMutate(
-                      () => supabase.from("people").delete().eq("id", routedId),
+                      () =>
+                        supabase
+                          .from(rememberDestination)
+                          .delete()
+                          .eq("id", routedId),
                       "Failed to undo route",
                     );
                   }
@@ -494,22 +450,6 @@ export default function InboxPage() {
                     await safeMutate(
                       () =>
                         supabase.from("threads").delete().eq("id", routedId),
-                      "Failed to undo route",
-                    );
-                  }
-                  await safeMutate(
-                    () =>
-                      supabase
-                        .from("items")
-                        .update(restoreItemPatch("inbox"))
-                        .eq("id", id),
-                    "Failed to restore to inbox",
-                  );
-                } else if (space === "location") {
-                  if (routedId) {
-                    await safeMutate(
-                      () =>
-                        supabase.from("locations").delete().eq("id", routedId),
                       "Failed to undo route",
                     );
                   }
