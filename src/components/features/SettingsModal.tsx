@@ -235,7 +235,7 @@ function CategoryItem({
   };
 
   return (
-    <div className="group flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 transition-colors hover:border-[rgba(255,255,255,0.2)]">
+    <div className="group flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 transition-colors hover:border-[var(--border-strong)]">
       <input
         value={editName}
         onChange={(e) => setEditName(e.target.value)}
@@ -824,8 +824,9 @@ function SettingsModalContent({
             transition={{ type: "spring", stiffness: 300, damping: 28 }}
             className="modal relative flex h-[100dvh] min-h-0 w-full max-w-4xl flex-col overflow-hidden md:h-[80vh] md:flex-row md:rounded-2xl"
             style={{
-              backdropFilter: "blur(48px)",
-              WebkitBackdropFilter: "blur(48px)",
+              background: "var(--surface-modal)",
+              border: "0.5px solid var(--border-strong)",
+              boxShadow: "var(--shadow-modal)",
             }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
