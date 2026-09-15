@@ -425,6 +425,7 @@ export function PomodoroTimer() {
         {/* Close button */}
         <button
           onClick={() => setShowConfirmEnd(true)}
+          aria-label="Close focus session"
           className="absolute top-6 right-6 z-10 rounded-full p-2 text-[var(--text-3)] transition-colors hover:bg-white/10 hover:text-[var(--text-1)]"
         >
           <UiIcon size={18} strokeWidth={1.5} icon={X} />
