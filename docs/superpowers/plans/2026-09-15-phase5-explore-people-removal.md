@@ -372,6 +372,10 @@ If confirmed unused, remove:
 
 Remove the `people: [["people_minimal"], ["people"], ["dashboard"]],` and `explores: [["explores"], ["dashboard"]],` entries from the channel-invalidation map (lines ~19, ~21).
 
+- [ ] **Step 2a: Remove `people`/`explores` from the account-deletion purge list**
+
+`src/app/api/account/route.ts` has a hardcoded array of table names it purges on account deletion (currently includes `"people"` and `"explores"`, lines ~84-85). Remove both entries. The route already tolerates a per-table purge error without failing the whole deletion (confirmed by `src/lib/__tests__/account-route.test.ts`'s existing fixture, which is one of this project's three known-flaky-but-fine suites — timeout-related flakiness, not content-related; verify with `npx vitest run src/lib/__tests__/account-route.test.ts` in isolation if the full run shows a flake), so this isn't a functional bug fix, just removing dead table names from a list that would otherwise silently no-op against tables that no longer exist after Task 8.
+
 - [ ] **Step 3: Update `tests/realtime.spec.ts`**
 
 This Playwright test asserts realtime subscription behavior specifically for the `people` channel/topic (`[data-testid="subscriber-people"]`, `peopleJoins`/`peopleLeaves` counts, lines ~46-91). Since the `people` realtime channel no longer exists (Step 2 removed it), this test would now fail or assert against nothing. Remove the people-channel-specific test case(s); leave every other channel's test in this file untouched. If the `[data-testid="subscriber-people"]` element itself was rendered by a component already deleted in an earlier task, this test should already be failing before this step — that's expected, this step is what fixes it.
