@@ -71,7 +71,6 @@ export const settingsSchema = z.object({
   auto_archive_days: z.number().optional(),
   do_categories: z.array(z.string()).optional(),
   do_category_colors: z.record(z.string(), z.string()).optional(),
-  relationship_colors: z.record(z.string(), z.string()).optional(),
   smart_routing_enabled: z.boolean().optional(),
   nlp_date_parsing: z.boolean().optional(),
   nudge_time: z.string().optional(),

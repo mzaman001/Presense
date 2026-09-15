@@ -6,7 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
  * Contrast is checked against real backgrounds, not asserted by trusting a
  * formula: every color here is one this app actually renders an avatar
  * with (the default, every Settings > Avatar Color preset, and every
- * RELATIONSHIP_COLORS default) per src/lib/constants.ts and
+ * DEFAULT_DO_COLORS default) per src/lib/constants.ts and
  * SettingsModal.tsx's avatar-color picker.
  */
 function relativeLuminance(hex: string): number {
@@ -34,7 +34,7 @@ const BACKGROUNDS_IN_USE = [
   "#FBBF24",
   "#A855F7",
   "#EF4444",
-  "#F59E0B", // RELATIONSHIP_COLORS defaults
+  "#F59E0B", // DEFAULT_DO_COLORS defaults
   "#8B5CF6",
   "#6B7280",
   "#10B981",

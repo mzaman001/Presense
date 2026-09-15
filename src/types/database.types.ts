@@ -350,7 +350,6 @@ export type Database = {
           quiet_end: string | null
           quiet_start: string | null
           reduce_motion: boolean | null
-          relationship_colors: Json | null
           routing_confidence: string | null
           short_break_duration: number | null
           shutdown_time: string | null
@@ -400,7 +399,6 @@ export type Database = {
           quiet_end?: string | null
           quiet_start?: string | null
           reduce_motion?: boolean | null
-          relationship_colors?: Json | null
           routing_confidence?: string | null
           short_break_duration?: number | null
           shutdown_time?: string | null
@@ -450,7 +448,6 @@ export type Database = {
           quiet_end?: string | null
           quiet_start?: string | null
           reduce_motion?: boolean | null
-          relationship_colors?: Json | null
           routing_confidence?: string | null
           short_break_duration?: number | null
           shutdown_time?: string | null

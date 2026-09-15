@@ -83,7 +83,6 @@ const AUTOSAVE_FIELDS = [
   "daily_capacity_minutes",
   "do_categories",
   "do_category_colors",
-  "relationship_colors",
 ] as const satisfies readonly (keyof SettingsFormValues)[];
 
 const TABS = [
@@ -129,7 +128,6 @@ interface SettingsState {
   auto_archive_days?: number;
   do_categories?: string[];
   do_category_colors?: Record<string, string>;
-  relationship_colors?: Record<string, string>;
   smart_routing_enabled?: boolean;
   nlp_date_parsing?: boolean;
   nudge_time?: string;
