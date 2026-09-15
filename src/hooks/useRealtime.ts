@@ -16,9 +16,7 @@ export interface UseRealtimeOptions {
  */
 const TABLE_QUERY_KEYS: Record<string, string[][]> = {
   items: [["tasks"], ["inbox-tasks"], ["dashboard"]],
-  people: [["people_minimal"], ["people"], ["dashboard"]],
   threads: [["threads"], ["dashboard"]],
-  explores: [["explores"], ["dashboard"]],
   locations: [["locations"]],
 };
 

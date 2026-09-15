@@ -81,8 +81,6 @@ export async function DELETE(request: Request) {
     const ownedTables = [
       "items",
       "threads",
-      "people",
-      "explores",
       "locations",
       "push_subscriptions",
       "user_settings",

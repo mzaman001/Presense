@@ -29,7 +29,7 @@ export function activateItemPatch() {
   return { status: "active" };
 }
 
-// INFRA-19: archive toggle for threads/explores — archive to `archived` and
+// INFRA-19: archive toggle for threads — archive to `archived` and
 // clear deleted_at (a trashed thread is un-trashable by restoring, then
 // archived separately if desired). Un-archiving goes through
 // restoreItemPatch("active").
@@ -55,7 +55,10 @@ export function restoreItemPatch(status: RestorableItemStatus = "active") {
 // `status` is typed loose on purpose: it re-applies a previously-captured
 // row value (which may be `null` or an unknown legacy value), and Postgres'
 // CHECK constraint is the final authority on what's valid.
-export function revertItemPatch(status: string | null, deadline: string | null) {
+export function revertItemPatch(
+  status: string | null,
+  deadline: string | null,
+) {
   return { status, deadline };
 }
 

@@ -61,7 +61,7 @@ describe("account DELETE route", () => {
       data: { user: { id: "user-123", email: "user@example.com" } },
     });
     mockAdminDeleteUser.mockResolvedValue({ data: null, error: null });
-    // Ten owned tables, all succeeding.
+    // Eight owned tables, all succeeding.
     mockFromDelete.mockImplementation(() => {
       const chain = { eq: () => Promise.resolve({ data: null, error: null }) };
       return chain;
@@ -81,8 +81,6 @@ describe("account DELETE route", () => {
       purgedTables: expect.arrayContaining([
         "items",
         "threads",
-        "people",
-        "explores",
         "locations",
         "push_subscriptions",
         "user_settings",
@@ -91,10 +89,10 @@ describe("account DELETE route", () => {
         "ritual_logs",
       ]),
     });
-    // deleteUser must run before the purge; purge runs exactly 10 sweeps.
+    // deleteUser must run before the purge; purge runs exactly 8 sweeps.
     expect(mockAdminDeleteUser).toHaveBeenCalledOnce();
     expect(mockAdminDeleteUser).toHaveBeenCalledWith("user-123");
-    expect(mockFromDelete).toHaveBeenCalledTimes(10);
+    expect(mockFromDelete).toHaveBeenCalledTimes(8);
   });
 
   it("reports PURGE_PARTIAL (207) when any owned-table delete fails", async () => {

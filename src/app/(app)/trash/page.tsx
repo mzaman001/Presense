@@ -15,14 +15,12 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 /**
- * The five soft-deletable entities. `table` is the Supabase table; `type` is
+ * The three soft-deletable entities. `table` is the Supabase table; `type` is
  * the value per-space pointers pass as `?filter=`.
  */
 const TRASH_SOURCES = [
-  { type: "explore", table: "explores", label: "Explore", nameColumn: "title" },
   { type: "item", table: "items", label: "Task", nameColumn: "title" },
   { type: "thread", table: "threads", label: "Thread", nameColumn: "title" },
-  { type: "person", table: "people", label: "Person", nameColumn: "name" },
   {
     type: "location",
     table: "locations",

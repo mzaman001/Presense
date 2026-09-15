@@ -62,9 +62,6 @@ export default function ThreadDetailPage({
   const [loading, setLoading] = useState(!prefetched);
   const [newEntry, setNewEntry] = useState("");
   const [saving, setSaving] = useState(false);
-  const [linkedExplores, setLinkedExplores] = useState<
-    { id: string; title: string; type: string | null }[]
-  >([]);
 
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -98,20 +95,13 @@ export default function ThreadDetailPage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // PERF-17: the thread and explores queries are independent — run them
-  // concurrently instead of serializing the explores fetch behind the
-  // thread fetch on every render (and every realtime event).
   const fetchThread = useCallback(async () => {
-    const [threadRes, exploresRes] = await Promise.all([
-      supabase.from("threads").select("*").eq("id", id).single(),
-      supabase
-        .from("explores")
-        .select("id, title, type")
-        .eq("linked_thread_id", id)
-        .in("status", ["active", "archived"]),
-    ]);
+    const threadRes = await supabase
+      .from("threads")
+      .select("*")
+      .eq("id", id)
+      .single();
     setThread(threadRes.data as unknown as Thread);
-    setLinkedExplores(exploresRes.data || []);
 
     setLoading(false);
   }, [supabase, id]);
@@ -121,7 +111,6 @@ export default function ThreadDetailPage({
     fetchThread();
   }, [fetchThread]);
   useRealtime("threads", fetchThread);
-  useRealtime("explores", fetchThread);
 
   const handleTogglePin = async () => {
     if (!thread) return;
@@ -401,29 +390,6 @@ export default function ThreadDetailPage({
           </button>
         </div>
       </div>
-
-      {linkedExplores.length > 0 && (
-        <div className="mb-6">
-          <h3 className="mb-3 text-xs font-semibold tracking-wider text-[var(--color-text-3)] uppercase">
-            Linked Resources
-          </h3>
-          <div className="flex flex-wrap gap-3">
-            {linkedExplores.map((item) => (
-              <Link key={item.id} href={`/explore/${item.id}`}>
-                <GlassCard className="flex items-center gap-2 px-4 py-2 transition-colors hover:bg-[var(--color-surface)]">
-                  <div className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-                  <span className="text-sm font-medium text-[var(--color-text-1)]">
-                    {item.title}
-                  </span>
-                  <span className="text-caption ml-2 text-[var(--color-text-3)] uppercase">
-                    {item.type}
-                  </span>
-                </GlassCard>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="space-y-6">
         <AnimatePresence mode="popLayout">

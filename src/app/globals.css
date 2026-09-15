@@ -57,9 +57,7 @@
   --color-bg-dark: var(--bg-elevated);
 
   --color-do: var(--space-do);
-  --color-people: var(--space-remember);
   --color-think: var(--space-think);
-  --color-explore: var(--space-explore);
   --font-heading: var(--font-newsreader), var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -1194,7 +1192,6 @@ h6 {
 /* T4-3: content-visibility for desktop lists */
 @media (min-width: 768px) {
   .task-card-wrapper,
-  .explore-item-wrapper,
   .thread-row-wrapper {
     content-visibility: auto;
     contain-intrinsic-size: 0 88px;
@@ -1239,7 +1236,6 @@ body {
 
 /* DS-13: Density Mode Overrides */
 html[data-density="compact"] .task-card-wrapper .glass-card,
-html[data-density="compact"] .explore-item-wrapper .glass-card,
 html[data-density="compact"] .thread-row-wrapper .glass-card {
   padding: 0.75rem !important;
 }
@@ -1248,7 +1244,6 @@ html[data-density="compact"] .task-card-wrapper p.text-body-lg {
   font-size: 0.85rem !important;
 }
 
-html[data-density="compact"] .explore-item-wrapper p.text-sm,
 html[data-density="compact"] .thread-row-wrapper p.text-sm {
   font-size: 0.8125rem !important;
 }

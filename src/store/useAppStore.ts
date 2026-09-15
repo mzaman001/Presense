@@ -24,7 +24,6 @@ export interface UserSettings {
   nlp_date_parsing?: boolean;
   nudge_time?: string;
   pomodoro_long_break_interval?: number;
-  explore_custom_types?: string[];
   last_ritual_date?: string;
   last_evening_ritual_date?: string;
   shutdown_time?: string;

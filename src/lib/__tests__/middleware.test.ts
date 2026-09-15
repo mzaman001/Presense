@@ -176,7 +176,7 @@ describe("Edge Auth Middleware Routing", () => {
 
     it("carries a stable error payload on the /api/* 401", async () => {
       mockGetUser.mockResolvedValue({ data: { user: null } });
-      const req = createMockRequest("/api/people/reorder");
+      const req = createMockRequest("/api/items/reorder");
       const res = await proxy(req);
 
       expect(res.body).toMatchObject({
