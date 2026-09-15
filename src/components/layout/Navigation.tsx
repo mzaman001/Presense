@@ -669,7 +669,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="bottom-nav pb-safe fixed bottom-0 left-0 z-40 w-full border-t border-[var(--border-subtle)] bg-[var(--color-background)]/95 md:hidden">
+    <nav className="bottom-nav fixed bottom-0 left-0 z-40 w-full border-t border-[var(--border-subtle)] bg-[var(--color-background)]/95 md:hidden">
       <div className="flex items-center justify-around px-2">
         {mobileNavItems.map((item) => {
           if (item.isAction) {

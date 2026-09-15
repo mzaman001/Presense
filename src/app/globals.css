@@ -784,6 +784,7 @@ h6 {
   .bottom-nav {
     background: var(--surface-sidebar);
     position: relative;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .mobile-drawer {
