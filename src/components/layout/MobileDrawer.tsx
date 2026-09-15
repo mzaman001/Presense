@@ -10,7 +10,6 @@ import {
   Check,
   Brain,
   MessageSquare,
-  Compass,
   Settings,
   Search,
   Inbox,
@@ -25,7 +24,6 @@ const navItems = [
   { href: "/do", label: "Do", icon: Check },
   { href: "/remember/locations", label: "Remember", icon: Brain },
   { href: "/think", label: "Think", icon: MessageSquare },
-  { href: "/explore", label: "Explore", icon: Compass },
 ];
 
 export function MobileDrawer() {

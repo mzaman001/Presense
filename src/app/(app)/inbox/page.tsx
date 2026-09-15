@@ -157,7 +157,7 @@ const InboxItemCard = ({
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
                   >
                     <UiIcon
-                      className="h-4 w-4 text-[var(--color-people)]"
+                      className="h-4 w-4 text-[var(--color-text-3)]"
                       icon={Brain}
                     />{" "}
                     Remember
@@ -487,7 +487,7 @@ export default function InboxPage() {
       <ContextualTip
         id="inbox_space"
         title="Unload your brain"
-        description="Dump everything here. Process them later by routing them to the Do, Think, or Explore space."
+        description="Dump everything here. Process them later by routing them to the Do, Think, or Remember space."
       />
 
       {loading ? (
