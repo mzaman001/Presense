@@ -14,13 +14,9 @@ import {
 // Import stubs/components to test
 import { RitualOverlay } from "@/components/features/RitualOverlay";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
-import { ExploreDrawer } from "@/components/features/ExploreDrawer";
-import { AddPersonPanel } from "@/components/features/AddPersonPanel";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
 import ThreadDetailPage from "@/app/(app)/think/[id]/page";
 import InboxPage from "@/app/(app)/inbox/page";
-import ExplorePage from "@/app/(app)/explore/page";
-import PeoplePage from "@/app/(app)/remember/people/page";
 import { AppInitializer } from "@/components/layout/AppInitializer";
 
 // Mock Next.js router
@@ -590,52 +586,9 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         expect(container).toBeInTheDocument();
       });
 
-      it("should render Explore items with Framer Motion drag props", () => {
-        mockSupabase.from.mockReturnValue(
-          mockSupabaseQuery([
-            {
-              id: "explore-1",
-              title: "Read Antigravity docs",
-              type: "link",
-              status: "active",
-              tags: [],
-            },
-          ]),
-        );
-
-        const { container } = render(<ExplorePage />, { wrapper });
-        expect(container).toBeInTheDocument();
-      });
-
-      it("should render People list items with Framer Motion drag props", () => {
-        mockSupabase.from.mockReturnValue(
-          mockSupabaseQuery([
-            { id: "person-1", name: "Alice", initials: "A", color: "#FFF" },
-          ]),
-        );
-
-        const { container } = render(<PeoplePage />, { wrapper });
-        expect(container).toBeInTheDocument();
-      });
-
       it("should trigger item dismissal when dragged past threshold in Inbox", () => {
         render(<InboxPage />, { wrapper });
         // Handled in TDD design layout
-      });
-
-      it("should verify gesture isolation on People list card with sorting handle", () => {
-        mockSupabase.from.mockReturnValue(
-          mockSupabaseQuery([
-            { id: "person-1", name: "Alice", initials: "A", color: "#FFF" },
-          ]),
-        );
-
-        const { container } = render(<PeoplePage />, { wrapper });
-        // Verify grip handle is present for vertical sorting
-        const gripHandle =
-          container.querySelector(".lucide-grip-vertical") ||
-          container.querySelector("svg");
-        expect(gripHandle).toBeDefined();
       });
     });
 
@@ -678,30 +631,6 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         render(<TaskAddPanel isOpen={true} onClose={onClose} />, { wrapper });
 
         // Assert that the autosize-textarea mockup is rendered
-        const textareas = screen.getAllByTestId("autosize-textarea");
-        expect(textareas.length).toBeGreaterThan(0);
-      });
-
-      it("should integrate react-textarea-autosize in ExploreDrawer note field", () => {
-        const onClose = vi.fn();
-        render(
-          <ExploreDrawer
-            isOpen={true}
-            onClose={onClose}
-            onSaved={vi.fn()}
-            item={null}
-          />,
-          { wrapper },
-        );
-
-        const textareas = screen.getAllByTestId("autosize-textarea");
-        expect(textareas.length).toBeGreaterThan(0);
-      });
-
-      it("should integrate react-textarea-autosize in AddPersonPanel notes field", () => {
-        const onClose = vi.fn();
-        render(<AddPersonPanel isOpen={true} onClose={onClose} />, { wrapper });
-
         const textareas = screen.getAllByTestId("autosize-textarea");
         expect(textareas.length).toBeGreaterThan(0);
       });
@@ -891,137 +820,6 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       fireEvent.click(screen.getByText("Discard"));
 
       expect(onClose).toHaveBeenCalledTimes(1);
-    });
-
-    it("prompts when ExploreDrawer fields are edited then the sheet is closed", () => {
-      const onClose = vi.fn();
-      render(
-        <ExploreDrawer
-          isOpen={true}
-          onClose={onClose}
-          onSaved={vi.fn()}
-          item={null}
-        />,
-        { wrapper },
-      );
-
-      const noteTextarea = screen.getAllByTestId("autosize-textarea")[0];
-      fireEvent.change(noteTextarea, {
-        target: { value: "A half-typed thought" },
-      });
-      fireEvent.click(screen.getByLabelText("Close"));
-
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
-      expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it("closes ExploreDrawer without prompting when untouched", () => {
-      const onClose = vi.fn();
-      render(
-        <ExploreDrawer
-          isOpen={true}
-          onClose={onClose}
-          onSaved={vi.fn()}
-          item={null}
-        />,
-        { wrapper },
-      );
-
-      fireEvent.click(screen.getByLabelText("Close"));
-
-      expect(screen.queryByText("Discard Changes?")).not.toBeInTheDocument();
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-
-    it("closes ExploreDrawer without prompting after a successful save", async () => {
-      vi.useRealTimers();
-      const onClose = vi.fn();
-      render(
-        <ExploreDrawer
-          isOpen={true}
-          onClose={onClose}
-          onSaved={vi.fn()}
-          item={null}
-        />,
-        { wrapper },
-      );
-
-      const textboxes = screen.getAllByRole("textbox");
-      fireEvent.change(textboxes[0], { target: { value: "My saved link" } });
-      const noteTextarea = screen.getAllByTestId("autosize-textarea")[0];
-      fireEvent.change(noteTextarea, { target: { value: "Why I saved it" } });
-      fireEvent.click(screen.getByText("Save"));
-
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalledTimes(1);
-      });
-      expect(screen.queryByText("Discard Changes?")).not.toBeInTheDocument();
-    });
-
-    it("prompts when AddPersonPanel color is chosen then the sheet is closed", () => {
-      const onClose = vi.fn();
-      render(<AddPersonPanel isOpen={true} onClose={onClose} />, { wrapper });
-
-      const colorSwatches = screen
-        .getAllByRole("button")
-        .filter(
-          (b) =>
-            (b as HTMLButtonElement).style.backgroundColor &&
-            !(b as HTMLElement).textContent,
-        );
-      fireEvent.click(colorSwatches[0]);
-      fireEvent.click(screen.getByLabelText("Close"));
-
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
-      expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it("closes AddPersonPanel without prompting when untouched", () => {
-      const onClose = vi.fn();
-      render(<AddPersonPanel isOpen={true} onClose={onClose} />, { wrapper });
-
-      fireEvent.click(screen.getByLabelText("Close"));
-
-      expect(screen.queryByText("Discard Changes?")).not.toBeInTheDocument();
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-
-    it("prompts when AddPersonPanel name is typed then the sheet is closed", () => {
-      const onClose = vi.fn();
-      render(<AddPersonPanel isOpen={true} onClose={onClose} />, { wrapper });
-
-      fireEvent.change(screen.getByPlaceholderText("Person's name..."), {
-        target: { value: "Alice" },
-      });
-      fireEvent.click(screen.getByLabelText("Close"));
-
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
-      expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it("prompts when AddPersonPanel relationship is changed then the sheet is closed", () => {
-      const onClose = vi.fn();
-      render(<AddPersonPanel isOpen={true} onClose={onClose} />, { wrapper });
-
-      fireEvent.click(screen.getByRole("button", { name: /colleague/i }));
-      fireEvent.click(screen.getByLabelText("Close"));
-
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
-      expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it("prompts when AddPersonPanel first note is typed then the sheet is closed", () => {
-      const onClose = vi.fn();
-      render(<AddPersonPanel isOpen={true} onClose={onClose} />, { wrapper });
-
-      const notesTextarea = screen.getAllByTestId("autosize-textarea")[0];
-      fireEvent.change(notesTextarea, {
-        target: { value: "Met at the conference" },
-      });
-      fireEvent.click(screen.getByLabelText("Close"));
-
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
-      expect(onClose).not.toHaveBeenCalled();
     });
 
     it("prompts when LocationAddPanel item name is typed then the sheet is closed", () => {

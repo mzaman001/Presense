@@ -32,19 +32,6 @@ export const locationSchema = z.object({
     .max(500, "Location must be less than 500 characters"),
 });
 
-export const personSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Name is required")
-    .max(100, "Name must be less than 100 characters"),
-  relationship: z.string().optional(),
-  nextMeeting: z.string().datetime().optional().or(z.literal("")),
-  notes: z
-    .string()
-    .max(5000, "Notes must be less than 5000 characters")
-    .optional(),
-});
-
 export const taskSchema = z.object({
   title: z
     .string()

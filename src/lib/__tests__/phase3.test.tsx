@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor, act } from "./test-utils";
 import { TEST_USER, makeTask } from "./test-utils";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ExploreDrawer } from "@/components/features/ExploreDrawer";
 import { SearchModal } from "@/components/features/SearchModal";
 import { SettingsModal } from "@/components/features/SettingsModal";
 import { TaskCard } from "@/components/features/TaskCard";
@@ -112,34 +111,6 @@ describe("Phase 3 - Integration Test Suite", () => {
   }
 
   describe("R1: ExploreDrawer & SearchModal Requirements", () => {
-    it("should verify that ExploreDrawer allows selecting preset types and creating custom types via combobox", async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
-        data: { user: { id: "user-123" } },
-      });
-      mockSupabase.from.mockReturnValue(mockSupabaseQuery([]));
-
-      const onClose = vi.fn();
-      const onSaved = vi.fn();
-
-      const { container } = render(
-        <ExploreDrawer
-          isOpen={true}
-          onClose={onClose}
-          onSaved={onSaved}
-          item={null}
-        />,
-        { wrapper },
-      );
-
-      // Verify the type input is rendered via the Dropdown combobox
-      const typeInput = screen.getByPlaceholderText("e.g. link, note, book");
-      expect(typeInput).toBeInTheDocument();
-      expect(typeInput).not.toHaveAttribute("list", "preset-explore-types");
-
-      const dataList = container.querySelector("#preset-explore-types");
-      expect(dataList).toBeNull(); // The native datalist should no longer exist
-    });
-
     it("should verify that SearchModal supports searching items by categories and explores by tags", async () => {
       useAppStore.setState({ isSearchModalOpen: true });
 
@@ -212,7 +183,6 @@ describe("Phase 3 - Integration Test Suite", () => {
           screen.queryByText(/routing confidence/i),
         ).not.toBeInTheDocument();
         expect(screen.queryByText(/nlp date parsing/i)).not.toBeInTheDocument();
-        expect(screen.queryByText(/people briefings/i)).not.toBeInTheDocument();
       });
     });
 
