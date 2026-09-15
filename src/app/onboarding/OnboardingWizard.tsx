@@ -183,62 +183,17 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
             );
             if (!success) return;
           } else if (item.destination.startsWith("Remember")) {
-            if (item.type === "person_note") {
-              const { data: person } = await supabase
-                .from("people")
-                .select("*")
-                .eq("name", item.person || item.title.split(" ")[0])
-                .maybeSingle();
-              if (person) {
-                const { success } = await safeMutate(
-                  () =>
-                    supabase
-                      .from("people")
-                      .update({
-                        notes: [
-                          ...(person.notes ?? []),
-                          {
-                            text: item.title,
-                            created_at: new Date().toISOString(),
-                            tag: "note",
-                          },
-                        ],
-                      })
-                      .eq("id", person.id),
-                  "Failed to save your note",
-                );
-                if (!success) return;
-              } else {
-                const { success } = await safeMutate(
-                  () =>
-                    supabase.from("people").insert({
-                      user_id: user.id,
-                      name: item.person || item.title.split(" ")[0],
-                      notes: [
-                        {
-                          text: item.title,
-                          created_at: new Date().toISOString(),
-                          tag: "note",
-                        },
-                      ],
-                    }),
-                  "Failed to save your note",
-                );
-                if (!success) return;
-              }
-            } else {
-              const { success } = await safeMutate(
-                () =>
-                  supabase.from("locations").insert({
-                    user_id: user.id,
-                    item_name:
-                      item.item_name || item.title.split(" ")[0] || "Item",
-                    location_text: item.title,
-                  }),
-                "Failed to save your item",
-              );
-              if (!success) return;
-            }
+            const { success } = await safeMutate(
+              () =>
+                supabase.from("locations").insert({
+                  user_id: user.id,
+                  item_name:
+                    item.item_name || item.title.split(" ")[0] || "Item",
+                  location_text: item.title,
+                }),
+              "Failed to save your item",
+            );
+            if (!success) return;
           } else if (item.destination === "Think") {
             const { success } = await safeMutate(
               () =>
@@ -254,19 +209,6 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
                   ],
                 }),
               "Failed to save your thought",
-            );
-            if (!success) return;
-          } else if (item.destination === "Explore") {
-            const { success } = await safeMutate(
-              () =>
-                supabase.from("explores").insert({
-                  user_id: user.id,
-                  title: item.title.slice(0, 100),
-                  type: item.url ? "link" : "concept",
-                  url: item.url ?? null,
-                  note: item.title,
-                }),
-              "Failed to save your item",
             );
             if (!success) return;
           }

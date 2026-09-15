@@ -16,7 +16,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
 import { routeCapture } from "@/lib/capture-router";
-import { formatRRule, cn, extractMentions } from "@/lib/utils";
+import { formatRRule } from "@/lib/utils";
 import { Sparkles, Loader2, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -56,9 +56,7 @@ function formatCaptureDeadline(iso: string) {
 
 const SPACE_COLORS: Record<string, string> = {
   Do: "var(--color-do)",
-  "Remember → People": "var(--color-people)",
   Think: "var(--color-think)",
-  Explore: "var(--color-explore)",
   "Remember → Locations": "#4ADE80",
   Inbox: "#FBBF24",
   "Choose space...": "var(--color-text-3)",
@@ -67,17 +65,13 @@ const SPACE_COLORS: Record<string, string> = {
 const SPACE_OPTIONS = [
   { value: "Do", label: "Do" },
   { value: "Think", label: "Think" },
-  { value: "Remember → People", label: "People" },
   { value: "Remember → Locations", label: "Locations" },
-  { value: "Explore", label: "Explore" },
   { value: "Inbox", label: "Inbox" },
 ];
 
 const ROUTE_SPACE_COLORS: Record<string, string> = {
   do: "var(--color-do)",
-  people: "var(--color-people)",
   think: "var(--color-think)",
-  explore: "var(--color-explore)",
   locations: "#4ADE80",
   inbox: "#FBBF24",
 };
@@ -85,9 +79,7 @@ const ROUTE_SPACE_COLORS: Record<string, string> = {
 const ROUTE_SPACE_OPTIONS = [
   { value: "do", label: "Do" },
   { value: "think", label: "Think" },
-  { value: "people", label: "People" },
   { value: "locations", label: "Locations" },
-  { value: "explore", label: "Explore" },
   { value: "inbox", label: "Inbox" },
 ];
 
@@ -129,109 +121,18 @@ export function CaptureModal() {
   const supabase = useMemo(() => createClient(), []);
   const haptics = useHaptics();
 
-  const [people, setPeople] = useState<{ id: string; name: string }[]>([]);
-  const [showPopover, setShowPopover] = useState(false);
-  const [popoverSearch, setPopoverSearch] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!isCaptureModalOpen || !showPopover) return;
-    let cancelled = false;
-    (async () => {
-      if (cancelled) return;
-      const { data } = await supabase
-        .from("people")
-        .select("id, name")
-        .eq("user_id", userId)
-        .limit(50);
-      if (!cancelled) setPeople(data ?? []);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isCaptureModalOpen, showPopover, supabase]);
-
-  const filteredPeople = useMemo(() => {
-    return people.filter((p) =>
-      p.name.toLowerCase().includes(popoverSearch.toLowerCase()),
-    );
-  }, [people, popoverSearch]);
-
-  const handleSelectPerson = useCallback(
-    (person: { id: string; name: string }) => {
-      if (!inputRef.current) return;
-      const val = input;
-      const selectionStart = inputRef.current.selectionStart || 0;
-      const textBeforeCursor = val.slice(0, selectionStart);
-      const textAfterCursor = val.slice(selectionStart);
-      const lastAtIndex = textBeforeCursor.lastIndexOf("@");
-
-      const mentionText = `@[${person.name}](${person.id})`;
-      const newVal =
-        val.slice(0, lastAtIndex) + mentionText + " " + textAfterCursor;
-      setInput(newVal);
-      setShowPopover(false);
-
-      // Focus input and move cursor
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          const cursorPosition = lastAtIndex + mentionText.length + 1;
-          inputRef.current.setSelectionRange(cursorPosition, cursorPosition);
-        }
-      }, 0);
-    },
-    [input],
-  );
 
   const handleInputChange = (val: string) => {
     setInput(val);
-
-    if (!inputRef.current) return;
-    const selectionStart = inputRef.current.selectionStart || 0;
-    const textBeforeCursor = val.slice(0, selectionStart);
-    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
-
-    if (
-      lastAtIndex !== -1 &&
-      (lastAtIndex === 0 || textBeforeCursor[lastAtIndex - 1] === " ")
-    ) {
-      const search = textBeforeCursor.slice(lastAtIndex + 1);
-      if (!search.includes(" ")) {
-        setShowPopover(true);
-        setPopoverSearch(search);
-        setSelectedIndex(0);
-        return;
-      }
-    }
-    setShowPopover(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (showPopover && filteredPeople.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % filteredPeople.length);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedIndex(
-          (prev) => (prev - 1 + filteredPeople.length) % filteredPeople.length,
-        );
-      } else if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        handleSelectPerson(filteredPeople[selectedIndex]);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        setShowPopover(false);
-      }
-    } else {
-      if (e.key === "Enter") {
-        if (!routedItems || input !== lastRoutedInput) {
-          handleRoute();
-        } else {
-          handleConfirm();
-        }
+    if (e.key === "Enter") {
+      if (!routedItems || input !== lastRoutedInput) {
+        handleRoute();
+      } else {
+        handleConfirm();
       }
     }
   };
@@ -251,12 +152,7 @@ export function CaptureModal() {
     setIsRouting(true);
     setLastRoutedInput(input);
     try {
-      const knownPeopleNames = people.map((p) => p.name);
-      const items = await routeCapture(
-        input,
-        knownPeopleNames,
-        userSettings || {},
-      );
+      const items = await routeCapture(input, userSettings || {});
       setRoutedItems(items);
     } catch {
       setRoutedItems([
@@ -275,7 +171,7 @@ export function CaptureModal() {
     } finally {
       setIsRouting(false);
     }
-  }, [input, userSettings, people]);
+  }, [input, userSettings]);
 
   const changeDestination = (idx: number, destinationId: string) => {
     setRoutedItems((prev) =>
@@ -312,7 +208,6 @@ export function CaptureModal() {
         routedItems.map(async (item, idx) => {
           const extras = taskExtras[idx] ?? {};
           if (item.destinationId === "do" || item.destinationId === "inbox") {
-            const mentions = extractMentions(item.title);
             const { error } = await supabase.from("items").insert({
               user_id: userId,
               title: item.title,
@@ -327,43 +222,9 @@ export function CaptureModal() {
                 (item as RoutedItem & { recurrence?: string }).recurrence ??
                 null,
               status: item.destinationId === "inbox" ? "inbox" : "active",
-              linked_people_ids: mentions,
             });
             if (error) throw new Error(`Tasks: ${error.message}`);
-          } else if (item.destinationId === "people") {
-            const { data: person } = await supabase
-              .from("people")
-              .select("id, notes")
-              .eq("user_id", userId)
-              .ilike("name", `%${item.person ?? ""}%`)
-              .maybeSingle();
-            if (person) {
-              const newNote = {
-                text: item.title,
-                created_at: new Date().toISOString(),
-                tag: "note",
-              };
-              const { error } = await supabase
-                .from("people")
-                .update({ notes: [...(person.notes ?? []), newNote] })
-                .eq("id", person.id);
-              if (error) throw new Error(`People: ${error.message}`);
-            } else {
-              const { error } = await supabase.from("people").insert({
-                user_id: userId,
-                name: item.person || item.title.split(" ")[0],
-                notes: [
-                  {
-                    text: item.title,
-                    created_at: new Date().toISOString(),
-                    tag: "note",
-                  },
-                ],
-              });
-              if (error) throw new Error(`People: ${error.message}`);
-            }
           } else if (item.destinationId === "think") {
-            const mentions = extractMentions(item.title);
             const { error } = await supabase.from("threads").insert({
               user_id: userId,
               title: item.title.slice(0, 60),
@@ -374,18 +235,8 @@ export function CaptureModal() {
                   starred: false,
                 },
               ],
-              linked_people_ids: mentions,
             });
             if (error) throw new Error(`Think: ${error.message}`);
-          } else if (item.destinationId === "explore") {
-            const { error } = await supabase.from("explores").insert({
-              user_id: userId,
-              title: item.title.slice(0, 100),
-              type: item.url ? "link" : "concept",
-              url: item.url ?? null,
-              note: item.title,
-            });
-            if (error) throw new Error(`Explore: ${error.message}`);
           } else if (item.destinationId === "locations") {
             const { error } = await supabase.from("locations").insert({
               user_id: userId,
@@ -439,7 +290,7 @@ export function CaptureModal() {
               autoComplete="off"
               autoCapitalize="sentences"
               autoCorrect="off"
-              placeholder='Capture anything... "Remind me to...", "Keys are in...", "Riyaz said..."'
+              placeholder='Capture anything... "Remind me to...", "Keys are in...", "I think..."'
               className="text-title-sm flex-1 border-none bg-transparent font-medium text-[var(--color-text-1)] outline-none placeholder:text-[rgba(255,255,255,0.25)]"
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
@@ -462,28 +313,6 @@ export function CaptureModal() {
               <kbd className="text-caption hidden items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 font-semibold text-[var(--color-text-3)] sm:flex">
                 Enter
               </kbd>
-            )}
-
-            {/* Mentions dropdown overlay */}
-            {showPopover && filteredPeople.length > 0 && (
-              <div
-                className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg"
-                data-testid="mentions-popover"
-              >
-                {filteredPeople.map((person, idx) => (
-                  <button
-                    key={person.id}
-                    onClick={() => handleSelectPerson(person)}
-                    className={cn(
-                      "w-full px-4 py-2 text-left text-sm text-[var(--color-text-1)] hover:bg-[rgba(255,255,255,0.05)] focus:outline-none",
-                      idx === selectedIndex && "bg-[rgba(255,255,255,0.08)]",
-                    )}
-                    type="button"
-                  >
-                    {person.name}
-                  </button>
-                ))}
-              </div>
             )}
           </div>
 
@@ -558,21 +387,6 @@ export function CaptureModal() {
                             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                           />
                         </div>
-                      </>
-                    )}
-
-                    {item.destinationId === "people" && (
-                      <>
-                        <span className="text-[var(--color-text-3)]">·</span>
-                        <span className="font-semibold">Person:</span>
-                        <input
-                          value={item.person || ""}
-                          onChange={(e) =>
-                            updateRoutedItem(idx, { person: e.target.value })
-                          }
-                          className="rounded-full border border-[var(--color-border)] bg-transparent px-2 py-1 text-xs text-[var(--color-text-1)] outline-none focus:border-[var(--color-accent)]"
-                          placeholder="Name..."
-                        />
                       </>
                     )}
 

@@ -30,16 +30,8 @@ export async function POST(request: Request) {
     }
     const { text, settings } = parsed.data;
 
-    // Fetch user's known people for name matching
-    const { data: people } = await supabase
-      .from("people")
-      .select("name")
-      .eq("user_id", user.id);
-
-    const knownPeople = people?.map((p) => p.name) ?? [];
-
     // Run the rule-based NLP router
-    const items = await routeCapture(text, knownPeople, settings || {});
+    const items = await routeCapture(text, settings || {});
 
     return NextResponse.json({ items });
   } catch (error) {

@@ -30,21 +30,6 @@ const TASK_KW = [
   "check",
 ];
 
-const PERSON_KW = [
-  "said",
-  "told me",
-  "mentioned",
-  "wants to",
-  "asked me",
-  "asked if",
-  "said that",
-  "told",
-  "suggest",
-  "recommended",
-  "promised",
-  "offered",
-];
-
 const LOCATION_KW = [
   "is in",
   "is at",
@@ -81,38 +66,19 @@ const THOUGHT_KW = [
   "realized",
 ];
 
-const EXPLORE_KW = [
-  "interesting",
-  "save this",
-  "read later",
-  "look into",
-  "concept:",
-  "quote:",
-  "book:",
-  "article:",
-  "link:",
-  "check out",
-  "worth reading",
-  "fascinating",
-  "cool article",
-];
-
-const URL_RE = /https?:\/\/[^\s]+/;
-
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type RoutedItemType =
-  "task" | "person_note" | "location" | "thought" | "explore" | "unknown";
+export type RoutedItemType = "task" | "location" | "thought" | "unknown";
 
 export interface RoutedItem {
   type: RoutedItemType;
   title: string;
   destination: string;
-  destinationId: "do" | "inbox" | "people" | "locations" | "think" | "explore";
+  destinationId: "do" | "inbox" | "locations" | "think";
   confidence: number;
   reason: string;
   person?: string;
@@ -128,10 +94,8 @@ export function destinationToId(
   if (destination === "Do") return "do";
   if (destination === "Inbox" || destination === "Choose space...")
     return "inbox";
-  if (destination.includes("People")) return "people";
   if (destination.includes("Locations")) return "locations";
   if (destination === "Think") return "think";
-  if (destination === "Explore") return "explore";
   return "inbox";
 }
 
@@ -141,10 +105,8 @@ export function destinationIdToLabel(
   const labels: Record<RoutedItem["destinationId"], string> = {
     do: "Do",
     inbox: "Inbox",
-    people: "People",
     locations: "Locations",
     think: "Think",
-    explore: "Explore",
   };
   return labels[destinationId];
 }
@@ -165,18 +127,9 @@ function routedItem(
 
 export async function routeCapture(
   text: string,
-  knownPeople: string[] = [],
   userSettings: Partial<UserSettings> = {},
 ): Promise<RoutedItem[]> {
   const lower = text.toLowerCase().trim();
-  // compromise doesn't export great TS types
-  /* @todo: Untyped usage justified per TOOL-01 */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let doc: any = null;
-  if (userSettings?.nlp_date_parsing !== false) {
-    const nlp = (await import("compromise")).default;
-    doc = nlp(text);
-  }
   const results: RoutedItem[] = [];
 
   // If smart routing is disabled, just return as Unknown (Inbox)
@@ -203,60 +156,12 @@ export async function routeCapture(
   if (segments.length > 1) {
     // Recursively route each segment
     const routedSegments = await Promise.all(
-      segments.map((segment) =>
-        routeCapture(segment, knownPeople, userSettings),
-      ),
+      segments.map((segment) => routeCapture(segment, userSettings)),
     );
     return routedSegments.flat();
   }
 
-  // 1. URL → Explore
-  const urlMatch = text.match(URL_RE);
-  if (urlMatch) {
-    results.push(
-      routedItem({
-        type: "explore",
-        title: text.replace(URL_RE, "").trim() || "Saved link",
-        destination: "Explore",
-        destinationId: "explore",
-        url: urlMatch[0],
-        confidence: 0.98,
-        reason: "url_detected_explore",
-      }),
-    );
-    return results;
-  }
-
-  // 2. Person note — name detection via compromise + knownPeople
-  const detectedNames = doc
-    ? doc
-        .people()
-        .json()
-        .map((p: { text: string }) => p.text)
-    : [];
-  const matchedKnown = knownPeople.find((p) => lower.includes(p.toLowerCase()));
-  let matchedName =
-    matchedKnown || (detectedNames.length > 0 ? detectedNames[0] : null);
-  if (matchedName) {
-    matchedName = matchedName.replace(/['’]s$/i, "");
-  }
-
-  if (matchedName && PERSON_KW.some((k) => lower.includes(k))) {
-    results.push(
-      routedItem({
-        type: "person_note",
-        title: text,
-        destination: "Remember → People",
-        destinationId: "people",
-        person: matchedName,
-        confidence: 0.88,
-        reason: "known_person_and_person_keyword",
-      }),
-    );
-    return results;
-  }
-
-  // 3. Location
+  // 1. Location
   const matchedLocKw = LOCATION_KW.find((k) => lower.includes(k));
   if (matchedLocKw) {
     let itemName = "Item";
@@ -297,7 +202,7 @@ export async function routeCapture(
     return results;
   }
 
-  // 4a. Recurrence detection
+  // 2a. Recurrence detection
   let detectedRRule: string | null = null;
   let recurrencePhraseToRemove = "";
   const dayMap: Record<string, string> = {
@@ -373,7 +278,7 @@ export async function routeCapture(
     }
   }
 
-  // 4. Task — extract natural language date
+  // 2. Task — extract natural language date
   let parsedDate: Date | null = null;
   let parsedText = "";
   if (userSettings?.nlp_date_parsing !== false) {
@@ -438,7 +343,7 @@ export async function routeCapture(
     return results;
   }
 
-  // 5. Thought → Think
+  // 3. Thought → Think
   if (THOUGHT_KW.some((k) => lower.includes(k))) {
     results.push(
       routedItem({
@@ -453,22 +358,7 @@ export async function routeCapture(
     return results;
   }
 
-  // 6. Explore keywords
-  if (EXPLORE_KW.some((k) => lower.includes(k))) {
-    results.push(
-      routedItem({
-        type: "explore",
-        title: text,
-        destination: "Explore",
-        destinationId: "explore",
-        confidence: 0.78,
-        reason: "explore_keyword",
-      }),
-    );
-    return results;
-  }
-
-  // 7. Unknown — routes to Inbox
+  // 4. Unknown — routes to Inbox
   results.push(
     routedItem({
       type: "unknown",
