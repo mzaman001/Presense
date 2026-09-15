@@ -10,16 +10,14 @@ import {
   X,
   Loader2,
   CheckSquare,
-  Users,
   MessageSquare,
-  Compass,
   MapPin,
   AlertCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { useDebounce } from "use-debounce";
-import { cn, escapeFilterValue, ilikeContains } from "@/lib/utils";
+import { cn, ilikeContains } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
@@ -29,7 +27,7 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 interface SearchResult {
   id: string;
   title: string;
-  type: "task" | "person" | "thread" | "explore" | "location";
+  type: "task" | "thread" | "location";
   icon: React.ElementType;
   path: string;
 }
@@ -72,8 +70,7 @@ export function SearchModal() {
       setLoading(true);
       // INFRA-18: explicit user_id filter for planner index usage.
       const q = ilikeContains(debouncedQuery);
-      const tagTerm = escapeFilterValue(`{${debouncedQuery}}`);
-      const [tasks, people, threads, explores, locations] = await Promise.all([
+      const [tasks, threads, locations] = await Promise.all([
         supabase
           .from("items")
           .select("id, title")
@@ -81,22 +78,10 @@ export function SearchModal() {
           .or(`title.ilike.${q},category.ilike.${q}`)
           .limit(5),
         supabase
-          .from("people")
-          .select("id, name")
-          .eq("user_id", userId)
-          .or(`name.ilike.${q},relationship.ilike.${q}`)
-          .limit(5),
-        supabase
           .from("threads")
           .select("id, title")
           .eq("user_id", userId)
           .or(`title.ilike.${q}`)
-          .limit(5),
-        supabase
-          .from("explores")
-          .select("id, title")
-          .eq("user_id", userId)
-          .or(`title.ilike.${q},tags.cs.${tagTerm}`)
           .limit(5),
         supabase
           .from("locations")
@@ -107,7 +92,7 @@ export function SearchModal() {
       ]);
 
       // Surface a failing search instead of silently showing "No results".
-      for (const result of [tasks, people, threads, explores, locations]) {
+      for (const result of [tasks, threads, locations]) {
         if (result.error) throw result.error;
       }
 
@@ -119,31 +104,12 @@ export function SearchModal() {
           icon: CheckSquare,
           path: "/do",
         })),
-        ...(people.data ?? []).map((p) => ({
-          id: p.id,
-          title: p.name,
-          type: "person" as const,
-          icon: Users,
-          // Person search results route to the People list, not the
-          // generic "go to Remember" destination (which now correctly
-          // points at /remember/locations elsewhere in the codebase).
-          // People's pages are still a real, reachable space until a
-          // separate, later rollout step removes them.
-          path: "/remember/people",
-        })),
         ...(threads.data ?? []).map((t) => ({
           id: t.id,
           title: t.title,
           type: "thread" as const,
           icon: MessageSquare,
           path: `/think/${t.id}`,
-        })),
-        ...(explores.data ?? []).map((e) => ({
-          id: e.id,
-          title: e.title,
-          type: "explore" as const,
-          icon: Compass,
-          path: "/explore",
         })),
         ...(locations.data ?? []).map((l) => ({
           id: l.id,
@@ -251,8 +217,7 @@ export function SearchModal() {
                   Search your brain
                 </h3>
                 <p className="max-w-[250px] text-sm text-[var(--color-text-3)]">
-                  Type to search across tasks, people, threads, explores, and
-                  locations.
+                  Type to search across tasks, threads, and locations.
                 </p>
               </div>
             )}

@@ -110,24 +110,15 @@ describe("Phase 3 - Integration Test Suite", () => {
     return query;
   }
 
-  describe("R1: ExploreDrawer & SearchModal Requirements", () => {
-    it("should verify that SearchModal supports searching items by categories and explores by tags", async () => {
+  describe("R1: SearchModal Requirements", () => {
+    it("should verify that SearchModal supports searching items by category", async () => {
       useAppStore.setState({ isSearchModalOpen: true });
 
-      // Mock search response for items by category & explores by tags
+      // Mock search response for items by category
       mockSupabase.from.mockImplementation((table) => {
         if (table === "items") {
           return mockSupabaseQuery([
             { id: "task-1", title: "Review React docs", category: "study" },
-          ]);
-        }
-        if (table === "explores") {
-          return mockSupabaseQuery([
-            {
-              id: "explore-1",
-              title: "Atomic Habits",
-              tags: ["book", "productivity"],
-            },
           ]);
         }
         return mockSupabaseQuery([]);
@@ -147,16 +138,6 @@ describe("Phase 3 - Integration Test Suite", () => {
 
       const taskResult = await screen.findByText("Review React docs");
       expect(taskResult).toBeInTheDocument();
-
-      // Trigger searching by tags
-      fireEvent.change(searchInput, { target: { value: "productivity" } });
-
-      await waitFor(() => {
-        expect(mockSupabase.from).toHaveBeenCalledWith("explores");
-      });
-
-      const exploreResult = await screen.findByText("Atomic Habits");
-      expect(exploreResult).toBeInTheDocument();
     });
   });
 
