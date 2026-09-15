@@ -264,8 +264,8 @@ function CategoryItem({
               style={{
                 backgroundColor: preset,
                 border: isActive
-                  ? `2px solid white`
-                  : `1px solid rgba(255,255,255,0.1)`,
+                  ? "2px solid var(--text-1)"
+                  : "1px solid var(--border-subtle)",
                 transform: isActive ? "scale(1.2)" : "scale(1)",
                 opacity: isActive ? 1 : 0.5,
               }}
@@ -289,7 +289,7 @@ function CategoryItem({
         </label>
         <button
           onClick={() => handleDelete(cat)}
-          className="row-actions ml-1 rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-red-400/10 hover:text-red-400"
+          className="row-actions ml-1 rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--status-danger)]/10 hover:text-[var(--status-danger)]"
         >
           <UiIcon className="h-4 w-4" icon={Trash2} />
         </button>
@@ -968,7 +968,7 @@ function SettingsModalContent({
                                 onClick={() =>
                                   updateSetting("avatar_color", color)
                                 }
-                                className={`h-8 w-8 rounded-full transition-transform ${settings.avatar_color === color ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-[rgba(11,9,20,1)]" : "opacity-70 hover:opacity-100"}`}
+                                className={`h-8 w-8 rounded-full transition-transform ${settings.avatar_color === color ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-[var(--bg-base)]" : "opacity-70 hover:opacity-100"}`}
                                 style={{ backgroundColor: color }}
                               />
                             ))}
