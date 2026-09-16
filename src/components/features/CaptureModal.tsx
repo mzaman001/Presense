@@ -271,6 +271,11 @@ export function CaptureModal() {
 
   const handleConfirm = async () => {
     if (!routedItems) return;
+    // Re-entry guard: without this, a held Enter key (OS key-repeat fires
+    // several keydown events before React re-renders the disabled state) or
+    // a fast double-click can call this twice before `disabled` takes
+    // effect, producing duplicate inserts.
+    if (isSaving) return;
     setIsSaving(true);
 
     try {
@@ -295,6 +300,13 @@ export function CaptureModal() {
   // default path anymore.
   const handleQuickCapture = useCallback(async () => {
     if (!input.trim()) return;
+    // Re-entry guard: this is now the hot path for essentially every
+    // capture, so it can't rely solely on the button/input's `disabled`
+    // prop — that only takes effect after a React re-render. OS key-repeat
+    // on a held Enter key (multiple keydown events fire before a re-render
+    // lands) or a fast double-click can otherwise call this twice,
+    // producing two duplicate inserts of the same capture.
+    if (isCapturing) return;
     setIsCapturing(true);
     setLastRoutedInput(input);
     try {
@@ -331,7 +343,13 @@ export function CaptureModal() {
     } finally {
       setIsCapturing(false);
     }
-  }, [input, userSettings, persistRoutedItems, setCaptureModalOpen]);
+  }, [
+    input,
+    userSettings,
+    persistRoutedItems,
+    setCaptureModalOpen,
+    isCapturing,
+  ]);
 
   return (
     <ModalErrorBoundary
@@ -384,9 +402,18 @@ export function CaptureModal() {
               </button>
             )}
             {!routedItems && (
-              <kbd className="text-caption hidden items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 font-semibold text-[var(--color-text-3)] sm:flex">
-                Enter
-              </kbd>
+              // TASK-2.6b fix round 2: the old "Press Enter to auto-route"
+              // hint was removed along with the mandatory review step, but
+              // nothing explained the new behavior — Enter now saves
+              // straight to the database with no confirmation step, not
+              // just a preview. Restore the hint with copy that says so.
+              <span className="text-caption hidden items-center gap-1.5 text-[var(--color-text-3)] sm:flex">
+                Press{" "}
+                <kbd className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 font-semibold">
+                  Enter
+                </kbd>{" "}
+                to save
+              </span>
             )}
           </div>
 

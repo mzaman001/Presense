@@ -106,6 +106,26 @@ describe("CaptureModal — task 2.6b one-tap capture default", () => {
     );
   });
 
+  it("only inserts once when Enter fires twice in rapid succession (OS key-repeat)", async () => {
+    render(<CaptureModal />);
+
+    const input = screen.getByPlaceholderText(/Capture anything/i);
+    fireEvent.change(input, { target: { value: "Buy milk" } });
+
+    // Fire two Enter keydowns back to back, neither awaited, simulating
+    // OS key-repeat on a held Enter key or a fast double-tap. Without the
+    // `if (isCapturing) return;` guard at the top of handleQuickCapture,
+    // the second keydown would race the first's async routeCapture/insert
+    // call and produce a duplicate insert.
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByText(/Saved!/i)).toBeInTheDocument(),
+    );
+  });
+
   it("falls back to the review screen (without losing the capture) if the quick-save insert fails", async () => {
     insertMock.mockImplementationOnce(async () => ({
       error: { message: "network down" },
