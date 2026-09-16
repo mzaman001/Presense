@@ -226,16 +226,39 @@ function CategoryItem({
     updateSetting(colorsKey, { ...colors, [colorCat]: color });
   };
 
+  const isDirty = editName.trim() !== cat && editName.trim().length > 0;
+
   return (
     <div className="group flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 transition-colors hover:border-[var(--border-strong)]">
       <input
         value={editName}
         onChange={(e) => setEditName(e.target.value)}
         onBlur={handleRename}
-        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+        aria-label={`Rename category "${cat}"`}
         className="min-w-[80px] flex-1 rounded bg-transparent px-2 py-1 text-sm font-bold tracking-wide text-[var(--color-text-1)] capitalize focus:bg-[var(--surface-hover)] focus:outline-none"
       />
-      <div className="flex shrink-0 items-center justify-end gap-1.5">
+      {/* Step 3 (task 2.6): explicit save confirmation alongside the
+          blur-triggered rename — Enter/blur already save, but a user who
+          edits then immediately closes the modal needs visible proof the
+          rename landed rather than trusting an easy-to-miss toast. */}
+      {isDirty && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()} // keep input focus so onBlur still fires handleRename
+          onClick={handleRename}
+          aria-label={`Confirm rename to "${editName.trim()}"`}
+          className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-[var(--color-think)] transition-colors hover:bg-[var(--color-think)]/10 focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-1 focus-visible:outline-none"
+        >
+          <UiIcon className="h-4 w-4" icon={CheckCircle2} />
+        </button>
+      )}
+      <div className="flex shrink-0 items-center justify-end gap-2.5">
         {[
           "#F87171",
           "#FBBF24",
@@ -251,22 +274,33 @@ function CategoryItem({
           return (
             <button
               key={preset}
+              type="button"
               onClick={() => handleColorChange(cat, preset)}
-              className="h-5 w-5 rounded-full transition-all hover:scale-125"
-              style={{
-                backgroundColor: preset,
-                border: isActive
-                  ? "2px solid var(--text-1)"
-                  : "1px solid var(--border-subtle)",
-                transform: isActive ? "scale(1.2)" : "scale(1)",
-                opacity: isActive ? 1 : 0.5,
-              }}
-            />
+              aria-label={`Set category color to ${preset}`}
+              aria-pressed={isActive}
+              // Step 2 (task 2.6): 20px -> 32px touch target, wider gap
+              // between swatches, and a visible keyboard focus ring — the
+              // previous size was well under touch-target guidelines and
+              // adjacent swatches were a near-miss-click risk.
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all hover:scale-110 focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] focus-visible:outline-none"
+            >
+              <span
+                className="block h-5 w-5 rounded-full"
+                style={{
+                  backgroundColor: preset,
+                  border: isActive
+                    ? "2px solid var(--text-1)"
+                    : "1px solid var(--border-subtle)",
+                  transform: isActive ? "scale(1.2)" : "scale(1)",
+                  opacity: isActive ? 1 : 0.5,
+                }}
+              />
+            </button>
           );
         })}
         <div className="mx-1 h-4 w-[1px] bg-[var(--color-border)]" />
         <label
-          className="relative flex h-5 w-5 cursor-pointer items-center justify-center rounded-full shadow-sm transition-transform hover:scale-125"
+          className="relative flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full shadow-sm transition-transform focus-within:ring-2 focus-within:ring-[var(--color-accent)] focus-within:ring-offset-2 focus-within:ring-offset-[var(--color-surface)] hover:scale-110"
           style={{
             background:
               "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
@@ -276,11 +310,14 @@ function CategoryItem({
             type="color"
             value={initialColor || "#9CA3AF"}
             onChange={(e) => handleColorChange(cat, e.target.value)}
+            aria-label="Pick a custom category color"
             className="absolute h-full w-full cursor-pointer opacity-0"
           />
         </label>
         <button
+          type="button"
           onClick={() => handleDelete(cat)}
+          aria-label={`Delete category "${cat}"`}
           className="row-actions ml-1 rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--status-danger)]/10 hover:text-[var(--status-danger)]"
         >
           <UiIcon className="h-4 w-4" icon={Trash2} />
