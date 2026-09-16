@@ -496,12 +496,13 @@ export default function HomeDashboard() {
           <button
             onClick={() => setShowReview(!showReview)}
             className={cn(
-              "rounded-xl border px-4 py-2 text-xs font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
               showReview
-                ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
+                ? "text-[var(--color-text-1)]"
+                : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]",
             )}
           >
+            <UiIcon className="h-3.5 w-3.5" icon={CalendarDays} />
             {showReview ? "Back to Dashboard" : "Week in Review"}
           </button>
         </header>
@@ -859,108 +860,113 @@ export default function HomeDashboard() {
               </GlassCard>
             )}
 
-            {/* Bento 4-card overview */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Link href="/do" className="block">
-                <GlassCard
-                  hoverable
-                  className="flex h-full flex-col justify-between"
-                >
-                  <UiIcon
-                    size={20}
-                    strokeWidth={1.5}
-                    className="mb-4 shrink-0 text-[var(--color-do)]"
-                    icon={CheckCircle2}
-                  />
-                  <div>
-                    <div className="text-2xl font-light text-[var(--color-text-1)]">
-                      <AnimatedNumber value={tasks.length} />
+            {/* Bento 4-card overview — deliberately the lightest-weight row on
+                the page: small counters, muted (non-accent) icon tone, and
+                tight padding, so they read as minor context rather than
+                competing with the hero or the weekly-effort row below. */}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {[
+                {
+                  href: "/do",
+                  icon: CheckCircle2,
+                  value: tasks.length,
+                  label: "Active Tasks",
+                },
+                {
+                  href: null,
+                  icon: Sparkles,
+                  value: ritualStreak,
+                  label: "Day Streak",
+                },
+                {
+                  href: "/think",
+                  icon: MessageSquare,
+                  value: threads.length,
+                  label: "Open Threads",
+                },
+                {
+                  href: "/remember/locations",
+                  icon: MapPin,
+                  value: locationsCount,
+                  label: "Locations",
+                },
+              ].map((tile, i) => {
+                const card = (
+                  <GlassCard
+                    hoverable={!!tile.href}
+                    className="flex h-full flex-col justify-between p-4"
+                  >
+                    <UiIcon
+                      size={16}
+                      strokeWidth={1.5}
+                      className="mb-3 shrink-0 text-[var(--color-text-3)]"
+                      icon={tile.icon}
+                    />
+                    <div>
+                      <div className="text-lg font-light text-[var(--color-text-2)]">
+                        <AnimatedNumber value={tile.value} />
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-[var(--color-text-3)]">
+                        {tile.label}
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                      Active Tasks
-                    </div>
-                  </div>
-                </GlassCard>
-              </Link>
-              <div>
-                <GlassCard className="flex h-full flex-col justify-between">
-                  <UiIcon
-                    size={20}
-                    strokeWidth={1.5}
-                    className="mb-4 shrink-0 text-[var(--accent)]"
-                    icon={Sparkles}
-                  />
-                  <div>
-                    <div className="text-2xl font-light text-[var(--color-text-1)]">
-                      <AnimatedNumber value={ritualStreak} />
-                    </div>
-                    <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                      Day Streak
-                    </div>
-                  </div>
-                </GlassCard>
-              </div>
-              <Link href="/think" className="block">
-                <GlassCard
-                  hoverable
-                  className="flex h-full flex-col justify-between"
-                >
-                  <UiIcon
-                    size={20}
-                    strokeWidth={1.5}
-                    className="mb-4 shrink-0 text-[var(--color-think)]"
-                    icon={MessageSquare}
-                  />
-                  <div>
-                    <div className="text-2xl font-light text-[var(--color-text-1)]">
-                      <AnimatedNumber value={threads.length} />
-                    </div>
-                    <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                      Open Threads
-                    </div>
-                  </div>
-                </GlassCard>
-              </Link>
-              <Link href="/remember/locations" className="block">
-                <GlassCard
-                  hoverable
-                  className="flex h-full flex-col justify-between"
-                >
-                  <UiIcon
-                    size={20}
-                    strokeWidth={1.5}
-                    className="mb-4 shrink-0 text-[var(--accent)]"
-                    icon={MapPin}
-                  />
-                  <div>
-                    <div className="text-2xl font-light text-[var(--color-text-1)]">
-                      <AnimatedNumber value={locationsCount} />
-                    </div>
-                    <div className="mt-1 text-xs text-[var(--color-text-3)]">
-                      Locations
-                    </div>
-                  </div>
-                </GlassCard>
-              </Link>
+                  </GlassCard>
+                );
+                return (
+                  <m.div
+                    key={tile.label}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      delay: i * 0.05,
+                      duration: 0.2,
+                      ease: [0.25, 0.46, 0.45, 0.94],
+                    }}
+                  >
+                    {tile.href ? (
+                      <Link href={tile.href} className="block">
+                        {card}
+                      </Link>
+                    ) : (
+                      card
+                    )}
+                  </m.div>
+                );
+              })}
             </div>
 
+            {/* Weekly-effort summary — real secondary weight: bigger type
+                and an accent-tinted number, one visible step down from the
+                hero but clearly above the bento row's minor counters. */}
             <div className="mt-6 flex flex-col items-center gap-4 md:flex-row">
-              <GlassCard className="flex w-full flex-1 items-center justify-between p-5">
-                <span className="text-card-title tracking-wider text-[var(--color-text-3)] uppercase">
-                  Pomodoros this week
-                </span>
-                <span className="text-2xl font-semibold text-[var(--color-text-1)]">
-                  <AnimatedNumber value={pomodorosThisWeek} />
-                </span>
-              </GlassCard>
-              <GlassCard className="flex w-full flex-1 items-center justify-between p-5">
-                <span className="text-card-title tracking-wider text-[var(--color-text-3)] uppercase">
-                  Tasks completed this week
-                </span>
-                <span className="text-2xl font-semibold text-[var(--color-text-1)]">
-                  <AnimatedNumber value={doneTasks.length} />
-                </span>
-              </GlassCard>
+              {[
+                { label: "Pomodoros this week", value: pomodorosThisWeek },
+                {
+                  label: "Tasks completed this week",
+                  value: doneTasks.length,
+                },
+              ].map((stat, i) => (
+                <m.div
+                  key={stat.label}
+                  className="w-full flex-1"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: (4 + i) * 0.05,
+                    duration: 0.2,
+                    ease: [0.25, 0.46, 0.45, 0.94],
+                  }}
+                >
+                  <GlassCard className="flex w-full items-center justify-between p-5">
+                    <span className="text-card-title tracking-wider text-[var(--color-text-2)] uppercase">
+                      {stat.label}
+                    </span>
+                    <span className="text-3xl font-semibold text-[var(--accent)]">
+                      <AnimatedNumber value={stat.value} />
+                    </span>
+                  </GlassCard>
+                </m.div>
+              ))}
             </div>
 
             {userSettings?.daily_briefing !== false && (
