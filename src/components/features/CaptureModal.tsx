@@ -113,6 +113,12 @@ export function CaptureModal() {
   const [lastRoutedInput, setLastRoutedInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // TASK-2.6b: the default capture action now routes AND saves in one tap
+  // (see handleQuickCapture below). isCapturing tracks that combined
+  // in-flight state separately from isRouting (the "Edit" path, which only
+  // routes and stops at the review screen) and isSaving (Confirm & Save
+  // from the review screen).
+  const [isCapturing, setIsCapturing] = useState(false);
   const [routedItems, setRoutedItems] = useState<RoutedItem[] | null>(null);
   const [taskExtras, setTaskExtras] = useState<{
     [idx: number]: { first_step: string; ifthen_trigger: string };
@@ -128,12 +134,18 @@ export function CaptureModal() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      if (!routedItems || input !== lastRoutedInput) {
-        handleRoute();
-      } else {
-        handleConfirm();
-      }
+    if (e.key !== "Enter") return;
+    if (!routedItems) {
+      // TASK-2.6b: one-tap-confirm default — Enter on the main field routes
+      // and saves immediately. The review screen is opt-in via the "Edit"
+      // button, not the keyboard fast path.
+      handleQuickCapture();
+    } else if (input !== lastRoutedInput) {
+      // Already in the review screen but the user kept typing — re-route
+      // the edited text instead of saving stale routing.
+      handleRoute();
+    } else {
+      handleConfirm();
     }
   };
 
@@ -199,14 +211,20 @@ export function CaptureModal() {
     );
   };
 
-  const handleConfirm = async () => {
-    if (!routedItems) return;
-    setIsSaving(true);
-
-    try {
+  // Shared insert logic for both the review screen's "Confirm & Save" and
+  // the one-tap quick-capture default — parameterized on items/extras so
+  // quick capture can persist the freshly-routed result without waiting on
+  // a setRoutedItems() state update to land first.
+  const persistRoutedItems = useCallback(
+    async (
+      items: RoutedItem[],
+      extrasMap: {
+        [idx: number]: { first_step: string; ifthen_trigger: string };
+      },
+    ) => {
       await Promise.all(
-        routedItems.map(async (item, idx) => {
-          const extras = taskExtras[idx] ?? {};
+        items.map(async (item, idx) => {
+          const extras = extrasMap[idx] ?? {};
           if (item.destinationId === "do" || item.destinationId === "inbox") {
             const { error } = await supabase.from("items").insert({
               user_id: userId,
@@ -247,6 +265,16 @@ export function CaptureModal() {
           }
         }),
       );
+    },
+    [supabase, userId],
+  );
+
+  const handleConfirm = async () => {
+    if (!routedItems) return;
+    setIsSaving(true);
+
+    try {
+      await persistRoutedItems(routedItems, taskExtras);
       setSaved(true);
       toast.success("Successfully captured!");
       setTimeout(() => setCaptureModalOpen(false), 800);
@@ -258,6 +286,52 @@ export function CaptureModal() {
       setIsSaving(false);
     }
   };
+
+  // TASK-2.6b: one-tap-confirm default. Routes the capture and immediately
+  // saves it with the router's chosen destination — no intermediate review
+  // screen. If routing or saving fails, fall back to the review screen
+  // (pre-filled with whatever was routed) instead of silently dropping the
+  // capture, so "edit before saving" is always reachable, just not the
+  // default path anymore.
+  const handleQuickCapture = useCallback(async () => {
+    if (!input.trim()) return;
+    setIsCapturing(true);
+    setLastRoutedInput(input);
+    try {
+      const items = await routeCapture(input, userSettings || {});
+      try {
+        await persistRoutedItems(items, {});
+      } catch (saveError: unknown) {
+        setRoutedItems(items);
+        const message =
+          saveError instanceof Error ? saveError.message : "An error occurred";
+        logger.error(
+          saveError instanceof Error ? saveError.message : String(saveError),
+        );
+        toast.error("Failed to save capture", { description: message });
+        return;
+      }
+      setSaved(true);
+      toast.success("Successfully captured!");
+      setTimeout(() => setCaptureModalOpen(false), 800);
+    } catch {
+      setRoutedItems([
+        {
+          type: "unknown",
+          title: input,
+          destination: "Inbox",
+          destinationId: "inbox",
+          confidence: 0.1,
+          reason: "route_request_failed",
+        },
+      ]);
+      toast.error("Routing failed", {
+        description: "Falling back to manual routing.",
+      });
+    } finally {
+      setIsCapturing(false);
+    }
+  }, [input, userSettings, persistRoutedItems, setCaptureModalOpen]);
 
   return (
     <ModalErrorBoundary
@@ -294,10 +368,10 @@ export function CaptureModal() {
               className="text-title-sm flex-1 border-none bg-transparent font-medium text-[var(--color-text-1)] outline-none placeholder:text-[rgba(255,255,255,0.25)]"
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
-              disabled={isRouting}
+              disabled={isRouting || isCapturing}
               onKeyDown={handleKeyDown}
             />
-            {input && !routedItems && !isRouting && (
+            {input && !routedItems && !isRouting && !isCapturing && (
               <button
                 onClick={() => {
                   handleInputChange("");
@@ -422,20 +496,31 @@ export function CaptureModal() {
           <div className="flex items-center justify-between rounded-b-2xl border-t border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
             {!routedItems ? (
               <>
-                <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-3)]">
-                  Press{" "}
-                  <kbd className="text-caption rounded-md border border-[var(--border-subtle)] bg-[var(--border-default)] px-1.5 py-0.5 font-sans text-[var(--text-1)]">
-                    Enter
-                  </kbd>{" "}
-                  to auto-route
-                </span>
+                {/* TASK-2.6b: "Edit" is the deliberate opt-in into the
+                    review screen — the primary action now saves directly. */}
                 <Button
-                  variant="primary"
+                  variant="ghost"
                   onClick={handleRoute}
-                  disabled={!input.trim() || isRouting}
+                  disabled={!input.trim() || isRouting || isCapturing}
                   className="disabled:opacity-50"
                 >
                   {isRouting ? (
+                    <UiIcon
+                      size={14}
+                      strokeWidth={1.5}
+                      className="shrink-0 animate-spin"
+                      icon={Loader2}
+                    />
+                  ) : null}
+                  {isRouting ? "Routing..." : "Edit before saving"}
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleQuickCapture}
+                  disabled={!input.trim() || isCapturing || isRouting}
+                  className="disabled:opacity-50"
+                >
+                  {isCapturing ? (
                     <UiIcon
                       size={14}
                       strokeWidth={1.5}
@@ -450,7 +535,7 @@ export function CaptureModal() {
                       icon={Sparkles}
                     />
                   )}
-                  {isRouting ? "Routing..." : "Route & Capture"}
+                  {isCapturing ? "Capturing..." : "Capture"}
                 </Button>
               </>
             ) : !saved ? (

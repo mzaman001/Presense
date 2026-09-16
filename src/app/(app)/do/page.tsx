@@ -414,6 +414,14 @@ export default function DoPage() {
                 TaskAddPanel as typeof TaskAddPanel & { preload: () => void }
               ).preload()
             }
+            // PERF-20 (mobile): onMouseEnter/onFocus never fire from a touch
+            // tap, so mobile taps missed the pre-warm. onTouchStart fires
+            // before onClick on touch devices, giving the same head start.
+            onTouchStart={() =>
+              (
+                TaskAddPanel as typeof TaskAddPanel & { preload: () => void }
+              ).preload()
+            }
             onClick={() => {
               setTaskToEdit(null);
               setInitialDeadline(null);
