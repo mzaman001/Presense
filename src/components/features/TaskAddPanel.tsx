@@ -566,6 +566,7 @@ export function TaskAddPanel({
           className="flex h-full flex-col"
         >
           <div className="flex-1 space-y-6 overflow-y-auto p-6">
+            {/* --- Core --- */}
             {/* Title */}
             <Input
               label={
@@ -693,285 +694,6 @@ export function TaskAddPanel({
               )}
             </div>
 
-            {/* Action Toolbar (Date & Repeat) */}
-            <div className="flex flex-wrap gap-2 border-t border-[var(--color-border)] pt-2">
-              <Popover
-                trigger={
-                  <button
-                    type="button"
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                      deadlineValue
-                        ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                        : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
-                    )}
-                  >
-                    <UiIcon size={13} icon={Calendar} />
-                    {deadlineValue
-                      ? (() => {
-                          const d = new Date(deadlineValue);
-                          const hasTime =
-                            d.getHours() !== 0 || d.getMinutes() !== 0;
-                          const dateStr = d.toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                          });
-                          const timeStr = hasTime
-                            ? ` ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
-                            : "";
-                          return `${dateStr}${timeStr}`;
-                        })()
-                      : "Due Date"}
-                  </button>
-                }
-                content={
-                  <div className="w-[280px] space-y-4 p-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        { id: "today", label: "Today" },
-                        { id: "tomorrow", label: "Tomorrow" },
-                        { id: "weekend", label: "This Weekend" },
-                        { id: "next_week", label: "Next Week" },
-                        { id: "none", label: "No Date" },
-                      ].map((btn) => (
-                        <button
-                          key={btn.id}
-                          onClick={() => setQuickDate(btn.id)}
-                          className="text-meta rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--color-border)]"
-                        >
-                          {btn.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-caption mb-1.5 block font-bold tracking-widest text-[var(--text-muted)] uppercase">
-                          Due Date/Time
-                        </label>
-                        <input
-                          type="datetime-local"
-                          className={cn(
-                            "input !px-2 !py-1.5 !text-xs",
-                            errors.deadline && "!border-red-500",
-                          )}
-                          {...register("deadline", {
-                            onChange: handleManualDateChange,
-                          })}
-                          aria-invalid={!!errors.deadline}
-                          aria-describedby={
-                            errors.deadline ? `deadline-error` : undefined
-                          }
-                        />
-                        {errors.deadline && (
-                          <p
-                            id="deadline-error"
-                            className="text-caption mt-1 text-red-500"
-                          >
-                            {errors.deadline.message}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-caption mb-1.5 block font-bold tracking-widest text-[var(--text-muted)] uppercase">
-                          Start Date
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={startDate || ""}
-                          onChange={(e) => {
-                            setStartDate(e.target.value);
-                            setParsedStartDate(
-                              e.target.value ? new Date(e.target.value) : null,
-                            );
-                          }}
-                          className="input !px-2 !py-1.5 !text-xs"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                }
-              />
-
-              <Popover
-                trigger={
-                  <button
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                      freq !== "Does not repeat"
-                        ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                        : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
-                    )}
-                  >
-                    <UiIcon size={13} icon={RotateCw} />
-                    {freq !== "Does not repeat" ? freq : "Repeat"}
-                  </button>
-                }
-                content={
-                  <div className="w-[280px] p-3">
-                    <div className="mb-3 flex flex-wrap gap-1.5">
-                      {[
-                        "Does not repeat",
-                        "Daily",
-                        "Weekly",
-                        "Monthly",
-                        "Custom",
-                      ].map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => setFreq(f)}
-                          className={cn(
-                            "text-meta rounded-md border px-2 py-1 font-medium transition-colors",
-                            freq === f
-                              ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                              : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
-                          )}
-                        >
-                          {f}
-                        </button>
-                      ))}
-                    </div>
-                    {freq === "Weekly" && (
-                      <div className="flex flex-wrap gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
-                        {[
-                          { l: "Mo", v: "MO" },
-                          { l: "Tu", v: "TU" },
-                          { l: "We", v: "WE" },
-                          { l: "Th", v: "TH" },
-                          { l: "Fr", v: "FR" },
-                          { l: "Sa", v: "SA" },
-                          { l: "Su", v: "SU" },
-                        ].map((d) => (
-                          <button
-                            key={d.v}
-                            onClick={() =>
-                              setDays((prev) =>
-                                prev.includes(d.v)
-                                  ? prev.filter((x) => x !== d.v)
-                                  : [...prev, d.v],
-                              )
-                            }
-                            className={cn(
-                              "text-meta rounded-md border px-2 py-1 font-bold transition-colors",
-                              days.includes(d.v)
-                                ? "border-[#FBBF24] bg-[#FBBF24] text-amber-950"
-                                : "border-transparent bg-transparent text-[var(--text-3)] hover:bg-[var(--color-border)]",
-                            )}
-                          >
-                            {d.l}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {freq === "Custom" && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-meta font-medium text-[var(--text-3)]">
-                          Every
-                        </span>
-                        <input
-                          type="number"
-                          min="1"
-                          value={customInterval}
-                          onChange={(e) =>
-                            setCustomInterval(
-                              Math.max(1, parseInt(e.target.value) || 1),
-                            )
-                          }
-                          className="input !w-14 !px-2 !py-1 !text-center !text-xs"
-                        />
-                        <Dropdown
-                          variant="select"
-                          value={customFreq}
-                          onChange={(value) => setCustomFreq(value)}
-                          options={[
-                            { value: "DAILY", label: "Days" },
-                            { value: "WEEKLY", label: "Weeks" },
-                            { value: "MONTHLY", label: "Months" },
-                            { value: "YEARLY", label: "Years" },
-                          ]}
-                          className="!w-24 !text-xs"
-                        />
-                      </div>
-                    )}
-                  </div>
-                }
-              />
-            </div>
-
-            {/* Priority */}
-            <div>
-              <label className="text-label mb-2 block text-[var(--text-3)]">
-                Priority
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  {
-                    val: 1,
-                    label: "Urgent",
-                    colorClass:
-                      "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20",
-                    activeClass: "bg-red-500 text-white border-red-500",
-                  },
-                  {
-                    val: 2,
-                    label: "High",
-                    colorClass:
-                      "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20",
-                    activeClass: "bg-amber-500 text-white border-amber-500",
-                  },
-                  {
-                    val: 3,
-                    label: "Medium",
-                    colorClass:
-                      "bg-teal-500/10 text-teal-500 border-teal-500/30 hover:bg-teal-500/20",
-                    activeClass: "bg-teal-500 text-white border-teal-500",
-                  },
-                  {
-                    val: 4,
-                    label: "Low",
-                    colorClass:
-                      "bg-slate-500/10 text-slate-500 border-slate-500/30 hover:bg-slate-500/20",
-                    activeClass: "bg-slate-500 text-white border-slate-500",
-                  },
-                ].map((p) => (
-                  <m.button
-                    key={p.val}
-                    type="button"
-                    whileTap={{ scale: 0.92 }}
-                    onClick={() =>
-                      setValue(
-                        "priority",
-                        priorityValue === p.val ? null : p.val,
-                        { shouldValidate: true, shouldDirty: true },
-                      )
-                    }
-                    className={`rounded-full border px-4 py-2 text-xs font-bold transition-all ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
-                  >
-                    P{p.val} {p.label}
-                  </m.button>
-                ))}
-              </div>
-            </div>
-
-            {/* Time Estimate */}
-            <div>
-              <label className="text-label mb-2 block text-[var(--text-3)]">
-                Time Estimate (minutes){" "}
-                <span className="text-[var(--text-muted)]">(optional)</span>
-              </label>
-              <input
-                type="number"
-                placeholder="e.g. 30"
-                value={timeEstimate === null ? "" : timeEstimate}
-                onChange={(e) =>
-                  setTimeEstimate(
-                    e.target.value ? parseInt(e.target.value) : null,
-                  )
-                }
-                className="input"
-                min={1}
-              />
-            </div>
-
             {/* Category */}
             <div>
               <label className="text-label mb-2 block text-[var(--text-3)]">
@@ -1034,10 +756,299 @@ export function TaskAddPanel({
               </div>
             </div>
 
+            {/* Priority */}
             <div>
               <label className="text-label mb-2 block text-[var(--text-3)]">
-                Notes
+                Priority
               </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    val: 1,
+                    label: "Urgent",
+                    colorClass:
+                      "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20",
+                    activeClass: "bg-red-500 text-white border-red-500",
+                  },
+                  {
+                    val: 2,
+                    label: "High",
+                    colorClass:
+                      "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20",
+                    activeClass: "bg-amber-500 text-white border-amber-500",
+                  },
+                  {
+                    val: 3,
+                    label: "Medium",
+                    colorClass:
+                      "bg-teal-500/10 text-teal-500 border-teal-500/30 hover:bg-teal-500/20",
+                    activeClass: "bg-teal-500 text-white border-teal-500",
+                  },
+                  {
+                    val: 4,
+                    label: "Low",
+                    colorClass:
+                      "bg-slate-500/10 text-slate-500 border-slate-500/30 hover:bg-slate-500/20",
+                    activeClass: "bg-slate-500 text-white border-slate-500",
+                  },
+                ].map((p) => (
+                  <m.button
+                    key={p.val}
+                    type="button"
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() =>
+                      setValue(
+                        "priority",
+                        priorityValue === p.val ? null : p.val,
+                        { shouldValidate: true, shouldDirty: true },
+                      )
+                    }
+                    className={`rounded-full border px-4 py-2 text-xs font-bold transition-all ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
+                  >
+                    P{p.val} {p.label}
+                  </m.button>
+                ))}
+              </div>
+            </div>
+
+            {/* --- Scheduling --- */}
+            <div className="border-t border-[var(--color-border)] pt-6">
+              <h3 className="text-caption mb-4 font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                Scheduling
+              </h3>
+              <div className="space-y-6">
+                {/* Action Toolbar (Date & Repeat) */}
+                <div className="flex flex-wrap gap-2">
+                  <Popover
+                    trigger={
+                      <button
+                        type="button"
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
+                          deadlineValue
+                            ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                            : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
+                        )}
+                      >
+                        <UiIcon size={13} icon={Calendar} />
+                        {deadlineValue
+                          ? (() => {
+                              const d = new Date(deadlineValue);
+                              const hasTime =
+                                d.getHours() !== 0 || d.getMinutes() !== 0;
+                              const dateStr = d.toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                              });
+                              const timeStr = hasTime
+                                ? ` ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
+                                : "";
+                              return `${dateStr}${timeStr}`;
+                            })()
+                          : "Due Date"}
+                      </button>
+                    }
+                    content={
+                      <div className="w-[340px] space-y-4 p-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { id: "today", label: "Today" },
+                            { id: "tomorrow", label: "Tomorrow" },
+                            { id: "weekend", label: "This Weekend" },
+                            { id: "next_week", label: "Next Week" },
+                            { id: "none", label: "No Date" },
+                          ].map((btn) => (
+                            <button
+                              key={btn.id}
+                              onClick={() => setQuickDate(btn.id)}
+                              className="text-meta rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--color-border)]"
+                            >
+                              {btn.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-caption mb-1.5 block font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                              Due Date/Time
+                            </label>
+                            <input
+                              type="datetime-local"
+                              className={cn(
+                                "input !px-2 !py-1.5 !text-xs",
+                                errors.deadline && "!border-red-500",
+                              )}
+                              {...register("deadline", {
+                                onChange: handleManualDateChange,
+                              })}
+                              aria-invalid={!!errors.deadline}
+                              aria-describedby={
+                                errors.deadline ? `deadline-error` : undefined
+                              }
+                            />
+                            {errors.deadline && (
+                              <p
+                                id="deadline-error"
+                                className="text-caption mt-1 text-red-500"
+                              >
+                                {errors.deadline.message}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="text-caption mb-1.5 block font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                              Start Date
+                            </label>
+                            <input
+                              type="datetime-local"
+                              value={startDate || ""}
+                              onChange={(e) => {
+                                setStartDate(e.target.value);
+                                setParsedStartDate(
+                                  e.target.value
+                                    ? new Date(e.target.value)
+                                    : null,
+                                );
+                              }}
+                              className="input !px-2 !py-1.5 !text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  />
+
+                  <Popover
+                    trigger={
+                      <button
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
+                          freq !== "Does not repeat"
+                            ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                            : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
+                        )}
+                      >
+                        <UiIcon size={13} icon={RotateCw} />
+                        {freq !== "Does not repeat" ? freq : "Repeat"}
+                      </button>
+                    }
+                    content={
+                      <div className="w-[320px] p-3">
+                        <div className="mb-3 flex flex-wrap gap-1.5">
+                          {[
+                            "Does not repeat",
+                            "Daily",
+                            "Weekly",
+                            "Monthly",
+                            "Custom",
+                          ].map((f) => (
+                            <button
+                              key={f}
+                              onClick={() => setFreq(f)}
+                              className={cn(
+                                "text-meta rounded-md border px-2 py-1 font-medium transition-colors",
+                                freq === f
+                                  ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
+                                  : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
+                              )}
+                            >
+                              {f}
+                            </button>
+                          ))}
+                        </div>
+                        {freq === "Weekly" && (
+                          <div className="flex flex-wrap gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+                            {[
+                              { l: "Mo", v: "MO" },
+                              { l: "Tu", v: "TU" },
+                              { l: "We", v: "WE" },
+                              { l: "Th", v: "TH" },
+                              { l: "Fr", v: "FR" },
+                              { l: "Sa", v: "SA" },
+                              { l: "Su", v: "SU" },
+                            ].map((d) => (
+                              <button
+                                key={d.v}
+                                onClick={() =>
+                                  setDays((prev) =>
+                                    prev.includes(d.v)
+                                      ? prev.filter((x) => x !== d.v)
+                                      : [...prev, d.v],
+                                  )
+                                }
+                                className={cn(
+                                  "text-meta rounded-md border px-2 py-1 font-bold transition-colors",
+                                  days.includes(d.v)
+                                    ? "border-[#FBBF24] bg-[#FBBF24] text-amber-950"
+                                    : "border-transparent bg-transparent text-[var(--text-3)] hover:bg-[var(--color-border)]",
+                                )}
+                              >
+                                {d.l}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {freq === "Custom" && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-meta font-medium text-[var(--text-3)]">
+                              Every
+                            </span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={customInterval}
+                              onChange={(e) =>
+                                setCustomInterval(
+                                  Math.max(1, parseInt(e.target.value) || 1),
+                                )
+                              }
+                              className="input !w-14 !px-2 !py-1 !text-center !text-xs"
+                            />
+                            <Dropdown
+                              variant="select"
+                              value={customFreq}
+                              onChange={(value) => setCustomFreq(value)}
+                              options={[
+                                { value: "DAILY", label: "Days" },
+                                { value: "WEEKLY", label: "Weeks" },
+                                { value: "MONTHLY", label: "Months" },
+                                { value: "YEARLY", label: "Years" },
+                              ]}
+                              className="!w-24 !text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    }
+                  />
+                </div>
+
+                {/* Time Estimate */}
+                <div>
+                  <label className="text-label mb-2 block text-[var(--text-3)]">
+                    Time Estimate (minutes){" "}
+                    <span className="text-[var(--text-muted)]">(optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 30"
+                    value={timeEstimate === null ? "" : timeEstimate}
+                    onChange={(e) =>
+                      setTimeEstimate(
+                        e.target.value ? parseInt(e.target.value) : null,
+                      )
+                    }
+                    className="input"
+                    min={1}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* --- Notes --- */}
+            <div className="border-t border-[var(--color-border)] pt-6">
+              <h3 className="text-caption mb-4 font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                Notes
+              </h3>
               <TextareaAutosize
                 data-testid="autosize-textarea"
                 placeholder="Additional context or details"
