@@ -382,20 +382,28 @@ function CategoryManager({
             supabase={supabase}
           />
         ))}
-        <div className="mt-2 flex items-center gap-2">
+        {/* Step 6 (task 2.6): the add-category row now shares the exact
+            border/padding treatment (rounded-xl border, p-3, same list
+            gap) as the per-category rows above instead of its own
+            distinct double-bordered input+button styling, so it reads as
+            part of the same list rather than a disconnected control. */}
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 transition-colors focus-within:border-[var(--color-accent)] hover:border-[var(--border-strong)]">
           <input
             type="text"
             value={newCat}
             onChange={(e) => setNewCat(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="Add new category..."
-            className="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-1)] transition-colors focus:border-[var(--color-accent)] focus:outline-none"
+            aria-label="New category name"
+            className="min-w-[80px] flex-1 bg-transparent text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:outline-none"
           />
           <button
+            type="button"
             onClick={handleAdd}
-            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-[var(--color-text-1)] transition-colors hover:border-[var(--color-accent)]"
+            aria-label="Add category"
+            className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
           >
-            <UiIcon className="h-5 w-5" icon={Plus} />
+            <UiIcon className="h-4 w-4" icon={Plus} />
           </button>
         </div>
       </div>
