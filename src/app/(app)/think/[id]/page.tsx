@@ -15,6 +15,7 @@ import {
   Archive,
   Pin,
   RefreshCcw,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,7 +36,6 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 interface ThreadEntry {
   text: string;
   created_at: string;
-  starred?: boolean;
 }
 
 interface Thread {
@@ -209,7 +209,9 @@ export default function ThreadDetailPage({
       const { error } = await supabase
         .from("threads")
         .update({
-          entries: updatedEntries,
+          /* @todo: Untyped usage justified per TOOL-01 */
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          entries: updatedEntries as any,
           last_updated: new Date().toISOString(),
           stale_prompt: null, // Clear stale prompt if they revisit
         })
@@ -248,6 +250,11 @@ export default function ThreadDetailPage({
       </div>
     );
   }
+
+  // Daily Note threads have no dedicated flag — the rest of the app
+  // (see /think's "Daily Note" button and the evening ritual flow)
+  // identifies them purely by this title convention.
+  const isDailyNote = thread.title.startsWith("Daily Note: ");
 
   const handleDeleteEntry = async () => {
     if (!thread || deleteEntryIndex === null) return;
@@ -392,6 +399,12 @@ export default function ThreadDetailPage({
       </div>
 
       <div className="space-y-6">
+        {isDailyNote && (
+          <div className="text-meta flex items-center gap-1.5 text-[var(--accent)]">
+            <UiIcon className="h-3.5 w-3.5" icon={Sparkles} />
+            Daily Note
+          </div>
+        )}
         <AnimatePresence mode="popLayout">
           {(thread.entries || []).map((entry, i) => (
             <m.div
@@ -402,21 +415,19 @@ export default function ThreadDetailPage({
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              <GlassCard className="group relative border-l-2 border-l-transparent p-5 transition-all hover:border-l-[var(--accent)]">
-                <p className="text-title-sm pr-8 leading-relaxed whitespace-pre-wrap text-[var(--color-text-1)]">
+              <GlassCard className="group relative border-l-2 border-l-[var(--color-border)] p-5 transition-all hover:border-l-[var(--accent)]">
+                <p className="text-title-sm pr-12 leading-relaxed whitespace-pre-wrap text-[var(--color-text-1)]">
                   {entry.text}
                 </p>
-                <div className="mt-3 flex items-center justify-between">
-                  <p className="text-meta text-[var(--color-text-3)]">
-                    {new Date(entry.created_at).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
+                <p className="text-meta mt-3 text-[var(--color-text-3)]">
+                  {new Date(entry.created_at).toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
                 <button
                   onClick={() => setDeleteEntryIndex(i)}
                   className="row-actions absolute top-4 right-4 rounded p-1.5 text-[var(--color-text-3)] hover:bg-[var(--status-danger)]/10 hover:text-[var(--status-danger)]"
@@ -431,7 +442,7 @@ export default function ThreadDetailPage({
       </div>
 
       {/* Fixed bottom input for thoughts */}
-      <div className="fixed right-0 bottom-0 left-0 z-40 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent p-4 md:pl-[220px]">
+      <div className="fixed right-0 bottom-0 left-0 z-40 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent p-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] md:left-[80px]">
         <div className="mx-auto max-w-2xl">
           <form onSubmit={handleAddEntry} className="relative">
             <TextareaAutosize
