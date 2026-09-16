@@ -861,65 +861,88 @@ function SettingsModalContent({
           >
             <div className="flex h-full min-h-0 w-full flex-col md:flex-row">
               {/* Sidebar Tabs */}
-              <div className="flex w-full shrink-0 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] p-4 pb-0 md:w-64 md:flex-col md:overflow-x-visible md:border-r md:border-b-0 md:pb-4">
-                <h2 className="mb-8 hidden px-2 text-xl font-bold text-[var(--color-text-1)] md:block">
-                  Settings
-                </h2>
-                <nav className="flex w-full gap-1 pb-2 md:flex-col md:pb-0">
-                  {TABS.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setSettingsActiveTab(tab.id)}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                        activeTab === tab.id
-                          ? "bg-[var(--color-surface)] text-[var(--color-text-1)]"
-                          : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
-                      }`}
-                    >
-                      <tab.icon className="h-4 w-4" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </nav>
+              <div className="relative w-full shrink-0 md:w-64">
+                <div className="flex w-full overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] p-4 pb-0 md:flex-col md:overflow-x-visible md:border-r md:border-b-0 md:pb-4">
+                  <h2 className="mb-8 hidden px-2 text-xl font-bold text-[var(--color-text-1)] md:block">
+                    Settings
+                  </h2>
+                  <nav className="flex w-full gap-1 pb-2 md:flex-col md:pb-0">
+                    {TABS.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setSettingsActiveTab(tab.id)}
+                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                          activeTab === tab.id
+                            ? "bg-[var(--color-surface)] text-[var(--color-text-1)]"
+                            : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
+                        }`}
+                      >
+                        <tab.icon className="h-4 w-4" />
+                        {tab.label}
+                      </button>
+                    ))}
+                  </nav>
 
-                <div className="mt-auto border-t border-[var(--color-border)] pt-4">
-                  <div className="mb-2 flex h-6 items-center gap-2 px-2 text-xs font-medium">
-                    <AnimatePresence mode="wait">
-                      {saveStatus === "saving" && (
-                        <m.div
-                          key="saving"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex items-center gap-1.5 text-[var(--color-text-3)]"
-                        >
-                          <UiIcon
-                            className="h-3.5 w-3.5 animate-spin"
-                            icon={Loader2}
-                          />{" "}
-                          Saving...
-                        </m.div>
-                      )}
-                      {saveStatus === "saved" && (
-                        <m.div
-                          key="saved"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex items-center gap-1.5 text-[var(--color-think)]"
-                        >
-                          <UiIcon className="h-3.5 w-3.5" icon={CheckCircle2} />{" "}
-                          Saved
-                        </m.div>
-                      )}
-                    </AnimatePresence>
+                  {/* Step 5 (task 2.6): edge gradient fades hint that the
+                      tab strip scrolls horizontally on narrow viewports —
+                      it previously gave no indication more tabs existed
+                      off-screen. Desktop's vertical layout doesn't scroll,
+                      so these are mobile-only. No precedent for this exact
+                      pattern was found elsewhere in the codebase
+                      (SearchModal/other list views don't scroll
+                      horizontally), so this introduces one, matching the
+                      strip's own surface color for a seamless fade. */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-4 bottom-2 left-0 w-8 bg-gradient-to-r from-[var(--color-surface)] to-transparent md:hidden"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-4 right-0 bottom-2 w-8 bg-gradient-to-l from-[var(--color-surface)] to-transparent md:hidden"
+                  />
+
+                  <div className="mt-auto border-t border-[var(--color-border)] pt-4">
+                    <div className="mb-2 flex h-6 items-center gap-2 px-2 text-xs font-medium">
+                      <AnimatePresence mode="wait">
+                        {saveStatus === "saving" && (
+                          <m.div
+                            key="saving"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-1.5 text-[var(--color-text-3)]"
+                          >
+                            <UiIcon
+                              className="h-3.5 w-3.5 animate-spin"
+                              icon={Loader2}
+                            />{" "}
+                            Saving...
+                          </m.div>
+                        )}
+                        {saveStatus === "saved" && (
+                          <m.div
+                            key="saved"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-1.5 text-[var(--color-think)]"
+                          >
+                            <UiIcon
+                              className="h-3.5 w-3.5"
+                              icon={CheckCircle2}
+                            />{" "}
+                            Saved
+                          </m.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--status-danger)] transition-colors hover:bg-[var(--status-danger-dim)]"
+                    >
+                      <UiIcon className="h-4 w-4" icon={LogOut} /> Sign Out
+                    </button>
                   </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--status-danger)] transition-colors hover:bg-[var(--status-danger-dim)]"
-                  >
-                    <UiIcon className="h-4 w-4" icon={LogOut} /> Sign Out
-                  </button>
                 </div>
               </div>
 
