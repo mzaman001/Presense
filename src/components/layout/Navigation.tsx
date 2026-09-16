@@ -41,7 +41,16 @@ import { getRitualDecision } from "@/lib/rituals";
    plus a client-only DOM read (never `getComputedStyle`) for the same
    SSR-safety reason as the original fix: this ran into
    `ReferenceError: getComputedStyle is not defined` in production
-   (Vercel, Aug 17-18) when it tried to read computed styles at SSR. */
+   (Vercel, Aug 17-18) when it tried to read computed styles at SSR.
+
+   Task 2.1: these stay real hex, not `var(--accent)` — this value is
+   handed to `Avatar`, whose `getAccessibleTextColor()` parses it as a
+   6-digit hex string to compute WCAG contrast (see Avatar.tsx's own
+   comment); a CSS custom property string would fail that regex and
+   silently fall back to black text. Kept in sync by hand with the
+   `--accent` value for each mode in globals.css; `NavigationAudit.test.ts`
+   pins both the values and this file's SSR-safety contract, so update
+   that test alongside this table if `--accent` ever changes. */
 const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
   dark: "#d97757",
   light: "#9c4a2e",
@@ -145,18 +154,34 @@ export function Sidebar() {
     };
   }, []);
 
+  /* Task 2.1 — label reveal was width-only (no fade) with manual `ml-*`
+     margins standing in for icon-label spacing; both read as cramped/abrupt.
+     Fixed geometry now: spacing between icon and label is the row's own
+     `gap-3` (see rowClass and the two non-row flex wrappers below) instead
+     of a margin toggled on the label itself. The transition combines
+     max-width and opacity but staggers them — opacity is faster (--dur-fast,
+     120ms) and starts 60ms after max-width begins (--dur-base, 200ms) — so
+     the label eases into its revealed width before it fades in, rather than
+     both animating in lockstep and reading as the text being "squeezed"
+     into place. Same easing (--ease-smooth) as the rest of the sidebar's
+     hover/focus transitions for consistency. */
   const labelClass = cn(
-    "ml-0 min-w-0 max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-ellipsis transition-[opacity,max-width,margin] duration-200",
-    "group-hover/sidebar:ml-3 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:ml-3 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100",
+    "min-w-0 max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-ellipsis",
+    "[transition:max-width_var(--dur-base)_var(--ease-smooth),opacity_var(--dur-fast)_var(--ease-smooth)_60ms]",
+    "group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100",
   );
   /* DS-16 — block label that appears only when the rail is expanded.
      DS-18 — lowered to meta-size signposts: captions label, nothing more. */
   const blockLabelClass = cn(
     "mx-2 hidden px-2 pt-3 pb-1 text-meta whitespace-nowrap uppercase tracking-[0.1em] text-[var(--text-decorative)] group-hover/sidebar:block group-focus-within/sidebar:block",
   );
-  /* DS-16 — row shared geometry; state colors are applied per row */
+  /* DS-16 — row shared geometry; state colors are applied per row.
+     Task 2.1 — row height moved off the magic `h-11` (44px) onto
+     `--sidebar-row-h` (48px, the existing --space-12 token) for more
+     vertical breathing room between rows; `gap-3` replaces the label's
+     former manual margin for icon-label spacing. */
   const rowClass =
-    "flex h-11 w-full items-center rounded-xl px-2 transition-colors";
+    "flex h-[var(--sidebar-row-h)] w-full items-center gap-3 rounded-xl px-2 transition-colors";
   /* DS-18 — Quick Capture stays the sole solid accent action only when the
      rail is expanded; in the collapsed rail it is a quiet outline so it
      never competes with the page pill (skill: one accessory at full volume). */
@@ -164,9 +189,11 @@ export function Sidebar() {
     "border border-[var(--accent-border)] text-[var(--accent)] hover:bg-[var(--accent-dim)]";
   const captureExpandedClass =
     "bg-[var(--accent)] text-[var(--text-on-accent)] group-hover/sidebar:bg-[var(--accent)] group-focus-within/sidebar:bg-[var(--accent)] shadow-[0_2px_12px_-2px_var(--accent)] group-hover/sidebar:shadow-[var(--shadow-button-primary)] group-focus-within/sidebar:shadow-[var(--shadow-button-primary)]";
-  /* DS-16 — relative so the inbox badge offsets to the tile corner */
+  /* DS-16 — relative so the inbox badge offsets to the tile corner.
+     Task 2.1 — tokenized onto --sidebar-icon-tile (--space-10, 40px);
+     value is unchanged, only the magic number is gone. */
   const iconClass =
-    "relative flex h-10 w-10 shrink-0 items-center justify-center";
+    "relative flex h-[var(--sidebar-icon-tile)] w-[var(--sidebar-icon-tile)] shrink-0 items-center justify-center";
   /* Phase 2 (design overhaul) — left accent bar (from the .nav-row-active
      CSS class) plus accent-colored text/icon is enough on its own now
      that every --space-* token is aliased to the one --accent (Foundation
@@ -181,14 +208,20 @@ export function Sidebar() {
         "sidebar group/sidebar fixed top-0 left-0 z-40 hidden h-dvh flex-col overflow-hidden md:flex",
         "border-r border-[var(--border-subtle)] bg-[var(--color-background)]",
         "w-[80px] focus-within:w-[248px] hover:w-[248px]",
-        "transition-[width] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+        /* Task 2.1 — duration tokenized onto --dur-base (same 200ms, no
+           behavior change); easing curve left as its own tuned
+           cubic-bezier rather than --ease-smooth — it's a steeper
+           ease-out than the design system's generic smooth easing,
+           picked for this specific 80px->248px width expand so it
+           doesn't feel sluggish at this larger delta. */
+        "transition-[width] duration-[var(--dur-base)] ease-[cubic-bezier(0.165,0.84,0.44,1)]",
       )}
     >
-      <div className="flex h-[80px] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4">
-        <div className="flex w-full min-w-0 items-center">
+      <div className="flex h-[var(--sidebar-header-h)] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4">
+        <div className="flex w-full min-w-0 items-center gap-3">
           {/* DS-16 — brand tile: a rounded-square container so the top of
               the rail is anchored in both collapsed and expanded states */}
-          <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center text-[var(--accent)]">
+          <div className="sidebar-brand-tile flex h-[var(--sidebar-icon-tile)] w-[var(--sidebar-icon-tile)] shrink-0 items-center justify-center text-[var(--accent)]">
             <BrandMark size={22} />
           </div>
           <span
@@ -614,7 +647,7 @@ export function Sidebar() {
           }
           title="Account"
           className={cn(
-            "absolute bottom-0 left-0 flex h-[60px] w-full items-center border-t border-[var(--border-subtle)] px-5 text-left transition-colors",
+            "absolute bottom-0 left-0 flex h-[var(--sidebar-account-h)] w-full items-center border-t border-[var(--border-subtle)] px-5 text-left transition-colors",
             "cursor-pointer hover:bg-[var(--surface-hover)]",
           )}
         >
@@ -626,7 +659,7 @@ export function Sidebar() {
             const subtitle =
               userSettings?.display_name && email ? email : "Account";
             return (
-              <div className="flex w-full min-w-0 items-center">
+              <div className="flex w-full min-w-0 items-center gap-3">
                 {/* DS-16 — account tile mirrors the brand tile: a rounded-square
                   container anchoring the bottom of the rail when collapsed.
                   DS-17 — fallback avatar color is the current single theme's
@@ -634,7 +667,7 @@ export function Sidebar() {
                   mode-aware), never a stale retired-theme color. MobileTopBar.tsx
                   imports this same `avatarAccentFallback()` so the desktop and
                   mobile fallbacks can never drift apart again. */}
-                <div className="sidebar-brand-tile flex h-10 w-10 shrink-0 items-center justify-center">
+                <div className="sidebar-brand-tile flex h-[var(--sidebar-icon-tile)] w-[var(--sidebar-icon-tile)] shrink-0 items-center justify-center">
                   <Avatar
                     name={displayName}
                     color={userSettings.avatar_color || avatarAccentFallback()}

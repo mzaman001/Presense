@@ -105,6 +105,18 @@
   /* --blur-elevated moved to GLASS RECIPE block */
   accent-color: var(--accent);
 
+  /* Sidebar (task 2.1, DS-2x) — component chrome sizes that were previously
+     arbitrary Tailwind pixel values (`h-[80px]`, `h-[60px]`, `h-11`) with no
+     shared scale behind them. Row height and icon tile size reuse the
+     existing --space-* scale (defined below) since they land on it exactly;
+     header/account-footer height have no scale equivalent (they're fixed
+     chrome, not a spacing step) so they get dedicated tokens here, same
+     pattern as --touch-target/--sheet-radius above. */
+  --sidebar-header-h: 80px;
+  --sidebar-account-h: 60px;
+  --sidebar-row-h: var(--space-12); /* 48px — was 44px (h-11) */
+  --sidebar-icon-tile: var(--space-10); /* 40px — unchanged, now tokenized */
+
   /* === BACKGROUND SYSTEM — "sunset" (dark) === */
   --bg-base: #17140f;
   --bg-elevated: #1d1913;
