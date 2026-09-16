@@ -357,6 +357,11 @@ function CategoryManager({
     if (!trimmed || cats.includes(trimmed)) return;
     updateSetting(categoriesKey, [...cats, trimmed]);
     setNewCat("");
+    // Step 4 (task 2.6): this action had no feedback at all before —
+    // matches the Think page's per-action toast pattern (toast.success
+    // right where the action happened) rather than relying solely on the
+    // debounced autosave indicator.
+    toast.success(`Added category "${trimmed}"`);
   };
 
   return (
@@ -943,8 +948,43 @@ function SettingsModalContent({
                   </div>
                 ) : (
                   <div className="max-w-2xl p-10">
-                    <h3 className="mb-8 border-b border-[var(--color-border)] pb-4 text-2xl font-bold text-[var(--color-text-1)]">
+                    <h3 className="mb-8 flex items-center gap-3 border-b border-[var(--color-border)] pb-4 text-2xl font-bold text-[var(--color-text-1)]">
                       {TABS.find((t) => t.id === activeTab)?.label}
+                      {/* Step 4 (task 2.6): inline save feedback near the
+                          point of edit, matching the Think page's
+                          toast-per-action pattern — the sidebar-footer
+                          indicator is far from whatever field was just
+                          touched, so this mirrors that status right at the
+                          top of the tab the user is editing. */}
+                      <AnimatePresence mode="wait">
+                        {saveStatus === "saving" && (
+                          <m.span
+                            key="saving"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-3)]"
+                          >
+                            <UiIcon
+                              className="h-3 w-3 animate-spin"
+                              icon={Loader2}
+                            />
+                            Saving...
+                          </m.span>
+                        )}
+                        {saveStatus === "saved" && (
+                          <m.span
+                            key="saved"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-think)]"
+                          >
+                            <UiIcon className="h-3 w-3" icon={CheckCircle2} />
+                            Saved
+                          </m.span>
+                        )}
+                      </AnimatePresence>
                     </h3>
 
                     {activeTab === "account" && (
