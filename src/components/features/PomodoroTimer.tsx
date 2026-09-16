@@ -546,17 +546,13 @@ export function PomodoroTimer() {
               title={isRunning ? "Pause" : "Play"}
             >
               {isRunning ? (
-                <UiIcon
-                  size={20}
-                  strokeWidth={0}
-                  className="fill-black"
-                  icon={Pause}
-                />
+                <UiIcon size={20} strokeWidth={0} fill="black" icon={Pause} />
               ) : (
                 <UiIcon
                   size={20}
                   strokeWidth={0}
-                  className="ml-0.5 fill-black"
+                  fill="black"
+                  className="ml-0.5"
                   icon={Play}
                 />
               )}
