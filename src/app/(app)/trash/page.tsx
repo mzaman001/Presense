@@ -235,7 +235,7 @@ export default function TrashPage() {
           {items.map((entry) => (
             <GlassCard
               key={`${entry.type}-${entry.id}`}
-              className="group flex flex-wrap items-center justify-between gap-3 p-4"
+              className="group flex flex-col items-start gap-3 p-4 md:flex-row md:items-center md:justify-between"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -253,17 +253,17 @@ export default function TrashPage() {
                     : "Unknown"}
                 </p>
               </div>
-              <div className="row-actions flex items-center gap-2">
+              <div className="row-actions flex w-full shrink-0 items-center gap-2 md:w-auto">
                 <button
                   onClick={() => handleRestore(entry)}
-                  className="flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[var(--color-accent)]/10 px-3 text-xs font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/20"
+                  className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--color-accent)]/10 px-3 text-xs font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/20 md:flex-none"
                 >
                   <UiIcon className="h-3.5 w-3.5" icon={RefreshCw} />
                   Restore
                 </button>
                 <button
                   onClick={() => setItemToPermanentDelete(entry)}
-                  className="flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[var(--status-danger-dim)] px-3 text-xs font-medium text-[var(--status-danger)] transition-colors hover:bg-[var(--status-danger-border)]"
+                  className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--status-danger-dim)] px-3 text-xs font-medium text-[var(--status-danger)] transition-colors hover:bg-[var(--status-danger-border)] md:flex-none"
                 >
                   <UiIcon className="h-3.5 w-3.5" icon={Trash2} />
                   Delete forever

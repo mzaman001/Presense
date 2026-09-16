@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -119,6 +119,27 @@ export function CalendarView({
   );
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // WeekView's 7-column grid (min-w-[800px]) and MonthView's grid
+  // (min-w-[700px]) don't fit a phone screen — the only viable layout below
+  // `md` is the single-day view (WeekView with days=1, already used above as
+  // the "day" subview). Lock to it on narrow viewports and un-lock when the
+  // viewport grows, so a stale `?subview=week` URL or a view chosen before
+  // resizing/rotating never leaves the grid views stuck in a state that
+  // requires horizontal scrolling to use.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const enforceMobileDayView = () => {
+      if (mediaQuery.matches && subView !== "day") {
+        setSubView("day");
+      }
+    };
+    enforceMobileDayView();
+    mediaQuery.addEventListener("change", enforceMobileDayView);
+    return () => mediaQuery.removeEventListener("change", enforceMobileDayView);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subView]);
 
   const filteredTasks = React.useMemo(() => {
     if (!categoryFilter || categoryFilter === "all") return tasks;
@@ -290,16 +311,16 @@ export function CalendarView({
       }}
     >
       {/* Calendar toolbar */}
-      <div className="mb-4 flex shrink-0 items-center justify-between">
+      <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-2">
         {/* Navigation */}
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
           <button
             onClick={navigateToday}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-surface)]"
+            className="shrink-0 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-surface)]"
           >
             Today
           </button>
-          <div className="flex items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <button
               onClick={navigatePrev}
               className="rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
@@ -313,13 +334,17 @@ export function CalendarView({
               <UiIcon size={16} icon={ChevronRight} />
             </button>
           </div>
-          <h2 className="min-w-[200px] text-sm font-semibold text-[var(--color-text-1)]">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--color-text-1)] sm:min-w-[200px] sm:flex-none">
             {getHeaderLabel()}
           </h2>
         </div>
 
-        {/* Week / Month toggle */}
-        <div className="flex rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5">
+        {/* Week / Month toggle — below `md` the calendar is locked to the
+            single-day view (see the enforceMobileDayView effect above)
+            since Week/Month's grids need horizontal scrolling to be usable
+            at phone widths, so the toggle that would pick them is hidden
+            there rather than offering a choice that immediately reverts. */}
+        <div className="hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5 md:flex">
           {(["day", "week", "month"] as CalendarSubView[]).map((v) => (
             <button
               key={v}
