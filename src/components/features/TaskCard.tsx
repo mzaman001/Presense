@@ -99,6 +99,11 @@ export const TaskCard = React.memo(
     const subtasks = readSubtasks(task.subtasks);
     const completedSubtasks = subtasks.filter((st) => st.completed).length;
     const priority = Number(task.priority) || 4;
+    const categoryColor = resolveCategoryColor(
+      task.category,
+      userSettings?.do_category_colors,
+      "var(--text-muted)",
+    );
 
     const priorityDotColor =
       priority === 1
@@ -257,18 +262,21 @@ export const TaskCard = React.memo(
           <GlassCard
             onClick={() => openEditPanel(task)}
             className={cn(
-              "group relative cursor-pointer !rounded-2xl p-4 transition-all",
+              "group relative min-h-[112px] cursor-pointer !rounded-2xl p-4 transition-all",
               isOverdue && "border-[var(--status-overdue)]/30",
               isCompleting &&
                 "border-[var(--status-done)]/40 bg-[var(--status-done)]/[0.06]",
             )}
           >
-            {priority < 4 && (
-              <div
-                className="absolute top-3 right-9 h-2 w-2 rounded-full"
-                style={{ background: priorityDotColor }}
-              />
-            )}
+            {/* Step 3: the dot now always renders, including for the
+                default/Low priority (4) — it previously hid entirely for
+                priority 4, which is the most common case, so most cards
+                showed no priority signal at all. Low priority gets its own
+                subtle (muted-text-colored) dot rather than no dot. */}
+            <div
+              className="absolute top-3 right-9 h-2 w-2 rounded-full"
+              style={{ background: priorityDotColor }}
+            />
 
             {/* BUG-44 — hover/focus trash affordance (desktop pointer users).
                 Stops propagation so the edit panel doesn't open on delete. */}
@@ -308,31 +316,37 @@ export const TaskCard = React.memo(
               </m.button>
 
               <div className="min-w-0 flex-1 pr-4">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex items-center gap-1.5">
                   {isOverdue && (
                     <span
-                      className="text-caption font-bold tracking-widest uppercase"
-                      style={{ color: "var(--space-do)" }}
+                      className="text-caption rounded-full px-2 py-0.5 font-bold tracking-widest uppercase"
+                      style={{
+                        color: "var(--status-overdue)",
+                        background: "var(--status-overdue-dim)",
+                        border: "0.5px solid var(--status-overdue-border)",
+                      }}
                     >
                       Overdue
                     </span>
                   )}
                   {!isOverdue && label === "Today" && (
                     <span
-                      className="text-caption font-bold tracking-widest uppercase"
-                      style={{ color: "var(--status-today)" }}
+                      className="text-caption rounded-full px-2 py-0.5 font-bold tracking-widest uppercase"
+                      style={{
+                        color: "var(--status-today)",
+                        background: "var(--status-today-dim)",
+                        border: "0.5px solid var(--status-today-border)",
+                      }}
                     >
                       Due Today
                     </span>
                   )}
                   <span
-                    className="text-caption font-semibold capitalize"
+                    className="text-caption rounded-full px-2 py-0.5 font-semibold capitalize"
                     style={{
-                      color: resolveCategoryColor(
-                        task.category,
-                        userSettings?.do_category_colors,
-                        "var(--text-muted)",
-                      ),
+                      color: categoryColor,
+                      background: `color-mix(in srgb, ${categoryColor} 15%, transparent)`,
+                      border: `0.5px solid color-mix(in srgb, ${categoryColor} 30%, transparent)`,
                     }}
                   >
                     {task.category}
@@ -425,7 +439,7 @@ export const TaskCard = React.memo(
                     title="Time spent on this task"
                   >
                     <UiIcon
-                      size={12}
+                      size={14}
                       strokeWidth={1.5}
                       style={{ color: "var(--accent)" }}
                       icon={Timer}
@@ -448,7 +462,7 @@ export const TaskCard = React.memo(
                       }}
                     >
                       <UiIcon
-                        size={12}
+                        size={14}
                         strokeWidth={1.5}
                         style={{ color: "var(--text-3)" }}
                         icon={Clock}
@@ -495,11 +509,23 @@ export const TaskCard = React.memo(
 
                 <Button
                   variant="ghost"
+                  size="icon"
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveTimer({ taskId: task.id, taskTitle: task.title });
                   }}
-                  className=""
+                  /* Step 4: this was an icon-only button relying on the
+                     Button component's *default* size (h-10, with px-5
+                     horizontal padding meant for a labeled button) — that
+                     accidentally produced a wide, off-square hit area
+                     instead of a proper icon button. `size="icon"` is the
+                     documented convention for icon-only buttons in this
+                     component, but its own 36x36 base falls under the
+                     ~44px touch-target guideline, so it's bumped to 40x40
+                     here (h-10 w-10) to stay closer to that minimum while
+                     the tighter, un-padded rect still reads correctly next
+                     to the other 28-32px footer chips. */
+                  className="h-10 w-10 rounded-[var(--radius-md)]"
                   style={{
                     background: "var(--accent-dim)",
                     color: "var(--accent)",
@@ -508,7 +534,7 @@ export const TaskCard = React.memo(
                   title="Start focus session"
                 >
                   <UiIcon
-                    size={14}
+                    size={16}
                     strokeWidth={0}
                     className="fill-current"
                     icon={Play}
