@@ -708,6 +708,12 @@ export function BottomNav() {
       <div className="flex items-center justify-around px-2">
         {mobileNavItems.map((item) => {
           if (item.isAction) {
+            /* Step 3 (task 2.6a) — deliberately labeled, not left ambiguous:
+               the FAB sits between three labeled siblings, so leaving it bare
+               reads as an orphaned control rather than a distinct affordance.
+               A one-word label under the circle costs little vertical space
+               (the icon already pokes above the bar via -mt-6) and makes the
+               row scan consistently left-to-right. */
             return (
               <button
                 key="capture"
@@ -720,6 +726,9 @@ export function BottomNav() {
                 <div className="relative -mt-6 flex h-12 w-12 items-center justify-center rounded-full border-[4px] border-[var(--color-background)] bg-[var(--color-text-1)] text-[var(--color-background)] shadow-lg">
                   <UiIcon size={24} strokeWidth={2} icon={Plus} />
                 </div>
+                <span className="text-caption font-medium text-[var(--color-text-1)]">
+                  Capture
+                </span>
               </button>
             );
           }
@@ -732,6 +741,7 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               prefetch={true}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 // Minimum 44px touch target per WCAG 2.5.5
                 "flex min-h-[56px] min-w-[44px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-2 transition-all active:scale-95",
@@ -741,18 +751,30 @@ export function BottomNav() {
               )}
             >
               <div className="relative">
+                {/* Step 1 (task 2.6a) — active state now reads as an
+                    icon weight/fill change (outline -> filled + heavier
+                    stroke), not just the accent color: HIG calls for
+                    conveying selection by more than color alone. House and
+                    MessageSquare have closed shapes, so `fill` genuinely
+                    fills them in; Check is an open stroke path with no fill
+                    area, so it relies on the strokeWidth jump alone — either
+                    way every icon in this bar gets a real weight change when
+                    active, not just a recolor.
+                    Step 2 — size bumped 20 -> 22, closer to the FAB's 24px
+                    without cramping the flex-1 item width at phone widths. */}
                 <Icon
-                  size={20}
-                  strokeWidth={1.5}
+                  size={22}
+                  strokeWidth={isActive ? 2.25 : 1.5}
+                  fill={isActive ? "currentColor" : "none"}
                   className={cn(
-                    "shrink-0 transition-colors",
+                    "shrink-0 transition-all",
                     isActive ? "text-[var(--accent)]" : "text-[var(--text-3)]",
                   )}
                 />
                 {isActive && (
                   <m.div
                     layoutId="bottom-nav-active"
-                    className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--accent)]"
+                    className="absolute -bottom-1.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--accent)]"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
