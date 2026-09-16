@@ -32,9 +32,27 @@ describe("CaptureModal — task 2.6b one-tap capture default", () => {
       captureModalPrefill: null,
       userSettings: {},
     });
+
+    // handleQuickCapture/handleConfirm schedule a real 800ms setTimeout to
+    // auto-close the modal after a successful save. Under a full-suite run
+    // with real timers, a straggling timeout from one test can fire mid-way
+    // through a LATER test and unmount its component or clobber a
+    // mockImplementationOnce that test set up for itself — this is what
+    // made this file flaky only in `npm test`, never in isolation.
+    //
+    // Fake timers (with real-time auto-advance) give this suite full control
+    // over that 800ms window: `waitFor` below still resolves normally
+    // because shouldAdvanceTime keeps fake time moving in step with real
+    // time, but afterEach can now guarantee no timer survives past its own
+    // test.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 
   afterEach(() => {
+    // Flush anything still pending before restoring real timers so a
+    // straggling 800ms auto-close timer can never fire during a later test.
+    vi.clearAllTimers();
+    vi.useRealTimers();
     useAppStore.setState({ isCaptureModalOpen: false });
   });
 
