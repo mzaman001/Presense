@@ -1115,113 +1115,126 @@ function SettingsModalContent({
                     )}
 
                     {activeTab === "notifications" && (
-                      <div className="space-y-6">
-                        <div className="mb-6 flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Master Toggle
+                      <div className="space-y-8">
+                        <div className="space-y-3">
+                          <div className="text-label text-[var(--text-3)]">
+                            Delivery
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                              <div>
+                                <div className="font-medium text-[var(--color-text-1)]">
+                                  Master Toggle
+                                </div>
+                                <div className="text-sm text-[var(--color-text-3)]">
+                                  Enable all notifications
+                                </div>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  updateSetting(
+                                    "notifications_enabled",
+                                    !settings.notifications_enabled,
+                                  )
+                                }
+                                className={`toggle-track ${settings.notifications_enabled ? "on" : ""}`}
+                              >
+                                <div className="toggle-thumb" />
+                              </button>
                             </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Enable all notifications
+                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                              <div>
+                                <div className="font-medium text-[var(--color-text-1)]">
+                                  Pomodoro Finish Sound
+                                </div>
+                                <div className="text-sm text-[var(--color-text-3)]">
+                                  Play a sound when timer completes
+                                </div>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  updateSetting(
+                                    "pomodoro_sound",
+                                    !settings.pomodoro_sound,
+                                  )
+                                }
+                                className={`toggle-track ${settings.pomodoro_sound ? "on" : ""}`}
+                              >
+                                <div className="toggle-thumb" />
+                              </button>
                             </div>
                           </div>
-                          <button
-                            onClick={() =>
-                              updateSetting(
-                                "notifications_enabled",
-                                !settings.notifications_enabled,
-                              )
-                            }
-                            className={`toggle-track ${settings.notifications_enabled ? "on" : ""}`}
-                          >
-                            <div className="toggle-thumb" />
-                          </button>
                         </div>
 
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Daily Briefing
+                        <div className="space-y-3">
+                          <div className="text-label text-[var(--text-3)]">
+                            Notify me about
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                              <div>
+                                <div className="font-medium text-[var(--color-text-1)]">
+                                  Daily Briefing
+                                </div>
+                                <div className="text-sm text-[var(--color-text-3)]">
+                                  Receive a summary of today&apos;s tasks
+                                </div>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  updateSetting(
+                                    "daily_briefing",
+                                    !settings.daily_briefing,
+                                  )
+                                }
+                                className={`toggle-track ${settings.daily_briefing ? "on" : ""}`}
+                              >
+                                <div className="toggle-thumb" />
+                              </button>
                             </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Receive a summary of today&apos;s tasks
+                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                              <div>
+                                <div className="font-medium text-[var(--color-text-1)]">
+                                  Deadline Reminders
+                                </div>
+                                <div className="text-sm text-[var(--color-text-3)]">
+                                  Get notified as deadlines approach
+                                </div>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  updateSetting(
+                                    "notif_overdue",
+                                    !settings.notif_overdue,
+                                  )
+                                }
+                                className={`toggle-track ${settings.notif_overdue ? "on" : ""}`}
+                              >
+                                <div className="toggle-thumb" />
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                              <div>
+                                <div className="font-medium text-[var(--color-text-1)]">
+                                  Stale Location Alerts
+                                </div>
+                                <div className="text-sm text-[var(--color-text-3)]">
+                                  Remind to update locations older than 90 days
+                                </div>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  updateSetting(
+                                    "notif_stale_threads",
+                                    !settings.notif_stale_threads,
+                                  )
+                                }
+                                className={`toggle-track ${settings.notif_stale_threads ? "on" : ""}`}
+                              >
+                                <div className="toggle-thumb" />
+                              </button>
                             </div>
                           </div>
-                          <button
-                            onClick={() =>
-                              updateSetting(
-                                "daily_briefing",
-                                !settings.daily_briefing,
-                              )
-                            }
-                            className={`toggle-track ${settings.daily_briefing ? "on" : ""}`}
-                          >
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Pomodoro Finish Sound
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Play a sound when timer completes
-                            </div>
-                          </div>
-                          <button
-                            onClick={() =>
-                              updateSetting(
-                                "pomodoro_sound",
-                                !settings.pomodoro_sound,
-                              )
-                            }
-                            className={`toggle-track ${settings.pomodoro_sound ? "on" : ""}`}
-                          >
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Deadline Reminders
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Get notified as deadlines approach
-                            </div>
-                          </div>
-                          <button
-                            onClick={() =>
-                              updateSetting(
-                                "notif_overdue",
-                                !settings.notif_overdue,
-                              )
-                            }
-                            className={`toggle-track ${settings.notif_overdue ? "on" : ""}`}
-                          >
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Stale Location Alerts
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Remind to update locations older than 90 days
-                            </div>
-                          </div>
-                          <button
-                            onClick={() =>
-                              updateSetting(
-                                "notif_stale_threads",
-                                !settings.notif_stale_threads,
-                              )
-                            }
-                            className={`toggle-track ${settings.notif_stale_threads ? "on" : ""}`}
-                          >
-                            <div className="toggle-thumb" />
-                          </button>
                         </div>
                       </div>
                     )}
@@ -1327,32 +1340,32 @@ function SettingsModalContent({
                               <div className="toggle-thumb" />
                             </button>
                           </div>
-                        </div>
 
-                        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                          <label className="text-label mb-3 block text-[var(--text-3)]">
-                            Long Break After (sessions)
-                          </label>
-                          <div className="flex flex-wrap gap-2">
-                            {[2, 3, 4, 5].map((n) => (
-                              <Button
-                                variant="secondary"
-                                key={n}
-                                onClick={() =>
-                                  updateSetting(
-                                    "pomodoro_long_break_interval",
-                                    n,
-                                  )
-                                }
-                                className={cn(
-                                  "",
-                                  (settings.pomodoro_long_break_interval ||
-                                    4) === n && "active",
-                                )}
-                              >
-                                {n}
-                              </Button>
-                            ))}
+                          <div className="border-t border-[var(--color-border)] pt-4">
+                            <label className="text-label mb-2 block text-[var(--text-3)]">
+                              Long Break After (sessions)
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {[2, 3, 4, 5].map((n) => (
+                                <Button
+                                  variant="secondary"
+                                  key={n}
+                                  onClick={() =>
+                                    updateSetting(
+                                      "pomodoro_long_break_interval",
+                                      n,
+                                    )
+                                  }
+                                  className={cn(
+                                    "",
+                                    (settings.pomodoro_long_break_interval ||
+                                      4) === n && "active",
+                                  )}
+                                >
+                                  {n}
+                                </Button>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
