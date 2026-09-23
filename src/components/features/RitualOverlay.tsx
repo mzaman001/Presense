@@ -904,7 +904,7 @@ export function RitualOverlay({
                     transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                   >
                     {triageTasks.length === 0 ? (
-                      <RitualEmpty icon={Check} title="Nothing loose.">
+                      <RitualEmpty icon={Check} title="Nothing to sort.">
                         Your inbox is clear and nothing is overdue.
                       </RitualEmpty>
                     ) : (
@@ -942,7 +942,10 @@ export function RitualOverlay({
                     className="space-y-6"
                   >
                     {todayTasks.length === 0 ? (
-                      <RitualEmpty icon={Sun} title="An open day.">
+                      <RitualEmpty
+                        icon={Sun}
+                        title="Nothing planned for today."
+                      >
                         Nothing is set for today yet. Go back and choose
                         &ldquo;Today&rdquo; for anything that matters.
                       </RitualEmpty>

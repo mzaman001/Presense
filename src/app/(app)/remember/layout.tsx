@@ -14,12 +14,12 @@ export default function RememberLayout({
     <div className="space-y-6">
       <PageHeader
         title="Remember"
-        description="Where things live, so your mind doesn't have to hold it."
+        description="Where you keep things, so you don't have to remember."
       />
 
       <ContextualTip
         id="remember_space"
-        title="Your personal inventory"
+        title="Track where things are"
         description="Note where things are kept, and get a nudge about ones you haven't checked in a while."
       />
 

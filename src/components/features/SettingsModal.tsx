@@ -1285,7 +1285,7 @@ function SettingsModalContent({
                         <SettingsGroup>
                           <SettingRow
                             label="Theme"
-                            description="Sunrise, sunset, or follow your device."
+                            description="Light, dark, or match your device."
                             stack
                           >
                             <SegmentedControl

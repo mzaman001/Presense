@@ -263,7 +263,7 @@ export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
 
             <div className="space-y-2">
               <h1 className="font-heading text-3xl font-semibold tracking-tight text-[var(--text-1)] sm:text-4xl">
-                Your external brain, finally somewhere calm.
+                Everything you need to remember, in one place.
               </h1>
               <p className="text-body text-[var(--text-3)]">
                 Presense captures what you&apos;d otherwise forget — tasks,
