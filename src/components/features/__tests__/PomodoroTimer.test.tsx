@@ -1,7 +1,14 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@/lib/__tests__/test-utils";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@/lib/__tests__/test-utils";
 import { useAppStore } from "@/store/useAppStore";
 import { PomodoroTimer } from "@/components/features/PomodoroTimer";
 
@@ -46,9 +53,71 @@ describe("PomodoroTimer close/end flow", () => {
   });
 
   afterEach(() => {
+    cleanup();
     useAppStore.setState({ activeTimer: null });
     localStorage.removeItem("pomodoro_state");
+    vi.useRealTimers();
   });
+
+  it("focuses the primary control and wraps Tab in both directions", () => {
+    vi.useFakeTimers();
+    renderTimer();
+
+    const timer = screen.getByRole("dialog", { name: "Focus session" });
+    expect(timer).toHaveAttribute("aria-modal", "true");
+    act(() => vi.advanceTimersByTime(350));
+    expect(within(timer).getByRole("button", { name: "Pause" })).toHaveFocus();
+
+    const first = within(timer).getByRole("button", {
+      name: "Close focus session",
+    });
+    const last = within(timer).getByRole("button", { name: "Skip phase" });
+    last.focus();
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+    expect(last).toHaveFocus();
+  });
+
+  it.each([0, 350])(
+    "leaves confirmation focus to Radix when opened after %i ms and resumes after Escape",
+    (delay) => {
+      vi.useFakeTimers();
+      renderTimer();
+      act(() => vi.advanceTimersByTime(delay));
+      const primary = screen.getByRole("button", { name: "Pause" });
+      const primaryFocus = vi.spyOn(primary, "focus");
+      fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+
+      const confirm = screen.getByRole("dialog", {
+        name: "End focus session?",
+      });
+      const cancel = within(confirm).getByRole("button", { name: "Cancel" });
+      const close = within(confirm).getByRole("button", { name: "Close" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(confirm).toContainElement(document.activeElement as HTMLElement);
+      expect(primaryFocus).not.toHaveBeenCalled();
+      close.focus();
+      fireEvent.keyDown(close, { key: "Tab" });
+      expect(cancel).toHaveFocus();
+      fireEvent.keyDown(cancel, { key: "Tab", shiftKey: true });
+      expect(close).toHaveFocus();
+
+      fireEvent.keyDown(close, { key: "Escape" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(
+        screen.queryByRole("dialog", { name: "End focus session?" }),
+      ).not.toBeInTheDocument();
+      expect(useAppStore.getState().activeTimer).not.toBeNull();
+      expect(primary).toHaveFocus();
+      const last = screen.getByRole("button", { name: "Skip phase" });
+      last.focus();
+      fireEvent.keyDown(last, { key: "Tab" });
+      expect(
+        screen.getByRole("button", { name: "Close focus session" }),
+      ).toHaveFocus();
+    },
+  );
 
   it("renders the confirm-end dialog above the timer overlay (regression: z-index collision)", () => {
     const { container } = renderTimer();
@@ -92,11 +161,13 @@ describe("PomodoroTimer close/end flow", () => {
     expect(useAppStore.getState().activeTimer).not.toBeNull();
   });
 
-  it("confirming End Session clears activeTimer and dismisses the overlay", () => {
+  it("confirming End Session clears activeTimer and dismisses the overlay", async () => {
     renderTimer();
 
     fireEvent.click(screen.getByRole("button", { name: "End session" }));
-    fireEvent.click(screen.getByRole("button", { name: "End Session" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "End Session" }));
+    });
 
     expect(useAppStore.getState().activeTimer).toBeNull();
   });

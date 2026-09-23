@@ -281,7 +281,8 @@ export function CaptureModal() {
     try {
       await persistRoutedItems(routedItems, taskExtras);
       setSaved(true);
-      toast.success("Successfully captured!");
+      haptics.success();
+      toast.success("Captured");
       setTimeout(() => setCaptureModalOpen(false), 800);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "An error occurred";
@@ -324,7 +325,8 @@ export function CaptureModal() {
         return;
       }
       setSaved(true);
-      toast.success("Successfully captured!");
+      haptics.success();
+      toast.success("Captured");
       setTimeout(() => setCaptureModalOpen(false), 800);
     } catch {
       setRoutedItems([
@@ -362,7 +364,7 @@ export function CaptureModal() {
       >
         <div className="relative mx-auto w-full max-w-2xl">
           {/* Input row */}
-          <div className="relative flex items-center gap-3 rounded-t-2xl border-b border-[rgba(255,255,255,0.08)] px-5 py-4">
+          <div className="relative flex items-center gap-3 rounded-t-2xl border-b border-[var(--border-subtle)] px-5 py-4">
             {routedItems ? (
               <UiIcon
                 className="h-5 w-5 shrink-0 animate-pulse text-[var(--color-accent)]"
@@ -383,7 +385,7 @@ export function CaptureModal() {
               autoCapitalize="sentences"
               autoCorrect="off"
               placeholder='Capture anything... "Remind me to...", "Keys are in...", "I think..."'
-              className="text-title-sm flex-1 border-none bg-transparent font-medium text-[var(--color-text-1)] outline-none placeholder:text-[rgba(255,255,255,0.25)]"
+              className="text-title-sm flex-1 border-none bg-transparent font-medium text-[var(--color-text-1)] outline-none placeholder:text-[var(--text-decorative)]"
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
               disabled={isRouting || isCapturing}
@@ -436,7 +438,7 @@ export function CaptureModal() {
                         handleConfirm();
                       }
                     }}
-                    className="input-title w-full border-none bg-transparent text-lg font-semibold text-[var(--color-text-1)] outline-none placeholder:text-[rgba(255,255,255,0.25)]"
+                    className="input-title w-full border-none bg-transparent text-lg font-semibold text-[var(--color-text-1)] outline-none placeholder:text-[var(--text-decorative)]"
                   />
 
                   <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-2)]">

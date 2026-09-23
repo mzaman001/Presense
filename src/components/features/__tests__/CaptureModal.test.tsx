@@ -149,7 +149,7 @@ describe("CaptureModal — task 2.6b one-tap capture default", () => {
       error: { message: "network down" },
     }));
 
-    const { container } = render(<CaptureModal />);
+    render(<CaptureModal />);
 
     const input = screen.getByPlaceholderText(/Capture anything/i);
     fireEvent.change(input, { target: { value: "Buy milk" } });
@@ -161,7 +161,8 @@ describe("CaptureModal — task 2.6b one-tap capture default", () => {
     // The routed title survives into the review screen (as the chip's own
     // editable title field) so the user can retry rather than having their
     // capture silently disappear.
-    const chipTitleInput = container.querySelector(".input-title");
+    // The Sheet renders into document.body (a portal), not the container.
+    const chipTitleInput = document.body.querySelector(".input-title");
     expect(chipTitleInput).toHaveValue("Buy milk");
   });
 });

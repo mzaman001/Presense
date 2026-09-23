@@ -113,6 +113,14 @@ export const TaskCard = React.memo(
           : priority === 3
             ? "var(--priority-medium)"
             : "var(--text-muted)";
+    const priorityLabel =
+      priority === 1
+        ? "Urgent"
+        : priority === 2
+          ? "High"
+          : priority === 3
+            ? "Medium"
+            : "Low";
     const isCompleting = completing === task.id;
 
     /* BUG-44 — swipe and hover trash button share one soft-delete path:
@@ -187,7 +195,7 @@ export const TaskCard = React.memo(
           animate(dragX, 0, { duration: 0.3 });
         }
       } else {
-        animate(dragX, 0, { type: "spring", stiffness: 400, damping: 30 });
+        animate(dragX, 0, { type: "spring", stiffness: 400, damping: 40 });
       }
     };
 
@@ -262,44 +270,29 @@ export const TaskCard = React.memo(
           <GlassCard
             onClick={() => openEditPanel(task)}
             className={cn(
-              "group relative min-h-[112px] cursor-pointer !rounded-2xl p-4 transition-all",
+              "group relative cursor-pointer !rounded-2xl p-4 transition",
               isOverdue && "border-[var(--status-overdue)]/30",
               isCompleting &&
                 "border-[var(--status-done)]/40 bg-[var(--status-done)]/[0.06]",
             )}
           >
-            {/* Step 3: the dot now always renders, including for the
-                default/Low priority (4) — it previously hid entirely for
-                priority 4, which is the most common case, so most cards
-                showed no priority signal at all. Low priority gets its own
-                subtle (muted-text-colored) dot rather than no dot. */}
-            <div
-              className="absolute top-3 right-9 h-2 w-2 rounded-full"
-              style={{ background: priorityDotColor }}
-            />
-
             {/* BUG-44 — hover/focus trash affordance (desktop pointer users).
                 Stops propagation so the edit panel doesn't open on delete. */}
             <button
               type="button"
               onClick={handleHoverDeleteClick}
               aria-label={`Move ${String(task.title ?? "task").slice(0, 40)} to trash`}
-              className="absolute top-2 right-2 hidden h-7 w-7 items-center justify-center rounded-lg text-[var(--status-danger)] opacity-0 transition-opacity hover:bg-[var(--status-danger)]/15 focus-visible:opacity-100 md:flex"
+              className="row-actions absolute top-2 right-2 hidden size-9 items-center justify-center rounded-lg text-[var(--text-3)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)] md:flex"
             >
               <UiIcon className="h-4 w-4" icon={Trash2} />
             </button>
 
             <div className="flex items-start gap-3">
               <m.button
+                type="button"
                 onClick={(e) => completeTask(e, task.id)}
-                animate={
-                  isCompleting
-                    ? {
-                        scale: [1, 1.2, 1],
-                        backgroundColor: "rgba(74,222,128,1)",
-                      }
-                    : {}
-                }
+                aria-label={`Complete ${String(task.title ?? "task").slice(0, 40)}`}
+                animate={isCompleting ? { scale: [1, 1.15, 1] } : {}}
                 transition={{ duration: 0.3, ease: "easeOut" }}
                 className={cn(
                   "checkbox mt-0.5 shrink-0",
@@ -308,7 +301,7 @@ export const TaskCard = React.memo(
               >
                 {isCompleting && (
                   <UiIcon
-                    className="h-3.5 w-3.5 text-white"
+                    className="h-3.5 w-3.5 text-[var(--text-on-accent)]"
                     strokeWidth={3}
                     icon={Check}
                   />
@@ -317,6 +310,16 @@ export const TaskCard = React.memo(
 
               <div className="min-w-0 flex-1 pr-4">
                 <div className="mb-1 flex items-center gap-1.5">
+                  {/* Priority dot: always shown (Low gets a muted dot) and
+                      named, so it isn't an unexplained speck. Inline with the
+                      chips, clear of the hover delete button. */}
+                  <span
+                    role="img"
+                    aria-label={`${priorityLabel} priority`}
+                    title={`${priorityLabel} priority`}
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ background: priorityDotColor }}
+                  />
                   {isOverdue && (
                     <span
                       className="text-caption rounded-full px-2 py-0.5 font-bold tracking-widest uppercase"
@@ -360,7 +363,6 @@ export const TaskCard = React.memo(
                     isCompleting
                       ? {
                           textDecoration: "line-through",
-                          textDecorationColor: "rgba(74,222,128,0.7)",
                           color: "var(--text-3)",
                         }
                       : {}
@@ -399,7 +401,7 @@ export const TaskCard = React.memo(
                       style={{ background: "var(--surface-1)" }}
                     >
                       <div
-                        className="h-full transition-all"
+                        className="h-full transition-[width]"
                         style={{
                           width: `${(completedSubtasks / subtasks.length) * 100}%`,
                           background: "var(--text-3)",
@@ -418,7 +420,7 @@ export const TaskCard = React.memo(
             </div>
 
             <div
-              className="mt-4 flex items-center justify-between pt-3"
+              className="mt-3 flex items-center justify-between pt-2.5"
               style={{ borderTop: "0.5px solid var(--border-subtle)" }}
             >
               <div className="flex items-center gap-3">
@@ -532,6 +534,7 @@ export const TaskCard = React.memo(
                     border: "none",
                   }}
                   title="Start focus session"
+                  aria-label={`Start focus session: ${String(task.title ?? "task").slice(0, 40)}`}
                 >
                   <UiIcon
                     size={16}

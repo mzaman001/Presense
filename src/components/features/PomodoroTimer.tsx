@@ -43,6 +43,10 @@ const PHASE_CONFIG: Record<
 
 const STORAGE_KEY = "pomodoro_state";
 
+// The overlay's fade-in; initial focus waits for it so the handoff from
+// whatever opened the timer (e.g. the mobile drawer closing) settles first.
+const OVERLAY_FADE_MS = 350;
+
 interface PersistedState {
   taskId: string | null;
   taskTitle: string | null;
@@ -93,6 +97,12 @@ export function PomodoroTimer() {
 
   const startedAtRef = useRef<number>(0);
   const didInitRef = useRef(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  const initialFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const confirmReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const workDuration = (userSettings?.pomodoro_duration || 25) * 60;
   const shortBreakDuration = (userSettings?.short_break_duration || 5) * 60;
@@ -344,6 +354,41 @@ export function PomodoroTimer() {
       document.removeEventListener("visibilitychange", handleVisibility);
   }, [activeTimer, phase, sessionCount, duration]);
 
+  // Opening the confirm hands focus to Radix: cancel any pending initial
+  // focus so it can't pull focus back out of the confirm, and remember the
+  // control to return to once the confirm closes.
+  const openConfirmEnd = useCallback(() => {
+    if (initialFocusTimerRef.current) {
+      clearTimeout(initialFocusTimerRef.current);
+      initialFocusTimerRef.current = null;
+    }
+    const active = document.activeElement;
+    confirmReturnFocusRef.current =
+      active instanceof HTMLElement && overlayRef.current?.contains(active)
+        ? active
+        : null;
+    setShowConfirmEnd(true);
+  }, []);
+
+  // The overlay is modal: move focus onto the primary control once it has
+  // faded in, unless the user already put focus inside it.
+  const hasTimer = activeTimer !== null;
+  useEffect(() => {
+    if (!hasTimer) return;
+    initialFocusTimerRef.current = setTimeout(() => {
+      initialFocusTimerRef.current = null;
+      if (!overlayRef.current?.contains(document.activeElement)) {
+        primaryRef.current?.focus();
+      }
+    }, OVERLAY_FADE_MS);
+    return () => {
+      if (initialFocusTimerRef.current) {
+        clearTimeout(initialFocusTimerRef.current);
+        initialFocusTimerRef.current = null;
+      }
+    };
+  }, [hasTimer]);
+
   // Escape opens the same confirm-end flow as the X / End-session buttons —
   // keyboard parity for exiting the overlay. Deliberately not an instant
   // close: ending a running focus session should still be confirmed. When
@@ -353,12 +398,42 @@ export function PomodoroTimer() {
     if (!activeTimer) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !showConfirmEnd) {
-        setShowConfirmEnd(true);
+        openConfirmEnd();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [activeTimer, showConfirmEnd]);
+  }, [activeTimer, showConfirmEnd, openConfirmEnd]);
+
+  // Keep Tab inside the overlay. The confirm is portalled out of this DOM
+  // subtree (its React events still bubble here), and Radix traps it.
+  const handleOverlayKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const overlay = overlayRef.current;
+    if (e.key !== "Tab" || !overlay || !overlay.contains(e.target as Node)) {
+      return;
+    }
+    const focusable = overlay.querySelectorAll<HTMLElement>(
+      "button:not([disabled])",
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  const handleConfirmCloseAutoFocus = (event: Event) => {
+    const target = confirmReturnFocusRef.current ?? primaryRef.current;
+    confirmReturnFocusRef.current = null;
+    if (!target?.isConnected) return;
+    event.preventDefault();
+    target.focus();
+  };
 
   const handleSkip = () => {
     const spent = duration - displayTime;
@@ -392,10 +467,18 @@ export function PomodoroTimer() {
     <AnimatePresence>
       <m.div
         key="pomodoro-overlay"
+        ref={overlayRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Focus session"
+        onKeyDown={handleOverlayKeyDown}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+        transition={{
+          duration: OVERLAY_FADE_MS / 1000,
+          ease: [0.25, 0.46, 0.45, 0.94],
+        }}
         className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden"
         style={{
           background: "rgba(8, 6, 16, 0.92)",
@@ -424,9 +507,9 @@ export function PomodoroTimer() {
 
         {/* Close button */}
         <button
-          onClick={() => setShowConfirmEnd(true)}
+          onClick={openConfirmEnd}
           aria-label="Close focus session"
-          className="absolute top-6 right-6 z-10 rounded-full p-2 text-[var(--text-3)] transition-colors hover:bg-white/10 hover:text-[var(--text-1)]"
+          className="absolute top-6 right-6 z-10 rounded-full p-2 text-[var(--text-3)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
         >
           <UiIcon size={18} strokeWidth={1.5} icon={X} />
         </button>
@@ -466,7 +549,7 @@ export function PomodoroTimer() {
                 cy="110"
                 r={r}
                 fill="none"
-                stroke="rgba(255,255,255,0.06)"
+                stroke="var(--border-subtle)"
                 strokeWidth="6"
               />
               <circle
@@ -510,12 +593,12 @@ export function PomodoroTimer() {
           {/* Controls */}
           <div className="flex items-center gap-5">
             <button
-              onClick={() => setShowConfirmEnd(true)}
+              onClick={openConfirmEnd}
               aria-label="End session"
               className={cn(
-                "flex h-11 w-11 items-center justify-center rounded-full transition-all",
-                "border border-white/10 bg-white/5 text-[var(--text-3)]",
-                "hover:border-red-500/30 hover:bg-red-500/15 hover:text-red-400",
+                "flex h-11 w-11 items-center justify-center rounded-full transition",
+                "border border-[var(--border-default)] bg-[var(--surface-2)] text-[var(--text-3)]",
+                "hover:border-[var(--status-danger-border)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]",
               )}
               title="End session"
             >
@@ -523,6 +606,7 @@ export function PomodoroTimer() {
             </button>
 
             <button
+              ref={primaryRef}
               onClick={() => {
                 if (isRunning) {
                   setIsRunning(false);
@@ -541,7 +625,7 @@ export function PomodoroTimer() {
                 }
               }}
               aria-label={isRunning ? "Pause" : "Play"}
-              className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95"
+              className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition hover:scale-105 active:scale-95"
               style={{ background: cfg.ring }}
               title={isRunning ? "Pause" : "Play"}
             >
@@ -562,9 +646,9 @@ export function PomodoroTimer() {
               onClick={handleSkip}
               aria-label="Skip phase"
               className={cn(
-                "flex h-11 w-11 items-center justify-center rounded-full transition-all",
-                "border border-white/10 bg-white/5 text-[var(--text-3)]",
-                "hover:bg-white/10 hover:text-[var(--text-1)]",
+                "flex h-11 w-11 items-center justify-center rounded-full transition",
+                "border border-[var(--border-default)] bg-[var(--surface-2)] text-[var(--text-3)]",
+                "hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]",
               )}
               title="Skip"
             >
@@ -600,6 +684,7 @@ export function PomodoroTimer() {
           }
           confirmLabel={phase === "work" ? "End Session" : "Close Timer"}
           zIndexClassName="z-[250]"
+          onCloseAutoFocus={handleConfirmCloseAutoFocus}
         />
       </m.div>
     </AnimatePresence>

@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { Sheet } from "@/components/ui/Sheet";
 import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
-import { Icon as UiIcon } from "@/components/ui/Icon";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { locationSchema } from "@/lib/schemas";
@@ -161,114 +160,102 @@ export function LocationAddPanel({
       <Sheet
         isOpen={isOpen}
         onClose={handleClose}
-        title={itemToEdit ? "Edit Location" : "Log Location"}
-      >
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex h-full flex-col"
-        >
-          <div className="flex-1 space-y-6 overflow-y-auto p-6">
-            {errorMsg && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
-                {errorMsg}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <Input
-                label={
-                  <>
-                    Item Name <span className="text-red-400">*</span>
-                  </>
-                }
-                type="text"
-                autoFocus
-                placeholder="e.g. Keys, Passport, Charger"
-                variant="default"
-                {...register("itemName")}
-                error={errors.itemName?.message}
-                aria-invalid={!!errors.itemName}
-                aria-describedby={
-                  errors.itemName ? `itemName-error` : undefined
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleSubmit(onSubmit)();
-                  }
-                }}
-              />
-
-              <Input
-                label={
-                  <>
-                    Location <span className="text-red-400">*</span>
-                  </>
-                }
-                type="text"
-                placeholder="e.g. In the top drawer of my desk"
-                variant="default"
-                {...register("locationText")}
-                error={errors.locationText?.message}
-                aria-invalid={!!errors.locationText}
-                aria-describedby={
-                  errors.locationText ? `locationText-error` : undefined
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleSubmit(onSubmit)();
-                  }
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 border-t border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] p-4 md:rounded-b-2xl">
+        title={itemToEdit ? "Edit place" : "Remember where"}
+        footer={
+          <div className="flex items-center gap-2">
             {itemToEdit && (
               <Button
                 type="button"
-                variant="danger"
+                variant="ghost"
+                size="icon"
+                aria-label="Delete this place"
                 onClick={() => setDeleteConfirm(true)}
-                className="flex items-center justify-center px-3"
+                className="text-[var(--text-3)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]"
               >
-                <UiIcon
-                  size={14}
-                  strokeWidth={1.5}
-                  className="shrink-0"
-                  icon={Trash2}
-                />
+                <Trash2 aria-hidden="true" className="size-[18px]" />
               </Button>
             )}
             <Button
+              type="button"
+              variant="ghost"
+              onClick={handleClose}
+              className="ml-auto"
+            >
+              Cancel
+            </Button>
+            <Button
               type="submit"
+              form="location-form"
               variant="primary"
               disabled={isSubmitting || !isValid}
-              className="w-full flex-1 py-3 disabled:opacity-50"
+              className="min-w-28"
             >
               {isSubmitting ? (
-                <UiIcon
-                  size={14}
-                  strokeWidth={1.5}
-                  className="shrink-0 animate-spin"
-                  icon={Loader2}
-                />
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
               ) : itemToEdit ? (
-                "Save Changes"
+                "Save changes"
               ) : (
-                "Log Location"
+                "Save"
               )}
             </Button>
           </div>
+        }
+      >
+        <form
+          id="location-form"
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-5 pt-1"
+        >
+          {errorMsg && (
+            <div
+              role="alert"
+              className="rounded-[var(--radius-md)] border border-[var(--status-danger-border)] bg-[var(--status-danger-dim)] p-3 text-[length:var(--text-body)] text-[var(--status-danger)]"
+            >
+              {errorMsg}
+            </div>
+          )}
+
+          <Input
+            label="Item name"
+            type="text"
+            autoFocus
+            placeholder="Keys, passport, the good charger"
+            variant="default"
+            {...register("itemName")}
+            error={errors.itemName?.message}
+            aria-invalid={!!errors.itemName}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSubmit(onSubmit)();
+              }
+            }}
+          />
+
+          <Input
+            label="Location"
+            type="text"
+            placeholder="Top drawer of the desk"
+            variant="default"
+            {...register("locationText")}
+            error={errors.locationText?.message}
+            aria-invalid={!!errors.locationText}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSubmit(onSubmit)();
+              }
+            }}
+          />
         </form>
       </Sheet>
       <ConfirmModal
         isOpen={deleteConfirm}
         onClose={() => setDeleteConfirm(false)}
         onConfirm={confirmDelete}
-        title="Delete Location"
-        description={`Are you sure you want to delete "${itemToEdit?.item_name}"?`}
-        confirmLabel="Delete Location"
+        title="Delete this place?"
+        description={`"${itemToEdit?.item_name}" and where you kept it will be removed.`}
+        confirmLabel="Delete"
         confirmDestructive={true}
       />
       <ConfirmModal
@@ -278,8 +265,8 @@ export function LocationAddPanel({
           setShowUnsavedWarning(false);
           onClose();
         }}
-        title="Discard Changes?"
-        description="You have unsaved changes. Are you sure you want to discard them?"
+        title="Discard changes?"
+        description="What you typed hasn't been saved."
         confirmLabel="Discard"
         confirmDestructive={false}
       />

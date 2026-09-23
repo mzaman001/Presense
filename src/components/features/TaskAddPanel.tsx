@@ -11,7 +11,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { taskSchema } from "@/lib/schemas";
 import { z } from "zod";
-import { X, Calendar, Loader2, RotateCw, Trash2, Check } from "lucide-react";
+import {
+  X,
+  Calendar,
+  Loader2,
+  RotateCw,
+  Trash2,
+  Check,
+  Plus,
+} from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Popover } from "@/components/ui/Popover";
 import { toast } from "sonner";
@@ -38,7 +46,6 @@ import { Sheet } from "@/components/ui/Sheet";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import { moveItemToTrashPatch, newTaskInsert } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
-import { Icon as UiIcon } from "@/components/ui/Icon";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 /**
@@ -559,21 +566,57 @@ export function TaskAddPanel({
       <Sheet
         isOpen={isOpen}
         onClose={handleClose}
-        title={taskToEdit ? "Edit Task" : "Add Task"}
+        title={taskToEdit ? "Edit task" : "New task"}
+        footer={
+          <div className="flex items-center gap-2">
+            {taskToEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Move task to trash"
+                onClick={() => setDeleteTaskConfirm(true)}
+                className="text-[var(--text-3)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]"
+              >
+                <Trash2 aria-hidden="true" className="size-[18px]" />
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleClose}
+              className="ml-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="task-form"
+              variant="primary"
+              disabled={isSubmitting || !isValid}
+              className="min-w-28"
+            >
+              {isSubmitting ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : taskToEdit ? (
+                "Save changes"
+              ) : (
+                "Add task"
+              )}
+            </Button>
+          </div>
+        }
       >
         <form
+          id="task-form"
           onSubmit={handleSubmit(onSubmit)}
-          className="flex h-full flex-col"
+          className="flex flex-col"
         >
-          <div className="flex-1 space-y-6 overflow-y-auto p-6">
+          <div className="space-y-6 pt-1">
             {/* --- Core --- */}
             {/* Title */}
             <Input
-              label={
-                <>
-                  Task Name <span className="text-red-400">*</span>
-                </>
-              }
+              aria-label="Task name"
               autoFocus
               data-autofocus="true"
               inputMode="text"
@@ -585,7 +628,6 @@ export function TaskAddPanel({
               })}
               error={errors.title?.message}
               aria-invalid={!!errors.title}
-              aria-describedby={errors.title ? `title-error` : undefined}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -596,16 +638,15 @@ export function TaskAddPanel({
 
             {/* Subtasks */}
             <div>
-              <label className="text-label mb-2 block text-[var(--text-3)]">
-                Subtasks
-              </label>
-              <div className="space-y-1.5">
+              <label className="field-label">Subtasks</label>
+              <div className="space-y-0.5">
                 {subtasks.map((st, i) => (
                   <div
                     key={st.id || i}
-                    className="group flex items-center gap-2"
+                    className="group flex items-center gap-1"
                   >
                     <button
+                      type="button"
                       onClick={() => {
                         setSubtasks(
                           subtasks.map((st, idx) =>
@@ -615,19 +656,27 @@ export function TaskAddPanel({
                           ),
                         );
                       }}
-                      className={cn(
-                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
-                        st.completed
-                          ? "border-[var(--color-text-3)] bg-[var(--color-text-3)]"
-                          : "border-[var(--color-border)] hover:border-[var(--color-text-3)]",
-                      )}
+                      role="checkbox"
+                      aria-checked={st.completed}
+                      aria-label={st.text ? `Done: ${st.text}` : "Subtask done"}
+                      className="-ml-2 flex size-9 shrink-0 items-center justify-center"
                     >
-                      {st.completed && (
-                        <UiIcon
-                          className="h-3 w-3 text-[var(--color-background)]"
-                          icon={Check}
-                        />
-                      )}
+                      <span
+                        className={cn(
+                          "flex size-[18px] items-center justify-center rounded-full border-[1.5px] transition-colors",
+                          st.completed
+                            ? "border-[var(--accent)] bg-[var(--accent)]"
+                            : "border-[var(--border-strong)] hover:border-[var(--accent)]",
+                        )}
+                      >
+                        {st.completed && (
+                          <Check
+                            aria-hidden="true"
+                            strokeWidth={3}
+                            className="size-3 text-[var(--text-on-accent)]"
+                          />
+                        )}
+                      </span>
                     </button>
                     <input
                       value={st.text}
@@ -638,46 +687,49 @@ export function TaskAddPanel({
                           ),
                         );
                       }}
-                      placeholder="Subtask..."
+                      placeholder="Subtask"
+                      aria-label="Subtask"
                       className={cn(
-                        "flex-1 border-none bg-transparent text-sm placeholder:text-[var(--text-muted)] focus:outline-none",
+                        "min-h-9 flex-1 border-none bg-transparent text-[length:var(--text-body-lg)] text-[var(--text-1)] placeholder:text-[var(--text-muted)] focus:outline-none",
                         st.completed && "text-[var(--text-muted)] line-through",
                       )}
                     />
                     <button
+                      type="button"
                       onClick={() =>
                         setSubtasks(subtasks.filter((_, idx) => idx !== i))
                       }
-                      className="row-actions p-1 text-[var(--text-muted)] transition-colors hover:text-[#F87171]"
+                      aria-label="Remove subtask"
+                      className="row-actions flex size-9 items-center justify-center rounded-lg text-[var(--text-3)] transition-colors hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]"
                     >
-                      <UiIcon size={14} icon={X} />
+                      <X aria-hidden="true" className="size-4" />
                     </button>
                   </div>
                 ))}
                 <button
+                  type="button"
                   onClick={() =>
                     setSubtasks([
                       ...subtasks,
                       { id: Date.now().toString(), text: "", completed: false },
                     ])
                   }
-                  className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-3)] transition-colors hover:text-[var(--text-1)]"
+                  className="-ml-2 flex min-h-9 items-center gap-2 rounded-lg pr-3 pl-2 text-[length:var(--text-body)] text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
                 >
-                  <span className="text-lg leading-none font-light">+</span> Add
-                  subtask
+                  <Plus aria-hidden="true" className="size-4" /> Add subtask
                 </button>
               </div>
             </div>
 
             {/* First Step */}
             <div>
-              <label className="text-label mb-2 block text-[var(--text-3)]">
-                First Step{" "}
-                <span className="text-[var(--text-muted)]">(optional)</span>
-              </label>
+              <label className="field-label">First step</label>
               <input
                 placeholder="What's the smallest action to start this?"
-                className={cn("input", errors.first_step && "!border-red-500")}
+                className={cn(
+                  "input",
+                  errors.first_step && "!border-[var(--status-danger)]",
+                )}
                 {...register("first_step")}
                 aria-invalid={!!errors.first_step}
                 aria-describedby={
@@ -687,7 +739,7 @@ export function TaskAddPanel({
               {errors.first_step && (
                 <p
                   id="first_step-error"
-                  className="text-caption mt-1 text-red-500"
+                  className="text-caption mt-1 text-[var(--status-danger)]"
                 >
                   {errors.first_step.message}
                 </p>
@@ -696,9 +748,7 @@ export function TaskAddPanel({
 
             {/* Category */}
             <div>
-              <label className="text-label mb-2 block text-[var(--text-3)]">
-                Category
-              </label>
+              <label className="field-label">Category</label>
               <div className="flex flex-wrap items-center gap-2">
                 {categoriesList.map((cat: string) => {
                   const cColor =
@@ -722,10 +772,11 @@ export function TaskAddPanel({
                           : "transparent",
                         color: isActive ? cColor : "var(--color-text-3)",
                       }}
-                      className={`rounded-full border px-3 py-1.5 text-xs capitalize transition-all ${
+                      aria-pressed={isActive}
+                      className={`inline-flex min-h-9 items-center rounded-full border px-3.5 text-[length:var(--text-ui)] capitalize transition-colors ${
                         isActive
-                          ? "font-medium shadow-sm"
-                          : "hover:bg-[var(--color-surface)]"
+                          ? "font-medium"
+                          : "hover:bg-[var(--surface-hover)]"
                       }`}
                     >
                       {cat}
@@ -743,14 +794,16 @@ export function TaskAddPanel({
                     }}
                     onBlur={handleAddCategory}
                     placeholder="Type & enter..."
-                    className="input !w-32 !rounded-full !px-3 !py-1.5 !text-xs"
+                    aria-label="New category name"
+                    className="input !h-9 !w-36 !rounded-full !px-3.5 !py-0 !text-[length:var(--text-ui)]"
                   />
                 ) : (
                   <button
+                    type="button"
                     onClick={() => setIsAddingCategory(true)}
-                    className="rounded-full border border-dashed border-[var(--color-border)] bg-transparent px-3 py-1.5 text-xs text-[var(--color-text-3)] transition-all hover:border-[var(--border-strong)] hover:text-[var(--color-text-1)]"
+                    className="chip border-dashed"
                   >
-                    + Add new category
+                    <Plus aria-hidden="true" className="size-3.5" /> New
                   </button>
                 )}
               </div>
@@ -758,38 +811,40 @@ export function TaskAddPanel({
 
             {/* Priority */}
             <div>
-              <label className="text-label mb-2 block text-[var(--text-3)]">
-                Priority
-              </label>
+              <label className="field-label">Priority</label>
               <div className="flex flex-wrap gap-2">
                 {[
                   {
                     val: 1,
                     label: "Urgent",
                     colorClass:
-                      "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20",
-                    activeClass: "bg-red-500 text-white border-red-500",
+                      "bg-transparent text-[var(--status-danger)] border-[var(--status-danger-border)] hover:bg-[var(--status-danger-dim)]",
+                    activeClass:
+                      "bg-[var(--status-danger-dim)] text-[var(--status-danger)] border-[var(--status-danger)]",
                   },
                   {
                     val: 2,
                     label: "High",
                     colorClass:
-                      "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20",
-                    activeClass: "bg-amber-500 text-white border-amber-500",
+                      "bg-transparent text-[var(--status-today)] border-[var(--status-today-border)] hover:bg-[var(--status-today-dim)]",
+                    activeClass:
+                      "bg-[var(--status-today-dim)] text-[var(--status-today)] border-[var(--status-today)]",
                   },
                   {
                     val: 3,
                     label: "Medium",
                     colorClass:
-                      "bg-teal-500/10 text-teal-500 border-teal-500/30 hover:bg-teal-500/20",
-                    activeClass: "bg-teal-500 text-white border-teal-500",
+                      "bg-transparent text-[var(--status-upcoming)] border-[var(--status-upcoming-border)] hover:bg-[var(--status-upcoming-dim)]",
+                    activeClass:
+                      "bg-[var(--status-upcoming-dim)] text-[var(--status-upcoming)] border-[var(--status-upcoming)]",
                   },
                   {
                     val: 4,
                     label: "Low",
                     colorClass:
-                      "bg-slate-500/10 text-slate-500 border-slate-500/30 hover:bg-slate-500/20",
-                    activeClass: "bg-slate-500 text-white border-slate-500",
+                      "bg-transparent text-[var(--text-3)] border-[var(--border-default)] hover:bg-[var(--surface-hover)]",
+                    activeClass:
+                      "bg-[var(--surface-active)] text-[var(--text-1)] border-[var(--border-strong)]",
                   },
                 ].map((p) => (
                   <m.button
@@ -803,34 +858,33 @@ export function TaskAddPanel({
                         { shouldValidate: true, shouldDirty: true },
                       )
                     }
-                    className={`rounded-full border px-4 py-2 text-xs font-bold transition-all ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
+                    aria-pressed={priorityValue === p.val}
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3.5 text-[length:var(--text-ui)] font-medium transition-colors ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
                   >
-                    P{p.val} {p.label}
+                    <span
+                      aria-hidden="true"
+                      className="size-2 rounded-full bg-current"
+                    />
+                    {p.label}
                   </m.button>
                 ))}
               </div>
             </div>
 
             {/* --- Scheduling --- */}
-            <div className="border-t border-[var(--color-border)] pt-6">
-              <h3 className="text-caption mb-4 font-bold tracking-widest text-[var(--text-muted)] uppercase">
-                Scheduling
-              </h3>
+            <div className="border-t border-[var(--border-subtle)] pt-6">
               <div className="space-y-6">
+                <p className="field-label !mb-2">When</p>
                 {/* Action Toolbar (Date & Repeat) */}
                 <div className="flex flex-wrap gap-2">
                   <Popover
                     trigger={
                       <button
                         type="button"
-                        className={cn(
-                          "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                          deadlineValue
-                            ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                            : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
-                        )}
+                        aria-pressed={Boolean(deadlineValue)}
+                        className="chip"
                       >
-                        <UiIcon size={13} icon={Calendar} />
+                        <Calendar aria-hidden="true" className="size-4" />
                         {deadlineValue
                           ? (() => {
                               const d = new Date(deadlineValue);
@@ -845,23 +899,24 @@ export function TaskAddPanel({
                                 : "";
                               return `${dateStr}${timeStr}`;
                             })()
-                          : "Due Date"}
+                          : "Due date"}
                       </button>
                     }
                     content={
-                      <div className="w-[340px] space-y-4 p-3">
+                      <div className="w-[min(340px,calc(100vw-32px))] space-y-4 p-3">
                         <div className="flex flex-wrap gap-1.5">
                           {[
                             { id: "today", label: "Today" },
                             { id: "tomorrow", label: "Tomorrow" },
-                            { id: "weekend", label: "This Weekend" },
-                            { id: "next_week", label: "Next Week" },
-                            { id: "none", label: "No Date" },
+                            { id: "weekend", label: "This weekend" },
+                            { id: "next_week", label: "Next week" },
+                            { id: "none", label: "No date" },
                           ].map((btn) => (
                             <button
                               key={btn.id}
+                              type="button"
                               onClick={() => setQuickDate(btn.id)}
-                              className="text-meta rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--color-border)]"
+                              className="chip chip-sm"
                             >
                               {btn.label}
                             </button>
@@ -869,14 +924,13 @@ export function TaskAddPanel({
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-caption mb-1.5 block font-bold tracking-widest text-[var(--text-muted)] uppercase">
-                              Due Date/Time
-                            </label>
+                            <label className="field-label">Due</label>
                             <input
                               type="datetime-local"
                               className={cn(
-                                "input !px-2 !py-1.5 !text-xs",
-                                errors.deadline && "!border-red-500",
+                                "input !px-2.5 !py-2 !text-[length:var(--text-ui)]",
+                                errors.deadline &&
+                                  "!border-[var(--status-danger)]",
                               )}
                               {...register("deadline", {
                                 onChange: handleManualDateChange,
@@ -889,16 +943,14 @@ export function TaskAddPanel({
                             {errors.deadline && (
                               <p
                                 id="deadline-error"
-                                className="text-caption mt-1 text-red-500"
+                                className="text-caption mt-1 text-[var(--status-danger)]"
                               >
                                 {errors.deadline.message}
                               </p>
                             )}
                           </div>
                           <div>
-                            <label className="text-caption mb-1.5 block font-bold tracking-widest text-[var(--text-muted)] uppercase">
-                              Start Date
-                            </label>
+                            <label className="field-label">Start</label>
                             <input
                               type="datetime-local"
                               value={startDate || ""}
@@ -910,7 +962,7 @@ export function TaskAddPanel({
                                     : null,
                                 );
                               }}
-                              className="input !px-2 !py-1.5 !text-xs"
+                              className="input !px-2.5 !py-2 !text-[length:var(--text-ui)]"
                             />
                           </div>
                         </div>
@@ -921,19 +973,16 @@ export function TaskAddPanel({
                   <Popover
                     trigger={
                       <button
-                        className={cn(
-                          "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                          freq !== "Does not repeat"
-                            ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                            : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
-                        )}
+                        type="button"
+                        aria-pressed={freq !== "Does not repeat"}
+                        className="chip"
                       >
-                        <UiIcon size={13} icon={RotateCw} />
+                        <RotateCw aria-hidden="true" className="size-4" />
                         {freq !== "Does not repeat" ? freq : "Repeat"}
                       </button>
                     }
                     content={
-                      <div className="w-[320px] p-3">
+                      <div className="w-[min(320px,calc(100vw-32px))] p-3">
                         <div className="mb-3 flex flex-wrap gap-1.5">
                           {[
                             "Does not repeat",
@@ -944,20 +993,17 @@ export function TaskAddPanel({
                           ].map((f) => (
                             <button
                               key={f}
+                              type="button"
                               onClick={() => setFreq(f)}
-                              className={cn(
-                                "text-meta rounded-md border px-2 py-1 font-medium transition-colors",
-                                freq === f
-                                  ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                                  : "border-[var(--color-border)] bg-transparent text-[var(--text-3)] hover:bg-[var(--color-surface)]",
-                              )}
+                              aria-pressed={freq === f}
+                              className="chip chip-sm"
                             >
                               {f}
                             </button>
                           ))}
                         </div>
                         {freq === "Weekly" && (
-                          <div className="flex flex-wrap gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+                          <div className="flex flex-wrap gap-1">
                             {[
                               { l: "Mo", v: "MO" },
                               { l: "Tu", v: "TU" },
@@ -969,6 +1015,7 @@ export function TaskAddPanel({
                             ].map((d) => (
                               <button
                                 key={d.v}
+                                type="button"
                                 onClick={() =>
                                   setDays((prev) =>
                                     prev.includes(d.v)
@@ -976,12 +1023,8 @@ export function TaskAddPanel({
                                       : [...prev, d.v],
                                   )
                                 }
-                                className={cn(
-                                  "text-meta rounded-md border px-2 py-1 font-bold transition-colors",
-                                  days.includes(d.v)
-                                    ? "border-[#FBBF24] bg-[#FBBF24] text-amber-950"
-                                    : "border-transparent bg-transparent text-[var(--text-3)] hover:bg-[var(--color-border)]",
-                                )}
+                                aria-pressed={days.includes(d.v)}
+                                className="chip chip-sm !min-w-10 justify-center !px-0"
                               >
                                 {d.l}
                               </button>
@@ -990,7 +1033,7 @@ export function TaskAddPanel({
                         )}
                         {freq === "Custom" && (
                           <div className="mt-2 flex items-center gap-2">
-                            <span className="text-meta font-medium text-[var(--text-3)]">
+                            <span className="text-[length:var(--text-ui)] text-[var(--text-3)]">
                               Every
                             </span>
                             <input
@@ -1002,7 +1045,8 @@ export function TaskAddPanel({
                                   Math.max(1, parseInt(e.target.value) || 1),
                                 )
                               }
-                              className="input !w-14 !px-2 !py-1 !text-center !text-xs"
+                              aria-label="Repeat interval"
+                              className="input !w-16 !px-2 !py-2 !text-center !text-[length:var(--text-ui)]"
                             />
                             <Dropdown
                               variant="select"
@@ -1014,7 +1058,8 @@ export function TaskAddPanel({
                                 { value: "MONTHLY", label: "Months" },
                                 { value: "YEARLY", label: "Years" },
                               ]}
-                              className="!w-24 !text-xs"
+                              aria-label="Repeat unit"
+                              className="!w-32"
                             />
                           </div>
                         )}
@@ -1025,85 +1070,55 @@ export function TaskAddPanel({
 
                 {/* Time Estimate */}
                 <div>
-                  <label className="text-label mb-2 block text-[var(--text-3)]">
-                    Time Estimate (minutes){" "}
-                    <span className="text-[var(--text-muted)]">(optional)</span>
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 30"
-                    value={timeEstimate === null ? "" : timeEstimate}
-                    onChange={(e) =>
-                      setTimeEstimate(
-                        e.target.value ? parseInt(e.target.value) : null,
-                      )
-                    }
-                    className="input"
-                    min={1}
-                  />
+                  <label className="field-label">Estimate</label>
+                  <div className="relative w-40">
+                    <input
+                      type="number"
+                      placeholder="30"
+                      aria-label="Estimate in minutes"
+                      value={timeEstimate === null ? "" : timeEstimate}
+                      onChange={(e) =>
+                        setTimeEstimate(
+                          e.target.value ? parseInt(e.target.value) : null,
+                        )
+                      }
+                      className="input !pr-14"
+                      min={1}
+                    />
+                    <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[length:var(--text-ui)] text-[var(--text-3)]">
+                      min
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
             {/* --- Notes --- */}
-            <div className="border-t border-[var(--color-border)] pt-6">
-              <h3 className="text-caption mb-4 font-bold tracking-widest text-[var(--text-muted)] uppercase">
+            <div className="border-t border-[var(--border-subtle)] pt-6">
+              <label className="field-label" htmlFor="task-notes">
                 Notes
-              </h3>
+              </label>
               <TextareaAutosize
                 data-testid="autosize-textarea"
-                placeholder="Additional context or details"
+                id="task-notes"
+                placeholder="Anything worth remembering about this"
                 {...register("notes")}
                 minRows={2}
                 className={cn(
                   "input resize-none",
-                  errors.notes && "!border-red-500",
+                  errors.notes && "!border-[var(--status-danger)]",
                 )}
                 aria-invalid={!!errors.notes}
                 aria-describedby={errors.notes ? `notes-error` : undefined}
               />
               {errors.notes && (
-                <p id="notes-error" className="text-caption mt-1 text-red-500">
+                <p
+                  id="notes-error"
+                  className="text-caption mt-1 text-[var(--status-danger)]"
+                >
                   {errors.notes.message}
                 </p>
               )}
             </div>
-          </div>
-
-          {/* Sticky Bottom Bar */}
-          <div className="flex gap-3 border-t border-[var(--color-border)] bg-[var(--surface-1)] p-4 md:rounded-b-2xl">
-            {taskToEdit && (
-              <Button
-                variant="danger"
-                onClick={() => setDeleteTaskConfirm(true)}
-                className="flex items-center justify-center px-3"
-              >
-                <UiIcon
-                  size={14}
-                  strokeWidth={1.5}
-                  className="shrink-0"
-                  icon={Trash2}
-                />
-              </Button>
-            )}
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isSubmitting || !isValid}
-              className="w-full flex-1 py-3 disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <UiIcon
-                  size={14}
-                  strokeWidth={1.5}
-                  className="shrink-0 animate-spin"
-                  icon={Loader2}
-                />
-              ) : taskToEdit ? (
-                "Save Changes"
-              ) : (
-                "Save Task"
-              )}
-            </Button>
           </div>
         </form>
       </Sheet>
@@ -1111,9 +1126,9 @@ export function TaskAddPanel({
         isOpen={deleteTaskConfirm}
         onClose={() => setDeleteTaskConfirm(false)}
         onConfirm={confirmDelete}
-        title="Move Task to Trash?"
+        title="Move task to trash?"
         description="This task will leave active views and can be restored from Trash."
-        confirmLabel="Move to Trash"
+        confirmLabel="Move to trash"
         confirmDestructive
       />
       <ConfirmModal
@@ -1123,8 +1138,8 @@ export function TaskAddPanel({
           setShowUnsavedWarning(false);
           onClose();
         }}
-        title="Discard Changes?"
-        description="You have unsaved changes. Are you sure you want to discard them?"
+        title="Discard changes?"
+        description="Your edits to this task haven't been saved."
         confirmLabel="Discard"
         confirmDestructive={false}
       />
