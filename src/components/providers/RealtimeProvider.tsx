@@ -15,6 +15,11 @@ import type {
 import { createClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 import { RealtimeStatusContext } from "./realtime-status";
+import {
+  getLastMutationTime,
+  markMutation,
+  resetMutationTracking,
+} from "@/lib/mutation-tracking";
 
 /**
  * How long after a local write to ignore realtime events for that table, so
@@ -27,29 +32,7 @@ export type RealtimePayload = RealtimePostgresChangesPayload<
   Record<string, unknown>
 >;
 
-const lastMutations: Record<string, number> = {};
-
-export function markMutation(table?: string) {
-  const now = Date.now();
-  if (table) {
-    lastMutations[table] = now;
-  } else {
-    lastMutations["_global"] = now;
-  }
-}
-
-export function getLastMutationTime(table: string): number {
-  return Math.max(lastMutations[table] || 0, lastMutations["_global"] || 0);
-}
-
-/**
- * Clears the echo-suppression timestamps. Only needed by tests: under fake
- * timers `Date.now()` is frozen, so a mutation marked in one test would stay
- * "recent" forever and silently suppress events in the next.
- */
-export function resetMutationTracking() {
-  for (const key of Object.keys(lastMutations)) delete lastMutations[key];
-}
+export { markMutation, getLastMutationTime, resetMutationTracking };
 
 type ConnectionStatus = "connected" | "reconnecting" | "disconnected";
 

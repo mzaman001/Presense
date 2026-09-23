@@ -2,6 +2,12 @@ import { createBrowserClient } from "@supabase/ssr";
 import { env } from "@/lib/env";
 import { Database } from "@/types/database.types";
 import { toast } from "sonner";
+import { trackWrites } from "@/lib/mutation-tracking";
+
+// Resolved per call so a later-installed fetch (tests, instrumentation) is used.
+const clientOptions = {
+  global: { fetch: trackWrites((...args) => fetch(...args)) },
+};
 
 let clientInstance: ReturnType<typeof createBrowserClient<Database>> | null =
   null;
@@ -18,6 +24,7 @@ export function createClient() {
     clientInstance = createBrowserClient<Database>(
       env.NEXT_PUBLIC_SUPABASE_URL,
       env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      clientOptions,
     );
   }
   return clientInstance;
