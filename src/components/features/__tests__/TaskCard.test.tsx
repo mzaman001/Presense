@@ -69,11 +69,10 @@ describe("TaskCard", () => {
       { wrapper },
     );
 
-    const dot = container.querySelector(
-      '[style*="background"][class*="rounded-full"]',
-    );
-    expect(dot?.getAttribute("style")).toMatch(
-      /background:\s*var\(--priority-urgent\)/,
+    // Priority is carried by the checkbox ring (Todoist-style).
+    const check = container.querySelector(".task-check");
+    expect(check?.getAttribute("style")).toMatch(
+      /--check-ring:\s*var\(--priority-urgent\)/,
     );
   });
 

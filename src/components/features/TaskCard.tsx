@@ -3,7 +3,19 @@ import React, { useMemo, useState } from "react";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Check, Clock, Play, Timer, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Check,
+  Clock,
+  Flag,
+  ListChecks,
+  Play,
+  Repeat,
+  Timer,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
 import { resolveCategoryColor } from "@/lib/constants";
@@ -18,7 +30,6 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useHaptics } from "@/hooks/useHaptics";
 import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
-import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 function formatDeadline(d: string | null) {
@@ -105,14 +116,14 @@ export const TaskCard = React.memo(
       "var(--text-muted)",
     );
 
-    const priorityDotColor =
+    const priorityColor =
       priority === 1
         ? "var(--priority-urgent)"
         : priority === 2
           ? "var(--priority-high)"
           : priority === 3
             ? "var(--priority-medium)"
-            : "var(--text-muted)";
+            : "var(--border-strong)";
     const priorityLabel =
       priority === 1
         ? "Urgent"
@@ -211,29 +222,56 @@ export const TaskCard = React.memo(
       await handleTaskDelete();
     };
 
+    const snoozedUntil =
+      task.snoozed_until && new Date(task.snoozed_until) > new Date()
+        ? new Date(task.snoozed_until)
+        : null;
+    const timeSpent = formatTimeSpent(task.time_spent_minutes);
+    const allSubtasksDone =
+      subtasks.length > 0 && completedSubtasks === subtasks.length;
+    const shortTitle = String(task.title ?? "task").slice(0, 40);
+
+    const cancelSnooze = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const rollback = updateTaskInCaches(queryClient, task.id, {
+        snoozed_until: null,
+      });
+      try {
+        markMutation();
+        const { error } = await supabase
+          .from("items")
+          .update({ snoozed_until: null })
+          .eq("id", task.id);
+        if (error) throw error;
+        fetchTasks();
+      } catch {
+        rollback();
+        toast.error("Failed to cancel snooze");
+      }
+    };
+
     return (
       <m.div
         layout
         layoutId={task.id}
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{
           opacity: isCompleting ? 0.6 : 1,
           y: 0,
-          scale: isCompleting ? 0.98 : 1,
+          scale: isCompleting ? 0.99 : 1,
         }}
         exit={{
           opacity: 0,
-          scale: 0.95,
-          x: -20,
-          transition: { duration: 0.3, ease: [0.4, 0, 1, 1] },
+          scale: 0.97,
+          x: -16,
+          transition: { duration: 0.24, ease: [0.4, 0, 1, 1] },
         }}
-        whileHover={{ y: -2 }}
-        transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="task-card-wrapper group relative rounded-2xl"
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        className="task-card-wrapper group relative rounded-[var(--radius-lg)]"
       >
         {/* Swipe-to-complete reveal layer */}
         <m.div
-          className="absolute inset-0 flex items-center justify-start overflow-hidden rounded-2xl bg-[var(--status-done-dim)] pl-5"
+          className="absolute inset-0 flex items-center justify-start overflow-hidden rounded-[var(--radius-lg)] bg-[var(--status-done-dim)] pl-5"
           style={{ opacity: completeOpacity }}
         >
           <m.div style={{ scale: completeScale }}>
@@ -246,7 +284,7 @@ export const TaskCard = React.memo(
 
         {/* Swipe-to-delete reveal layer */}
         <m.div
-          className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-2xl bg-[var(--status-danger-dim)] pr-5"
+          className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-[var(--radius-lg)] bg-[var(--status-danger-dim)] pr-5"
           style={{ opacity: deleteOpacity }}
         >
           <m.div style={{ scale: deleteScale }}>
@@ -267,98 +305,44 @@ export const TaskCard = React.memo(
           transition={{ duration: 0.25 }}
           className="relative"
         >
+          {/* One row, Things/Todoist style: a round checkbox whose ring
+              carries the priority, the title, an optional first step, and a
+              single quiet line of details. Nothing renders for an empty
+              field, so a bare task is one calm line. */}
           <GlassCard
             onClick={() => openEditPanel(task)}
             className={cn(
-              "group relative cursor-pointer !rounded-2xl p-4 transition",
-              isOverdue && "border-[var(--status-overdue)]/30",
-              isCompleting &&
-                "border-[var(--status-done)]/40 bg-[var(--status-done)]/[0.06]",
+              "task-card cursor-pointer !rounded-[var(--radius-lg)] !py-3 !pr-2 !pl-3.5",
+              isCompleting && "task-card-done",
             )}
           >
-            {/* BUG-44 — hover/focus trash affordance (desktop pointer users).
-                Stops propagation so the edit panel doesn't open on delete. */}
-            <button
-              type="button"
-              onClick={handleHoverDeleteClick}
-              aria-label={`Move ${String(task.title ?? "task").slice(0, 40)} to trash`}
-              className="row-actions absolute top-2 right-2 hidden size-9 items-center justify-center rounded-lg text-[var(--text-3)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)] md:flex"
-            >
-              <UiIcon className="h-4 w-4" icon={Trash2} />
-            </button>
-
             <div className="flex items-start gap-3">
               <m.button
                 type="button"
                 onClick={(e) => completeTask(e, task.id)}
-                aria-label={`Complete ${String(task.title ?? "task").slice(0, 40)}`}
-                animate={isCompleting ? { scale: [1, 1.15, 1] } : {}}
+                aria-label={`Complete ${shortTitle}`}
+                title={`${priorityLabel} priority`}
+                animate={isCompleting ? { scale: [1, 1.18, 1] } : {}}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className={cn(
-                  "checkbox mt-0.5 shrink-0",
-                  isCompleting && "checked",
-                )}
+                className={cn("task-check", isCompleting && "checked")}
+                style={
+                  priority < 4
+                    ? ({ "--check-ring": priorityColor } as React.CSSProperties)
+                    : undefined
+                }
               >
                 {isCompleting && (
                   <UiIcon
-                    className="h-3.5 w-3.5 text-[var(--text-on-accent)]"
+                    className="h-3 w-3 text-[var(--text-on-accent)]"
                     strokeWidth={3}
                     icon={Check}
                   />
                 )}
               </m.button>
 
-              <div className="min-w-0 flex-1 pr-4">
-                <div className="mb-1 flex items-center gap-1.5">
-                  {/* Priority dot: always shown (Low gets a muted dot) and
-                      named, so it isn't an unexplained speck. Inline with the
-                      chips, clear of the hover delete button. */}
-                  <span
-                    role="img"
-                    aria-label={`${priorityLabel} priority`}
-                    title={`${priorityLabel} priority`}
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ background: priorityDotColor }}
-                  />
-                  {isOverdue && (
-                    <span
-                      className="text-caption rounded-full px-2 py-0.5 font-bold tracking-widest uppercase"
-                      style={{
-                        color: "var(--status-overdue)",
-                        background: "var(--status-overdue-dim)",
-                        border: "0.5px solid var(--status-overdue-border)",
-                      }}
-                    >
-                      Overdue
-                    </span>
-                  )}
-                  {!isOverdue && label === "Today" && (
-                    <span
-                      className="text-caption rounded-full px-2 py-0.5 font-bold tracking-widest uppercase"
-                      style={{
-                        color: "var(--status-today)",
-                        background: "var(--status-today-dim)",
-                        border: "0.5px solid var(--status-today-border)",
-                      }}
-                    >
-                      Due Today
-                    </span>
-                  )}
-                  <span
-                    className="text-caption rounded-full px-2 py-0.5 font-semibold capitalize"
-                    style={{
-                      color: categoryColor,
-                      background: `color-mix(in srgb, ${categoryColor} 15%, transparent)`,
-                      border: `0.5px solid color-mix(in srgb, ${categoryColor} 30%, transparent)`,
-                    }}
-                  >
-                    {task.category}
-                  </span>
-                </div>
-
+              <div className="min-w-0 flex-1 py-px">
                 <m.p
-                  className="text-body-lg leading-snug font-semibold"
-                  style={{ color: "var(--text-1)" }}
+                  className="text-body-lg line-clamp-2 leading-snug font-medium text-[var(--text-1)]"
                   animate={
                     isCompleting
                       ? {
@@ -373,176 +357,124 @@ export const TaskCard = React.memo(
                 </m.p>
 
                 {task.first_step && (
-                  <p
-                    className="text-ui mt-1"
-                    style={{
-                      color: isOverdue
-                        ? "var(--space-do)"
-                        : "var(--space-think)",
-                    }}
-                  >
-                    → {task.first_step}
-                  </p>
-                )}
-
-                {task.recurrence && (
-                  <p
-                    className="text-ui mt-1"
-                    style={{ color: "var(--text-3)" }}
-                  >
-                    ⇆ {formatRRule(task.recurrence)}
-                  </p>
-                )}
-
-                {subtasks.length > 0 && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <div
-                      className="h-1 flex-1 overflow-hidden rounded-full"
-                      style={{ background: "var(--surface-1)" }}
-                    >
-                      <div
-                        className="h-full transition-[width]"
-                        style={{
-                          width: `${(completedSubtasks / subtasks.length) * 100}%`,
-                          background: "var(--text-3)",
-                        }}
-                      />
-                    </div>
-                    <span
-                      className="text-caption shrink-0 font-medium"
-                      style={{ color: "var(--text-3)" }}
-                    >
-                      {completedSubtasks}/{subtasks.length}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div
-              className="mt-3 flex items-center justify-between pt-2.5"
-              style={{ borderTop: "0.5px solid var(--border-subtle)" }}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-ui" style={{ color: "var(--text-3)" }}>
-                  {label && label !== "Overdue" && label !== "Today"
-                    ? label
-                    : task.deadline
-                      ? ""
-                      : "No deadline"}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {(task.time_spent_minutes ?? 0) > 0 && (
-                  <div
-                    className="flex items-center gap-1 rounded-md px-1.5 py-0.5"
-                    style={{ background: "var(--accent-dim)" }}
-                    title="Time spent on this task"
-                  >
+                  <p className="text-ui mt-0.5 flex min-w-0 items-center gap-1.5 text-[var(--text-3)]">
                     <UiIcon
-                      size={14}
-                      strokeWidth={1.5}
-                      style={{ color: "var(--accent)" }}
-                      icon={Timer}
+                      size={13}
+                      className="shrink-0 text-[var(--accent-text)]"
+                      icon={ArrowRight}
                     />
-                    <span
-                      className="text-caption font-bold"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      {formatTimeSpent(task.time_spent_minutes)}
-                    </span>
-                  </div>
+                    <span className="truncate">{task.first_step}</span>
+                  </p>
                 )}
-                {task.snoozed_until &&
-                  new Date(task.snoozed_until) > new Date() && (
-                    <div
-                      className="flex items-center gap-1 rounded-md px-2 py-1"
+
+                <div className="task-meta mt-1.5">
+                  {priority < 3 ? (
+                    <span style={{ color: priorityColor }}>
+                      <UiIcon size={12} icon={Flag} />
+                      {priorityLabel}
+                    </span>
+                  ) : (
+                    <span className="sr-only">{priorityLabel} priority</span>
+                  )}
+                  {label && (
+                    <span
                       style={{
-                        background: "var(--surface-1)",
-                        border: "0.5px solid var(--border-default)",
+                        color: isOverdue
+                          ? "var(--status-overdue)"
+                          : label === "Today"
+                            ? "var(--status-today)"
+                            : undefined,
                       }}
                     >
-                      <UiIcon
-                        size={14}
-                        strokeWidth={1.5}
-                        style={{ color: "var(--text-3)" }}
-                        icon={Clock}
-                      />
-                      <span
-                        className="text-caption"
-                        style={{ color: "var(--text-3)" }}
-                      >
-                        {new Date(task.snoozed_until).toLocaleTimeString(
-                          "en-US",
-                          { hour: "numeric", minute: "2-digit" },
-                        )}
-                      </span>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-
-                          const rollback = updateTaskInCaches(
-                            queryClient,
-                            task.id,
-                            { snoozed_until: null },
-                          );
-
-                          try {
-                            markMutation();
-                            const { error } = await supabase
-                              .from("items")
-                              .update({ snoozed_until: null })
-                              .eq("id", task.id);
-                            if (error) throw error;
-                            fetchTasks();
-                          } catch {
-                            rollback();
-                            toast.error("Failed to cancel snooze");
-                          }
-                        }}
-                        className="ml-1"
-                        style={{ color: "var(--text-3)" }}
-                      >
-                        ×
-                      </button>
-                    </div>
+                      <UiIcon size={12} icon={CalendarDays} />
+                      {isOverdue && task.deadline
+                        ? `Overdue · ${new Date(task.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        : label}
+                    </span>
                   )}
+                  {task.recurrence && (
+                    <span>
+                      <UiIcon size={12} icon={Repeat} />
+                      {formatRRule(task.recurrence)}
+                    </span>
+                  )}
+                  {subtasks.length > 0 && (
+                    <span
+                      style={{
+                        color: allSubtasksDone
+                          ? "var(--status-done)"
+                          : undefined,
+                      }}
+                    >
+                      <UiIcon size={12} icon={ListChecks} />
+                      {completedSubtasks}/{subtasks.length}
+                    </span>
+                  )}
+                  {timeSpent && (
+                    <span title="Time spent on this task">
+                      <UiIcon size={12} icon={Timer} />
+                      {timeSpent}
+                    </span>
+                  )}
+                  {snoozedUntil && (
+                    <span>
+                      <UiIcon size={12} icon={Clock} />
+                      Snoozed until{" "}
+                      {snoozedUntil.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                      <button
+                        type="button"
+                        onClick={cancelSnooze}
+                        aria-label="Cancel snooze"
+                        className="-my-1 ml-0.5 rounded p-0.5 hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+                      >
+                        <UiIcon size={12} icon={X} />
+                      </button>
+                    </span>
+                  )}
+                  <span className="task-meta-category">
+                    <span
+                      aria-hidden="true"
+                      className="size-2 rounded-full"
+                      style={{ background: categoryColor }}
+                    />
+                    {task.category}
+                  </span>
+                </div>
+              </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
+              {/* Actions: revealed on hover/focus with a fine pointer,
+                  always visible on touch (.row-actions). Swipe covers
+                  delete on phones, so the trash button is desktop-only. */}
+              <div className="row-actions -my-1 flex shrink-0 items-center">
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveTimer({ taskId: task.id, taskTitle: task.title });
                   }}
-                  /* Step 4: this was an icon-only button relying on the
-                     Button component's *default* size (h-10, with px-5
-                     horizontal padding meant for a labeled button) — that
-                     accidentally produced a wide, off-square hit area
-                     instead of a proper icon button. `size="icon"` is the
-                     documented convention for icon-only buttons in this
-                     component, but its own 36x36 base falls under the
-                     ~44px touch-target guideline, so it's bumped to 40x40
-                     here (h-10 w-10) to stay closer to that minimum while
-                     the tighter, un-padded rect still reads correctly next
-                     to the other 28-32px footer chips. */
-                  className="h-10 w-10 rounded-[var(--radius-md)]"
-                  style={{
-                    background: "var(--accent-dim)",
-                    color: "var(--accent)",
-                    border: "none",
-                  }}
                   title="Start focus session"
-                  aria-label={`Start focus session: ${String(task.title ?? "task").slice(0, 40)}`}
+                  aria-label={`Start focus session: ${shortTitle}`}
+                  className="task-action task-action-play"
                 >
                   <UiIcon
-                    size={16}
+                    size={14}
                     strokeWidth={0}
                     className="fill-current"
                     icon={Play}
                   />
-                </Button>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleHoverDeleteClick}
+                  aria-label={`Move ${shortTitle} to trash`}
+                  title="Move to trash"
+                  className="task-action task-action-danger hidden md:flex"
+                >
+                  <UiIcon size={15} icon={Trash2} />
+                </button>
               </div>
             </div>
           </GlassCard>

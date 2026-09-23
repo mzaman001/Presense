@@ -14,7 +14,6 @@ import React, {
 import { m, AnimatePresence } from "framer-motion";
 import { createClient, safeMutate } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Badge } from "@/components/ui/Badge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TaskCard } from "@/components/features/TaskCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -97,32 +96,27 @@ const Column = React.memo(
     fetchTasks: () => void;
     newTaskIds: Set<string>;
   }) => (
-    <div className="min-w-0 flex-1">
-      <div className="mb-4 flex items-center gap-2">
+    <section aria-label={title} className="min-w-0 flex-1">
+      {/* Section header: quiet, Things-style — tinted icon, title, count. */}
+      <div className="mb-2.5 flex h-7 items-center gap-2 px-1">
         <Icon
           aria-hidden="true"
-          className="h-4 w-4"
+          className="h-3.5 w-3.5"
           style={{ color: accent }}
         />
-        <h2 className="text-[length:var(--text-body)] font-medium text-[var(--text-1)]">
+        <h2 className="text-[length:var(--text-ui)] font-semibold text-[var(--text-1)]">
           {title}
         </h2>
         {colTasks.length > 0 && (
-          <Badge
-            variant={
-              title.toLowerCase() as React.ComponentProps<
-                typeof Badge
-              >["variant"]
-            }
-          >
+          <span className="text-[length:var(--text-meta)] text-[var(--text-3)] tabular-nums">
             {colTasks.length}
-          </Badge>
+          </span>
         )}
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <AnimatePresence mode="popLayout">
           {colTasks.length === 0 ? (
-            <div className="rounded-xl border border-[var(--border-subtle)] py-8 text-center text-[length:var(--text-body)] text-[var(--text-3)]">
+            <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-subtle)] py-6 text-center text-[length:var(--text-ui)] text-[var(--text-3)]">
               Nothing here
             </div>
           ) : (
@@ -150,7 +144,7 @@ const Column = React.memo(
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </section>
   ),
 );
 Column.displayName = "Column";
@@ -575,7 +569,7 @@ export default function DoPage() {
             "gap-6",
             isBoardView
               ? "grid max-w-3xl grid-cols-1 items-start md:grid-cols-2"
-              : "flex w-full max-w-3xl flex-col space-y-8",
+              : "flex w-full max-w-3xl flex-col space-y-7",
           )}
         >
           {overdue.length > 0 && (
@@ -642,8 +636,8 @@ export default function DoPage() {
           className={cn(
             "gap-6",
             isBoardView
-              ? "grid grid-cols-1 items-start md:grid-cols-3"
-              : "flex w-full max-w-3xl flex-col space-y-8",
+              ? "grid grid-cols-1 items-start md:grid-cols-2 xl:grid-cols-4"
+              : "flex w-full max-w-3xl flex-col space-y-7",
           )}
         >
           {overdue.length > 0 || isBoardView ? (
@@ -706,7 +700,7 @@ export default function DoPage() {
                 icon={Wind}
                 title="You're all caught up"
                 description="No tasks in this view. Take a well-deserved break, or plan ahead."
-                className="md:col-span-3"
+                className="md:col-span-2 xl:col-span-4"
                 action={
                   <Button
                     variant="primary"

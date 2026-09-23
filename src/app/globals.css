@@ -1065,6 +1065,110 @@ h6 {
     width: 16px;
     height: 16px;
   }
+
+  /* === TASK ROW (TaskCard) ===
+     Round checkbox whose ring carries the priority (--check-ring), set
+     inline for Urgent/High/Medium; Low keeps the neutral ring. */
+  .task-card {
+    border-color: var(--border-subtle);
+    box-shadow: none;
+  }
+  .task-card:hover {
+    border-color: var(--border-default);
+    /* Tint over the card's own opaque fill (--surface-hover is translucent). */
+    background-image: linear-gradient(
+      var(--surface-hover),
+      var(--surface-hover)
+    );
+  }
+  .task-card-done {
+    border-color: color-mix(in srgb, var(--status-done) 40%, transparent);
+  }
+
+  .task-check {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    border-radius: 9999px;
+    border: 1.5px solid var(--check-ring, var(--border-strong));
+    background: color-mix(
+      in srgb,
+      var(--check-ring, transparent) 10%,
+      transparent
+    );
+    cursor: pointer;
+    transition:
+      background-color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out);
+  }
+  /* 44px touch target without growing the visual circle. */
+  .task-check::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+  .task-check:hover {
+    border-color: var(--check-ring, var(--accent));
+    background: color-mix(
+      in srgb,
+      var(--check-ring, var(--accent)) 18%,
+      transparent
+    );
+  }
+  .task-check.checked {
+    border-color: var(--status-done);
+    background: var(--status-done);
+  }
+
+  .task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 4px;
+    font-size: var(--text-meta);
+    line-height: 16px;
+    color: var(--text-3);
+  }
+  .task-meta > span:not(.sr-only) {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .task-meta-category {
+    text-transform: capitalize;
+  }
+
+  .task-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    color: var(--text-3);
+    transition:
+      background-color var(--dur-fast) var(--ease-out),
+      color var(--dur-fast) var(--ease-out);
+  }
+  .task-action-play:hover {
+    background: var(--accent-dim);
+    color: var(--accent-text);
+  }
+  .task-action-danger:hover {
+    background: var(--status-danger-dim);
+    color: var(--status-danger);
+  }
+  .task-action:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
 }
 
 /* ============================================================
