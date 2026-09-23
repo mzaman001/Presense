@@ -240,7 +240,8 @@ export async function routeCapture(
     } else {
       const dayNamesStr = Object.keys(dayMap).join("|");
       const daysRegex = new RegExp(
-        `every\\s+((?:(?:${dayNamesStr})(?:\\s*,\\s*|\\s+and\\s+|\\s+)?)+)`,
+        // \\b after the day: "mon" must not match inside "month".
+        `every\\s+((?:(?:${dayNamesStr})\\b(?:\\s*,\\s*|\\s+and\\s+|\\s+)?)+)`,
         "i",
       );
       const everyDaysMatch = lower.match(daysRegex);
