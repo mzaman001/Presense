@@ -42,7 +42,11 @@ export function ConfirmModal({
   inputRequired,
   onConfirm,
   onClose,
-  zIndexClassName,
+  // Above Sheets (z-[100]): confirms are opened from inside them (the task
+  // panel's "Discard changes?"), and at the shared dialog layer (z-50) they
+  // rendered underneath, showing only a dimmed backdrop. Below the Pomodoro
+  // overlay (z-[200]), which passes its own z-[250].
+  zIndexClassName = "z-[150]",
   onCloseAutoFocus,
 }: ConfirmModalProps) {
   const [inputValue, setInputValue] = React.useState("");
