@@ -11,21 +11,21 @@ import { m, AnimatePresence } from "framer-motion";
 import {
   X,
   Check,
-  AlertTriangle,
-  Sparkles,
   Moon,
   ArrowRight,
-  Clock,
-  BookOpen,
-  Smile,
   ChevronLeft,
   Sun,
-  Inbox,
-  SkipForward,
+  Sunrise,
+  CloudSun,
+  Loader2,
 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/button";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { cn } from "@/lib/utils";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import {
   activateItemWithDeadlinePatch,
@@ -33,216 +33,192 @@ import {
 } from "@/lib/item-lifecycle";
 
 // ─── WorkloadBar ──────────────────────────────────────────────────────────────
+// Planned minutes against the daily capacity from Settings. One calm bar;
+// the over-capacity note is advice, not an alarm.
 function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
   const pct = capacity > 0 ? Math.min((total / capacity) * 100, 100) : 0;
   const isOver = capacity > 0 && total > capacity;
+  const fmt = (m: number) =>
+    m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${m}m`;
 
   return (
-    <div className="space-y-3" data-testid="workload-bar">
-      <div className="flex items-center justify-between">
-        <span
-          className="text-meta font-bold tracking-widest uppercase"
-          style={{ color: "var(--text-muted)" }}
-        >
-          Daily Workload
+    <div className="space-y-2.5" data-testid="workload-bar">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[length:var(--text-ui)] font-medium text-[var(--text-2)]">
+          Planned
         </span>
-        <span
-          className="text-ui font-bold tabular-nums"
-          style={{
-            color: isOver ? "var(--status-overdue)" : "var(--status-done)",
-          }}
-        >
-          {total}m{" "}
-          <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>
-            / {capacity}m
-          </span>
+        <span className="text-[length:var(--text-ui)] text-[var(--text-3)] tabular-nums">
+          <span
+            className={cn(
+              "font-heading text-[length:var(--text-title-md)]",
+              isOver ? "text-[var(--status-today)]" : "text-[var(--text-1)]",
+            )}
+          >
+            {fmt(total)}
+          </span>{" "}
+          of {fmt(capacity)}
         </span>
       </div>
-
-      <div
-        className="relative h-[3px] overflow-hidden rounded-full"
-        style={{ background: "rgba(255,255,255,0.06)" }}
-      >
+      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-active)]">
         <m.div
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{
-            background: isOver
-              ? "linear-gradient(90deg, var(--status-today), var(--status-overdue))"
-              : "linear-gradient(90deg, var(--accent), var(--status-done))",
-            boxShadow: isOver
-              ? "0 0 8px var(--status-overdue)"
-              : "0 0 8px var(--accent)",
-          }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className={cn(
+            "h-full rounded-full",
+            isOver ? "bg-[var(--status-today)]" : "bg-[var(--accent)]",
+          )}
         />
       </div>
-
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {isOver && (
-          <m.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="flex items-start gap-2.5 rounded-xl px-3 py-2.5"
-            style={{
-              background: "var(--status-overdue-dim)",
-              border: "0.5px solid var(--status-overdue-border)",
-            }}
+          <m.p
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden text-[length:var(--text-ui)] leading-relaxed text-[var(--text-3)]"
           >
-            <UiIcon
-              className="mt-0.5 h-3.5 w-3.5 shrink-0"
-              style={{ color: "var(--status-overdue)" }}
-              icon={AlertTriangle}
-            />
-            <p
-              className="text-meta leading-relaxed"
-              style={{ color: "var(--text-3)" }}
-            >
-              Over capacity — consider snoozing a task or two. Rest is part of
-              the plan.
-            </p>
-          </m.div>
+            That&apos;s more than your day holds. Consider moving one or two to
+            tomorrow. Rest is part of the plan.
+          </m.p>
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-// ─── TriageCard ───────────────────────────────────────────────────────────────
-function TriageCard({
+type TriageAction = "today" | "backlog" | "snooze";
+
+// ─── TriageRow ────────────────────────────────────────────────────────────────
+// One loose end, three equal choices. A flat row in a list, not a card inside
+// a card; it folds away when a choice is made.
+function TriageRow({
   task,
   onAction,
 }: {
-  /* @todo: Untyped usage justified per TOOL-01 */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  task: any;
-  onAction: (id: string, action: "today" | "backlog" | "snooze") => void;
+  task: Database["public"]["Tables"]["items"]["Row"];
+  onAction: (id: string, action: TriageAction) => void;
 }) {
   const isOverdue =
     task.status === "overdue" ||
     (task.deadline &&
       new Date(task.deadline) < new Date(new Date().setHours(0, 0, 0, 0)));
 
+  const choices: { action: TriageAction; label: string; icon: typeof Sun }[] = [
+    { action: "today", label: "Today", icon: Sun },
+    { action: "snooze", label: "Tomorrow", icon: Sunrise },
+    { action: "backlog", label: "Someday", icon: CloudSun },
+  ];
+
   return (
-    <m.div
+    <m.li
       layout
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -24, scale: 0.96, filter: "blur(4px)" }}
-      transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="group relative rounded-2xl p-4"
-      style={{
-        background: "var(--surface-card)",
-        border: "0.5px solid var(--border-card)",
-        backdropFilter: "blur(20px)",
-      }}
+      exit={{ opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0 }}
+      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+      className="overflow-hidden px-4 py-3.5"
     >
-      {/* top highlight */}
+      <p className="text-[length:var(--text-body-lg)] leading-snug text-[var(--text-1)]">
+        {task.title}
+      </p>
+      <p className="mt-0.5 text-[length:var(--text-meta)] text-[var(--text-3)]">
+        {isOverdue ? (
+          <span className="text-[var(--status-overdue)]">Overdue</span>
+        ) : (
+          "In your inbox"
+        )}
+        {task.deadline && (
+          <>
+            {" · "}
+            {new Date(task.deadline).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </>
+        )}
+      </p>
       <div
-        className="absolute top-0 right-0 left-0 h-px rounded-t-2xl"
-        style={{ background: "var(--border-card-top)" }}
-      />
-
-      <div className="mb-3.5 flex items-start gap-3">
-        <div
-          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-          style={{
-            background: isOverdue
-              ? "var(--status-overdue-dim)"
-              : "var(--surface-card)",
-            border: `1px solid ${isOverdue ? "var(--status-overdue-border)" : "var(--border-default)"}`,
-          }}
-        >
-          {isOverdue && (
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: "var(--status-overdue)" }}
-            />
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p
-            className="text-body leading-snug font-semibold"
-            style={{ color: "var(--text-1)" }}
-          >
-            {task.title}
-          </p>
-          <div className="mt-1 flex items-center gap-2">
-            <span
-              className="text-caption font-bold tracking-widest uppercase"
-              style={{
-                color: isOverdue
-                  ? "var(--status-overdue)"
-                  : "var(--text-muted)",
-              }}
-            >
-              {task.status === "inbox" ? "Inbox" : "Overdue"}
-            </span>
-            {task.deadline && (
-              <>
-                <span style={{ color: "var(--border-default)" }}>·</span>
-                <span
-                  className="text-meta"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {new Date(task.deadline).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              </>
+        role="group"
+        aria-label={`When will you do "${task.title}"?`}
+        className="mt-3 grid grid-cols-3 gap-1.5"
+      >
+        {choices.map(({ action, label, icon: Icon }) => (
+          <button
+            key={action}
+            type="button"
+            onClick={() => onAction(task.id, action)}
+            className={cn(
+              "flex h-9 items-center justify-center gap-1.5 rounded-full text-[length:var(--text-ui)] font-medium transition-[background-color,color,transform] duration-[var(--dur-fast)] active:scale-[0.97]",
+              action === "today"
+                ? "bg-[var(--accent-dim)] text-[var(--accent-text)] hover:bg-[var(--accent-dim-hover)]"
+                : "bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--surface-active)] hover:text-[var(--text-1)]",
             )}
-          </div>
-        </div>
+          >
+            <Icon aria-hidden="true" className="size-4" strokeWidth={1.75} />
+            {label}
+          </button>
+        ))}
       </div>
+    </m.li>
+  );
+}
 
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => onAction(task.id, "today")}
-          className="text-ui flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 font-semibold transition-all active:scale-[0.97]"
-          style={{
-            background: "var(--accent)",
-            color: "var(--text-on-accent)",
-            boxShadow: "var(--shadow-button-primary)",
-          }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.boxShadow =
-              "var(--shadow-button-primary-hover)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.boxShadow = "var(--shadow-button-primary)")
-          }
-        >
-          <UiIcon className="h-3.5 w-3.5" strokeWidth={2.5} icon={Check} /> Do
-          Today
-        </button>
-        <button
-          onClick={() => onAction(task.id, "snooze")}
-          className="text-ui flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-all hover:brightness-110 active:scale-[0.97]"
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "0.5px solid var(--border-default)",
-            color: "var(--text-2)",
-          }}
-        >
-          <UiIcon className="h-3.5 w-3.5" icon={Clock} /> Tomorrow
-        </button>
-        <button
-          onClick={() => onAction(task.id, "backlog")}
-          className="text-ui flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-all hover:brightness-110 active:scale-[0.97]"
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "0.5px solid var(--border-default)",
-            color: "var(--text-muted)",
-          }}
-        >
-          <UiIcon className="h-3.5 w-3.5" icon={SkipForward} /> Backlog
-        </button>
+// Quiet centred message for an empty step.
+function RitualEmpty({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof Sun;
+  title: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center px-4 py-10 text-center">
+      <span className="mb-4 flex size-12 items-center justify-center rounded-full bg-[var(--accent-dim)]">
+        <Icon
+          aria-hidden="true"
+          className="size-5 text-[var(--accent-text)]"
+          strokeWidth={1.75}
+        />
+      </span>
+      <p className="font-heading text-[length:var(--text-title-md)] text-[var(--text-1)]">
+        {title}
+      </p>
+      {children && (
+        <div className="mt-1.5 max-w-xs text-[length:var(--text-body)] text-[var(--text-3)]">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Section label inside the ritual: sentence case, with an optional count.
+function RitualSection({
+  title,
+  aside,
+  children,
+}: {
+  title: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2">
+      <div className="flex items-baseline justify-between px-1">
+        <h3 className="text-[length:var(--text-ui)] font-medium text-[var(--text-2)]">
+          {title}
+        </h3>
+        {aside && (
+          <span className="text-[length:var(--text-ui)] text-[var(--text-3)] tabular-nums">
+            {aside}
+          </span>
+        )}
       </div>
-    </m.div>
+      {children}
+    </section>
   );
 }
 
@@ -260,6 +236,7 @@ export function RitualOverlay({
 }: RitualOverlayProps = {}) {
   const userId = useUserId();
   const router = useRouter();
+  const haptics = useHaptics();
   const supabase = useMemo(() => createClient(), []);
 
   const {
@@ -281,9 +258,11 @@ export function RitualOverlay({
   const activeRitual = type !== undefined ? type : storeActiveRitual;
   const isCurrentlyOpen =
     isOpen !== undefined ? isOpen : storeActiveRitual !== null;
+  // Move focus into the ritual and keep it there while it's open.
+  const dialogRef = useDialogFocus(isCurrentlyOpen);
 
   const handleClose = useCallback(() => {
-    // Stamp close time so AppInitializer won't fire another ritual for 5 minutes
+    // Stamp close time so AppInitializer holds off re-prompting (RITUAL_SNOOZE_MS)
     localStorage.setItem("presense_ritual_closed_at", String(Date.now()));
     if (onClose) onClose();
     else storeSetActiveRitual(null);
@@ -343,7 +322,7 @@ export function RitualOverlay({
       )
         return;
       if (e.key === "Escape") {
-        handleClose();
+        if (!e.defaultPrevented) handleClose();
         return;
       }
       if (activeRitual === "morning" && step === 1 && triageTasks.length > 0) {
@@ -508,9 +487,9 @@ export function RitualOverlay({
       markMutation("items");
 
       const actionLabels = {
-        today: "Moved to Today",
-        backlog: "Moved to Backlog",
-        snooze: "Snoozed until tomorrow",
+        today: "Added to today",
+        backlog: "Saved for someday",
+        snooze: "Moved to tomorrow",
       };
       toast.success(actionLabels[action], {
         action: {
@@ -585,7 +564,9 @@ export function RitualOverlay({
 
       updateUserSetting("last_ritual_date", todayString);
       toast.success("Morning planning done — have a focused day!", {
-        icon: <UiIcon className="h-4 w-4 text-orange-400" icon={Sun} />,
+        icon: (
+          <UiIcon className="h-4 w-4 text-[var(--accent-text)]" icon={Sun} />
+        ),
       });
       handleClose();
       router.push("/");
@@ -718,7 +699,12 @@ export function RitualOverlay({
 
       updateUserSetting("last_evening_ritual_date", todayString);
       toast.success("Shutdown complete. Rest well.", {
-        icon: <UiIcon className="h-4 w-4 text-blue-400" icon={Moon} />,
+        icon: (
+          <UiIcon
+            className="h-4 w-4 text-[var(--status-someday)]"
+            icon={Moon}
+          />
+        ),
       });
       handleClose();
     } catch (err: unknown) {
@@ -771,6 +757,20 @@ export function RitualOverlay({
 
   if (!isCurrentlyOpen || !activeRitual) return null;
 
+  const hour = new Date().getHours();
+  const heading = isMorning
+    ? step === 1
+      ? hour < 12
+        ? "Good morning."
+        : "Let's plan the day."
+      : "Shape your day."
+    : "Let the day go.";
+  const guidance = isMorning
+    ? step === 1
+      ? "First, give each loose end a place."
+      : "This is what you've chosen for today. Estimates keep it honest."
+    : "Close the open loops, note one thing, and rest.";
+
   return (
     <AnimatePresence>
       <m.div
@@ -778,407 +778,223 @@ export function RitualOverlay({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{
-          background: "rgba(0,0,0,0.72)",
-          backdropFilter: "blur(32px)",
-          WebkitBackdropFilter: "blur(32px)",
-        }}
+        transition={{ duration: 0.24 }}
+        className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--bg-overlay)] md:items-center md:p-6"
         data-testid="ritual-overlay"
       >
-        {/* Ambient glow orbs behind modal */}
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            width: 480,
-            height: 480,
-            borderRadius: "50%",
-            background: isMorning
-              ? "radial-gradient(circle, rgba(229,180,30,0.10) 0%, transparent 70%)"
-              : "radial-gradient(circle, rgba(129,140,248,0.08) 0%, transparent 70%)",
-            transform: "translate(-30%, -40%)",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            width: 320,
-            height: 320,
-            borderRadius: "50%",
-            background: isMorning
-              ? "radial-gradient(circle, rgba(235,66,51,0.06) 0%, transparent 70%)"
-              : "radial-gradient(circle, rgba(45,212,191,0.06) 0%, transparent 70%)",
-            transform: "translate(60%, 50%)",
-          }}
-        />
-
         <m.div
-          initial={{ opacity: 0, scale: 0.96, y: 16 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 8 }}
-          transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="relative flex max-h-[88vh] w-full max-w-[480px] flex-col overflow-hidden"
-          style={{
-            background: "var(--surface-modal)",
-            backdropFilter: "var(--glass-blur-heavy)",
-            WebkitBackdropFilter: "var(--glass-blur-heavy)",
-            border: "0.5px solid var(--border-default)",
-            borderRadius: "var(--radius-2xl)",
-            boxShadow: "var(--shadow-modal), 0 0 60px rgba(0,0,0,0.5)",
-          }}
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ritual-title"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16, transition: { duration: 0.18 } }}
+          transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+          className="modal relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[var(--sheet-radius)] rounded-b-none md:max-h-[86vh] md:max-w-[520px] md:rounded-[var(--radius-xl)]"
         >
-          {/* Top shimmer line */}
+          {/* First light (or last light) along the top of the panel. */}
           <div
-            className="pointer-events-none absolute top-0 right-8 left-8 h-px"
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-40"
             style={{
-              background:
-                "linear-gradient(90deg, transparent, var(--border-card-top), transparent)",
+              background: isMorning
+                ? "radial-gradient(120% 100% at 50% -30%, var(--atmos-a), transparent 70%)"
+                : "radial-gradient(120% 100% at 50% -30%, var(--atmos-b), transparent 70%)",
             }}
           />
 
           {/* ── Header ─────────────────────────────────────────── */}
-          <div className="flex shrink-0 items-center justify-between px-6 pt-5 pb-4">
-            <div className="flex items-center gap-3.5">
-              {/* Icon with glow ring */}
-              <div className="relative">
-                <div
-                  className="absolute inset-0 rounded-xl opacity-60 blur-sm"
-                  style={{
-                    background: "var(--accent-dim)",
-                    transform: "scale(1.3)",
-                  }}
-                />
-                <div
-                  className="relative flex h-9 w-9 items-center justify-center rounded-xl"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, var(--accent-dim) 0%, rgba(255,255,255,0.03) 100%)",
-                    border: "0.5px solid var(--accent-border)",
-                  }}
-                >
+          <header className="relative shrink-0 px-6 pt-5 pb-5 md:pt-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5 text-[length:var(--text-ui)] font-medium text-[var(--text-3)]">
                   {isMorning ? (
-                    <UiIcon
-                      className="h-4.5 w-4.5"
-                      style={{ color: "var(--accent)" }}
-                      strokeWidth={1.8}
-                      icon={Sun}
+                    <Sunrise
+                      aria-hidden="true"
+                      className="size-4 text-[var(--accent-text)]"
+                      strokeWidth={1.75}
                     />
                   ) : (
-                    <UiIcon
-                      className="h-4.5 w-4.5"
-                      style={{ color: "var(--accent)" }}
-                      strokeWidth={1.8}
-                      icon={Moon}
+                    <Moon
+                      aria-hidden="true"
+                      className="size-4 text-[var(--status-someday)]"
+                      strokeWidth={1.75}
                     />
                   )}
-                </div>
+                  {isMorning ? "Morning planning" : "Evening review"}
+                </span>
+                {isMorning && (
+                  <span className="flex items-center gap-2 text-[length:var(--text-meta)] text-[var(--text-3)] tabular-nums">
+                    <span aria-hidden="true" className="flex gap-1">
+                      {[1, 2].map((s) => (
+                        <span
+                          key={s}
+                          className={cn(
+                            "h-1 w-5 rounded-full transition-colors duration-[var(--dur-slow)]",
+                            s <= step
+                              ? "bg-[var(--accent)]"
+                              : "bg-[var(--surface-active)]",
+                          )}
+                        />
+                      ))}
+                    </span>
+                    <span className="sr-only">Step </span>
+                    {step} of 2
+                  </span>
+                )}
               </div>
-
-              <div>
-                <h2
-                  className="text-title-sm leading-none font-bold tracking-tight"
-                  style={{ color: "var(--text-1)" }}
-                >
-                  {isMorning ? "Morning Planning" : "Evening Review"}
-                </h2>
-                <p
-                  className="text-meta mt-1"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {isMorning
-                    ? step === 1
-                      ? "Step 1 of 2 — Triage your inbox"
-                      : "Step 2 of 2 — Commit your day"
-                    : "Shutdown ritual"}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Step pills */}
-              {isMorning && (
-                <div className="flex items-center gap-1.5">
-                  {[1, 2].map((s) => (
-                    <m.div
-                      key={s}
-                      animate={{
-                        width: step === s ? 20 : 6,
-                        opacity: step === s ? 1 : 0.35,
-                      }}
-                      transition={{
-                        duration: 0.3,
-                        ease: [0.25, 0.46, 0.45, 0.94],
-                      }}
-                      className="h-1.5 rounded-full"
-                      style={{ background: "var(--accent)" }}
-                    />
-                  ))}
-                </div>
-              )}
               <button
-                onClick={handleSkip}
-                className="text-meta font-medium transition-all hover:text-white"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Skip today
-              </button>
-              <button
+                type="button"
                 onClick={handleClose}
-                className="flex h-7 w-7 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "0.5px solid var(--border-default)",
-                  color: "var(--text-3)",
-                }}
                 aria-label="Close"
+                className="-mr-2 flex size-9 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
               >
-                <UiIcon className="h-3.5 w-3.5" icon={X} />
+                <X aria-hidden="true" className="size-[18px]" />
               </button>
             </div>
-          </div>
-
-          {/* Separator */}
-          <div
-            className="mx-6 mb-4"
-            style={{ height: "0.5px", background: "var(--border-subtle)" }}
-          />
+            <AnimatePresence mode="wait" initial={false}>
+              <m.div
+                key={`${activeRitual}-${step}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <h2
+                  id="ritual-title"
+                  className="font-heading text-[length:var(--text-title-3xl)] leading-tight font-medium text-[var(--text-1)]"
+                >
+                  {heading}
+                </h2>
+                <p className="mt-1.5 text-[length:var(--text-body-lg)] text-[var(--text-3)]">
+                  {guidance}
+                </p>
+              </m.div>
+            </AnimatePresence>
+          </header>
 
           {/* ── Body ──────────────────────────────────────────── */}
-          <div className="flex-1 scrollbar-thin space-y-4 overflow-y-auto overscroll-contain px-6 pb-4">
+          <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
             {loading ? (
-              <div className="flex flex-col items-center justify-center gap-4 py-20">
-                <div
-                  className="h-9 w-9 animate-spin rounded-full border-2 border-t-transparent"
-                  style={{
-                    borderColor: "var(--accent-border)",
-                    borderTopColor: "var(--accent)",
-                  }}
+              <div
+                className="flex flex-col items-center justify-center gap-3 py-16"
+                role="status"
+              >
+                <Loader2
+                  aria-hidden="true"
+                  className="size-6 animate-spin text-[var(--text-3)]"
                 />
-                <p className="text-ui" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[length:var(--text-body)] text-[var(--text-3)]">
                   Preparing your ritual…
                 </p>
               </div>
             ) : isMorning ? (
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="wait" initial={false}>
                 {step === 1 ? (
-                  /* Step 1: Triage */
                   <m.div
                     key="step1"
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-3"
+                    exit={{
+                      opacity: 0,
+                      x: -12,
+                      transition: { duration: 0.12 },
+                    }}
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                   >
                     {triageTasks.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center gap-3 py-12">
-                        <div
-                          className="flex h-14 w-14 items-center justify-center rounded-2xl"
-                          style={{
-                            background:
-                              "linear-gradient(135deg, rgba(74,222,128,0.12), rgba(74,222,128,0.04))",
-                            border: "0.5px solid rgba(74,222,128,0.2)",
-                            boxShadow: "0 0 24px rgba(74,222,128,0.08)",
-                          }}
-                        >
-                          <UiIcon
-                            className="h-7 w-7"
-                            style={{ color: "var(--status-done)" }}
-                            strokeWidth={1.5}
-                            icon={Smile}
-                          />
-                        </div>
-                        <div className="text-center">
-                          <p
-                            className="text-title-sm font-semibold"
-                            style={{ color: "var(--text-1)" }}
-                          >
-                            Inbox is clear
-                          </p>
-                          <p
-                            className="text-ui mt-1"
-                            style={{ color: "var(--text-muted)" }}
-                          >
-                            No inbox or overdue tasks to triage.
-                          </p>
-                        </div>
-                      </div>
+                      <RitualEmpty icon={Check} title="Nothing loose.">
+                        Your inbox is clear and nothing is overdue.
+                      </RitualEmpty>
                     ) : (
-                      <>
-                        <div className="mb-1 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <UiIcon
-                              className="h-3.5 w-3.5"
-                              style={{ color: "var(--text-muted)" }}
-                              icon={Inbox}
-                            />
-                            <span
-                              className="text-meta font-bold tracking-widest uppercase"
-                              style={{ color: "var(--text-muted)" }}
-                            >
-                              To triage
-                            </span>
-                          </div>
-                          <span
-                            className="text-meta rounded-full px-2 py-0.5 font-bold"
-                            style={{
-                              background: "var(--accent-dim)",
-                              color: "var(--accent)",
-                              border: "0.5px solid var(--accent-border)",
-                            }}
-                          >
-                            {triageTasks.length} left
-                          </span>
-                        </div>
-                        <AnimatePresence mode="popLayout">
-                          {triageTasks.map((task) => (
-                            <TriageCard
-                              key={task.id}
-                              task={task}
-                              onAction={handleTriageAction}
-                            />
-                          ))}
-                        </AnimatePresence>
-                      </>
+                      <RitualSection
+                        title="Loose ends"
+                        aside={`${triageTasks.length} to place`}
+                      >
+                        <ul className="divide-y divide-[var(--border-subtle)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)]">
+                          <AnimatePresence initial={false}>
+                            {triageTasks.map((task) => (
+                              <TriageRow
+                                key={task.id}
+                                task={task}
+                                onAction={(id, action) => {
+                                  haptics.selection();
+                                  handleTriageAction(id, action);
+                                }}
+                              />
+                            ))}
+                          </AnimatePresence>
+                        </ul>
+                        <p className="hidden px-1 pt-1 text-[length:var(--text-meta)] text-[var(--text-3)] md:block">
+                          Tip: press 1, 2 or 3 to place the top one.
+                        </p>
+                      </RitualSection>
                     )}
                   </m.div>
                 ) : (
-                  /* Step 2: Commit */
                   <m.div
                     key="step2"
-                    initial={{ opacity: 0, x: 10 }}
+                    initial={{ opacity: 0, x: 12 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-3"
+                    exit={{ opacity: 0, x: 12, transition: { duration: 0.12 } }}
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                    className="space-y-6"
                   >
                     {todayTasks.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center gap-3 py-12">
-                        <div
-                          className="flex h-14 w-14 items-center justify-center rounded-2xl"
-                          style={{
-                            background: "var(--accent-dim)",
-                            border: "0.5px solid var(--accent-border)",
-                            boxShadow: "0 0 24px var(--accent-glow)",
-                          }}
-                        >
-                          <UiIcon
-                            className="h-7 w-7"
-                            style={{ color: "var(--accent)" }}
-                            strokeWidth={1.5}
-                            icon={Sparkles}
-                          />
-                        </div>
-                        <div className="text-center">
-                          <p
-                            className="text-title-sm font-semibold"
-                            style={{ color: "var(--text-1)" }}
-                          >
-                            No tasks for today
-                          </p>
-                          <p
-                            className="text-ui mt-1"
-                            style={{ color: "var(--text-muted)" }}
-                          >
-                            Go back and mark some tasks as &ldquo;Do
-                            Today&rdquo;.
-                          </p>
-                        </div>
-                      </div>
+                      <RitualEmpty icon={Sun} title="An open day.">
+                        Nothing is set for today yet. Go back and choose
+                        &ldquo;Today&rdquo; for anything that matters.
+                      </RitualEmpty>
                     ) : (
                       <>
-                        <div className="mb-1 flex items-center gap-2">
-                          <UiIcon
-                            className="h-3.5 w-3.5"
-                            style={{ color: "var(--text-muted)" }}
-                            icon={Clock}
-                          />
-                          <span
-                            className="text-meta font-bold tracking-widest uppercase"
-                            style={{ color: "var(--text-muted)" }}
-                          >
-                            Today&apos;s tasks
-                          </span>
-                        </div>
-
-                        <div
-                          className="divide-y overflow-hidden rounded-2xl"
-                          style={{
-                            background: "var(--surface-card)",
-                            border: "0.5px solid var(--border-card)",
-                            borderCollapse: "collapse",
-                          }}
+                        <RitualSection
+                          title="Today"
+                          aside={`${todayTasks.length} ${todayTasks.length === 1 ? "task" : "tasks"}`}
                         >
-                          {todayTasks.map((task, i) => (
-                            <div
-                              key={task.id}
-                              className="flex items-center justify-between gap-4 px-4 py-3"
-                              style={{
-                                borderBottom:
-                                  i < todayTasks.length - 1
-                                    ? "0.5px solid var(--border-subtle)"
-                                    : "none",
-                              }}
-                            >
-                              <div className="flex min-w-0 flex-1 items-center gap-3">
-                                <div
-                                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-                                  style={{
-                                    background: "var(--accent-dim)",
-                                    border: "0.5px solid var(--accent-border)",
-                                  }}
-                                >
-                                  <div
-                                    className="h-1.5 w-1.5 rounded-full"
-                                    style={{ background: "var(--accent)" }}
-                                  />
-                                </div>
-                                <p
-                                  className="text-body truncate font-medium"
-                                  style={{ color: "var(--text-1)" }}
-                                >
+                          <ul className="divide-y divide-[var(--border-subtle)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)]">
+                            {todayTasks.map((task) => (
+                              <li
+                                key={task.id}
+                                className="flex min-h-14 items-center gap-3 px-4 py-2"
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className="size-1.5 shrink-0 rounded-full bg-[var(--accent)]"
+                                />
+                                <p className="min-w-0 flex-1 truncate text-[length:var(--text-body-lg)] text-[var(--text-1)]">
                                   {task.title}
                                 </p>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-1.5">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="5"
-                                  value={task.time_estimate || 25}
-                                  onChange={(e) =>
-                                    handleEstimateChange(
-                                      task.id,
-                                      parseInt(e.target.value) || 0,
-                                    )
-                                  }
-                                  className="text-body w-14 rounded-lg px-2 py-1.5 text-center font-bold transition-all focus:outline-none"
-                                  style={{
-                                    background: "var(--surface-input)",
-                                    border: "0.5px solid var(--border-input)",
-                                    color: "var(--text-1)",
-                                  }}
-                                  onFocus={(e) =>
-                                    (e.target.style.borderColor =
-                                      "var(--accent)")
-                                  }
-                                  onBlur={(e) =>
-                                    (e.target.style.borderColor =
-                                      "var(--border-input)")
-                                  }
-                                />
-                                <span
-                                  className="text-meta w-6"
-                                  style={{ color: "var(--text-muted)" }}
-                                >
-                                  min
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
+                                <label className="relative shrink-0">
+                                  <span className="sr-only">
+                                    Estimate for {task.title}, in minutes
+                                  </span>
+                                  {/* Shows the real saved value. It used to display
+                                      25 for unestimated tasks while the total
+                                      counted them as 0. */}
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min="0"
+                                    step="5"
+                                    placeholder="—"
+                                    value={task.time_estimate ?? ""}
+                                    onChange={(e) =>
+                                      handleEstimateChange(
+                                        task.id,
+                                        parseInt(e.target.value) || 0,
+                                      )
+                                    }
+                                    className="input !h-9 !w-[4.75rem] !rounded-full !py-0 !pr-9 !pl-3 text-right !text-[length:var(--text-ui)] tabular-nums"
+                                  />
+                                  <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[length:var(--text-meta)] text-[var(--text-3)]">
+                                    min
+                                  </span>
+                                </label>
+                              </li>
+                            ))}
+                          </ul>
+                        </RitualSection>
                         <WorkloadBar
                           total={totalEstimate}
                           capacity={capacity}
@@ -1189,279 +1005,136 @@ export function RitualOverlay({
                 )}
               </AnimatePresence>
             ) : (
-              /* Evening Flow */
-              <div className="space-y-5">
-                {/* Stats row */}
+              /* Evening */
+              <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-3">
-                  <div
-                    className="relative overflow-hidden rounded-2xl px-4 py-4"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, var(--accent-dim) 0%, rgba(255,255,255,0.02) 100%)",
-                      border: "0.5px solid var(--accent-border)",
-                    }}
-                  >
+                  {[
+                    {
+                      label: "Finished today",
+                      value: String(completedTasks.length),
+                      unit: completedTasks.length === 1 ? "task" : "tasks",
+                    },
+                    {
+                      label: "Focused for",
+                      value: String(focusMinutes),
+                      unit: "min",
+                    },
+                  ].map((stat) => (
                     <div
-                      className="absolute top-0 right-0 left-0 h-px"
-                      style={{
-                        background:
-                          "linear-gradient(90deg, transparent, var(--accent-border), transparent)",
-                      }}
-                    />
-                    <p
-                      className="text-caption mb-2 font-bold tracking-widest uppercase"
-                      style={{ color: "var(--text-muted)" }}
+                      key={stat.label}
+                      className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3.5"
                     >
-                      Completed
-                    </p>
-                    <p
-                      className="text-[32px] leading-none font-bold tracking-tight"
-                      style={{ color: "var(--text-1)" }}
-                    >
-                      {completedTasks.length}
-                    </p>
-                    <p
-                      className="text-meta mt-1.5"
-                      style={{ color: "var(--status-done)" }}
-                    >
-                      tasks done today
-                    </p>
-                  </div>
-
-                  <div
-                    className="relative overflow-hidden rounded-2xl px-4 py-4"
-                    style={{
-                      background: "var(--surface-card)",
-                      border: "0.5px solid var(--border-card)",
-                    }}
-                  >
-                    <div
-                      className="absolute top-0 right-0 left-0 h-px"
-                      style={{ background: "var(--border-card-top)" }}
-                    />
-                    <p
-                      className="text-caption mb-2 font-bold tracking-widest uppercase"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      Focus Time
-                    </p>
-                    <p
-                      className="text-[32px] leading-none font-bold tracking-tight"
-                      style={{ color: "var(--text-1)" }}
-                    >
-                      {focusMinutes}
-                      <span
-                        className="text-title-md ml-0.5"
-                        style={{ color: "var(--text-3)" }}
-                      >
-                        m
-                      </span>
-                    </p>
-                    <p
-                      className="text-meta mt-1.5"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      Pomodoros logged
-                    </p>
-                  </div>
+                      <p className="text-[length:var(--text-ui)] text-[var(--text-3)]">
+                        {stat.label}
+                      </p>
+                      <p className="mt-1 flex items-baseline gap-1.5">
+                        <span className="font-heading text-[length:var(--text-title-3xl)] leading-none text-[var(--text-1)] tabular-nums">
+                          {stat.value}
+                        </span>
+                        <span className="text-[length:var(--text-ui)] text-[var(--text-3)]">
+                          {stat.unit}
+                        </span>
+                      </p>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Completed list */}
                 {completedTasks.length > 0 && (
-                  <div className="space-y-2">
-                    <p
-                      className="text-meta font-bold tracking-widest uppercase"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      Done today
-                    </p>
-                    <div
-                      className="max-h-32 overflow-hidden overflow-y-auto overscroll-contain rounded-2xl"
-                      style={{
-                        background: "var(--surface-card)",
-                        border: "0.5px solid var(--border-card)",
-                      }}
-                    >
-                      {completedTasks.map((t, i) => (
-                        <div
+                  <RitualSection title="Done">
+                    <ul className="max-h-36 divide-y divide-[var(--border-subtle)] overflow-y-auto overscroll-contain rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)]">
+                      {completedTasks.map((t) => (
+                        <li
                           key={t.id}
                           className="flex items-center gap-3 px-4 py-2.5"
-                          style={{
-                            borderBottom:
-                              i < completedTasks.length - 1
-                                ? "0.5px solid var(--border-subtle)"
-                                : "none",
-                          }}
                         >
-                          <div
-                            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-                            style={{
-                              background: "rgba(74,222,128,0.12)",
-                              border: "0.5px solid rgba(74,222,128,0.25)",
-                            }}
-                          >
-                            <UiIcon
-                              className="h-2.5 w-2.5"
-                              strokeWidth={3}
-                              style={{ color: "var(--status-done)" }}
-                              icon={Check}
-                            />
-                          </div>
-                          <p
-                            className="text-ui truncate line-through"
-                            style={{ color: "var(--text-muted)" }}
-                          >
+                          <Check
+                            aria-hidden="true"
+                            className="size-4 shrink-0 text-[var(--status-done)]"
+                            strokeWidth={2.25}
+                          />
+                          <p className="truncate text-[length:var(--text-body)] text-[var(--text-3)] line-through decoration-[var(--text-decorative)]">
                             {t.title}
                           </p>
-                        </div>
+                        </li>
                       ))}
-                    </div>
-                  </div>
+                    </ul>
+                  </RitualSection>
                 )}
 
-                {/* Carry over */}
                 {triageTasks.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p
-                        className="text-meta font-bold tracking-widest uppercase"
-                        style={{ color: "var(--text-muted)" }}
-                      >
-                        Carry over
-                      </p>
-                      <span
-                        className="text-meta"
-                        style={{ color: "var(--text-muted)" }}
-                      >
-                        {triageTasks.length} incomplete
-                      </span>
-                    </div>
-                    <div className="space-y-1.5">
-                      <AnimatePresence mode="popLayout">
+                  <RitualSection
+                    title="Still open"
+                    aside={`${triageTasks.length} left`}
+                  >
+                    <ul className="divide-y divide-[var(--border-subtle)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)]">
+                      <AnimatePresence initial={false}>
                         {triageTasks.map((t) => (
-                          <m.div
+                          <m.li
                             key={t.id}
                             layout
-                            exit={{ opacity: 0, x: 20 }}
-                            className="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5"
-                            style={{
-                              background: "var(--surface-card)",
-                              border: "0.5px solid var(--border-card)",
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{
+                              duration: 0.22,
+                              ease: [0.22, 1, 0.36, 1],
                             }}
+                            className="flex items-center justify-between gap-3 overflow-hidden px-4 py-2"
                           >
-                            <p
-                              className="text-ui flex-1 truncate"
-                              style={{ color: "var(--text-2)" }}
-                            >
+                            <p className="min-w-0 flex-1 truncate text-[length:var(--text-body)] text-[var(--text-2)]">
                               {t.title}
                             </p>
                             <button
-                              onClick={() => handleCarryOver(t.id)}
-                              className="text-meta shrink-0 rounded-lg px-3 py-1.5 font-semibold transition-all hover:scale-105 active:scale-95"
-                              style={{
-                                background: "var(--accent-dim)",
-                                color: "var(--accent-text)",
-                                border: "0.5px solid var(--accent-border)",
+                              type="button"
+                              onClick={() => {
+                                haptics.selection();
+                                handleCarryOver(t.id);
                               }}
+                              className="chip chip-sm shrink-0"
                             >
-                              → Tomorrow
+                              <Sunrise
+                                aria-hidden="true"
+                                className="size-3.5"
+                              />
+                              Tomorrow
                             </button>
-                          </m.div>
+                          </m.li>
                         ))}
                       </AnimatePresence>
-                    </div>
-                  </div>
+                    </ul>
+                  </RitualSection>
                 )}
 
-                {/* Tomorrow Preview */}
                 {tomorrowTasks.length > 0 && (
-                  <div className="space-y-2">
-                    <p
-                      className="text-meta font-bold tracking-widest uppercase"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      Up next tomorrow
-                    </p>
-                    <div
-                      className="max-h-32 overflow-hidden overflow-y-auto overscroll-contain rounded-2xl"
-                      style={{
-                        background: "var(--surface-card)",
-                        border: "0.5px solid var(--border-card)",
-                      }}
-                    >
-                      {tomorrowTasks.map((t, i) => (
-                        <div
-                          key={t.id}
-                          className="flex items-center gap-3 px-4 py-2.5 opacity-60"
-                          style={{
-                            borderBottom:
-                              i < tomorrowTasks.length - 1
-                                ? "0.5px solid var(--border-subtle)"
-                                : "none",
-                          }}
-                        >
-                          <div
-                            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-                            style={{
-                              background: "var(--accent-dim)",
-                              border: "0.5px solid var(--accent-border)",
-                            }}
-                          >
-                            <div
-                              className="h-1.5 w-1.5 rounded-full"
-                              style={{ background: "var(--accent)" }}
-                            />
-                          </div>
-                          <p
-                            className="text-ui truncate"
-                            style={{ color: "var(--text-muted)" }}
-                          >
+                  <RitualSection title="Waiting for tomorrow">
+                    <ul className="max-h-32 space-y-1 overflow-y-auto overscroll-contain px-1">
+                      {tomorrowTasks.map((t) => (
+                        <li key={t.id} className="flex items-center gap-3 py-1">
+                          <span
+                            aria-hidden="true"
+                            className="size-1.5 shrink-0 rounded-full bg-[var(--text-decorative)]"
+                          />
+                          <p className="truncate text-[length:var(--text-body)] text-[var(--text-3)]">
                             {t.title}
                           </p>
-                        </div>
+                        </li>
                       ))}
-                    </div>
-                  </div>
+                    </ul>
+                  </RitualSection>
                 )}
 
-                {/* Reflection */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <UiIcon
-                      className="h-3.5 w-3.5"
-                      style={{ color: "var(--text-muted)" }}
-                      icon={BookOpen}
-                    />
-                    <p
-                      className="text-meta font-bold tracking-widest uppercase"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      Daily Reflection
-                    </p>
-                  </div>
+                <div>
+                  <label htmlFor="ritual-reflection" className="field-label">
+                    One line about today
+                  </label>
                   <TextareaAutosize
+                    id="ritual-reflection"
                     value={reflection}
                     onChange={(e) => setReflection(e.target.value)}
-                    placeholder="What went well today? What is your ONE thing for tomorrow?"
+                    placeholder="What went well? What's the one thing for tomorrow?"
                     minRows={3}
-                    className="text-body w-full resize-none rounded-xl px-4 py-3 leading-relaxed transition-all focus:outline-none"
-                    style={{
-                      background: "var(--surface-input)",
-                      border: "0.5px solid var(--border-input)",
-                      color: "var(--text-1)",
-                    }}
-                    onFocus={(e) =>
-                      (e.target.style.borderColor = "var(--accent)")
-                    }
-                    onBlur={(e) =>
-                      (e.target.style.borderColor = "var(--border-input)")
-                    }
+                    className="input resize-none leading-relaxed"
                   />
-                  <p
-                    className="text-caption"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Saved to your Daily Note in Think.
+                  <p className="mt-1.5 text-[length:var(--text-meta)] text-[var(--text-3)]">
+                    Saved to today&apos;s Daily Note in Think.
                   </p>
                 </div>
               </div>
@@ -1469,94 +1142,70 @@ export function RitualOverlay({
           </div>
 
           {/* ── Footer ──────────────────────────────────────── */}
-          <div
-            className="flex shrink-0 items-center justify-between px-6 py-4"
-            style={{ borderTop: "0.5px solid var(--border-subtle)" }}
-          >
+          <footer className="relative flex shrink-0 items-center justify-between gap-3 border-t border-[var(--border-subtle)] px-6 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] md:pb-4">
             {isMorning && step === 2 ? (
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setStep(1)}
-                className="text-body flex items-center gap-1.5 rounded-xl px-3 py-2 font-medium transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  color: "var(--text-3)",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "0.5px solid var(--border-default)",
-                }}
+                className="-ml-3"
               >
-                <UiIcon className="h-4 w-4" icon={ChevronLeft} /> Back
-              </button>
+                <ChevronLeft aria-hidden="true" className="size-4" /> Back
+              </Button>
             ) : (
-              <button
+              <Button
+                variant="ghost"
                 onClick={handleSkip}
-                className="text-body px-2 py-1 font-medium transition-colors hover:text-[var(--text-2)]"
-                style={{ color: "var(--text-muted)" }}
+                className="-ml-3 text-[var(--text-3)]"
               >
-                Skip today
-              </button>
+                Skip for today
+              </Button>
             )}
 
             {isMorning ? (
               step === 1 ? (
-                <m.button
-                  whileTap={{ scale: 0.97 }}
-                  disabled={triageTasks.length > 0}
+                // Always available: anything left unplaced simply stays where
+                // it is. It used to be disabled until the inbox was empty,
+                // with no explanation, which left people stuck.
+                <Button
+                  variant="primary"
                   onClick={() => setStep(2)}
-                  className="text-body flex items-center gap-2 rounded-full px-5 py-2.5 font-bold transition-all disabled:cursor-not-allowed disabled:opacity-35"
-                  style={{
-                    background:
-                      triageTasks.length > 0
-                        ? "rgba(255,255,255,0.06)"
-                        : "var(--accent)",
-                    color:
-                      triageTasks.length > 0
-                        ? "var(--text-3)"
-                        : "var(--text-on-accent)",
-                    boxShadow:
-                      triageTasks.length > 0
-                        ? "none"
-                        : "var(--shadow-button-primary)",
-                    border:
-                      triageTasks.length > 0
-                        ? "0.5px solid var(--border-default)"
-                        : "none",
-                  }}
+                  className="min-w-32"
                 >
-                  Next <UiIcon className="h-4 w-4" icon={ArrowRight} />
-                </m.button>
+                  Continue
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </Button>
               ) : (
-                <m.button
-                  whileTap={{ scale: 0.97 }}
+                <Button
+                  variant="primary"
                   disabled={saving}
                   onClick={handleFinishMorning}
-                  className="text-body-lg flex items-center gap-2 rounded-full px-6 py-3 font-bold transition-all"
-                  style={{
-                    background: "var(--accent)",
-                    color: "var(--text-on-accent)",
-                    boxShadow:
-                      "0 4px 20px var(--accent-glow), inset 0 1px 1px rgba(255,255,255,0.2)",
-                  }}
+                  className="min-w-32"
                 >
-                  {saving ? "Saving…" : "Lock in my day"}{" "}
-                  <UiIcon className="h-4 w-4" icon={Sparkles} />
-                </m.button>
+                  {saving ? (
+                    <Loader2
+                      aria-hidden="true"
+                      className="size-4 animate-spin"
+                    />
+                  ) : (
+                    "Start my day"
+                  )}
+                </Button>
               )
             ) : (
-              <m.button
-                whileTap={{ scale: 0.97 }}
+              <Button
+                variant="primary"
                 disabled={saving}
                 onClick={handleFinishEvening}
-                className="text-body flex items-center gap-2 rounded-full px-5 py-2.5 font-bold transition-all"
-                style={{
-                  background: "var(--accent)",
-                  color: "var(--text-on-accent)",
-                  boxShadow: "var(--shadow-button-primary)",
-                }}
+                className="min-w-32"
               >
-                {saving ? "Saving…" : "Shut down"}{" "}
-                <UiIcon className="h-4 w-4" icon={Moon} />
-              </m.button>
+                {saving ? (
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                ) : (
+                  "Close the day"
+                )}
+              </Button>
             )}
-          </div>
+          </footer>
         </m.div>
       </m.div>
     </AnimatePresence>
