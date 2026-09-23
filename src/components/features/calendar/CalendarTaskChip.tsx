@@ -60,12 +60,18 @@ export function CalendarTaskChip({
 
   const isBeingDragged = localDragging || isDragging;
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
+    if (event.target !== event.currentTarget || event.defaultPrevented) return;
+    if (event.key === "F2" && onEdit && !isBeingDragged) {
       event.preventDefault();
       event.stopPropagation();
-      onEdit?.(task);
+      onEdit(task);
+      return;
     }
+    listeners?.onKeyDown?.(event);
   };
+  const keyboardHint = onEdit
+    ? "Click or press F2 to edit. Press Enter or Space to drag."
+    : "Press Enter or Space to drag.";
   const taskLabel = `Edit task: ${task.title}`;
 
   if (variant === "month") {
@@ -77,6 +83,8 @@ export function CalendarTaskChip({
         role="button"
         tabIndex={0}
         aria-label={taskLabel}
+        aria-keyshortcuts={onEdit ? "F2" : undefined}
+        title={keyboardHint}
         onClick={(e) => {
           e.stopPropagation();
           onEdit?.(task);
@@ -113,6 +121,8 @@ export function CalendarTaskChip({
         role="button"
         tabIndex={0}
         aria-label={taskLabel}
+        aria-keyshortcuts={onEdit ? "F2" : undefined}
+        title={keyboardHint}
         onClick={(e) => {
           e.stopPropagation();
           onEdit?.(task);
@@ -154,6 +164,8 @@ export function CalendarTaskChip({
       role="button"
       tabIndex={0}
       aria-label={taskLabel}
+      aria-keyshortcuts={onEdit ? "F2" : undefined}
+      title={keyboardHint}
       onClick={(e) => {
         e.stopPropagation();
         onEdit?.(task);
@@ -182,7 +194,7 @@ export function CalendarTaskChip({
       )}
       {/* Resize handle visual affordance */}
       <div className="row-actions absolute right-0 bottom-0 left-0 flex h-[6px] cursor-s-resize items-center justify-center">
-        <div className="h-[2px] w-6 rounded-full bg-[rgba(255,255,255,0.3)]" />
+        <div className="h-[2px] w-6 rounded-full bg-[var(--border-strong)]" />
       </div>
     </div>
   );

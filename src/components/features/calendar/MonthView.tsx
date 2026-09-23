@@ -51,6 +51,7 @@ function DroppableDay({
   const { setNodeRef, isOver } = useDroppable({ id });
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget || e.defaultPrevented) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onClick();
@@ -98,9 +99,10 @@ function DroppableDay({
       role="button"
       aria-label={ariaLabel}
       data-month-slot={dayIndex}
+      onClick={onClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "transition-colors outline-none focus:bg-[rgba(255,255,255,0.08)]",
+        "transition-colors outline-none focus:bg-[var(--surface-active)]",
         isOver && "bg-[var(--accent-dim)]/20",
         className,
       )}
@@ -140,6 +142,7 @@ function DayPopover({
       ref={popoverRef}
       role="dialog"
       aria-label={`Tasks for ${format(date, "EEEE, MMMM d")}`}
+      onClick={(event) => event.stopPropagation()}
       onKeyDown={handleKeyDown}
       className={cn(
         "absolute left-0 z-50 w-64 space-y-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-2xl",
@@ -153,9 +156,9 @@ function DayPopover({
         <button
           onClick={onClose}
           aria-label="Close day tasks"
-          className="rounded p-0.5 text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
+          className="-mr-1.5 flex size-8 items-center justify-center rounded-full text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
         >
-          <UiIcon size={12} icon={X} />
+          <UiIcon size={14} icon={X} />
         </button>
       </div>
       {tasks.map((t) => (
@@ -259,7 +262,7 @@ export function MonthView({
               onClick={() => handleDayClick(day)}
               ariaLabel={`Calendar day ${format(day, "EEEE, MMMM d, yyyy")}, ${dayTasks.length} task${dayTasks.length === 1 ? "" : "s"}`}
               className={cn(
-                "relative cursor-pointer border-r border-b border-[var(--color-border)] p-1.5 hover:bg-[rgba(255,255,255,0.02)]",
+                "relative cursor-pointer border-r border-b border-[var(--color-border)] p-1.5 hover:bg-[var(--surface-1)]",
                 !isCurrentMonth && "opacity-40",
                 today && "bg-[var(--accent)]/[0.04]",
                 col === 7 && "border-r-0",
@@ -276,7 +279,7 @@ export function MonthView({
                   className={cn(
                     "pointer-events-none flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors",
                     today
-                      ? "bg-[var(--accent)] text-white"
+                      ? "bg-[var(--accent)] text-[var(--text-on-accent)]"
                       : "text-[var(--color-text-2)]",
                   )}
                 >
@@ -303,7 +306,7 @@ export function MonthView({
                     }}
                     aria-label={`Show all ${dayTasks.length} tasks for ${format(day, "MMMM d")}`}
                     aria-expanded={!!isPopoverOpen}
-                    className="text-caption w-full rounded px-1.5 py-0.5 text-left font-semibold text-[var(--accent)] hover:underline focus-visible:bg-[rgba(255,255,255,0.08)] focus-visible:outline-none"
+                    className="text-caption w-full rounded px-1.5 py-0.5 text-left font-semibold text-[var(--accent)] hover:underline focus-visible:bg-[var(--surface-active)] focus-visible:outline-none"
                   >
                     +{overflow} more
                   </button>

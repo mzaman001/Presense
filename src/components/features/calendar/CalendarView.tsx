@@ -25,12 +25,14 @@ import {
 import { WeekView } from "./WeekView";
 import { MonthView } from "./MonthView";
 import { CalendarTaskChipOverlay } from "./CalendarTaskChip";
+import { MobileCalendar } from "./MobileCalendar";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient, safeMutate } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 import { Task } from "@/types/calendar";
 import { Icon as UiIcon } from "@/components/ui/Icon";
@@ -107,39 +109,30 @@ export function CalendarView({
   const [subView, setSubView] = useQueryState<CalendarSubView>(
     "subview",
     parseAsStringEnum<CalendarSubView>(["day", "week", "month"]).withDefault(
-      typeof window !== "undefined" &&
-        window.matchMedia("(max-width: 767px)").matches
-        ? "day"
-        : (typeof window !== "undefined" &&
-            (localStorage.getItem(
-              "presense_calendar_view",
-            ) as CalendarSubView)) ||
-            "week",
+      "week",
     ),
   );
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  // Phones get their own agenda-style calendar (MobileCalendar) instead of
+  // the 700–800px desktop grids — every sub-view works at every width now,
+  // so nothing forces "day" any more.
+  const isPhone = useMediaQuery("(max-width: 767px)");
 
-  // WeekView's 7-column grid (min-w-[800px]) and MonthView's grid
-  // (min-w-[700px]) don't fit a phone screen — the only viable layout below
-  // `md` is the single-day view (WeekView with days=1, already used above as
-  // the "day" subview). Lock to it on narrow viewports and un-lock when the
-  // viewport grows, so a stale `?subview=week` URL or a view chosen before
-  // resizing/rotating never leaves the grid views stuck in a state that
-  // requires horizontal scrolling to use.
+  // Restore the last-used range after hydration. Reading localStorage during
+  // render made server and client disagree (a hydration mismatch). An
+  // explicit ?subview= in the URL still wins.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mediaQuery = window.matchMedia("(max-width: 767px)");
-    const enforceMobileDayView = () => {
-      if (mediaQuery.matches && subView !== "day") {
-        setSubView("day");
-      }
-    };
-    enforceMobileDayView();
-    mediaQuery.addEventListener("change", enforceMobileDayView);
-    return () => mediaQuery.removeEventListener("change", enforceMobileDayView);
+    if (new URLSearchParams(window.location.search).has("subview")) return;
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem("presense_calendar_view");
+    } catch {
+      return;
+    }
+    if (stored === "day" || stored === "month") void setSubView(stored);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subView]);
+  }, []);
 
   const filteredTasks = React.useMemo(() => {
     if (!categoryFilter || categoryFilter === "all") return tasks;
@@ -172,6 +165,7 @@ export function CalendarView({
   const navigateToday = () => setCurrentDate(new Date());
 
   const getHeaderLabel = () => {
+    if (isPhone) return format(currentDate, "MMMM yyyy");
     if (subView === "day") return format(currentDate, "EEEE, MMMM d, yyyy");
     if (subView === "week") {
       const weekEnd = addDays(weekStart, 6);
@@ -298,6 +292,8 @@ export function CalendarView({
       className="flex min-h-0 flex-1 flex-col"
       tabIndex={0}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget || event.defaultPrevented)
+          return;
         if (event.key === "t") {
           event.preventDefault();
           navigateToday();
@@ -311,98 +307,105 @@ export function CalendarView({
       }}
     >
       {/* Calendar toolbar */}
-      <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-2">
-        {/* Navigation */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+      <div className="mb-5 flex shrink-0 flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-1">
+          <h2 className="font-heading mr-auto min-w-0 truncate text-[length:var(--text-title-lg)] font-medium text-[var(--text-1)] md:mr-3">
+            {getHeaderLabel()}
+          </h2>
           <button
+            type="button"
+            onClick={navigatePrev}
+            aria-label={`Previous ${subView}`}
+            className="flex size-9 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+          >
+            <UiIcon size={18} icon={ChevronLeft} />
+          </button>
+          <button
+            type="button"
+            onClick={navigateNext}
+            aria-label={`Next ${subView}`}
+            className="flex size-9 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+          >
+            <UiIcon size={18} icon={ChevronRight} />
+          </button>
+          <button
+            type="button"
             onClick={navigateToday}
-            className="shrink-0 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-surface)]"
+            className="chip chip-sm ml-1"
           >
             Today
           </button>
-          <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              onClick={navigatePrev}
-              className="rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
-            >
-              <UiIcon size={16} icon={ChevronLeft} />
-            </button>
-            <button
-              onClick={navigateNext}
-              className="rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
-            >
-              <UiIcon size={16} icon={ChevronRight} />
-            </button>
-          </div>
-          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--color-text-1)] sm:min-w-[200px] sm:flex-none">
-            {getHeaderLabel()}
-          </h2>
         </div>
 
-        {/* Week / Month toggle — below `md` the calendar is locked to the
-            single-day view (see the enforceMobileDayView effect above)
-            since Week/Month's grids need horizontal scrolling to be usable
-            at phone widths, so the toggle that would pick them is hidden
-            there rather than offering a choice that immediately reverts. */}
-        <div className="hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5 md:flex">
-          {(["day", "week", "month"] as CalendarSubView[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => {
-                setSubView(v);
-                localStorage.setItem("presense_calendar_view", v);
-              }}
-              className={cn(
-                "rounded-full px-4 py-1 text-xs font-semibold capitalize transition-all",
-                subView === v
-                  ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow"
-                  : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]",
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl<CalendarSubView>
+          label="Calendar range"
+          className="segmented-fill md:w-auto"
+          value={subView}
+          onChange={(v) => {
+            setSubView(v);
+            try {
+              localStorage.setItem("presense_calendar_view", v);
+            } catch {
+              // Storage can be unavailable (private mode); the choice just
+              // won't persist across reloads.
+            }
+          }}
+          options={[
+            { label: "Day", value: "day" },
+            { label: "Week", value: "week" },
+            { label: "Month", value: "month" },
+          ]}
+        />
       </div>
 
-      {/* DndContext wraps both views */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex-1 overflow-hidden">
-          {subView === "day" ? (
-            <WeekView
-              weekStart={currentDate}
-              tasks={filteredTasks}
-              onEditTask={onEditTask}
-              days={1}
-              onCreateTaskAt={onCreateTaskAt}
-            />
-          ) : subView === "week" ? (
-            <WeekView
-              weekStart={weekStart}
-              tasks={filteredTasks}
-              onEditTask={onEditTask}
-              onCreateTaskAt={onCreateTaskAt}
-            />
-          ) : (
-            <MonthView
-              currentMonth={currentDate}
-              tasks={filteredTasks}
-              onEditTask={onEditTask}
-              onCreateTaskAt={onCreateTaskAt}
-            />
-          )}
-        </div>
+      {isPhone ? (
+        <MobileCalendar
+          subView={subView}
+          currentDate={currentDate}
+          onSelectDate={setCurrentDate}
+          tasks={filteredTasks}
+          onEditTask={onEditTask}
+          onCreateTaskAt={onCreateTaskAt}
+        />
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex-1 overflow-hidden">
+            {subView === "day" ? (
+              <WeekView
+                weekStart={currentDate}
+                tasks={filteredTasks}
+                onEditTask={onEditTask}
+                days={1}
+                onCreateTaskAt={onCreateTaskAt}
+              />
+            ) : subView === "week" ? (
+              <WeekView
+                weekStart={weekStart}
+                tasks={filteredTasks}
+                onEditTask={onEditTask}
+                onCreateTaskAt={onCreateTaskAt}
+              />
+            ) : (
+              <MonthView
+                currentMonth={currentDate}
+                tasks={filteredTasks}
+                onEditTask={onEditTask}
+                onCreateTaskAt={onCreateTaskAt}
+              />
+            )}
+          </div>
 
-        {/* Ghost overlay shown while dragging */}
-        <DragOverlay dropAnimation={null}>
-          {activeTask ? <CalendarTaskChipOverlay task={activeTask} /> : null}
-        </DragOverlay>
-      </DndContext>
+          {/* Ghost overlay shown while dragging */}
+          <DragOverlay dropAnimation={null}>
+            {activeTask ? <CalendarTaskChipOverlay task={activeTask} /> : null}
+          </DragOverlay>
+        </DndContext>
+      )}
     </div>
   );
 }
