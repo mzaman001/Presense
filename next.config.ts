@@ -34,6 +34,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  devIndicators: {
+    position: "top-right",
+  },
   experimental: {
     optimizePackageImports: [
       "lucide-react",
