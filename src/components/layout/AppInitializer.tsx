@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { notifyRitual } from "@/lib/reminders";
 import { useAppStore, UserSettings } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import {
@@ -60,13 +61,7 @@ export function AppInitializer({
       });
 
       const notifyAndOpen = (type: "morning" | "evening", message: string) => {
-        if (typeof window !== "undefined" && "Notification" in window) {
-          if (Notification.permission === "granted" && document.hidden) {
-            new Notification(message);
-          } else if (Notification.permission !== "denied") {
-            Notification.requestPermission();
-          }
-        }
+        notifyRitual(message, userSettings);
         setActiveRitual(type);
       };
 
