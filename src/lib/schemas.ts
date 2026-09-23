@@ -39,7 +39,15 @@ export const taskSchema = z.object({
     .max(500, "Title must be less than 500 characters"),
   category: z.string().optional(),
   priority: z.number().min(1).max(4).nullable().optional(),
-  deadline: z.string().datetime().optional().or(z.literal("")),
+  // The task panel writes local "yyyy-MM-ddTHH:mm"; requiring an offset
+  // made every dated task invalid and greyed out "Add task".
+  deadline: z
+    .union([
+      z.literal(""),
+      z.iso.datetime({ offset: true }),
+      z.iso.datetime({ local: true }),
+    ])
+    .optional(),
   notes: z
     .string()
     .max(5000, "Notes must be less than 5000 characters")
