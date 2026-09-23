@@ -30,19 +30,21 @@ permissions:
 jobs:
   scan-scheduled:
     if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@1f1242919d8a60496dd1874b24b62b2370ed4c78" # v1.7.1
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc" # v2.6.0
     with:
-      # Example of specifying custom arguments
+      # v2 dropped --skip-git; the .git root is no longer scanned by default.
+      # v1.7.1's reusable workflows used actions/upload-artifact v3, which
+      # GitHub now rejects before the job starts.
       scan-args: |-
         -r
-        --skip-git
         ./
   scan-pr:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@1f1242919d8a60496dd1874b24b62b2370ed4c78" # v1.7.1
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc" # v2.6.0
     with:
-      # Example of specifying custom arguments
+      # v2 dropped --skip-git; the .git root is no longer scanned by default.
+      # v1.7.1's reusable workflows used actions/upload-artifact v3, which
+      # GitHub now rejects before the job starts.
       scan-args: |-
         -r
-        --skip-git
         ./
