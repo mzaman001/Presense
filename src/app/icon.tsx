@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { ENSO_PATH } from "@/components/ui/BrandMark";
 
 export const runtime = "edge";
 
@@ -16,7 +17,7 @@ export const contentType = "image/png";
  * ("sunset") accent from globals.css, used because a favicon is one
  * fixed asset regardless of the viewer's OS/browser theme.
  */
-const ACCENT = "#d97757";
+const ACCENT = "#e3875f";
 
 export default function Icon() {
   return new ImageResponse(
@@ -29,26 +30,9 @@ export default function Icon() {
         justifyContent: "center",
       }}
     >
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <clipPath id="icon-horizon">
-          <rect x="0" y="0" width="24" height="17" />
-        </clipPath>
-        <circle
-          cx="12"
-          cy="17"
-          r="7"
-          fill={ACCENT}
-          clipPath="url(#icon-horizon)"
-        />
-        <line
-          x1="3"
-          y1="17"
-          x2="21"
-          y2="17"
-          stroke={ACCENT}
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+      <svg width="28" height="28" viewBox="0 0 24 24" fill={ACCENT}>
+        <path d={ENSO_PATH} />
+        <circle cx="12" cy="12" r="3" />
       </svg>
     </div>,
     { ...size },
