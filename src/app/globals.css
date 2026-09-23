@@ -1362,6 +1362,25 @@ h6 {
   .sidebar-link.is-active .sidebar-icon {
     color: var(--accent-text);
   }
+  /* A row with something waiting (today's plan, the evening review):
+     brighter text, accent icon and a small dot that also reads when the
+     rail is collapsed. */
+  .sidebar-link.is-due {
+    color: var(--text-1);
+  }
+  .sidebar-link.is-due .sidebar-icon {
+    color: var(--accent-text);
+  }
+  .sidebar-due-dot {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--surface-sidebar);
+  }
   .sidebar-link:disabled {
     opacity: 0.5;
     pointer-events: none;

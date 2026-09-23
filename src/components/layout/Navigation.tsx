@@ -52,8 +52,11 @@ function NavRow({
   badge,
   reducedMotion,
   accessibleLabel,
+  due,
 }: {
   accessibleLabel?: string;
+  /** Something is waiting on this row (e.g. today's plan): dot + brighter. */
+  due?: boolean;
   label: string;
   icon: LucideIcon;
   href?: string;
@@ -80,7 +83,8 @@ function NavRow({
         />
       )}
       <span className="sidebar-icon">
-        <Icon size={20} strokeWidth={active ? 2 : 1.6} aria-hidden />
+        <Icon size={20} strokeWidth={active || due ? 2 : 1.6} aria-hidden />
+        {due && <span className="sidebar-due-dot" aria-hidden />}
       </span>
       <span className="sidebar-label text-body font-medium">{label}</span>
       {badge}
@@ -90,6 +94,7 @@ function NavRow({
     "sidebar-link",
     capture && "sidebar-capture",
     active && "is-active",
+    due && "is-due",
   );
   const element = href ? (
     <Link
@@ -103,7 +108,8 @@ function NavRow({
   ) : (
     <button
       type="button"
-      aria-label={label}
+      aria-label={accessibleLabel ?? label}
+      data-due={due ? "true" : undefined}
       disabled={disabled}
       onClick={onClick}
       className={className}
@@ -166,6 +172,8 @@ function SidebarRitual({ expanded }: { expanded: boolean }) {
   return (
     <NavRow
       label={label}
+      accessibleLabel={kind ? `${label}, due now` : undefined}
+      due={Boolean(kind)}
       icon={
         kind === "evening" ? Moon : kind === "morning" ? Sparkles : CheckCircle2
       }
@@ -259,6 +267,9 @@ export function Sidebar() {
               </kbd>
             }
           />
+          {/* Daily planning is an action, not a place: it sits with Quick
+              Capture, above the Spaces list. */}
+          <SidebarRitual expanded={expanded} />
           <nav aria-label="Destinations" id="sidebar-content">
             <div className="sidebar-section">
               <span className="sidebar-label">Spaces</span>
@@ -304,7 +315,6 @@ export function Sidebar() {
                 onClick={() => void inbox.refetch()}
               />
             )}
-            <SidebarRitual expanded={expanded} />
           </nav>
           <div className="sidebar-tools">
             <div className="sidebar-section">
