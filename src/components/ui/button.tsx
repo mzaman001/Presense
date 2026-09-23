@@ -10,12 +10,14 @@ import { cn } from "@/lib/utils";
  * with `variant="ghost"` or `variant="secondary"` instead.
  */
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-colors outline-none select-none disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-[color,background-color,border-color,transform] duration-[var(--dur-fast)] ease-[var(--ease-out)] active:scale-[0.98] outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] touch-manipulation select-none disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         primary:
-          "bg-[var(--accent)] text-[var(--text-on-accent)] hover:bg-[var(--accent-hot)] active:bg-[var(--accent-deep)]",
+          // Disabled primary goes neutral instead of a 50%-faded accent,
+          // which on cream left a pale pink pill with an unreadable label.
+          "bg-[var(--accent)] text-[var(--text-on-accent)] hover:bg-[var(--accent-hot)] active:bg-[var(--accent-deep)] disabled:bg-[var(--surface-active)] disabled:text-[var(--text-3)] disabled:opacity-100",
         secondary:
           "bg-transparent border border-[var(--border-default)] text-[var(--text-2)] hover:bg-[var(--surface-hover)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]",
         ghost:
@@ -25,9 +27,10 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "h-10 px-5 rounded-[var(--radius-md)] text-[length:var(--text-md)] font-medium gap-2",
-        sm: "h-9 px-4 rounded-[var(--radius-md)] text-[length:var(--text-md)] font-medium gap-2",
-        icon: "w-9 h-9 rounded-[var(--radius-md)]",
+          // 44px on touch screens, 40px where a fine pointer is the norm.
+          "h-11 md:h-10 px-5 rounded-[var(--radius-md)] text-[length:var(--text-md)] font-medium gap-2",
+        sm: "h-9 px-4 rounded-[var(--radius-md)] text-[length:var(--text-body)] font-medium gap-1.5",
+        icon: "size-10 md:size-9 rounded-[var(--radius-md)]",
       },
     },
     defaultVariants: {

@@ -14,7 +14,7 @@ export function Skeleton({ className }: SkeletonProps) {
 // Task card skeleton - matches TaskCard layout
 export function TaskCardSkeleton() {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-4">
+    <div className="flex items-start gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
       <Skeleton className="mt-0.5 h-5 w-5 shrink-0 rounded-full" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-4 w-3/4" />
@@ -32,7 +32,7 @@ export function TaskCardSkeleton() {
 // Person card skeleton
 export function PersonCardSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-4">
+    <div className="flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
       <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-4 w-2/5" />
@@ -46,7 +46,7 @@ export function PersonCardSkeleton() {
 // Thread card skeleton
 export function CardSkeleton() {
   return (
-    <div className="space-y-3 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-5">
+    <div className="space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5">
       <Skeleton className="h-4 w-2/3" />
       <Skeleton className="h-3 w-full" />
       <Skeleton className="h-3 w-4/5" />

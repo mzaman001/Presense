@@ -3,7 +3,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { X, Lightbulb } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
-import { Icon as UiIcon } from "@/components/ui/Icon";
 
 interface ContextualTipProps {
   id: string;
@@ -30,6 +29,12 @@ function isDismissed(id: string): boolean {
   }
 }
 
+/**
+ * A quiet, one-time orientation note for a space. It used to be a gold
+ * gradient card with a drop shadow that took a quarter of a phone screen;
+ * it's now a slim note in the page's own surface, with the title run into
+ * the sentence. Collapses smoothly when dismissed.
+ */
 export function ContextualTip({ id, title, description }: ContextualTipProps) {
   const getSnapshot = useCallback(() => isDismissed(id), [id]);
   // Server renders nothing; the tip appears on the client only if not dismissed.
@@ -39,7 +44,6 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
     getSnapshot,
     getServerSnapshot,
   );
-  const isVisible = !dismissed;
 
   const handleDismiss = useCallback(() => {
     try {
@@ -51,32 +55,36 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
   }, [id]);
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <m.div
-          initial={{ opacity: 0, y: -10, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.2 } }}
-          className="relative mb-6 flex items-start gap-3 overflow-hidden rounded-xl border border-[rgba(229,180,30,0.2)] bg-gradient-to-r from-[rgba(229,180,30,0.1)] to-[rgba(235,66,51,0.05)] p-4 shadow-lg"
+    <AnimatePresence initial={false}>
+      {!dismissed && (
+        <m.aside
+          aria-label={title}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          className="overflow-hidden"
         >
-          <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[rgba(229,180,30,0.2)] text-[#E5B41E]">
-            <UiIcon className="h-4 w-4" icon={Lightbulb} />
-          </div>
-          <div className="flex-1 pr-6">
-            <h4 className="mb-1 text-sm font-semibold text-[#E5B41E]">
-              {title}
-            </h4>
-            <p className="text-sm leading-relaxed text-[var(--color-text-2)]">
+          <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)] py-2.5 pr-1.5 pl-3.5">
+            <Lightbulb
+              aria-hidden="true"
+              className="mt-[3px] size-4 shrink-0 text-[var(--accent-text)]"
+              strokeWidth={1.75}
+            />
+            <p className="min-w-0 flex-1 py-px text-[length:var(--text-body)] leading-[1.55] text-[var(--text-3)]">
+              <span className="font-medium text-[var(--text-1)]">{title}.</span>{" "}
               {description}
             </p>
+            <button
+              type="button"
+              onClick={handleDismiss}
+              aria-label="Dismiss tip"
+              className="-my-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
           </div>
-          <button
-            onClick={handleDismiss}
-            className="absolute top-3 right-3 rounded-full p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
-          >
-            <UiIcon className="h-4 w-4" icon={X} />
-          </button>
-        </m.div>
+        </m.aside>
       )}
     </AnimatePresence>
   );

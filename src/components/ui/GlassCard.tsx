@@ -22,17 +22,17 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
           // rather than grows, so nothing is ever clipped mid-hover —
           // not inside a Kanban column, not inside a scrollable list.
           variant === "hero"
-            ? "relative overflow-hidden p-6 transition-all duration-200"
+            ? "relative overflow-hidden p-6 transition duration-200"
             : "relative p-6 transition-[transform,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
 
           // Background & Border & Radius — flat surfaces only, no gradient.
           variant === "hero"
-            ? "rounded-[var(--radius-xl)] border-[0.5px] border-[var(--accent-border)] bg-[var(--accent-dim)]"
-            : "rounded-[var(--radius-lg)] border border-[var(--elev-raised-border,rgba(255,255,255,0.14))] bg-[var(--elev-raised-bg,var(--surface-card))]",
+            ? "rounded-[var(--radius-xl)] border-[0.5px] border-[var(--accent-border)] bg-[var(--surface-hero)]"
+            : "rounded-[var(--radius-lg)] border border-[var(--border-card)] bg-[var(--elev-raised-bg,var(--surface-card))]",
 
           // Shadow — flat shadow tokens only, no blur, no glow.
           variant === "hero"
-            ? "shadow-[var(--shadow-card)]"
+            ? "shadow-[var(--shadow-card-hover)]"
             : variant === "elevated"
               ? "shadow-[var(--shadow-card-hover)]"
               : "shadow-[var(--elev-raised-shadow,var(--shadow-card))]",

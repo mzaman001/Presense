@@ -29,6 +29,13 @@ export function ToastProvider() {
     <Toaster
       theme={mode}
       position="bottom-right"
+      // On phones toasts centre above the floating dock instead of landing
+      // on top of it.
+      mobileOffset={{
+        bottom:
+          "calc(var(--mobile-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px)",
+      }}
+      gap={8}
       style={{ zIndex: 9999 }}
       toastOptions={{
         className: "toast font-sans !text-[var(--text-1)]",

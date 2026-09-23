@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/logger";
+import { CloudOff } from "lucide-react";
 
 interface AppErrorFallbackProps {
   error: Error & { digest?: string };
@@ -27,8 +28,14 @@ export function AppErrorFallback({
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-2xl backdrop-blur-xl">
-        <div className="mb-4 text-4xl">⚠️</div>
+      <div className="w-full max-w-md rounded-2xl border border-[var(--border-default)] bg-[var(--surface-modal)] p-8 text-center shadow-[var(--shadow-modal)]">
+        <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-[var(--status-danger-dim)]">
+          <CloudOff
+            aria-hidden="true"
+            className="size-6 text-[var(--status-danger)]"
+            strokeWidth={1.5}
+          />
+        </div>
         <h2 className="mb-2 text-xl font-semibold text-[var(--color-text-1)]">
           Something went wrong
         </h2>
@@ -49,7 +56,7 @@ export function AppErrorFallback({
               {error.message || "Unknown error"}
             </p>
             {error.digest && (
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-[var(--text-3)]">
                 Digest: {error.digest}
               </p>
             )}

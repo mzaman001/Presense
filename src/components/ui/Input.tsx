@@ -9,47 +9,77 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, error, hint, label, variant = "default", id: propsId, ...props }, ref) => {
+  (
+    {
+      className,
+      type,
+      error,
+      hint,
+      label,
+      variant = "default",
+      id: propsId,
+      "aria-describedby": describedBy,
+      ...props
+    },
+    ref,
+  ) => {
     const generatedId = React.useId();
     const id = propsId || generatedId;
     const errorId = `${id}-error`;
     const hintId = `${id}-hint`;
 
-    const variantClass = 
-      variant === "title" ? "input-title" : 
-      variant === "search" ? "input-search" : "input";
+    const variantClass =
+      variant === "title"
+        ? "input-title"
+        : variant === "search"
+          ? "input-search"
+          : "input";
 
     return (
       <div className={cn("w-full", props.hidden && "hidden")}>
         {label && (
-          <label htmlFor={id} className="text-label text-[var(--text-3)] block mb-2">
+          <label
+            htmlFor={id}
+            className="text-label mb-2 block text-[var(--text-3)]"
+          >
             {label}
           </label>
         )}
         <input
           type={type}
           id={id}
-          className={cn(variantClass, error && "!border-red-500 focus:!border-red-500", className)}
+          className={cn(
+            variantClass,
+            error &&
+              "!border-[var(--status-danger)] focus:!border-[var(--status-danger)]",
+            className,
+          )}
           ref={ref}
           aria-invalid={!!error}
           aria-describedby={
-            [error && errorId, hint && !error && hintId].filter(Boolean).join(" ") || undefined
+            [describedBy, error && errorId, hint && !error && hintId]
+              .filter(Boolean)
+              .join(" ") || undefined
           }
           {...props}
         />
         {error && (
-          <p id={errorId} className="text-caption text-red-500 mt-1">
+          <p
+            id={errorId}
+            role="alert"
+            className="text-meta mt-1.5 text-[var(--status-danger)]"
+          >
             {error}
           </p>
         )}
         {hint && !error && (
-          <p id={hintId} className="text-caption text-[var(--text-3)] mt-1">
+          <p id={hintId} className="text-meta mt-1.5 text-[var(--text-3)]">
             {hint}
           </p>
         )}
       </div>
     );
-  }
+  },
 );
 Input.displayName = "Input";
 

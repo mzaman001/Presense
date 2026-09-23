@@ -3,6 +3,20 @@ import { describe, expect, test } from "vitest";
 import { Button } from "@/components/ui/button";
 
 describe("Button", () => {
+  test.each(["primary", "secondary", "ghost", "danger"] as const)(
+    "%s provides keyboard focus and touch styles",
+    (variant) => {
+      render(<Button variant={variant}>Action</Button>);
+      expect(screen.getByRole("button", { name: "Action" })).toHaveClass(
+        "focus-visible:outline-solid",
+        "focus-visible:outline-2",
+        "focus-visible:outline-offset-2",
+        "focus-visible:outline-[var(--border-focus)]",
+        "touch-manipulation",
+      );
+    },
+  );
+
   test("renders its label", () => {
     render(<Button>Save</Button>);
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();

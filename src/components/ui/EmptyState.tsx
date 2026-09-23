@@ -23,22 +23,23 @@ export function EmptyState({
   return (
     <GlassCard
       className={cn(
-        "flex flex-col items-center justify-center border-dashed border-[var(--border-default)] p-12 text-center",
+        "flex flex-col items-center justify-center border-[var(--border-subtle)] bg-transparent px-6 py-14 text-center shadow-none sm:px-12",
         className,
       )}
     >
       {Icon && (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-1)]">
+        <div className="mb-5 flex size-14 items-center justify-center rounded-full bg-[var(--accent-dim)]">
           <Icon
-            className="h-6 w-6 text-[var(--color-text-3)]"
+            aria-hidden="true"
+            className="size-6 text-[var(--accent-text)]"
             strokeWidth={1.5}
           />
         </div>
       )}
-      <h3 className="text-title-md mb-2 font-medium text-[var(--color-text-1)]">
+      <h3 className="font-heading mb-2 text-[length:var(--text-title-xl)] font-medium text-[var(--text-1)]">
         {title}
       </h3>
-      <p className="text-body mb-6 max-w-sm text-[var(--text-muted)]">
+      <p className="text-body mb-6 max-w-sm text-[var(--text-3)]">
         {description}
       </p>
       {pointer && (

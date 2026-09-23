@@ -17,33 +17,46 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className={cn("w-full", props.hidden && "hidden")}>
         {label && (
-          <label htmlFor={id} className="text-label text-[var(--text-3)] block mb-2">
+          <label
+            htmlFor={id}
+            className="text-label mb-2 block text-[var(--text-3)]"
+          >
             {label}
           </label>
         )}
         <textarea
           id={id}
-          className={cn("input min-h-[80px]", error && "!border-red-500 focus:!border-red-500", className)}
+          className={cn(
+            "input min-h-[80px]",
+            error &&
+              "!border-[var(--status-danger)] focus:!border-[var(--status-danger)]",
+            className,
+          )}
           ref={ref}
           aria-invalid={!!error}
           aria-describedby={
-            [error && errorId, hint && !error && hintId].filter(Boolean).join(" ") || undefined
+            [error && errorId, hint && !error && hintId]
+              .filter(Boolean)
+              .join(" ") || undefined
           }
           {...props}
         />
         {error && (
-          <p id={errorId} className="text-caption text-red-500 mt-1">
+          <p
+            id={errorId}
+            className="text-caption mt-1 text-[var(--status-danger)]"
+          >
             {error}
           </p>
         )}
         {hint && !error && (
-          <p id={hintId} className="text-caption text-[var(--text-3)] mt-1">
+          <p id={hintId} className="text-caption mt-1 text-[var(--text-3)]">
             {hint}
           </p>
         )}
       </div>
     );
-  }
+  },
 );
 Textarea.displayName = "Textarea";
 

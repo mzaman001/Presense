@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useId, useRef } from "react";
+import { m } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export interface SegmentedControlOption<T extends string> {
@@ -26,6 +27,11 @@ export interface SegmentedControlProps<T extends string> {
  * Implements the ARIA radiogroup keyboard contract: one tab stop for the
  * group, arrow keys move between segments and select as they go, Home/End
  * jump to the ends.
+ *
+ * The selected pill is one shared-layout element that glides to the new
+ * segment (framer `layoutId`, scoped per instance with useId), the same
+ * motion language as the sidebar and dock indicators. Reduced motion is
+ * handled globally by MotionProvider.
  */
 export function SegmentedControl<T extends string>({
   options,
@@ -35,6 +41,7 @@ export function SegmentedControl<T extends string>({
   label,
 }: SegmentedControlProps<T>) {
   const groupRef = useRef<HTMLDivElement>(null);
+  const pillId = useId();
 
   const focusAndSelect = (index: number) => {
     const next = options[index];
@@ -77,7 +84,7 @@ export function SegmentedControl<T extends string>({
       aria-label={label}
       onKeyDown={handleKeyDown}
       className={cn(
-        "flex shrink-0 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5",
+        "flex h-9 shrink-0 items-stretch rounded-full border border-[var(--border-subtle)] bg-[var(--surface-2)] p-0.5",
         className,
       )}
     >
@@ -95,14 +102,22 @@ export function SegmentedControl<T extends string>({
             onFocus={option.onFocus}
             onClick={() => onChange(option.value)}
             className={cn(
-              "min-h-[32px] rounded-full px-4 py-1 text-xs font-semibold transition-colors",
-              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
+              "relative rounded-full px-3.5 text-[length:var(--text-ui)] font-medium whitespace-nowrap transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)]",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]",
               selected
-                ? "bg-[var(--color-text-1)] text-[var(--color-background)] shadow"
-                : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]",
+                ? "text-[var(--text-1)]"
+                : "text-[var(--text-3)] hover:text-[var(--text-1)]",
             )}
           >
-            {option.label}
+            {selected && (
+              <m.span
+                layoutId={`segment-${pillId}`}
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full bg-[var(--bg-elevated)] shadow-[var(--shadow-card)] ring-1 ring-[var(--border-subtle)]"
+                transition={{ type: "spring", stiffness: 520, damping: 46 }}
+              />
+            )}
+            <span className="relative">{option.label}</span>
           </button>
         );
       })}

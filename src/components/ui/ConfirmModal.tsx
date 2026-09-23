@@ -25,6 +25,12 @@ interface ConfirmModalProps {
    * full-screen overlay that sits above the default dialog layer (z-50).
    */
   zIndexClassName?: string;
+  /**
+   * Overrides where focus goes when the dialog closes (Radix's default is
+   * the element focused before it opened). Call `event.preventDefault()`
+   * to take over.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 export function ConfirmModal({
@@ -37,6 +43,7 @@ export function ConfirmModal({
   onConfirm,
   onClose,
   zIndexClassName,
+  onCloseAutoFocus,
 }: ConfirmModalProps) {
   const [inputValue, setInputValue] = React.useState("");
   const [isConfirming, setIsConfirming] = React.useState(false);
@@ -76,6 +83,7 @@ export function ConfirmModal({
       <DialogContent
         showClose={!isConfirming}
         zIndexClassName={zIndexClassName}
+        onCloseAutoFocus={onCloseAutoFocus}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

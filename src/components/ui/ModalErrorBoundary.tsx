@@ -15,7 +15,7 @@ interface State {
 export class ModalErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
+    error: null,
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -29,24 +29,26 @@ export class ModalErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-[rgba(248,113,113,0.2)] bg-[var(--color-surface)] p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-[#F87171] mb-2">Modal Error</h2>
-            <p className="text-sm text-[var(--color-text-3)] mb-4">
+            <h2 className="mb-2 text-lg font-semibold text-[#F87171]">
+              Modal Error
+            </h2>
+            <p className="mb-4 text-sm text-[var(--color-text-3)]">
               There was a problem loading the {this.props.modalName}.
             </p>
-            <div className="flex gap-2 justify-end">
+            <div className="flex justify-end gap-2">
               {this.props.onClose && (
                 <button
                   onClick={this.props.onClose}
-                  className="px-4 py-2 text-sm text-[var(--color-text-1)] bg-[var(--color-background)] rounded-lg border border-[var(--color-border)] hover:bg-[rgba(255,255,255,0.05)] transition-colors"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-2 text-sm text-[var(--color-text-1)] transition-colors hover:bg-[var(--surface-2)]"
                 >
                   Close
                 </button>
               )}
               <button
                 onClick={() => this.setState({ hasError: false, error: null })}
-                className="px-4 py-2 text-sm text-[var(--color-background)] bg-[var(--accent)] rounded-lg hover:opacity-90 transition-opacity"
+                className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm text-[var(--color-background)] transition-opacity hover:opacity-90"
               >
                 Try Again
               </button>

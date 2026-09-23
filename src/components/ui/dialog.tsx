@@ -54,9 +54,9 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "modal fixed top-1/2 left-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-6",
+          "modal fixed top-1/2 left-1/2 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 p-6",
           zIndexClassName,
-          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-[0.98] data-[state=open]:zoom-in-[0.97] duration-[var(--dur-base)] ease-[var(--ease-out)] data-[state=closed]:duration-[var(--dur-fast)]",
           className,
         )}
         {...props}
@@ -64,7 +64,7 @@ function DialogContent({
         {children}
         {showClose && (
           <DialogPrimitive.Close
-            className="absolute top-4 right-4 rounded-[var(--radius-sm)] p-1.5 text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+            className="absolute top-3 right-3 flex size-9 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
             aria-label="Close"
           >
             <UiIcon size={16} icon={X} />
@@ -93,7 +93,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "text-[length:var(--text-title-lg)] font-medium text-[var(--text-1)]",
+        "pr-8 text-[length:var(--text-title-lg)] font-medium tracking-[-0.01em] text-[var(--text-1)]",
         className,
       )}
       {...props}
@@ -109,7 +109,7 @@ function DialogDescription({
     <DialogPrimitive.Description
       data-slot="dialog-description"
       className={cn(
-        "text-[length:var(--text-body)] text-[var(--text-2)]",
+        "text-[length:var(--text-body)] leading-[var(--leading-base)] text-[var(--text-2)]",
         className,
       )}
       {...props}
