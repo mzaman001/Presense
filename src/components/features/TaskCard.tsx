@@ -342,6 +342,10 @@ export const TaskCard = React.memo(
 
               <div className="min-w-0 flex-1 py-px">
                 <m.p
+                  // Element Timing: reports when task titles first paint, the
+                  // metric the Do page's load work is measured against.
+                  // (not in React's attribute types, hence the spread)
+                  {...{ elementtiming: "task-title" }}
                   className="text-body-lg line-clamp-2 leading-snug font-medium text-[var(--text-1)]"
                   animate={
                     isCompleting

@@ -63,6 +63,10 @@ const AUTOSAVE_FIELDS = [
   "display_name",
   "avatar_color",
   "timezone",
+  // Appearance was missing here, so a mode change only reached localStorage
+  // and the next load reapplied the stale DB value ("theme keeps resetting").
+  "color_mode",
+  "reduce_motion",
   "notifications_enabled",
   "notif_overdue",
   "notif_stale_threads",
@@ -847,9 +851,12 @@ function SettingsModalContent({
         setSaveStatus("idle");
       } else {
         lastSavedSettingsRef.current = currentSettingsStr;
-        /* @todo: Untyped usage justified per TOOL-01 */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setUserSettings(debouncedSettings as any);
+        // Merge, never replace: the autosave slice lacks fields such as
+        // `theme`, and AppInitializer re-applies the theme from the store.
+        setUserSettings({
+          ...useAppStore.getState().userSettings,
+          ...debouncedSettings,
+        });
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       }

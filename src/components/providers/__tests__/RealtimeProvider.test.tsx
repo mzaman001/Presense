@@ -1,13 +1,15 @@
 import React from "react";
-import { render, act } from "@testing-library/react";
+import { render, act, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { RealtimeProvider, useRealtimeContext } from "../RealtimeProvider";
+import { useRealtimeConnectionStatus } from "../realtime-status";
 
 // Mock Supabase Client Infrastructure
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let postgresChangesCallbacks: { [table: string]: (payload: any) => void } = {};
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockChannels: { [table: string]: any } = {};
+let statusCallbacks: { [table: string]: (status: string) => void } = {};
 
 const mockSupabase = {
   channel: vi.fn().mockImplementation((name: string) => {
@@ -18,6 +20,7 @@ const mockSupabase = {
         return channel;
       }),
       subscribe: vi.fn().mockImplementation((statusCallback) => {
+        statusCallbacks[table] = statusCallback;
         if (statusCallback) {
           statusCallback("SUBSCRIBED");
         }
@@ -31,6 +34,9 @@ const mockSupabase = {
     // Find and delete from mockChannels
     for (const table in mockChannels) {
       if (mockChannels[table] === channel) {
+        // realtime-js reports an intentional removal through the same
+        // subscribe callback as a dropped socket.
+        statusCallbacks[table]?.("CLOSED");
         delete mockChannels[table];
         delete postgresChangesCallbacks[table];
       }
@@ -41,6 +47,11 @@ const mockSupabase = {
 vi.mock("@/lib/supabase", () => ({
   createClient: vi.fn(() => mockSupabase),
 }));
+
+function StatusProbe() {
+  return <div data-testid="status">{useRealtimeConnectionStatus()}</div>;
+}
+const status = () => screen.getByTestId("status").textContent;
 
 // Test consumer component
 function TestConsumer({
@@ -73,6 +84,7 @@ describe("RealtimeProvider", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     postgresChangesCallbacks = {};
+    statusCallbacks = {};
   });
 
   afterEach(() => {
@@ -85,7 +97,7 @@ describe("RealtimeProvider", () => {
     render(
       <RealtimeProvider>
         <TestConsumer tableName="todos" onUpdate={onUpdate} />
-      </RealtimeProvider>
+      </RealtimeProvider>,
     );
 
     // Verify channel creation
@@ -102,7 +114,7 @@ describe("RealtimeProvider", () => {
       <RealtimeProvider>
         <TestConsumer tableName="todos" onUpdate={onUpdate1} />
         <TestConsumer tableName="todos" onUpdate={onUpdate2} />
-      </RealtimeProvider>
+      </RealtimeProvider>,
     );
 
     // Should only create channel once
@@ -142,7 +154,7 @@ describe("RealtimeProvider", () => {
             unsubscribe2 = unsub;
           }}
         />
-      </RealtimeProvider>
+      </RealtimeProvider>,
     );
 
     expect(mockSupabase.channel).toHaveBeenCalledTimes(1);
@@ -171,6 +183,48 @@ describe("RealtimeProvider", () => {
 
     // Now channel should be removed since refCount reached 0
     expect(mockSupabase.removeChannel).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays connected after a channel is torn down on purpose", () => {
+    const { rerender } = render(
+      <RealtimeProvider>
+        <StatusProbe />
+        <TestConsumer tableName="todos" onUpdate={vi.fn()} />
+        <TestConsumer tableName="threads" onUpdate={vi.fn()} />
+      </RealtimeProvider>,
+    );
+    expect(status()).toBe("connected");
+
+    // Navigate away from the page that used "threads".
+    rerender(
+      <RealtimeProvider>
+        <StatusProbe />
+        <TestConsumer tableName="todos" onUpdate={vi.fn()} />
+      </RealtimeProvider>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(mockSupabase.removeChannel).toHaveBeenCalledTimes(1);
+    expect(status()).toBe("connected");
+  });
+
+  it("does not let one healthy channel mask another that is down", () => {
+    render(
+      <RealtimeProvider>
+        <StatusProbe />
+        <TestConsumer tableName="todos" onUpdate={vi.fn()} />
+        <TestConsumer tableName="threads" onUpdate={vi.fn()} />
+      </RealtimeProvider>,
+    );
+
+    act(() => statusCallbacks["todos"]("CHANNEL_ERROR"));
+    act(() => statusCallbacks["threads"]("SUBSCRIBED"));
+    expect(status()).toBe("disconnected");
+
+    act(() => statusCallbacks["todos"]("SUBSCRIBED"));
+    expect(status()).toBe("connected");
   });
 
   it("should throw error if useRealtimeContext is used outside provider", () => {

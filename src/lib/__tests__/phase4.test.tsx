@@ -17,7 +17,17 @@ import { RitualOverlay } from "@/components/features/RitualOverlay";
 import { TaskAddPanel } from "@/components/features/TaskAddPanel";
 import { LocationAddPanel } from "@/components/features/LocationAddPanel";
 import ThreadDetailPage from "@/app/(app)/think/[id]/page";
-import InboxPage from "@/app/(app)/inbox/page";
+import { InboxView } from "@/app/(app)/inbox/InboxView";
+
+// The page is a Server Component that streams the list; these suites drive
+// the client view directly. A thenable already marked fulfilled lets use()
+// read it synchronously, and undefined means "no server data" so the view
+// fetches through the mocked client as before.
+const noServerItems = Object.assign(Promise.resolve(undefined), {
+  status: "fulfilled",
+  value: undefined,
+});
+const InboxPage = () => <InboxView itemsPromise={noServerItems} />;
 import { AppInitializer } from "@/components/layout/AppInitializer";
 
 // Mock Next.js router

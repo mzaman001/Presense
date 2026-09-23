@@ -134,9 +134,13 @@ export async function proxy(request: NextRequest) {
   );
 
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // getClaims verifies the access token locally against the project's
+    // cached ES256 public key (and refreshes an expired one). getUser() made
+    // a round trip to the Auth server on every request: 300ms+ measured, and
+    // the Vercel functions (iad1) are an ocean away from the database
+    // (ap-southeast-2). Row access is enforced by RLS on the same JWT.
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const user = claimsData?.claims ?? null;
 
     const pathname = request.nextUrl.pathname.toLowerCase();
     const isAuthRoute =

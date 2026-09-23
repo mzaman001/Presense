@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 
 vi.mock("@sentry/nextjs", () => ({
   captureMessage: vi.fn(),
+  captureException: vi.fn(),
 }));
 
 const redisConstructor = vi.fn();
@@ -16,9 +17,11 @@ interface RatelimitInit {
 
 const ratelimitInits: RatelimitInit[] = [];
 
+const limitImpl = vi.fn(async (_key: string) => ({ success: true }));
+
 class MockRatelimit {
   static slidingWindow = vi.fn(() => ({ type: "sliding-window" }));
-  limit = vi.fn(async () => ({ success: true }));
+  limit = vi.fn((key: string) => limitImpl(key));
   constructor(init: RatelimitInit) {
     ratelimitInits.push(init);
   }
@@ -37,6 +40,8 @@ const REDIS_ENV_KEYS = [
   "UPSTASH_REDIS_REST_TOKEN",
   "KV_REST_API_URL",
   "KV_REST_API_TOKEN",
+  "UPSTASH_REDIS_KV_REST_API_URL",
+  "UPSTASH_REDIS_KV_REST_API_TOKEN",
 ] as const;
 
 beforeEach(() => {
@@ -44,6 +49,7 @@ beforeEach(() => {
   for (const key of REDIS_ENV_KEYS) delete process.env[key];
   vi.stubEnv("NODE_ENV", "development");
   vi.clearAllMocks();
+  limitImpl.mockImplementation(async () => ({ success: true }));
   ratelimitInits.length = 0;
 });
 
@@ -179,5 +185,74 @@ describe("Redis-backed path (env configured, modules mocked)", () => {
     );
     expect(captureInits).toHaveLength(1);
     expect(ratelimitInits.some((i) => i.prefix === "rl:account")).toBe(false);
+  });
+});
+
+// Production DELETE /api/account returned 500 (Sep 2026): a hand-entered
+// UPSTASH_REDIS_REST_URL was not an https URL, so `new Redis()` threw
+// UrlError before the route did anything. The Vercel Upstash integration's
+// own variables (UPSTASH_REDIS_KV_REST_API_*) were valid but never read.
+describe("Redis env resolution", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("uses the Vercel integration's variables when the manual URL is malformed", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = '"https://pasted-with-quotes"';
+    process.env.UPSTASH_REDIS_REST_TOKEN = "manual-token";
+    process.env.UPSTASH_REDIS_KV_REST_API_URL =
+      "https://integration.upstash.io";
+    process.env.UPSTASH_REDIS_KV_REST_API_TOKEN = "integration-token";
+    vi.resetModules();
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+
+    expect(await checkRateLimit("resolve-a", "u1", 3, 60_000)).toBe(true);
+    // URL and token must come from the same source, never mixed.
+    expect(redisConstructor).toHaveBeenCalledWith({
+      url: "https://integration.upstash.io",
+      token: "integration-token",
+    });
+  });
+
+  it("rejects instead of throwing when no source has a valid URL", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.UPSTASH_REDIS_REST_URL = "redis://not-rest";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "manual-token";
+    vi.resetModules();
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+
+    await expect(checkRateLimit("resolve-b", "u1", 3, 60_000)).resolves.toBe(
+      false,
+    );
+    expect(redisConstructor).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("UPSTASH_REDIS_REST_URL"),
+      expect.objectContaining({ level: "error" }),
+    );
+  });
+});
+
+// Preview sign-in returned 500 (Sep 2026): the Upstash integration's host
+// no longer resolved (getaddrinfo ENOTFOUND), limiter.limit() rejected, and
+// the magic-link server action threw. An unreachable Redis must degrade to
+// the per-instance limiter, not take the route down.
+describe("Redis unreachable at request time", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("falls back to the in-memory limiter and reports once", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.UPSTASH_REDIS_REST_URL = "https://gone.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "token";
+    limitImpl.mockRejectedValue(new TypeError("fetch failed"));
+    vi.resetModules();
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+
+    expect(await checkRateLimit("unreachable", "u1", 2, 60_000)).toBe(true);
+    expect(await checkRateLimit("unreachable", "u1", 2, 60_000)).toBe(true);
+    // Still limited, per instance.
+    expect(await checkRateLimit("unreachable", "u1", 2, 60_000)).toBe(false);
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
   });
 });

@@ -22,15 +22,47 @@ function limiterKey(
   return `${bucket}:${maxRequests}:${windowMs}`;
 }
 
+/** Same check `new Redis()` applies before throwing UrlError. */
+const REST_URL = /^https?:\/\/[^\s#$./?].\S*$/;
+
+/** Checked in order; URL and token are always taken from the same source. */
+const REDIS_ENV_SOURCES = [
+  ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
+  ["KV_REST_API_URL", "KV_REST_API_TOKEN"],
+  // Names the Vercel Upstash integration injects for a store called "upstash-redis".
+  ["UPSTASH_REDIS_KV_REST_API_URL", "UPSTASH_REDIS_KV_REST_API_TOKEN"],
+] as const;
+
+/**
+ * A malformed URL used to reach `new Redis()`, which throws — every route
+ * behind the limiter then returned 500 (production account deletion failed
+ * this way). An invalid source is reported by variable name and skipped.
+ */
+const reportedInvalid = new Set<string>();
+
+function resolveRedisEnv(bucket: string) {
+  for (const [urlKey, tokenKey] of REDIS_ENV_SOURCES) {
+    const url = process.env[urlKey];
+    const token = process.env[tokenKey];
+    if (!url || !token) continue;
+    if (REST_URL.test(url)) return { url, token };
+    if (reportedInvalid.has(urlKey)) continue;
+    reportedInvalid.add(urlKey);
+    Sentry.captureMessage(
+      `[rate-limit] ${urlKey} is not a valid Upstash REST URL (expected https://…) — ignoring it.`,
+      { level: "error", tags: { subsystem: "rate-limit" }, extra: { bucket } },
+    );
+  }
+  return null;
+}
+
 function getRateLimit(bucket: string, maxRequests: number, windowMs: number) {
   const cached = limiters.get(limiterKey(bucket, maxRequests, windowMs));
   if (cached) return cached;
 
-  const redisEnvAvailable =
-    !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) &&
-    !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN);
+  const redisEnv = resolveRedisEnv(bucket);
 
-  if (!redisEnvAvailable) {
+  if (!redisEnv) {
     if (process.env.NODE_ENV === "production" && !redisWarned) {
       // TOOL-08 (Aug 17, 2026): a production deployment without Redis env vars
       // silently fails OPEN under the old code (getRateLimit returned null and
@@ -56,11 +88,7 @@ function getRateLimit(bucket: string, maxRequests: number, windowMs: number) {
     return null;
   }
 
-  const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL!,
-    token:
-      process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN!,
-  });
+  const redis = new Redis(redisEnv);
 
   const ratelimit = new Ratelimit({
     redis,
@@ -88,8 +116,22 @@ export async function checkRateLimit(
   const limiter = getRateLimit(bucket, maxRequests, windowMs);
 
   if (limiter) {
-    const { success } = await limiter.limit(key);
-    return success;
+    try {
+      const { success } = await limiter.limit(key);
+      return success;
+    } catch (err) {
+      // Redis configured but unreachable (a deleted Upstash database made
+      // every magic-link sign-in a 500). Keep limiting per instance rather
+      // than failing the request, and report it once per bucket.
+      if (!reportedUnreachable.has(bucket)) {
+        reportedUnreachable.add(bucket);
+        Sentry.captureException(err, {
+          tags: { subsystem: "rate-limit" },
+          extra: { bucket },
+        });
+      }
+      return memoryLimit(bucket, key, maxRequests, windowMs);
+    }
   }
 
   // Fail closed in production without Redis.
@@ -100,6 +142,17 @@ export async function checkRateLimit(
     return false;
   }
 
+  return memoryLimit(bucket, key, maxRequests, windowMs);
+}
+
+const reportedUnreachable = new Set<string>();
+
+function memoryLimit(
+  bucket: string,
+  key: string,
+  maxRequests: number,
+  windowMs: number,
+): boolean {
   // SEC-01: the in-memory fallback keys on limit + window too, so it always
   // mirrors what the Redis path now does.
   const memKey = `${bucket}:${key}:${maxRequests}:${windowMs}`;

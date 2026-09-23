@@ -9,11 +9,21 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "mock-anon-key";
 // Mock env module to prevent throwing at import time (env.ts uses lazy getters, but mock to be safe)
 vi.mock("@/lib/env", () => ({
   env: {
-    get NEXT_PUBLIC_SUPABASE_URL() { return process.env.NEXT_PUBLIC_SUPABASE_URL; },
-    get NEXT_PUBLIC_SUPABASE_ANON_KEY() { return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; },
-    get SUPABASE_SERVICE_ROLE_KEY() { return process.env.SUPABASE_SERVICE_ROLE_KEY; },
-    get UPSTASH_REDIS_REST_URL() { return process.env.UPSTASH_REDIS_REST_URL; },
-    get UPSTASH_REDIS_REST_TOKEN() { return process.env.UPSTASH_REDIS_REST_TOKEN; },
+    get NEXT_PUBLIC_SUPABASE_URL() {
+      return process.env.NEXT_PUBLIC_SUPABASE_URL;
+    },
+    get NEXT_PUBLIC_SUPABASE_ANON_KEY() {
+      return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    },
+    get SUPABASE_SERVICE_ROLE_KEY() {
+      return process.env.SUPABASE_SERVICE_ROLE_KEY;
+    },
+    get UPSTASH_REDIS_REST_URL() {
+      return process.env.UPSTASH_REDIS_REST_URL;
+    },
+    get UPSTASH_REDIS_REST_TOKEN() {
+      return process.env.UPSTASH_REDIS_REST_TOKEN;
+    },
   },
 }));
 
@@ -73,9 +83,13 @@ vi.mock("next/server", () => {
 });
 
 // Mock Supabase Server Client
+const mockGetClaims = vi.fn();
+// The proxy must verify the JWT locally; getUser() is a round trip to the
+// Supabase Auth server on every request.
 const mockGetUser = vi.fn();
 const mockSupabaseClient = {
   auth: {
+    getClaims: mockGetClaims,
     getUser: mockGetUser,
   },
 };
@@ -90,13 +104,19 @@ const mockCreateServerClient = vi.fn((url, key, config) => {
 let mockCreateServerClientConfig: any = null;
 
 vi.mock("@supabase/ssr", () => ({
-  createServerClient: (url: any, key: any, config: any) => mockCreateServerClient(url, key, config),
+  createServerClient: (url: any, key: any, config: any) =>
+    mockCreateServerClient(url, key, config),
 }));
 
 // Helper function to build a mock NextRequest
-function createMockRequest(pathname: string, searchParamsStr = "", initialCookies: any[] = [], initialHeaders = new Map()) {
+function createMockRequest(
+  pathname: string,
+  searchParamsStr = "",
+  initialCookies: any[] = [],
+  initialHeaders = new Map(),
+) {
   const cookieMap = new Map<string, any>();
-  initialCookies.forEach(c => cookieMap.set(c.name, c));
+  initialCookies.forEach((c) => cookieMap.set(c.name, c));
 
   const urlStr = `http://localhost${pathname}${searchParamsStr}`;
   const parsedUrl = new URL(urlStr);
@@ -111,9 +131,13 @@ function createMockRequest(pathname: string, searchParamsStr = "", initialCookie
         search: this.search,
         searchParams: new URLSearchParams(this.search),
         toString() {
-          const qs = this.search ? (this.search.startsWith("?") ? this.search : `?${this.search}`) : "";
+          const qs = this.search
+            ? this.search.startsWith("?")
+              ? this.search
+              : `?${this.search}`
+            : "";
           return `http://localhost${this.pathname}${qs}`;
-        }
+        },
       };
     },
     toString() {
@@ -143,7 +167,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
 
   describe("Scenario 1: Malformed or Missing Auth Headers & Cookies", () => {
     it("handles missing auth cookies entirely (redirects unauthenticated to /login)", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/do");
       const res = await proxy(req);
 
@@ -153,7 +177,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("handles missing auth cookies but valid-looking Authorization header (still redirects if cookies are the only source of truth)", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const headers = new Map();
       headers.set("authorization", "Bearer mock-jwt-token");
       const req = createMockRequest("/do", "", [], headers);
@@ -164,9 +188,14 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
       expect(res.url).toContain("/login");
     });
 
-    it("handles malformed cookies (e.g., junk string) that cause getUser to return null", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null }, error: new Error("Invalid token format") });
-      const cookies = [{ name: "sb-access-token", value: "malformed-junk-token" }];
+    it("handles malformed cookies (e.g., junk string) that cause getClaims to return null", async () => {
+      mockGetClaims.mockResolvedValue({
+        data: null,
+        error: new Error("Invalid token format"),
+      });
+      const cookies = [
+        { name: "sb-access-token", value: "malformed-junk-token" },
+      ];
       const req = createMockRequest("/do", "", cookies);
       const res = await proxy(req);
 
@@ -175,9 +204,11 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
       expect(res.url).toContain("/login");
     });
 
-    it("verifies middleware behavior when supabase.auth.getUser throws an exception", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      mockGetUser.mockRejectedValue(new Error("Database connection timeout"));
+    it("verifies middleware behavior when supabase.auth.getClaims throws an exception", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockGetClaims.mockRejectedValue(new Error("Database connection timeout"));
       const req = createMockRequest("/do");
       const res = await proxy(req);
 
@@ -190,9 +221,9 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
 
   describe("Scenario 2: Redirect Routing Behavior (Trailing slashes, Capital Letters, and Params)", () => {
     // 2. Verify redirects with trailing slashes, capital letters, or parameters (e.g., `/do?param=1`).
-    
+
     it("unauthenticated request to protected path with trailing slash (/do/) redirects to /login", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/do/");
       const res = await proxy(req);
 
@@ -202,7 +233,10 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("authenticated request to protected path with trailing slash (/do/) is allowed (no redirect)", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "user-123" } },
+        error: null,
+      });
       const req = createMockRequest("/do/");
       const res = await proxy(req);
 
@@ -211,7 +245,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("unauthenticated request to capital letters protected path (/DO) redirects to /login", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/DO");
       const res = await proxy(req);
 
@@ -221,7 +255,10 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("authenticated request to capital letters protected path (/DO) is allowed (no redirect)", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "user-123" } },
+        error: null,
+      });
       const req = createMockRequest("/DO");
       const res = await proxy(req);
 
@@ -230,7 +267,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("allows unauthenticated request to capital letters auth path (/LOGIN) without redirect", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/LOGIN");
       const res = await proxy(req);
 
@@ -240,7 +277,10 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("redirects authenticated request on capital letters auth path (/LOGIN) to /", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "user-123" } },
+        error: null,
+      });
       const req = createMockRequest("/LOGIN");
       const res = await proxy(req);
 
@@ -250,7 +290,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("unauthenticated request to protected path with parameters (/do?param=1) redirects to /login preserving the parameters", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/do", "?param=1");
       const res = await proxy(req);
 
@@ -261,7 +301,10 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("authenticated request to login with parameters (/login?param=1) redirects to / preserving the parameters", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "user-123" } },
+        error: null,
+      });
       const req = createMockRequest("/login", "?param=1");
       const res = await proxy(req);
 
@@ -276,15 +319,23 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     // 3. Ensure that cookies are successfully forwarded in all redirection responses and that no loops occur.
 
     it("ensures cookies set by Supabase client during auth check are forwarded in redirect responses", async () => {
-      mockGetUser.mockImplementation(async () => {
+      mockGetClaims.mockImplementation(async () => {
         // Simulate Supabase client calling setAll to set cookies
         if (mockCreateServerClientConfig?.cookies?.setAll) {
           mockCreateServerClientConfig.cookies.setAll([
-            { name: "sb-access-token", value: "new-access-token", options: { path: "/", maxAge: 3600 } },
-            { name: "sb-refresh-token", value: "new-refresh-token", options: { path: "/", maxAge: 3600 } }
+            {
+              name: "sb-access-token",
+              value: "new-access-token",
+              options: { path: "/", maxAge: 3600 },
+            },
+            {
+              name: "sb-refresh-token",
+              value: "new-refresh-token",
+              options: { path: "/", maxAge: 3600 },
+            },
           ]);
         }
-        return { data: { user: { id: "user-123" } } };
+        return { data: { claims: { sub: "user-123" } }, error: null };
       });
 
       // Authenticated user requests /login -> should redirect to / and forward the new cookies
@@ -297,12 +348,22 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
 
       // Verify that the redirected response has cookies set
       expect(res.cookies.set).toHaveBeenCalledTimes(2);
-      expect(res.cookies.set).toHaveBeenNthCalledWith(1, "sb-access-token", "new-access-token", { path: "/", maxAge: 3600 });
-      expect(res.cookies.set).toHaveBeenNthCalledWith(2, "sb-refresh-token", "new-refresh-token", { path: "/", maxAge: 3600 });
+      expect(res.cookies.set).toHaveBeenNthCalledWith(
+        1,
+        "sb-access-token",
+        "new-access-token",
+        { path: "/", maxAge: 3600 },
+      );
+      expect(res.cookies.set).toHaveBeenNthCalledWith(
+        2,
+        "sb-refresh-token",
+        "new-refresh-token",
+        { path: "/", maxAge: 3600 },
+      );
     });
 
     it("prevents redirect loops for unauthenticated users accessing /login", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/login");
       const res = await proxy(req);
 
@@ -313,7 +374,10 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("prevents redirect loops for authenticated users accessing /", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "user-123" } },
+        error: null,
+      });
       const req = createMockRequest("/");
       const res = await proxy(req);
 
@@ -324,7 +388,7 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
     });
 
     it("prevents redirect loops for unauthenticated users accessing /auth/callback", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/auth/callback");
       const res = await proxy(req);
 
