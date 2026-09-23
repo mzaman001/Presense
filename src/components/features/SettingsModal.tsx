@@ -28,8 +28,7 @@ import {
   Database,
   Plus,
   Trash2,
-  Sparkles,
-  Moon,
+  Sunrise,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -54,7 +53,7 @@ import {
   normalizeThemeId,
 } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
-import { Icon as UiIcon } from "@/components/ui/Icon";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 /* BUG-45 — the fields the autosave debounce watches. `watch(AUTOSAVE_FIELDS)`
    returns an array of values in this same order (react-hook-form's array-arg
@@ -86,15 +85,90 @@ const AUTOSAVE_FIELDS = [
 ] as const satisfies readonly (keyof SettingsFormValues)[];
 
 const TABS = [
-  { id: "account", label: "Account", icon: User },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "ritual", label: "Daily Ritual", icon: Sparkles },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "focus", label: "Focus", icon: Timer },
-  { id: "tasks", label: "Tasks", icon: CheckSquare },
-  { id: "routing", label: "Smart Routing", icon: Brain },
-  { id: "data", label: "Data", icon: Database },
+  {
+    id: "account",
+    label: "Account",
+    icon: User,
+    description: "Who you are across Presense.",
+  },
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: Palette,
+    description: "How Presense looks and moves.",
+  },
+  {
+    id: "ritual",
+    label: "Daily ritual",
+    icon: Sunrise,
+    description: "The rhythm that bookends your day.",
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    icon: Bell,
+    description: "What's worth interrupting you for.",
+  },
+  {
+    id: "focus",
+    label: "Focus",
+    icon: Timer,
+    description: "The shape of a focus session.",
+  },
+  {
+    id: "tasks",
+    label: "Tasks",
+    icon: CheckSquare,
+    description: "Categories and housekeeping for Do.",
+  },
+  {
+    id: "routing",
+    label: "Smart routing",
+    icon: Brain,
+    description: "How captures find their place.",
+  },
+  {
+    id: "data",
+    label: "Data",
+    icon: Database,
+    description: "Export or tidy what you've stored.",
+  },
 ];
+
+const AVATAR_COLORS = [
+  "#F472B6",
+  "#4ADE80",
+  "#3B82F6",
+  "#FBBF24",
+  "#A855F7",
+  "#EF4444",
+];
+
+const CATEGORY_COLORS = [
+  "#F87171",
+  "#FBBF24",
+  "#4ADE80",
+  "#2DD4BF",
+  "#7692FF",
+  "#8B7CF8",
+  "#F472B6",
+  "#9CA3AF",
+];
+
+const TIMEZONE_OPTIONS: { value: string; label: string }[] =
+  typeof Intl !== "undefined" && "supportedValuesOf" in Intl
+    ? (Intl as unknown as { supportedValuesOf: (k: string) => string[] })
+        .supportedValuesOf("timeZone")
+        .map((tz) => ({ value: tz, label: tz.replace(/_/g, " ") }))
+    : [
+        { value: "UTC", label: "UTC" },
+        { value: "America/New_York", label: "Eastern Time (ET)" },
+        { value: "America/Chicago", label: "Central Time (CT)" },
+        { value: "America/Denver", label: "Mountain Time (MT)" },
+        { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+        { value: "Asia/Kolkata", label: "India Standard Time (IST)" },
+        { value: "Europe/London", label: "Greenwich Mean Time (GMT)" },
+      ];
 
 const TIME_OPTIONS = Array.from({ length: 96 }).map((_, i) => {
   const hours = Math.floor(i / 4)
@@ -135,6 +209,91 @@ interface SettingsState {
   pomodoro_long_break_interval?: number;
   daily_capacity_minutes?: number;
   density?: "comfortable" | "compact";
+}
+
+/* ---------------------------------------------------------------------
+   Settings layout primitives. A group is one rounded card; each row is a
+   label + description on the left and its control on the right, separated
+   from its neighbours by a hairline. `stack` puts a wide control (text
+   field, segmented control, slider) underneath the label instead.
+   --------------------------------------------------------------------- */
+function SettingsGroup({
+  title,
+  tone,
+  children,
+}: {
+  title?: string;
+  tone?: "danger";
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2">
+      {title && (
+        <h4
+          className={cn(
+            "text-label px-1",
+            tone === "danger"
+              ? "text-[var(--status-danger)]"
+              : "text-[var(--text-3)]",
+          )}
+        >
+          {title}
+        </h4>
+      )}
+      <div className="settings-group">{children}</div>
+    </section>
+  );
+}
+
+function SettingRow({
+  label,
+  description,
+  stack,
+  children,
+}: {
+  label: string;
+  description?: React.ReactNode;
+  stack?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={cn("settings-row", stack && "settings-row--stack")}>
+      <div className="min-w-0 flex-1">
+        <div className="text-[length:var(--text-body-lg)] font-medium text-[var(--text-1)]">
+          {label}
+        </div>
+        {description && (
+          <div className="mt-0.5 text-[length:var(--text-body)] text-[var(--text-3)]">
+            {description}
+          </div>
+        )}
+      </div>
+      {children && <div className="settings-row-control">{children}</div>}
+    </div>
+  );
+}
+
+function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={cn("toggle-track", checked && "on")}
+    >
+      <span className="toggle-thumb" />
+    </button>
+  );
 }
 
 function CategoryItem({
@@ -227,102 +386,106 @@ function CategoryItem({
   };
 
   const isDirty = editName.trim() !== cat && editName.trim().length > 0;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const current = initialColor || "#9CA3AF";
 
   return (
-    <div className="group flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 transition-colors hover:border-[var(--border-strong)]">
-      <input
-        value={editName}
-        onChange={(e) => setEditName(e.target.value)}
-        onBlur={handleRename}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            e.currentTarget.blur();
-          }
-        }}
-        aria-label={`Rename category "${cat}"`}
-        className="min-w-[80px] flex-1 rounded bg-transparent px-2 py-1 text-sm font-bold tracking-wide text-[var(--color-text-1)] capitalize focus:bg-[var(--surface-hover)] focus:outline-none"
-      />
-      {/* Step 3 (task 2.6): explicit save confirmation alongside the
-          blur-triggered rename — Enter/blur already save, but a user who
-          edits then immediately closes the modal needs visible proof the
-          rename landed rather than trusting an easy-to-miss toast. */}
-      {isDirty && (
+    <div className="settings-row flex-col !items-stretch !gap-0 !py-2">
+      <div className="flex items-center gap-2">
         <button
           type="button"
-          onMouseDown={(e) => e.preventDefault()} // keep input focus so onBlur still fires handleRename
-          onClick={handleRename}
-          aria-label={`Confirm rename to "${editName.trim()}"`}
-          className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-[var(--color-think)] transition-colors hover:bg-[var(--color-think)]/10 focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-1 focus-visible:outline-none"
+          onClick={() => setPickerOpen((o) => !o)}
+          aria-expanded={pickerOpen}
+          aria-label={`Colour for "${cat}"`}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-[var(--surface-hover)]"
         >
-          <UiIcon className="h-4 w-4" icon={CheckCircle2} />
-        </button>
-      )}
-      <div className="flex shrink-0 items-center justify-end gap-2.5">
-        {[
-          "#F87171",
-          "#FBBF24",
-          "#4ADE80",
-          "#2DD4BF",
-          "#7692FF",
-          "#8B7CF8",
-          "#F472B6",
-          "#9CA3AF",
-        ].map((preset) => {
-          const isActive =
-            initialColor === preset || (!initialColor && preset === "#9CA3AF");
-          return (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => handleColorChange(cat, preset)}
-              aria-label={`Set category color to ${preset}`}
-              aria-pressed={isActive}
-              // Step 2 (task 2.6): 20px -> 32px touch target, wider gap
-              // between swatches, and a visible keyboard focus ring — the
-              // previous size was well under touch-target guidelines and
-              // adjacent swatches were a near-miss-click risk.
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all hover:scale-110 focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] focus-visible:outline-none"
-            >
-              <span
-                className="block h-5 w-5 rounded-full"
-                style={{
-                  backgroundColor: preset,
-                  border: isActive
-                    ? "2px solid var(--text-1)"
-                    : "1px solid var(--border-subtle)",
-                  transform: isActive ? "scale(1.2)" : "scale(1)",
-                  opacity: isActive ? 1 : 0.5,
-                }}
-              />
-            </button>
-          );
-        })}
-        <div className="mx-1 h-4 w-[1px] bg-[var(--color-border)]" />
-        <label
-          className="relative flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full shadow-sm transition-transform focus-within:ring-2 focus-within:ring-[var(--color-accent)] focus-within:ring-offset-2 focus-within:ring-offset-[var(--color-surface)] hover:scale-110"
-          style={{
-            background:
-              "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
-          }}
-        >
-          <input
-            type="color"
-            value={initialColor || "#9CA3AF"}
-            onChange={(e) => handleColorChange(cat, e.target.value)}
-            aria-label="Pick a custom category color"
-            className="absolute h-full w-full cursor-pointer opacity-0"
+          <span
+            aria-hidden="true"
+            className="block size-3.5 rounded-full"
+            style={{ backgroundColor: current }}
           />
-        </label>
+        </button>
+        <input
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          onBlur={handleRename}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
+          aria-label={`Rename category "${cat}"`}
+          className="min-w-0 flex-1 rounded-lg bg-transparent px-2 py-2 text-[length:var(--text-body-lg)] font-medium text-[var(--text-1)] capitalize focus:bg-[var(--surface-hover)] focus:outline-none"
+        />
+        {isDirty && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()} // keep focus so onBlur still renames
+            onClick={handleRename}
+            aria-label={`Save rename to "${editName.trim()}"`}
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[var(--status-done)] hover:bg-[var(--surface-hover)]"
+          >
+            <CheckCircle2 aria-hidden="true" className="size-4" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => handleDelete(cat)}
           aria-label={`Delete category "${cat}"`}
-          className="row-actions ml-1 rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--status-danger)]/10 hover:text-[var(--status-danger)]"
+          className="row-actions flex size-9 shrink-0 items-center justify-center rounded-lg text-[var(--text-3)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]"
         >
-          <UiIcon className="h-4 w-4" icon={Trash2} />
+          <Trash2 aria-hidden="true" className="size-4" />
         </button>
       </div>
+      <AnimatePresence initial={false}>
+        {pickerOpen && (
+          <m.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-wrap items-center gap-1 pt-1 pb-1 pl-9">
+              {CATEGORY_COLORS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => handleColorChange(cat, preset)}
+                  aria-label={`Set colour ${preset}`}
+                  aria-pressed={current.toLowerCase() === preset.toLowerCase()}
+                  className="swatch swatch-sm"
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{ backgroundColor: preset }}
+                  />
+                </button>
+              ))}
+              <label
+                className="swatch swatch-sm cursor-pointer"
+                title="Custom colour"
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    background:
+                      "conic-gradient(#f87171, #fbbf24, #4ade80, #2dd4bf, #7692ff, #f472b6, #f87171)",
+                  }}
+                />
+                <input
+                  type="color"
+                  value={current}
+                  onChange={(e) => handleColorChange(cat, e.target.value)}
+                  aria-label="Custom colour"
+                  className="sr-only"
+                />
+              </label>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -365,49 +528,43 @@ function CategoryManager({
   };
 
   return (
-    <div className="space-y-3">
-      <label className="text-label block text-[var(--text-3)]">{title}</label>
-      <div className="space-y-2">
-        {cats.map((cat) => (
-          <CategoryItem
-            key={cat}
-            cat={cat}
-            initialColor={colors[cat]}
-            cats={cats}
-            colors={colors}
-            categoriesKey={categoriesKey}
-            colorsKey={colorsKey}
-            updateSetting={updateSetting}
-            setSettings={setSettings}
-            supabase={supabase}
-          />
-        ))}
-        {/* Step 6 (task 2.6): the add-category row now shares the exact
-            border/padding treatment (rounded-xl border, p-3, same list
-            gap) as the per-category rows above instead of its own
-            distinct double-bordered input+button styling, so it reads as
-            part of the same list rather than a disconnected control. */}
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 transition-colors focus-within:border-[var(--color-accent)] hover:border-[var(--border-strong)]">
+    <SettingsGroup title={title}>
+      {cats.map((cat) => (
+        <CategoryItem
+          key={cat}
+          cat={cat}
+          initialColor={colors[cat]}
+          cats={cats}
+          colors={colors}
+          categoriesKey={categoriesKey}
+          colorsKey={colorsKey}
+          updateSetting={updateSetting}
+          setSettings={setSettings}
+          supabase={supabase}
+        />
+      ))}
+      <div className="settings-row !py-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="flex size-9 shrink-0 items-center justify-center text-[var(--text-3)]">
+            <Plus aria-hidden="true" className="size-4" />
+          </span>
           <input
             type="text"
             value={newCat}
             onChange={(e) => setNewCat(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="Add new category..."
+            placeholder="Add a category"
             aria-label="New category name"
-            className="min-w-[80px] flex-1 bg-transparent text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent px-2 py-2 text-[length:var(--text-body-lg)] text-[var(--text-1)] placeholder:text-[var(--text-muted)] focus:outline-none"
           />
-          <button
-            type="button"
-            onClick={handleAdd}
-            aria-label="Add category"
-            className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-[var(--color-text-3)] transition-colors hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
-          >
-            <UiIcon className="h-4 w-4" icon={Plus} />
-          </button>
+          {newCat.trim() && (
+            <Button size="sm" variant="secondary" onClick={handleAdd}>
+              Add
+            </Button>
+          )}
         </div>
       </div>
-    </div>
+    </SettingsGroup>
   );
 }
 
@@ -588,6 +745,7 @@ function SettingsModalContent({
   const [userEmail, setUserEmail] = useState("");
 
   const lastSavedSettingsRef = useRef<string | null>(null);
+  const debounceSettledRef = useRef(false);
   const dialogRef = useDialogFocus(true);
   /* BUG-46 — `density` has NO column in `user_settings` (verified live),
      so it must never enter the autosave payload. Keep it as pure
@@ -615,6 +773,15 @@ function SettingsModalContent({
           /* @todo: Untyped usage justified per TOOL-01 */
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           reset(data as any);
+          // Baseline for autosave = exactly what was just loaded, in the same
+          // shape the debounced watcher produces. Taking it later (from the
+          // first debounced value) captured pre-load defaults, so every open
+          // "saved" the loaded values straight back to the database.
+          lastSavedSettingsRef.current = JSON.stringify(
+            Object.fromEntries(
+              AUTOSAVE_FIELDS.map((name) => [name, getValues(name)]),
+            ),
+          );
           /* @todo: Untyped usage justified per TOOL-01 */
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setUserSettings(data as any);
@@ -627,11 +794,13 @@ function SettingsModalContent({
       }
     }
     loadSettings();
-  }, [supabase, setUserSettings, reset]);
+  }, [supabase, setUserSettings, reset, getValues]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      // A dropdown or confirm dialog inside Settings handles its own Escape
+      // (and marks it handled); only an unclaimed Escape closes Settings.
+      if (e.key === "Escape" && !e.defaultPrevented) {
         onClose(false);
       }
     };
@@ -643,6 +812,20 @@ function SettingsModalContent({
     if (!initialLoaded) return;
 
     const currentSettingsStr = JSON.stringify(debouncedSettings);
+    // The debounced value trails the form by a second. Until it has caught
+    // up with the live form values it is stale (right after opening it still
+    // holds the pre-load defaults), and saving it would write those defaults
+    // over the user's settings. Wait for it to settle, then compare with the
+    // loaded baseline: equal means nothing changed, so nothing to save.
+    if (!debounceSettledRef.current) {
+      const liveStr = JSON.stringify(
+        Object.fromEntries(
+          AUTOSAVE_FIELDS.map((name) => [name, getValues(name)]),
+        ),
+      );
+      if (currentSettingsStr !== liveStr) return;
+      debounceSettledRef.current = true;
+    }
     if (lastSavedSettingsRef.current === null) {
       lastSavedSettingsRef.current = currentSettingsStr;
       return;
@@ -672,7 +855,7 @@ function SettingsModalContent({
       }
     };
     save();
-  }, [debouncedSettings, supabase, initialLoaded, setUserSettings]);
+  }, [debouncedSettings, supabase, initialLoaded, setUserSettings, getValues]);
 
   /* BUG-45 — driven by selective `useWatch` values instead of the
      whole-object `watch()` reference, which changed on every render. */
@@ -837,6 +1020,14 @@ function SettingsModalContent({
     }
   };
 
+  const activeTabMeta = TABS.find((t) => t.id === activeTab) ?? TABS[0];
+  const capacity = settings.daily_capacity_minutes || 240;
+  const capacityPct = ((capacity - 60) / (720 - 60)) * 100;
+  const capacityLabel = `${Math.floor(capacity / 60)}h${capacity % 60 ? ` ${capacity % 60}m` : ""}`;
+  // Postgres `time` columns come back as "HH:MM:SS"; the options are "HH:MM".
+  const toHHMM = (t: string | undefined, fallback: string) =>
+    (t || fallback).slice(0, 5);
+
   return (
     <ModalErrorBoundary
       modalName="Settings Modal"
@@ -847,784 +1038,559 @@ function SettingsModalContent({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4"
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-0 md:p-6"
           onClick={() => onClose(false)}
         >
           <m.div
             ref={dialogRef}
-            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            initial={{ opacity: 0, scale: 0.98, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 8 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className="modal relative flex h-[100dvh] min-h-0 w-full max-w-4xl flex-col overflow-hidden md:h-[80vh] md:flex-row md:rounded-2xl"
-            style={{
-              background: "var(--surface-modal)",
-              border: "0.5px solid var(--border-strong)",
-              boxShadow: "var(--shadow-modal)",
+            exit={{
+              opacity: 0,
+              scale: 0.98,
+              y: 6,
+              transition: { duration: 0.14 },
             }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            className="modal relative flex h-[100dvh] min-h-0 w-full max-w-[880px] flex-col overflow-hidden md:h-[min(760px,88vh)] md:flex-row md:rounded-[var(--radius-xl)]"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="Settings"
           >
-            <div className="flex h-full min-h-0 w-full flex-col md:flex-row">
-              {/* Sidebar Tabs */}
-              <div className="relative w-full shrink-0 md:w-64">
-                <div className="flex w-full overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] p-4 pb-0 md:flex-col md:overflow-x-visible md:border-r md:border-b-0 md:pb-4">
-                  <h2 className="mb-8 hidden px-2 text-xl font-bold text-[var(--color-text-1)] md:block">
-                    Settings
-                  </h2>
-                  <nav className="flex w-full gap-1 pb-2 md:flex-col md:pb-0">
-                    {TABS.map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setSettingsActiveTab(tab.id)}
-                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                          activeTab === tab.id
-                            ? "bg-[var(--color-surface)] text-[var(--color-text-1)]"
-                            : "text-[var(--color-text-3)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-1)]"
-                        }`}
-                      >
-                        <tab.icon className="h-4 w-4" />
-                        {tab.label}
-                      </button>
-                    ))}
-                  </nav>
-
-                  {/* Step 5 (task 2.6): edge gradient fades hint that the
-                      tab strip scrolls horizontally on narrow viewports —
-                      it previously gave no indication more tabs existed
-                      off-screen. Desktop's vertical layout doesn't scroll,
-                      so these are mobile-only. No precedent for this exact
-                      pattern was found elsewhere in the codebase
-                      (SearchModal/other list views don't scroll
-                      horizontally), so this introduces one, matching the
-                      strip's own surface color for a seamless fade. */}
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute top-4 bottom-2 left-0 w-8 bg-gradient-to-r from-[var(--color-surface)] to-transparent md:hidden"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute top-4 right-0 bottom-2 w-8 bg-gradient-to-l from-[var(--color-surface)] to-transparent md:hidden"
-                  />
-
-                  <div className="mt-auto border-t border-[var(--color-border)] pt-4">
-                    <div className="mb-2 flex h-6 items-center gap-2 px-2 text-xs font-medium">
-                      <AnimatePresence mode="wait">
-                        {saveStatus === "saving" && (
-                          <m.div
-                            key="saving"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex items-center gap-1.5 text-[var(--color-text-3)]"
-                          >
-                            <UiIcon
-                              className="h-3.5 w-3.5 animate-spin"
-                              icon={Loader2}
-                            />{" "}
-                            Saving...
-                          </m.div>
-                        )}
-                        {saveStatus === "saved" && (
-                          <m.div
-                            key="saved"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex items-center gap-1.5 text-[var(--color-think)]"
-                          >
-                            <UiIcon
-                              className="h-3.5 w-3.5"
-                              icon={CheckCircle2}
-                            />{" "}
-                            Saved
-                          </m.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+            {/* Navigation: a quiet rail on desktop, a scrolling strip on phones */}
+            <aside className="settings-nav relative shrink-0 md:flex md:w-60 md:flex-col">
+              <h2 className="font-heading hidden px-3 pt-6 pb-5 text-[length:var(--text-title-xl)] font-medium text-[var(--text-1)] md:block">
+                Settings
+              </h2>
+              <nav
+                aria-label="Settings sections"
+                className="flex [scrollbar-width:none] gap-1 overflow-x-auto px-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 md:flex-col md:overflow-visible md:pt-0 md:pb-0"
+              >
+                {TABS.map((tab) => {
+                  const current = activeTab === tab.id;
+                  return (
                     <button
-                      onClick={handleSignOut}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--status-danger)] transition-colors hover:bg-[var(--status-danger-dim)]"
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSettingsActiveTab(tab.id)}
+                      aria-current={current ? "page" : undefined}
+                      className="settings-tab"
                     >
-                      <UiIcon className="h-4 w-4" icon={LogOut} /> Sign Out
+                      <tab.icon
+                        aria-hidden="true"
+                        className="size-[18px] shrink-0"
+                      />
+                      {tab.label}
                     </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                <Button
-                  variant="ghost"
-                  onClick={() => onClose(false)}
-                  aria-label="Close settings"
-                  className="absolute top-4 right-4 z-10"
+                  );
+                })}
+              </nav>
+              <div className="hidden md:mt-auto md:block md:p-3">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="settings-tab text-[var(--status-danger)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]"
                 >
-                  <UiIcon
-                    size={16}
-                    strokeWidth={1.5}
-                    className="shrink-0"
-                    icon={X}
-                  />
-                </Button>
+                  <LogOut aria-hidden="true" className="size-[18px] shrink-0" />
+                  Sign out
+                </button>
+              </div>
+            </aside>
 
+            {/* Content */}
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <header className="settings-header">
+                <div className="min-w-0">
+                  <h3 className="font-heading text-[length:var(--text-title-2xl)] leading-tight font-medium text-[var(--text-1)]">
+                    {activeTabMeta.label}
+                  </h3>
+                  <p className="mt-1 text-[length:var(--text-body)] text-[var(--text-3)]">
+                    {activeTabMeta.description}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {/* The one save indicator. Autosave is silent until it
+                      has something to say, then says it briefly. */}
+                  <div aria-live="polite" className="min-w-[4.5rem] text-right">
+                    <AnimatePresence mode="wait" initial={false}>
+                      {saveStatus !== "idle" && (
+                        <m.span
+                          key={saveStatus}
+                          initial={{ opacity: 0, y: 2 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="inline-flex items-center gap-1.5 text-[length:var(--text-ui)] text-[var(--text-3)]"
+                        >
+                          {saveStatus === "saving" ? (
+                            <Loader2
+                              aria-hidden="true"
+                              className="size-3.5 animate-spin"
+                            />
+                          ) : (
+                            <CheckCircle2
+                              aria-hidden="true"
+                              className="size-3.5 text-[var(--status-done)]"
+                            />
+                          )}
+                          {saveStatus === "saving" ? "Saving" : "Saved"}
+                        </m.span>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onClose(false)}
+                    aria-label="Close settings"
+                    className="flex size-9 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+                  >
+                    <X aria-hidden="true" className="size-[18px]" />
+                  </button>
+                </div>
+              </header>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {loading ? (
                   <div className="flex h-full items-center justify-center">
-                    <UiIcon
-                      className="h-6 w-6 animate-spin text-[var(--color-text-3)]"
-                      icon={Loader2}
+                    <Loader2
+                      aria-hidden="true"
+                      className="size-6 animate-spin text-[var(--text-3)]"
                     />
                   </div>
                 ) : (
-                  <div className="max-w-2xl p-10">
-                    <h3 className="mb-8 flex items-center gap-3 border-b border-[var(--color-border)] pb-4 text-2xl font-bold text-[var(--color-text-1)]">
-                      {TABS.find((t) => t.id === activeTab)?.label}
-                      {/* Step 4 (task 2.6): inline save feedback near the
-                          point of edit, matching the Think page's
-                          toast-per-action pattern — the sidebar-footer
-                          indicator is far from whatever field was just
-                          touched, so this mirrors that status right at the
-                          top of the tab the user is editing. */}
-                      <AnimatePresence mode="wait">
-                        {saveStatus === "saving" && (
-                          <m.span
-                            key="saving"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-3)]"
-                          >
-                            <UiIcon
-                              className="h-3 w-3 animate-spin"
-                              icon={Loader2}
-                            />
-                            Saving...
-                          </m.span>
-                        )}
-                        {saveStatus === "saved" && (
-                          <m.span
-                            key="saved"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-think)]"
-                          >
-                            <UiIcon className="h-3 w-3" icon={CheckCircle2} />
-                            Saved
-                          </m.span>
-                        )}
-                      </AnimatePresence>
-                    </h3>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <m.div
+                      key={activeTab}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, transition: { duration: 0.08 } }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                      className="space-y-7 px-5 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+32px)] md:px-8"
+                    >
+                      {activeTab === "account" && (
+                        <>
+                          <SettingsGroup>
+                            <SettingRow
+                              label="Email"
+                              description={userEmail || "—"}
+                            >
+                              <span className="text-[length:var(--text-ui)] text-[var(--text-3)]">
+                                Signed in
+                              </span>
+                            </SettingRow>
+                            <SettingRow
+                              label="Display name"
+                              description="How Presense greets you."
+                              stack
+                            >
+                              <input
+                                type="text"
+                                {...register("display_name")}
+                                placeholder="Your name"
+                                aria-label="Display name"
+                                className="input"
+                              />
+                            </SettingRow>
+                            <SettingRow label="Avatar colour" stack>
+                              <div className="flex flex-wrap gap-1">
+                                {AVATAR_COLORS.map((color) => {
+                                  const selected =
+                                    settings.avatar_color?.toLowerCase() ===
+                                    color.toLowerCase();
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={color}
+                                      aria-label={`Avatar colour ${color}`}
+                                      aria-pressed={selected}
+                                      onClick={() =>
+                                        updateSetting("avatar_color", color)
+                                      }
+                                      className="swatch"
+                                    >
+                                      <span
+                                        aria-hidden="true"
+                                        style={{ backgroundColor: color }}
+                                      />
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </SettingRow>
+                            <SettingRow
+                              label="Timezone"
+                              description="Used for due dates and your daily rhythm."
+                              stack
+                            >
+                              <Dropdown
+                                trackAnimatedAncestor
+                                aria-label="Timezone"
+                                value={settings.timezone || "UTC"}
+                                onChange={(val) =>
+                                  updateSetting("timezone", val)
+                                }
+                                options={TIMEZONE_OPTIONS}
+                              />
+                            </SettingRow>
+                          </SettingsGroup>
 
-                    {activeTab === "account" && (
-                      <div className="space-y-6">
-                        <div>
-                          <label className="text-label mb-2 block text-[var(--text-3)]">
-                            Email
-                          </label>
-                          <input
-                            value={userEmail}
-                            readOnly
-                            className="input cursor-not-allowed opacity-60"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-label text-[var(--text-3)]">
-                            Display Name
-                          </label>
-                          <input
-                            type="text"
-                            {...register("display_name")}
-                            placeholder="How should we call you?"
-                            className="input w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-label mb-3 block text-[var(--text-3)]">
-                            Avatar Color
-                          </label>
-                          <div className="flex flex-wrap gap-2">
-                            {[
-                              "#F472B6",
-                              "#4ADE80",
-                              "#3B82F6",
-                              "#FBBF24",
-                              "#A855F7",
-                              "#EF4444",
-                            ].map((color) => (
+                          <SettingsGroup title="Danger zone" tone="danger">
+                            <SettingRow
+                              label="Delete account"
+                              description="Permanently delete your account and everything in it."
+                            >
                               <Button
                                 variant="danger"
-                                key={color}
-                                onClick={() =>
-                                  updateSetting("avatar_color", color)
-                                }
-                                className={`h-8 w-8 rounded-full transition-transform ${settings.avatar_color === color ? "scale-110 ring-2 ring-[var(--text-1)] ring-offset-2 ring-offset-[var(--bg-base)]" : "opacity-70 hover:opacity-100"}`}
-                                style={{ backgroundColor: color }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-label mb-2 block text-[var(--text-3)]">
-                            Timezone
-                          </label>
-                          <Dropdown
-                            variant="select"
-                            trackAnimatedAncestor
-                            value={settings.timezone || "UTC"}
-                            onChange={(val) => updateSetting("timezone", val)}
-                            options={
-                              typeof Intl !== "undefined" &&
-                              "supportedValuesOf" in Intl
-                                ? /* @todo: Untyped usage justified per TOOL-01 */
-                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                  (Intl as any)
-                                    .supportedValuesOf("timeZone")
-                                    .map((tz: string) => ({
-                                      value: tz,
-                                      label: tz.replace(/_/g, " "),
-                                    }))
-                                : [
-                                    { value: "UTC", label: "UTC" },
-                                    {
-                                      value: "America/New_York",
-                                      label: "Eastern Time (ET)",
-                                    },
-                                    {
-                                      value: "America/Chicago",
-                                      label: "Central Time (CT)",
-                                    },
-                                    {
-                                      value: "America/Denver",
-                                      label: "Mountain Time (MT)",
-                                    },
-                                    {
-                                      value: "America/Los_Angeles",
-                                      label: "Pacific Time (PT)",
-                                    },
-                                    {
-                                      value: "Asia/Kolkata",
-                                      label: "India Standard Time (IST)",
-                                    },
-                                    {
-                                      value: "Europe/London",
-                                      label: "Greenwich Mean Time (GMT)",
-                                    },
-                                  ]
-                            }
-                          />
-                        </div>
-                        <div className="mt-8 border-t border-[var(--status-danger-border)] pt-8">
-                          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--status-danger)]">
-                            Danger Zone
-                          </h4>
-                          <p className="mb-4 text-xs text-[var(--color-text-3)]">
-                            Permanently delete your account and all data.
-                          </p>
-                          <Button
-                            variant="danger"
-                            onClick={() => setDeleteAccountConfirm(true)}
-                            className="mt-4 w-full"
-                          >
-                            Delete Account
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                                size="sm"
+                                onClick={() => setDeleteAccountConfirm(true)}
+                              >
+                                Delete
+                              </Button>
+                            </SettingRow>
+                          </SettingsGroup>
 
-                    {activeTab === "appearance" && (
-                      <div className="space-y-6">
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Color Mode
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Dark, Light, or System match
-                            </div>
+                          <div className="md:hidden">
+                            <SettingsGroup>
+                              <SettingRow
+                                label="Sign out"
+                                description="You can sign back in any time."
+                              >
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={handleSignOut}
+                                >
+                                  <LogOut
+                                    aria-hidden="true"
+                                    className="size-4"
+                                  />{" "}
+                                  Sign out
+                                </Button>
+                              </SettingRow>
+                            </SettingsGroup>
                           </div>
-                          <div className="w-40">
-                            <Dropdown
-                              variant="select"
-                              trackAnimatedAncestor
-                              value={settings.color_mode || "dark"}
+                        </>
+                      )}
+
+                      {activeTab === "appearance" && (
+                        <SettingsGroup>
+                          <SettingRow
+                            label="Theme"
+                            description="Sunrise, sunset, or follow your device."
+                            stack
+                          >
+                            <SegmentedControl
+                              label="Theme"
+                              className="settings-segmented"
+                              value={(settings.color_mode as string) || "dark"}
                               onChange={(val) =>
                                 updateSetting("color_mode", val)
                               }
-                              className="w-full"
                               options={[
-                                { value: "dark", label: "Dark" },
-                                { value: "light", label: "Light" },
-                                { value: "system", label: "System Default" },
+                                { label: "Light", value: "light" },
+                                { label: "Dark", value: "dark" },
+                                { label: "System", value: "system" },
                               ]}
                             />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Density
-                              {/* BUG-46 — `density` has NO column in
-                                    `user_settings` (verified live). Keep it
-                                    out of the autosave watch list; the
-                                    value only lives in this UI until a
-                                    schema decision is made. */}
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Adjust row height and spacing
-                            </div>
-                          </div>
-                          <div className="w-40">
-                            <Dropdown
-                              variant="select"
-                              trackAnimatedAncestor
-                              value={localDensity}
-                              onChange={(val) =>
-                                setLocalDensity(
-                                  val as "compact" | "comfortable",
-                                )
-                              }
-                              className="w-full"
-                              options={[
-                                { value: "compact", label: "Compact" },
-                                {
-                                  value: "comfortable",
-                                  label: "Comfortable",
-                                },
-                              ]}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Reduce Motion
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Minimize UI animations
-                            </div>
-                          </div>
-                          <button
-                            onClick={() =>
-                              updateSetting(
-                                "reduce_motion",
-                                !settings.reduce_motion,
-                              )
-                            }
-                            className={`toggle-track ${settings.reduce_motion ? "on" : ""}`}
+                          </SettingRow>
+                          <SettingRow
+                            label="Density"
+                            description="Row height and spacing in lists."
+                            stack
                           >
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "notifications" && (
-                      <div className="space-y-8">
-                        <div className="space-y-3">
-                          <div className="text-label text-[var(--text-3)]">
-                            Delivery
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                              <div>
-                                <div className="font-medium text-[var(--color-text-1)]">
-                                  Master Toggle
-                                </div>
-                                <div className="text-sm text-[var(--color-text-3)]">
-                                  Enable all notifications
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  updateSetting(
-                                    "notifications_enabled",
-                                    !settings.notifications_enabled,
-                                  )
-                                }
-                                className={`toggle-track ${settings.notifications_enabled ? "on" : ""}`}
-                              >
-                                <div className="toggle-thumb" />
-                              </button>
-                            </div>
-                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                              <div>
-                                <div className="font-medium text-[var(--color-text-1)]">
-                                  Pomodoro Finish Sound
-                                </div>
-                                <div className="text-sm text-[var(--color-text-3)]">
-                                  Play a sound when timer completes
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  updateSetting(
-                                    "pomodoro_sound",
-                                    !settings.pomodoro_sound,
-                                  )
-                                }
-                                className={`toggle-track ${settings.pomodoro_sound ? "on" : ""}`}
-                              >
-                                <div className="toggle-thumb" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="text-label text-[var(--text-3)]">
-                            Notify me about
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                              <div>
-                                <div className="font-medium text-[var(--color-text-1)]">
-                                  Daily Briefing
-                                </div>
-                                <div className="text-sm text-[var(--color-text-3)]">
-                                  Receive a summary of today&apos;s tasks
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  updateSetting(
-                                    "daily_briefing",
-                                    !settings.daily_briefing,
-                                  )
-                                }
-                                className={`toggle-track ${settings.daily_briefing ? "on" : ""}`}
-                              >
-                                <div className="toggle-thumb" />
-                              </button>
-                            </div>
-                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                              <div>
-                                <div className="font-medium text-[var(--color-text-1)]">
-                                  Deadline Reminders
-                                </div>
-                                <div className="text-sm text-[var(--color-text-3)]">
-                                  Get notified as deadlines approach
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  updateSetting(
-                                    "notif_overdue",
-                                    !settings.notif_overdue,
-                                  )
-                                }
-                                className={`toggle-track ${settings.notif_overdue ? "on" : ""}`}
-                              >
-                                <div className="toggle-thumb" />
-                              </button>
-                            </div>
-                            <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                              <div>
-                                <div className="font-medium text-[var(--color-text-1)]">
-                                  Stale Location Alerts
-                                </div>
-                                <div className="text-sm text-[var(--color-text-3)]">
-                                  Remind to update locations older than 90 days
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  updateSetting(
-                                    "notif_stale_threads",
-                                    !settings.notif_stale_threads,
-                                  )
-                                }
-                                className={`toggle-track ${settings.notif_stale_threads ? "on" : ""}`}
-                              >
-                                <div className="toggle-thumb" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "focus" && (
-                      <div className="space-y-6">
-                        <div className="space-y-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                          <div className="text-sm font-semibold text-[var(--color-text-1)]">
-                            Timer Durations
-                          </div>
-
-                          <div>
-                            <label className="text-label mb-2 block text-[var(--text-3)]">
-                              Work Duration (mins)
-                            </label>
-                            <div className="flex flex-wrap gap-2">
-                              {[15, 20, 25, 30, 45, 60].map((mins) => (
-                                <Button
-                                  variant="secondary"
-                                  key={mins}
-                                  onClick={() =>
-                                    updateSetting("pomodoro_duration", mins)
-                                  }
-                                  className={cn(
-                                    "",
-                                    settings.pomodoro_duration === mins &&
-                                      "active",
-                                  )}
-                                >
-                                  {mins}m
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-label mb-2 block text-[var(--text-3)]">
-                              Short Break (mins)
-                            </label>
-                            <div className="flex flex-wrap gap-2">
-                              {[3, 5, 10, 15].map((mins) => (
-                                <Button
-                                  variant="secondary"
-                                  key={mins}
-                                  onClick={() =>
-                                    updateSetting("short_break_duration", mins)
-                                  }
-                                  className={cn(
-                                    "",
-                                    settings.short_break_duration === mins &&
-                                      "active",
-                                  )}
-                                >
-                                  {mins}m
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-label mb-2 block text-[var(--text-3)]">
-                              Long Break (mins)
-                            </label>
-                            <div className="flex flex-wrap gap-2">
-                              {[15, 20, 30].map((mins) => (
-                                <Button
-                                  variant="secondary"
-                                  key={mins}
-                                  onClick={() =>
-                                    updateSetting("long_break_duration", mins)
-                                  }
-                                  className={cn(
-                                    "",
-                                    settings.long_break_duration === mins &&
-                                      "active",
-                                  )}
-                                >
-                                  {mins}m
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-4">
-                            <div>
-                              <div className="text-sm font-medium text-[var(--color-text-1)]">
-                                Auto-start Breaks
-                              </div>
-                              <div className="text-xs text-[var(--color-text-3)]">
-                                Automatically begin break timer when work
-                                finishes
-                              </div>
-                            </div>
-                            <button
-                              onClick={() =>
-                                updateSetting(
-                                  "auto_start_breaks",
-                                  !settings.auto_start_breaks,
-                                )
+                            {/* BUG-46 — `density` has NO column in `user_settings`
+                                (verified live); it stays session-local. */}
+                            <SegmentedControl
+                              label="Density"
+                              className="settings-segmented"
+                              value={localDensity}
+                              onChange={(val) => setLocalDensity(val)}
+                              options={[
+                                { label: "Comfortable", value: "comfortable" },
+                                { label: "Compact", value: "compact" },
+                              ]}
+                            />
+                          </SettingRow>
+                          <SettingRow
+                            label="Reduce motion"
+                            description="Calm, near-instant transitions everywhere."
+                          >
+                            <Switch
+                              label="Reduce motion"
+                              checked={Boolean(settings.reduce_motion)}
+                              onChange={(v) =>
+                                updateSetting("reduce_motion", v)
                               }
-                              className={`toggle-track ${settings.auto_start_breaks ? "on" : ""}`}
-                            >
-                              <div className="toggle-thumb" />
-                            </button>
-                          </div>
+                            />
+                          </SettingRow>
+                        </SettingsGroup>
+                      )}
 
-                          <div className="border-t border-[var(--color-border)] pt-4">
-                            <label className="text-label mb-2 block text-[var(--text-3)]">
-                              Long Break After (sessions)
-                            </label>
-                            <div className="flex flex-wrap gap-2">
-                              {[2, 3, 4, 5].map((n) => (
-                                <Button
-                                  variant="secondary"
-                                  key={n}
-                                  onClick={() =>
-                                    updateSetting(
-                                      "pomodoro_long_break_interval",
-                                      n,
-                                    )
-                                  }
-                                  className={cn(
-                                    "",
-                                    (settings.pomodoro_long_break_interval ||
-                                      4) === n && "active",
-                                  )}
-                                >
-                                  {n}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "ritual" && (
-                      <div className="space-y-6">
-                        <div className="space-y-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                          <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-dim)]">
-                              <UiIcon
-                                className="h-5 w-5 text-[var(--accent)]"
-                                icon={Sparkles}
-                              />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-[var(--text-1)]">
-                                Daily Ritual
-                              </h4>
-                              <p className="text-xs text-[var(--text-muted)]">
-                                Configure your morning planning and evening
-                                review times.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-6">
-                            <div>
-                              <label className="text-label mb-2 block flex items-center gap-1.5 text-[var(--text-3)]">
-                                <UiIcon
-                                  className="h-3.5 w-3.5 text-orange-400"
-                                  icon={Sparkles}
-                                />{" "}
-                                Morning Nudge
-                              </label>
+                      {activeTab === "ritual" && (
+                        <SettingsGroup>
+                          <SettingRow
+                            label="Morning planning"
+                            description="When to nudge you to plan the day."
+                          >
+                            <div className="w-36">
                               <Dropdown
-                                variant="select"
                                 trackAnimatedAncestor
-                                value={settings.nudge_time || "10:00"}
+                                aria-label="Morning planning time"
+                                value={toHHMM(settings.nudge_time, "10:00")}
                                 onChange={(val) =>
                                   updateSetting("nudge_time", val)
                                 }
-                                className="w-full"
                                 options={TIME_OPTIONS}
                               />
-                              <p className="text-meta mt-2 text-[var(--text-muted)]">
-                                When should we remind you to plan your day?
-                              </p>
                             </div>
-                            <div>
-                              <label className="text-label mb-2 block flex items-center gap-1.5 text-[var(--text-3)]">
-                                <UiIcon
-                                  className="h-3.5 w-3.5 text-blue-400"
-                                  icon={Moon}
-                                />{" "}
-                                Evening Shutdown
-                              </label>
+                          </SettingRow>
+                          <SettingRow
+                            label="Evening shutdown"
+                            description="When you usually finish work."
+                          >
+                            <div className="w-36">
                               <Dropdown
-                                variant="select"
                                 trackAnimatedAncestor
-                                value={settings.shutdown_time || "17:00"}
+                                aria-label="Evening shutdown time"
+                                value={toHHMM(settings.shutdown_time, "17:00")}
                                 onChange={(val) =>
                                   updateSetting("shutdown_time", val)
                                 }
-                                className="w-full"
                                 options={TIME_OPTIONS}
                               />
-                              <p className="text-meta mt-2 text-[var(--text-muted)]">
-                                When do you usually finish work?
-                              </p>
                             </div>
-                          </div>
-
-                          <div>
-                            <label className="text-label mb-2 block text-[var(--text-3)]">
-                              Daily Capacity (mins)
-                            </label>
+                          </SettingRow>
+                          <SettingRow
+                            label="Daily capacity"
+                            description="How much focused work fits in a day. Used when planning."
+                            stack
+                          >
                             <div className="flex items-center gap-4">
                               <input
                                 type="range"
-                                min="60"
-                                max="720"
-                                step="30"
-                                value={settings.daily_capacity_minutes || 240}
+                                min={60}
+                                max={720}
+                                step={30}
+                                value={capacity}
+                                aria-label="Daily capacity"
+                                aria-valuetext={capacityLabel}
                                 onChange={(e) =>
                                   updateSetting(
                                     "daily_capacity_minutes",
                                     parseInt(e.target.value),
                                   )
                                 }
-                                className="flex-1 accent-[var(--accent)]"
+                                className="range flex-1"
+                                style={
+                                  {
+                                    "--pct": `${capacityPct}%`,
+                                  } as React.CSSProperties
+                                }
                               />
-                              <span className="w-16 text-right font-medium text-[var(--text-1)]">
-                                {Math.floor(
-                                  (settings.daily_capacity_minutes || 240) / 60,
-                                )}
-                                h{" "}
-                                {(settings.daily_capacity_minutes || 240) % 60}m
+                              <span className="font-heading w-16 text-right text-[length:var(--text-title-md)] text-[var(--text-1)] tabular-nums">
+                                {capacityLabel}
                               </span>
                             </div>
-                            <p className="text-meta mt-2 text-[var(--text-muted)]">
-                              Used for workload visualization during morning
-                              planning.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                          </SettingRow>
+                        </SettingsGroup>
+                      )}
 
-                    {activeTab === "tasks" && (
-                      <div className="space-y-8">
-                        <div>
-                          <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-[var(--color-text-1)]">
-                            <UiIcon
-                              icon={CheckSquare}
-                              size={20}
-                              className="text-[var(--color-accent)]"
-                            />
-                            Task Management
-                          </h3>
-                          <div className="space-y-6">
-                            <CategoryManager
-                              title="Task Categories"
-                              categoriesKey="do_categories"
-                              colorsKey="do_category_colors"
-                              defaultCategories={[
-                                "work",
-                                "study",
-                                "personal",
-                                "errand",
-                                "health",
-                              ]}
-                              settings={settings as SettingsState}
-                              updateSetting={updateSetting}
-                              setSettings={setSettings}
-                              supabase={supabase}
-                            />
+                      {activeTab === "notifications" && (
+                        <>
+                          <SettingsGroup title="Delivery">
+                            <SettingRow
+                              label="Notifications"
+                              description="Allow Presense to notify you at all."
+                            >
+                              <Switch
+                                label="Enable notifications"
+                                checked={Boolean(
+                                  settings.notifications_enabled,
+                                )}
+                                onChange={(v) =>
+                                  updateSetting("notifications_enabled", v)
+                                }
+                              />
+                            </SettingRow>
+                            <SettingRow
+                              label="Focus finish sound"
+                              description="A soft chime when a session ends."
+                            >
+                              <Switch
+                                label="Focus finish sound"
+                                checked={Boolean(settings.pomodoro_sound)}
+                                onChange={(v) =>
+                                  updateSetting("pomodoro_sound", v)
+                                }
+                              />
+                            </SettingRow>
+                          </SettingsGroup>
+                          <SettingsGroup title="Tell me about">
+                            <SettingRow
+                              label="Daily briefing"
+                              description="A summary of today's tasks each morning."
+                            >
+                              <Switch
+                                label="Daily briefing"
+                                checked={Boolean(settings.daily_briefing)}
+                                onChange={(v) =>
+                                  updateSetting("daily_briefing", v)
+                                }
+                              />
+                            </SettingRow>
+                            <SettingRow
+                              label="Deadlines"
+                              description="A heads-up as a due date approaches."
+                            >
+                              <Switch
+                                label="Deadline reminders"
+                                checked={Boolean(settings.notif_overdue)}
+                                onChange={(v) =>
+                                  updateSetting("notif_overdue", v)
+                                }
+                              />
+                            </SettingRow>
+                            <SettingRow
+                              label="Stale locations"
+                              description="Places you haven't confirmed in 90 days."
+                            >
+                              <Switch
+                                label="Stale location alerts"
+                                checked={Boolean(settings.notif_stale_threads)}
+                                onChange={(v) =>
+                                  updateSetting("notif_stale_threads", v)
+                                }
+                              />
+                            </SettingRow>
+                          </SettingsGroup>
+                        </>
+                      )}
 
-                            <div className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-medium text-[var(--color-text-1)]">
-                                    Auto-Archive Completed
-                                  </p>
-                                  <p className="text-xs text-[var(--text-3)]">
-                                    Move done tasks to archive automatically
-                                  </p>
-                                </div>
+                      {activeTab === "focus" && (
+                        <>
+                          <SettingsGroup title="Durations">
+                            <SettingRow label="Focus" stack>
+                              <SegmentedControl
+                                label="Focus duration"
+                                className="settings-segmented"
+                                value={String(settings.pomodoro_duration ?? 25)}
+                                onChange={(v) =>
+                                  updateSetting("pomodoro_duration", Number(v))
+                                }
+                                options={[15, 20, 25, 30, 45, 60].map((n) => ({
+                                  label: `${n}m`,
+                                  value: String(n),
+                                }))}
+                              />
+                            </SettingRow>
+                            <SettingRow label="Short break" stack>
+                              <SegmentedControl
+                                label="Short break duration"
+                                className="settings-segmented"
+                                value={String(
+                                  settings.short_break_duration ?? 5,
+                                )}
+                                onChange={(v) =>
+                                  updateSetting(
+                                    "short_break_duration",
+                                    Number(v),
+                                  )
+                                }
+                                options={[3, 5, 10, 15].map((n) => ({
+                                  label: `${n}m`,
+                                  value: String(n),
+                                }))}
+                              />
+                            </SettingRow>
+                            <SettingRow label="Long break" stack>
+                              <SegmentedControl
+                                label="Long break duration"
+                                className="settings-segmented"
+                                value={String(
+                                  settings.long_break_duration ?? 15,
+                                )}
+                                onChange={(v) =>
+                                  updateSetting(
+                                    "long_break_duration",
+                                    Number(v),
+                                  )
+                                }
+                                options={[15, 20, 30].map((n) => ({
+                                  label: `${n}m`,
+                                  value: String(n),
+                                }))}
+                              />
+                            </SettingRow>
+                          </SettingsGroup>
+                          <SettingsGroup title="Rhythm">
+                            <SettingRow
+                              label="Long break every"
+                              description="Focus sessions before a longer rest."
+                              stack
+                            >
+                              <SegmentedControl
+                                label="Sessions before a long break"
+                                className="settings-segmented"
+                                value={String(
+                                  settings.pomodoro_long_break_interval || 4,
+                                )}
+                                onChange={(v) =>
+                                  updateSetting(
+                                    "pomodoro_long_break_interval",
+                                    Number(v),
+                                  )
+                                }
+                                options={[2, 3, 4, 5].map((n) => ({
+                                  label: `${n} sessions`,
+                                  value: String(n),
+                                }))}
+                              />
+                            </SettingRow>
+                            <SettingRow
+                              label="Start breaks automatically"
+                              description="Roll straight into your break when focus ends."
+                            >
+                              <Switch
+                                label="Start breaks automatically"
+                                checked={Boolean(settings.auto_start_breaks)}
+                                onChange={(v) =>
+                                  updateSetting("auto_start_breaks", v)
+                                }
+                              />
+                            </SettingRow>
+                          </SettingsGroup>
+                        </>
+                      )}
+
+                      {activeTab === "tasks" && (
+                        <>
+                          <CategoryManager
+                            title="Categories"
+                            categoriesKey="do_categories"
+                            colorsKey="do_category_colors"
+                            defaultCategories={[
+                              "work",
+                              "study",
+                              "personal",
+                              "errand",
+                              "health",
+                            ]}
+                            settings={settings as SettingsState}
+                            updateSetting={updateSetting}
+                            setSettings={setSettings}
+                            supabase={supabase}
+                          />
+                          <SettingsGroup title="Housekeeping">
+                            <SettingRow
+                              label="Archive finished tasks"
+                              description="Move done tasks out of the way."
+                            >
+                              <div className="w-40">
                                 <Dropdown
-                                  variant="select"
                                   trackAnimatedAncestor
+                                  aria-label="Archive finished tasks"
                                   value={String(
                                     settings.auto_archive_days ?? 7,
                                   )}
@@ -1634,149 +1600,133 @@ function SettingsModalContent({
                                       Number(val),
                                     )
                                   }
-                                  className="w-40"
                                   options={[
                                     { value: "0", label: "Immediately" },
-                                    { value: "1", label: "After 1 day" },
+                                    { value: "1", label: "After a day" },
                                     { value: "3", label: "After 3 days" },
-                                    { value: "7", label: "After 1 week" },
+                                    { value: "7", label: "After a week" },
                                     { value: "-1", label: "Never" },
                                   ]}
                                 />
                               </div>
-                              <div className="h-[1px] bg-[var(--color-border)]" />
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-medium text-[var(--color-text-1)]">
-                                    NLP Date Parsing
-                                  </p>
-                                  <p className="text-xs text-[var(--text-3)]">
-                                    Extract dates from task text
-                                  </p>
-                                </div>
-                                <label className="relative inline-flex cursor-pointer items-center">
-                                  <input
-                                    type="checkbox"
-                                    className="peer sr-only"
-                                    checked={
-                                      settings.nlp_date_parsing !== false
-                                    }
-                                    onChange={(e) =>
-                                      updateSetting(
-                                        "nlp_date_parsing",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                  <div className="peer h-6 w-11 rounded-full bg-[var(--color-surface-hover)] peer-checked:bg-[var(--color-accent)] after:absolute after:top-0.5 after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-[var(--color-text-1)] after:transition-all after:content-[''] peer-checked:after:translate-x-full"></div>
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                            </SettingRow>
+                            <SettingRow
+                              label="Understand dates"
+                              description={
+                                'Pick up "tomorrow 3pm" from what you type.'
+                              }
+                            >
+                              <Switch
+                                label="Understand dates in task text"
+                                checked={settings.nlp_date_parsing !== false}
+                                onChange={(v) =>
+                                  updateSetting("nlp_date_parsing", v)
+                                }
+                              />
+                            </SettingRow>
+                          </SettingsGroup>
+                        </>
+                      )}
 
-                    {activeTab === "routing" && (
-                      <div className="space-y-6">
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                          <div>
-                            <div className="font-medium text-[var(--color-text-1)]">
-                              Smart NLP Routing
-                            </div>
-                            <div className="text-sm text-[var(--color-text-3)]">
-                              Automatically route captures based on natural
-                              language
-                            </div>
-                          </div>
-                          <button
-                            onClick={() =>
-                              updateSetting(
-                                "smart_routing_enabled",
-                                !settings.smart_routing_enabled,
-                              )
-                            }
-                            className={`toggle-track ${settings.smart_routing_enabled ? "on" : ""}`}
+                      {activeTab === "routing" && (
+                        <SettingsGroup>
+                          <SettingRow
+                            label="Smart routing"
+                            description="Send each capture to Do, Think or Remember based on what you wrote."
                           >
-                            <div className="toggle-thumb" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                            <Switch
+                              label="Smart routing"
+                              checked={Boolean(settings.smart_routing_enabled)}
+                              onChange={(v) =>
+                                updateSetting("smart_routing_enabled", v)
+                              }
+                            />
+                          </SettingRow>
+                        </SettingsGroup>
+                      )}
 
-                    {activeTab === "data" && (
-                      <div className="space-y-6">
-                        <p className="text-sm text-[var(--color-text-3)]">
-                          Manage your data and account. All data stays synced
-                          across devices.
-                        </p>
-                        <Button
-                          variant="secondary"
-                          type="button"
-                          onClick={handleExportData}
-                          className="w-full"
-                        >
-                          <UiIcon
-                            size={14}
-                            strokeWidth={1.5}
-                            className="shrink-0"
-                            icon={Download}
-                          />{" "}
-                          Export All Data
-                        </Button>
-                        <div className="mt-4 grid grid-cols-2 gap-4">
-                          <Button
-                            variant="danger"
-                            type="button"
-                            onClick={() => setClearTasksConfirm(true)}
-                            className="w-full"
-                          >
-                            Clear Completed Tasks
-                          </Button>
-                          <Button
-                            variant="danger"
-                            type="button"
-                            onClick={() => setClearLocationsConfirm(true)}
-                            className="w-full"
-                          >
-                            Clear Stale Locations
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    <ConfirmModal
-                      isOpen={deleteAccountConfirm}
-                      onClose={() => setDeleteAccountConfirm(false)}
-                      onConfirm={handleDeleteAccount}
-                      title="Delete Account"
-                      description="This will permanently delete all your data. This cannot be undone."
-                      confirmLabel="Delete Account"
-                      inputRequired="DELETE"
-                      confirmDestructive
-                    />
-                    <ConfirmModal
-                      isOpen={clearTasksConfirm}
-                      onClose={() => setClearTasksConfirm(false)}
-                      onConfirm={handleClearCompleted}
-                      title="Clear Completed Tasks"
-                      description="Remove all completed tasks permanently?"
-                      confirmLabel="Clear Tasks"
-                      confirmDestructive
-                    />
-                    <ConfirmModal
-                      isOpen={clearLocationsConfirm}
-                      onClose={() => setClearLocationsConfirm(false)}
-                      onConfirm={handleClearStaleLocations}
-                      title="Clear Stale Locations"
-                      description="Remove locations not updated in 30+ days?"
-                      confirmLabel="Clear Locations"
-                      confirmDestructive
-                    />
-                  </div>
+                      {activeTab === "data" && (
+                        <>
+                          <SettingsGroup title="Your data">
+                            <SettingRow
+                              label="Export everything"
+                              description="A JSON file of all your tasks, threads and places."
+                            >
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleExportData}
+                              >
+                                <Download
+                                  aria-hidden="true"
+                                  className="size-4"
+                                />{" "}
+                                Export
+                              </Button>
+                            </SettingRow>
+                          </SettingsGroup>
+                          <SettingsGroup title="Clean up" tone="danger">
+                            <SettingRow
+                              label="Clear finished tasks"
+                              description="Permanently remove every completed task."
+                            >
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => setClearTasksConfirm(true)}
+                              >
+                                Clear
+                              </Button>
+                            </SettingRow>
+                            <SettingRow
+                              label="Clear stale places"
+                              description="Remove places not updated in 30 days."
+                            >
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => setClearLocationsConfirm(true)}
+                              >
+                                Clear
+                              </Button>
+                            </SettingRow>
+                          </SettingsGroup>
+                        </>
+                      )}
+                    </m.div>
+                  </AnimatePresence>
                 )}
               </div>
             </div>
+
+            <ConfirmModal
+              isOpen={deleteAccountConfirm}
+              onClose={() => setDeleteAccountConfirm(false)}
+              onConfirm={handleDeleteAccount}
+              title="Delete account"
+              description="This will permanently delete all your data. This cannot be undone."
+              confirmLabel="Delete account"
+              inputRequired="DELETE"
+              confirmDestructive
+            />
+            <ConfirmModal
+              isOpen={clearTasksConfirm}
+              onClose={() => setClearTasksConfirm(false)}
+              onConfirm={handleClearCompleted}
+              title="Clear finished tasks"
+              description="Remove all completed tasks permanently?"
+              confirmLabel="Clear tasks"
+              confirmDestructive
+            />
+            <ConfirmModal
+              isOpen={clearLocationsConfirm}
+              onClose={() => setClearLocationsConfirm(false)}
+              onConfirm={handleClearStaleLocations}
+              title="Clear stale places"
+              description="Remove places not updated in 30+ days?"
+              confirmLabel="Clear places"
+              confirmDestructive
+            />
           </m.div>
         </m.div>
       </AnimatePresence>
