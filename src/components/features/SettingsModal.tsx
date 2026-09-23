@@ -24,7 +24,6 @@ import {
   Bell,
   Timer,
   CheckSquare,
-  Brain,
   Database,
   Plus,
   Trash2,
@@ -93,49 +92,43 @@ const TABS = [
     id: "account",
     label: "Account",
     icon: User,
-    description: "Who you are across Presense.",
+    description: "Your profile, timezone and sign-in.",
   },
   {
     id: "appearance",
     label: "Appearance",
     icon: Palette,
-    description: "How Presense looks and moves.",
+    description: "Theme, motion and what Home shows.",
   },
   {
     id: "ritual",
     label: "Daily ritual",
     icon: Sunrise,
-    description: "The rhythm that bookends your day.",
+    description: "Planning and shutdown times, and daily capacity.",
   },
   {
     id: "notifications",
-    label: "Notifications",
+    label: "Reminders",
     icon: Bell,
-    description: "What's worth interrupting you for.",
+    description: "Planning reminders and the focus chime.",
   },
   {
     id: "focus",
     label: "Focus",
     icon: Timer,
-    description: "The shape of a focus session.",
+    description: "Focus and break lengths.",
   },
   {
     id: "tasks",
     label: "Tasks",
     icon: CheckSquare,
-    description: "Categories and housekeeping for Do.",
-  },
-  {
-    id: "routing",
-    label: "Smart routing",
-    icon: Brain,
-    description: "How captures find their place.",
+    description: "Categories, and how captures are read and sorted.",
   },
   {
     id: "data",
     label: "Data",
     icon: Database,
-    description: "Export or tidy what you've stored.",
+    description: "Export or clear what you've stored.",
   },
 ];
 
@@ -604,7 +597,11 @@ function SettingsModalContent({
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const activeTab = settingsActiveTab || "account";
+  // A remembered tab that no longer exists (e.g. the old "routing" tab)
+  // falls back to Account rather than rendering an empty panel.
+  const activeTab = TABS.some((t) => t.id === settingsActiveTab)
+    ? (settingsActiveTab as string)
+    : "account";
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
@@ -751,12 +748,6 @@ function SettingsModalContent({
   const lastSavedSettingsRef = useRef<string | null>(null);
   const debounceSettledRef = useRef(false);
   const dialogRef = useDialogFocus(true);
-  /* BUG-46 — `density` has NO column in `user_settings` (verified live),
-     so it must never enter the autosave payload. Keep it as pure
-     session-local UI state until a schema decision is made. */
-  const [localDensity, setLocalDensity] = useState<"compact" | "comfortable">(
-    "compact",
-  );
   useBodyScrollLock(true);
 
   useEffect(() => {
@@ -1303,24 +1294,6 @@ function SettingsModalContent({
                             />
                           </SettingRow>
                           <SettingRow
-                            label="Density"
-                            description="Row height and spacing in lists."
-                            stack
-                          >
-                            {/* BUG-46 — `density` has NO column in `user_settings`
-                                (verified live); it stays session-local. */}
-                            <SegmentedControl
-                              label="Density"
-                              className="settings-segmented"
-                              value={localDensity}
-                              onChange={(val) => setLocalDensity(val)}
-                              options={[
-                                { label: "Comfortable", value: "comfortable" },
-                                { label: "Compact", value: "compact" },
-                              ]}
-                            />
-                          </SettingRow>
-                          <SettingRow
                             label="Reduce motion"
                             description="Calm, near-instant transitions everywhere."
                           >
@@ -1329,6 +1302,18 @@ function SettingsModalContent({
                               checked={Boolean(settings.reduce_motion)}
                               onChange={(v) =>
                                 updateSetting("reduce_motion", v)
+                              }
+                            />
+                          </SettingRow>
+                          <SettingRow
+                            label="Up next on Home"
+                            description="Show today's tasks and recent threads on Home."
+                          >
+                            <Switch
+                              label="Up next on Home"
+                              checked={settings.daily_briefing !== false}
+                              onChange={(v) =>
+                                updateSetting("daily_briefing", v)
                               }
                             />
                           </SettingRow>
@@ -1405,74 +1390,32 @@ function SettingsModalContent({
                       )}
 
                       {activeTab === "notifications" && (
-                        <>
-                          <SettingsGroup title="Delivery">
-                            <SettingRow
-                              label="Notifications"
-                              description="Allow Presense to notify you at all."
-                            >
-                              <Switch
-                                label="Enable notifications"
-                                checked={Boolean(
-                                  settings.notifications_enabled,
-                                )}
-                                onChange={(v) =>
-                                  updateSetting("notifications_enabled", v)
-                                }
-                              />
-                            </SettingRow>
-                            <SettingRow
+                        <SettingsGroup>
+                          <SettingRow
+                            label="Planning reminders"
+                            description="A notification at your planning and shutdown times when Presense is in the background."
+                          >
+                            <Switch
+                              label="Planning reminders"
+                              checked={settings.notifications_enabled !== false}
+                              onChange={(v) =>
+                                updateSetting("notifications_enabled", v)
+                              }
+                            />
+                          </SettingRow>
+                          <SettingRow
+                            label="Focus finish sound"
+                            description="A soft chime when a focus session ends."
+                          >
+                            <Switch
                               label="Focus finish sound"
-                              description="A soft chime when a session ends."
-                            >
-                              <Switch
-                                label="Focus finish sound"
-                                checked={Boolean(settings.pomodoro_sound)}
-                                onChange={(v) =>
-                                  updateSetting("pomodoro_sound", v)
-                                }
-                              />
-                            </SettingRow>
-                          </SettingsGroup>
-                          <SettingsGroup title="Tell me about">
-                            <SettingRow
-                              label="Daily briefing"
-                              description="A summary of today's tasks each morning."
-                            >
-                              <Switch
-                                label="Daily briefing"
-                                checked={Boolean(settings.daily_briefing)}
-                                onChange={(v) =>
-                                  updateSetting("daily_briefing", v)
-                                }
-                              />
-                            </SettingRow>
-                            <SettingRow
-                              label="Deadlines"
-                              description="A heads-up as a due date approaches."
-                            >
-                              <Switch
-                                label="Deadline reminders"
-                                checked={Boolean(settings.notif_overdue)}
-                                onChange={(v) =>
-                                  updateSetting("notif_overdue", v)
-                                }
-                              />
-                            </SettingRow>
-                            <SettingRow
-                              label="Stale locations"
-                              description="Places you haven't confirmed in 90 days."
-                            >
-                              <Switch
-                                label="Stale location alerts"
-                                checked={Boolean(settings.notif_stale_threads)}
-                                onChange={(v) =>
-                                  updateSetting("notif_stale_threads", v)
-                                }
-                              />
-                            </SettingRow>
-                          </SettingsGroup>
-                        </>
+                              checked={settings.pomodoro_sound !== false}
+                              onChange={(v) =>
+                                updateSetting("pomodoro_sound", v)
+                              }
+                            />
+                          </SettingRow>
+                        </SettingsGroup>
                       )}
 
                       {activeTab === "focus" && (
@@ -1589,33 +1532,20 @@ function SettingsModalContent({
                             setSettings={setSettings}
                             supabase={supabase}
                           />
-                          <SettingsGroup title="Housekeeping">
+                          <SettingsGroup title="Capture">
                             <SettingRow
-                              label="Archive finished tasks"
-                              description="Move done tasks out of the way."
+                              label="Smart routing"
+                              description="Send each capture to Do, Think or Remember based on what you wrote. Off sends everything to Inbox."
                             >
-                              <div className="w-40">
-                                <Dropdown
-                                  trackAnimatedAncestor
-                                  aria-label="Archive finished tasks"
-                                  value={String(
-                                    settings.auto_archive_days ?? 7,
-                                  )}
-                                  onChange={(val) =>
-                                    updateSetting(
-                                      "auto_archive_days",
-                                      Number(val),
-                                    )
-                                  }
-                                  options={[
-                                    { value: "0", label: "Immediately" },
-                                    { value: "1", label: "After a day" },
-                                    { value: "3", label: "After 3 days" },
-                                    { value: "7", label: "After a week" },
-                                    { value: "-1", label: "Never" },
-                                  ]}
-                                />
-                              </div>
+                              <Switch
+                                label="Smart routing"
+                                checked={
+                                  settings.smart_routing_enabled !== false
+                                }
+                                onChange={(v) =>
+                                  updateSetting("smart_routing_enabled", v)
+                                }
+                              />
                             </SettingRow>
                             <SettingRow
                               label="Understand dates"
@@ -1633,23 +1563,6 @@ function SettingsModalContent({
                             </SettingRow>
                           </SettingsGroup>
                         </>
-                      )}
-
-                      {activeTab === "routing" && (
-                        <SettingsGroup>
-                          <SettingRow
-                            label="Smart routing"
-                            description="Send each capture to Do, Think or Remember based on what you wrote."
-                          >
-                            <Switch
-                              label="Smart routing"
-                              checked={Boolean(settings.smart_routing_enabled)}
-                              onChange={(v) =>
-                                updateSetting("smart_routing_enabled", v)
-                              }
-                            />
-                          </SettingRow>
-                        </SettingsGroup>
                       )}
 
                       {activeTab === "data" && (
