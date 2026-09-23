@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
+  variable: "--font-jetbrains",
   subsets: ["latin"],
   display: "swap",
 });
@@ -78,7 +78,7 @@ export default async function RootLayout({
           <style>{`
             .no-js-fallback {
               position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-              background: #0e0e10; color: #fff; z-index: 9999;
+              background: #141118; color: #f4ede4; z-index: 9999;
               display: flex; align-items: center; justify-content: center;
               font-family: sans-serif;
             }
@@ -122,14 +122,14 @@ export default async function RootLayout({
                 
                 var metaTheme = document.createElement('meta');
                 metaTheme.name = 'theme-color';
-                metaTheme.content = isLight ? '#ffffff' : '#0e0e10';
+                metaTheme.content = isLight ? '#f7f2ec' : '#141118'; // = THEME_COLOR in lib/theme.ts
                 document.head.appendChild(metaTheme);
               } catch(e) {}
             `,
           }}
         />
       </head>
-      <body className="flex min-h-full flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-500">
+      <body className="flex min-h-full flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-300">
         <WebVitalsReporter />
         {children}
         <ToastProvider />

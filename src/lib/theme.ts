@@ -5,6 +5,17 @@ export const DEFAULT_THEME_ID: ThemeId = "warm";
 export const DEFAULT_COLOR_MODE: ColorMode = "dark";
 
 /**
+ * Browser-chrome colour per mode — must equal --bg-base in globals.css so
+ * the mobile status bar / address bar melts into the page. The inline
+ * boot script in app/layout.tsx duplicates these two literals because it
+ * runs before any module loads; keep them in sync.
+ */
+export const THEME_COLOR: Record<"light" | "dark", string> = {
+  light: "#f7f2ec",
+  dark: "#141118",
+};
+
+/**
  * There is one theme now (design overhaul spec §4/§6 — the warm/navy/
  * forest selector is retired). Every input, including previously-valid
  * theme ids, normalizes to "warm" — the name is kept internally (rather
@@ -55,6 +66,16 @@ export function applyDocumentTheme(
   // Set modern attributes
   html.setAttribute("data-theme", theme);
   html.setAttribute("data-mode", mode);
+
+  let meta = document.querySelector<HTMLMetaElement>(
+    'meta[name="theme-color"]',
+  );
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "theme-color";
+    document.head.appendChild(meta);
+  }
+  meta.content = THEME_COLOR[mode];
 
   if (reduceMotion) {
     html.classList.add("reduce-motion");

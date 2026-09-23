@@ -3,8 +3,13 @@ import { describe, expect, test } from "vitest";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 
 describe("AmbientBackground", () => {
-  test("renders nothing — the ambient orb/glass system is retired", () => {
+  test("renders a single decorative atmosphere layer", () => {
     const { container } = render(<AmbientBackground />);
-    expect(container).toBeEmptyDOMElement();
+    const layer = container.firstElementChild;
+    expect(container.childElementCount).toBe(1);
+    expect(layer).toHaveClass("atmosphere");
+    // Purely decorative: hidden from assistive tech, no content, no children.
+    expect(layer).toHaveAttribute("aria-hidden", "true");
+    expect(layer).toBeEmptyDOMElement();
   });
 });

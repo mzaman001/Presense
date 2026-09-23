@@ -18,7 +18,7 @@ describe("useHaptics", () => {
     const { result } = renderHook(() => useHaptics());
     result.current.heavy();
 
-    expect(vibrate).toHaveBeenCalledWith([30, 20, 30, 20, 30]);
+    expect(vibrate).toHaveBeenCalledWith(26);
   });
 
   it("does not throw and makes no call when the Vibration API is absent (iOS Safari)", () => {

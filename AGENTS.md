@@ -70,7 +70,26 @@ Tokens live in `src/app/globals.css`. Use them; do not introduce one-off hex val
 - **View switches** use `SegmentedControl`. There is one such control, not two.
 - Touch targets are at least 36px; primary controls 44px.
 - Prefer calm and legible over decorated. No gratuitous glass, gradients, or motion.
+- **Sunrise / sunset.** Light mode is "sunrise" (warm cream, apricot light overhead); dark mode is "sunset" (plum dusk, ember light on the horizon). The sanctioned gradients are `.atmosphere` (rendered once by `AmbientBackground` from the `--atmos-*` tokens: static, no filter, no animation) the short scroll fade under the mobile dock, and the first-light / last-light wash at the top of the ritual panel (from the same `--atmos-*` tokens). Don't add others.
+- **Type.** Page titles (`.text-page-title`, `.text-page-greeting`, `PageHeader`) are Newsreader; everything else is Inter. Nothing a user must read is below `--text-caption` (11px). Size text with the `--text-*` tokens (the `length:` arbitrary-value form), never raw pixel sizes.
+- **Colour.** Tailwind's palette is switched off (`--color-*: initial`), so `text-white`, `bg-red-500`, `bg-black/50` compile to *nothing*. Use tokens, or the semantic utilities `text-danger` / `text-success` / `text-warning` / `text-info` / `text-on-accent` / `bg-overlay`. Never `rgba(255,255,255,…)`: it disappears in light mode.
+- **Motion.** House curve is `--ease-out`; exits run faster than entrances; framer springs are critically damped (`damping ≥ 2·√stiffness`) so nothing overshoots. `MotionProvider` honours both the OS setting and the in-app Reduce motion toggle. Use `transition` / `transition-[…]`, never `transition-all`.
+- **Controls.** One page header (`PageHeader`), one view switch (`SegmentedControl`), one filter/toggle chip (`.chip` + `aria-pressed`), one switch (`.toggle-track` button with `role="switch"` + `aria-checked`).
+- **Panels & menus.** Edit/add surfaces use `Sheet` (portalled to `document.body`; actions go in its `footer` prop, tied to the form with `form="…"`). Selects use `Dropdown`, popovers `Popover`: both position with `transform: false` because framer-motion owns the panel's transform. Floating UI that handles Escape calls `preventDefault()` so the enclosing sheet or dialog stays open. Field labels use `.field-label` (sentence case); `.text-label` is for section eyebrows only.
+- **Settings** is grouped lists: `SettingsGroup` → `SettingRow` (label, description, control; `stack` for wide controls) in `SettingsModal.tsx`. One save indicator, in the header.
+- **Haptics** go through `useHaptics()`: short single pulses; only `error` repeats.
+- **Mobile shell.** Bottom navigation is a floating dock (`.dock`, tabs flagged `bottom` in `nav-config.ts`, split evenly around a centred Capture). The top bar follows the large-title pattern: its title only fades in once the page's own title has scrolled away.
 
 ## 4. Line endings
 
 The working tree is CRLF. Tools that rewrite files in LF produce whole-file diffs — normalise before committing.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

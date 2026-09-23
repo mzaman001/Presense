@@ -1,11 +1,13 @@
 /**
- * The ambient orb/glass background system is retired (design overhaul
- * spec §4 — flat surfaces, no gradients/glow). Kept as a no-op rather
- * than deleted so `(app)/layout.tsx` and `onboarding/layout.tsx` don't
- * need an import removed in this pass — see AGENTS.md §2.5 ("prove
- * unreferenced first" applies to deleting the component itself, not to
- * emptying its body).
+ * The horizon light behind the app: sunrise in light mode, sunset in dark.
+ *
+ * This replaces the retired orb/glass system (which animated blurred
+ * blobs every frame). It is a single fixed element painted with two
+ * static radial gradients from `.atmosphere` in globals.css — no filter,
+ * no animation, no JS — so it is a Server Component and costs one paint.
+ * Colours and positions come from the --atmos-* tokens, which flip with
+ * `data-mode`.
  */
 export function AmbientBackground() {
-  return null;
+  return <div aria-hidden="true" className="atmosphere" />;
 }

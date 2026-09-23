@@ -10,6 +10,9 @@
    broke /login's CSS build entirely). Docs aren't a styling source —
    exclude them. */
 @source not "../../docs";
+/* Same trap for the root-level agent docs (AGENTS.md, CLAUDE.md …), which
+   quote class patterns in prose. */
+@source not "../../*.md";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -18,8 +21,12 @@
   --radius-*: initial;
   --shadow-*: initial;
   --blur-*: initial;
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  /* Read the families through next/font's variables (--font-inter /
+     --font-jetbrains / --font-newsreader, set on <html> in app/layout.tsx).
+     They carry the size-adjusted "… Fallback" face, so text doesn't reflow
+     when the web font swaps in; a bare "Inter" literal skipped that. */
+  --font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
 
   --text-xs: var(--text-xs);
   --text-sm: var(--text-sm);
@@ -58,7 +65,7 @@
 
   --color-do: var(--space-do);
   --color-think: var(--space-think);
-  --font-heading: var(--font-newsreader), var(--font-sans);
+  --font-heading: var(--font-newsreader), Georgia, serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -94,11 +101,31 @@
   --radius-xl: 20px;
   --radius-2xl: 24px;
   --radius-full: 9999px;
+
+  /* `--shadow-*: initial` above wiped Tailwind's shadow scale, so every
+     shadow-lg / shadow-xl / shadow-2xl in the app compiled to nothing.
+     Re-point the scale at the mode-aware elevation tokens instead of
+     restoring Tailwind's grey defaults. */
+  --shadow-xs: var(--shadow-card);
+  --shadow-sm: var(--shadow-card);
+  --shadow: var(--shadow-card);
+  --shadow-md: var(--shadow-card-hover);
+  --shadow-lg: var(--shadow-dropdown);
+  --shadow-xl: var(--shadow-modal);
+  --shadow-2xl: var(--shadow-modal);
+
+  /* Semantic colour utilities (bg-danger, text-success …) so call sites
+     never need Tailwind's palette, which is deliberately switched off. */
+  --color-danger: var(--status-danger);
+  --color-success: var(--status-done);
+  --color-warning: var(--status-today);
+  --color-info: var(--status-upcoming);
+  --color-on-accent: var(--text-on-accent);
+  --color-overlay: var(--bg-overlay);
 }
 
 :root {
   /* === NEW TOKENS === */
-  --text-base: clamp(14px, 0.3vw + 13px, 15px);
   --touch-target: 44px;
   --sheet-radius: 20px;
   --sheet-handle-w: 36px;
@@ -117,11 +144,26 @@
   --sidebar-row-h: var(--space-12); /* 48px — was 44px (h-11) */
   --sidebar-icon-tile: var(--space-10); /* 40px — unchanged, now tokenized */
 
-  /* === BACKGROUND SYSTEM — "sunset" (dark) === */
-  --bg-base: #17140f;
-  --bg-elevated: #1d1913;
-  --bg-overlay: rgba(23, 20, 15, 0.85);
-  --bg-backdrop: rgba(0, 0, 0, 0.5);
+  /* App-shell geometry. AppContentWrapper, MobileTopBar, MobileDrawer and
+     Navigation all size themselves from these; an undefined one makes the
+     whole calc() invalid and the property silently drops. */
+  --sidebar-w-collapsed: 72px;
+  --sidebar-w-expanded: 248px;
+  --mobile-top-bar-h: 56px;
+  --mobile-bottom-nav-h: 74px; /* 64px dock + 10px lift off the edge */
+  --mobile-drawer-w: min(320px, 86vw);
+
+  /* Stacking order in use (literal z-[] classes; keep new layers on it):
+     40 app shell (rail, top bar, bottom nav) · 50 dialogs & drawer ·
+     100 Sheet · 200 focus timer · 220 dropdowns/popovers (portalled) ·
+     250 a dialog raised above the timer · 9999 toasts & skip link. */
+
+  /* === BACKGROUND SYSTEM — "sunset" (dark) ===
+     Dusk, not night: a plum-leaning near-black so the ember accent and
+     the horizon glow (.atmosphere) read as the last light of the day. */
+  --bg-base: #141118;
+  --bg-elevated: #1c1820;
+  --bg-overlay: rgba(14, 11, 16, 0.72);
 
   /* === SURFACE SYSTEM — flat, opacity-stacked, no blur === */
   --surface-1: rgba(255, 255, 255, 0.03);
@@ -131,41 +173,56 @@
   --surface-active: rgba(255, 255, 255, 0.08);
   --surface-sidebar: var(--bg-base);
   --surface-modal: var(--bg-elevated);
-  --surface-dropdown: var(--bg-elevated);
+  /* One step above modals, so a menu opened inside a dialog separates. */
+  --surface-dropdown: #25202b;
   --surface-toast: var(--bg-elevated);
   --surface-input: rgba(255, 255, 255, 0.04);
   --surface-input-focus: rgba(255, 255, 255, 0.06);
   --surface-card: rgba(255, 255, 255, 0.03);
   --surface-card-hover: rgba(255, 255, 255, 0.05);
+  /* The one hero card per page (Home's Focus now). */
+  --surface-hero: var(--accent-dim);
 
   /* === BORDER SYSTEM === */
   --border-subtle: rgba(242, 236, 225, 0.08);
   --border-default: rgba(242, 236, 225, 0.12);
   --border-strong: rgba(242, 236, 225, 0.2);
-  --border-focus: rgba(217, 119, 87, 0.6);
+  --border-focus: rgba(227, 135, 95, 0.75);
   --border-input: rgba(242, 236, 225, 0.14);
-  --border-input-focus: rgba(217, 119, 87, 0.5);
+  --border-input-focus: rgba(227, 135, 95, 0.55);
   --border-card: rgba(242, 236, 225, 0.1);
   --border-card-top: rgba(242, 236, 225, 0.14);
 
-  /* === TEXT SYSTEM === */
-  --text-1: #f2ece1;
-  --text-2: rgba(242, 236, 225, 0.75);
-  --text-3: rgba(242, 236, 225, 0.55);
-  --text-muted: rgba(242, 236, 225, 0.5);
-  --text-decorative: rgba(242, 236, 225, 0.35);
-  --text-on-accent: #17140f;
-  --text-on-accent-muted: rgba(23, 20, 15, 0.7);
+  /* === TEXT SYSTEM ===
+     Opacity steps measured on --bg-base (#141118): text-2 10.0:1,
+     text-3 6.3:1, text-muted 5.3:1 — all clear AA on base and elevated.
+     text-decorative is for non-text ornaments only. */
+  --text-1: #f4ede4;
+  --text-2: rgba(244, 237, 228, 0.78);
+  --text-3: rgba(244, 237, 228, 0.6);
+  --text-muted: rgba(244, 237, 228, 0.54);
+  --text-decorative: rgba(244, 237, 228, 0.32);
+  --text-on-accent: #1a1216;
+  --text-on-accent-muted: rgba(26, 18, 22, 0.72);
 
   /* === ACCENT SYSTEM — one accent, "ember" for dark mode === */
-  --accent: #d97757;
-  --accent-hot: #e4886a;
-  --accent-deep: #a35835;
-  --accent-dim: rgba(217, 119, 87, 0.12);
-  --accent-dim-hover: rgba(217, 119, 87, 0.18);
-  --accent-glow: rgba(217, 119, 87, 0.2);
-  --accent-border: rgba(217, 119, 87, 0.35);
-  --accent-text: #d97757;
+  --accent: #e3875f;
+  --accent-hot: #eb9a76;
+  --accent-deep: #b8633f;
+  --accent-dim: rgba(227, 135, 95, 0.12);
+  --accent-dim-hover: rgba(227, 135, 95, 0.18);
+  --accent-glow: rgba(227, 135, 95, 0.22);
+  --accent-border: rgba(227, 135, 95, 0.36);
+  --accent-text: #eb9a76;
+
+  /* === ATMOSPHERE — the horizon light behind every page ===
+     Two static radial washes, no blur filter, no animation: they cost one
+     paint. Dark mode puts the glow low (the sun has just set); light mode
+     puts it high (the sky is warming). */
+  --atmos-a: rgba(227, 120, 82, 0.16); /* ember, horizon */
+  --atmos-b: rgba(128, 92, 170, 0.12); /* violet, upper sky */
+  --atmos-a-pos: 50% 108%;
+  --atmos-b-pos: 80% -10%;
 
   /* Per-space identity is retired in favor of one accent (spec §4) —
      aliased, not deleted, so existing consumers keep working unchanged
@@ -221,15 +278,21 @@
   --glass-blur-heavy: var(--blur-elevated);
   --glass-blur-light: var(--blur-card);
 
-  /* === MOTION SYSTEM === */
-  --dur-fast: 120ms;
-  --dur-base: 200ms;
-  --dur-slow: 300ms;
-  --dur-very-slow: 500ms;
+  /* === MOTION SYSTEM ===
+     Calm by default: things decelerate into place and never overshoot
+     the eye. --ease-out is the house curve; --ease-spring keeps a small
+     settle for tactile controls (toggle thumb, check) only. Exits run
+     faster than entrances. */
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 320ms;
+  --dur-very-slow: 480ms;
 
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 0.75, 0.2);
+  --ease-spring: cubic-bezier(0.34, 1.28, 0.64, 1);
   --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
   /* === ELEVATION SYSTEM === */
   --elev-flat-shadow: none;
@@ -251,10 +314,15 @@
   /* === SHADOW SYSTEM — flat mode uses shadows only for real elevation
      (dialogs), never for glow === */
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.45);
-  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.35);
-  --shadow-toast: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 4px 14px rgba(0, 0, 0, 0.3);
+  /* The 1px inset top line is the dark-mode equivalent of a highlight:
+     it separates a floating surface from the dusk behind it. */
+  --shadow-modal:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 64px rgba(0, 0, 0, 0.5);
+  --shadow-dropdown:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 0, 0, 0.4);
+  --shadow-toast:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 0, 0, 0.4);
   --shadow-accent-glow: none;
   --shadow-button-primary: none;
   --shadow-button-primary-hover: none;
@@ -274,37 +342,37 @@
   --space-16: 64px;
 
   /* === TRANSITION SYSTEM === */
-  --transition-fast: 120ms ease;
-  --transition-base: 200ms ease;
-  --transition-slow: 300ms ease;
-  --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fast: 140ms var(--ease-out);
+  --transition-base: 220ms var(--ease-out);
+  --transition-slow: 320ms var(--ease-out);
+  --transition-spring: cubic-bezier(0.34, 1.28, 0.64, 1);
   --transition-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
-  /* === TYPOGRAPHY SCALE === */
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  /* === TYPOGRAPHY SCALE ===
+     One step up from the previous 10/12/13px floor, which put most body
+     copy and every caption below comfortable reading size. Nothing a user
+     must read is under 11px; body copy is 14–15px. */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 19px;
+  --text-2xl: 23px;
+  --text-3xl: 28px;
 
-  --text-xs: 10px;
-  --text-sm: 12px;
-  --text-base: 13px;
-  --text-md: 14px;
-  --text-lg: 16px;
-  --text-xl: 18px;
-  --text-2xl: 22px;
-  --text-3xl: 26px;
-
-  --text-caption: 10px;
-  --text-meta: 11px;
-  --text-ui: 12px;
-  --text-body: 13px;
-  --text-body-lg: 14px;
+  --text-caption: 11px;
+  --text-meta: 12px;
+  --text-ui: 13px;
+  --text-body: 14px;
+  --text-body-lg: 15px;
   --text-title-sm: 15px;
   --text-title-md: 16px;
-  --text-title-lg: 17px;
-  --text-title-xl: 18px;
-  --text-title-2xl: 22px;
-  --text-title-3xl: 26px;
-  --text-title-4xl: 32px;
+  --text-title-lg: 18px;
+  --text-title-xl: 20px;
+  --text-title-2xl: 24px;
+  --text-title-3xl: 30px;
+  --text-title-4xl: 36px;
   --text-display: 48px;
 
   --weight-regular: 400;
@@ -338,32 +406,77 @@
   /* === NOISE LAYER OPACITY === */
   --noise-opacity: 0.035;
 
-  --bg-backdrop: rgba(0, 0, 0, 0.6);
+  --bg-backdrop: rgba(8, 6, 10, 0.6);
+
+  /* === SKELETON === */
+  --skeleton-base: rgba(244, 237, 228, 0.04);
+  --skeleton-shine: rgba(244, 237, 228, 0.09);
+
+  /* === shadcn/base-ui aliases ===
+     76 call sites use bg-primary / text-muted-foreground / ring-ring …
+     These were mapped in @theme but never defined, so every one of them
+     resolved to nothing. Alias them onto the real tokens (they follow the
+     light/dark switch automatically because they are var() references). */
+  --background: var(--bg-base);
+  --foreground: var(--text-1);
+  --card: var(--surface-card);
+  --card-foreground: var(--text-1);
+  --popover: var(--surface-dropdown);
+  --popover-foreground: var(--text-1);
+  --primary: var(--accent);
+  --primary-foreground: var(--text-on-accent);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text-1);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--text-3);
+  --accent-foreground: var(--text-on-accent);
+  --destructive: var(--status-danger);
+  --input: var(--border-input);
+  --ring: var(--border-focus);
+  --sidebar: var(--surface-sidebar);
+  --sidebar-foreground: var(--text-2);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--text-on-accent);
+  --sidebar-accent: var(--accent-dim);
+  --sidebar-accent-foreground: var(--text-1);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--border-focus);
+  --chart-1: var(--accent);
+  --chart-2: var(--status-upcoming);
+  --chart-3: var(--status-someday);
+  --chart-4: var(--status-today);
+  --chart-5: var(--status-done);
 
   color-scheme: dark;
 }
 
 :root[data-mode="light"] {
-  /* === BACKGROUND SYSTEM — "sunrise" (light) === */
-  --bg-base: #f6f2ec;
-  --bg-elevated: #efe8dc;
-  --bg-overlay: rgba(246, 242, 236, 0.85);
-  --bg-backdrop: rgba(255, 255, 255, 0.5);
+  /* === BACKGROUND SYSTEM — "sunrise" (light) ===
+     Early light on paper: a warm, luminous cream. Floating surfaces
+     (modal, dropdown, toast) are lifted to near-white rather than sunk
+     into a darker beige, so they read as closer to the viewer. */
+  --bg-base: #f7f2ec;
+  --bg-elevated: #fffcf8;
+  --bg-overlay: rgba(62, 44, 36, 0.28);
+  --bg-backdrop: rgba(62, 44, 36, 0.28);
 
   /* === SURFACE SYSTEM === */
   --surface-1: #ffffff;
-  --surface-2: #fbf7f0;
-  --surface-3: #f6f0e5;
-  --surface-hover: #f1ebdf;
-  --surface-active: #eae2d2;
+  --surface-2: #fbf7f1;
+  --surface-3: #f5eee4;
+  --surface-hover: rgba(90, 58, 40, 0.055);
+  --surface-active: rgba(90, 58, 40, 0.09);
   --surface-sidebar: var(--bg-base);
   --surface-modal: var(--bg-elevated);
-  --surface-dropdown: var(--bg-elevated);
+  --surface-dropdown: #ffffff;
   --surface-toast: var(--bg-elevated);
   --surface-input: rgba(33, 29, 23, 0.04);
   --surface-input-focus: rgba(33, 29, 23, 0.06);
   --surface-card: #ffffff;
   --surface-card-hover: #fbf7f0;
+  /* A clay tint goes muddy on cream; the hero is instead the brightest,
+     warmest white on the page. */
+  --surface-hero: #fffaf4;
 
   /* === BORDER SYSTEM === */
   --border-subtle: rgba(33, 29, 23, 0.08);
@@ -375,12 +488,15 @@
   --border-card: rgba(33, 29, 23, 0.1);
   --border-card-top: rgba(255, 255, 255, 0.6);
 
-  /* === TEXT SYSTEM === */
-  --text-1: #211d17;
-  --text-2: rgba(33, 29, 23, 0.72);
-  --text-3: rgba(33, 29, 23, 0.7);
-  --text-muted: rgba(33, 29, 23, 0.72);
-  --text-decorative: rgba(33, 29, 23, 0.35);
+  /* === TEXT SYSTEM ===
+     text-2 and text-3 used to be 0.72 and 0.70 — visually identical, so
+     the hierarchy collapsed. Now three real steps, all ≥ 4.5:1 on
+     --bg-base (measured): text-2 8.3:1, text-3 5.5:1, text-muted 4.9:1. */
+  --text-1: #221c18;
+  --text-2: rgba(34, 28, 24, 0.8);
+  --text-3: rgba(34, 28, 24, 0.68);
+  --text-muted: rgba(34, 28, 24, 0.64);
+  --text-decorative: rgba(34, 28, 24, 0.32);
   --text-on-accent: #ffffff;
   --text-on-accent-muted: rgba(255, 255, 255, 0.8);
 
@@ -397,6 +513,22 @@
   --accent-border: rgba(156, 74, 46, 0.28);
   --accent-text: #9c4a2e;
 
+  /* Sunrise: the glow sits high — apricot overhead, a blush of rose. */
+  --atmos-a: rgba(255, 176, 128, 0.2);
+  --atmos-b: rgba(236, 150, 160, 0.1);
+  --atmos-a-pos: 50% -22%;
+  --atmos-b-pos: 100% 0%;
+
+  --skeleton-base: rgba(90, 58, 40, 0.05);
+  --skeleton-shine: rgba(90, 58, 40, 0.1);
+
+  /* Elevation borders are white-alpha in :root (dark); on cream they
+     vanished. Map them onto the light border ladder. */
+  --elev-flat-border: var(--border-subtle);
+  --elev-raised-border: var(--border-card);
+  --elev-floating-border: var(--border-default);
+  --elev-overlay-border: var(--border-strong);
+
   --space-do: var(--accent);
   --space-do-dim: var(--accent-dim);
   --space-do-border: var(--accent-border);
@@ -407,11 +539,18 @@
 
   /* === SHADOW SYSTEM — flat mode uses shadows only for real elevation
      (dialogs), never for glow === */
-  --shadow-card: 0 1px 2px rgba(33, 29, 23, 0.06);
-  --shadow-card-hover: 0 2px 8px rgba(33, 29, 23, 0.1);
-  --shadow-modal: 0 16px 48px rgba(33, 29, 23, 0.18);
-  --shadow-dropdown: 0 4px 16px rgba(33, 29, 23, 0.12);
-  --shadow-toast: 0 4px 16px rgba(33, 29, 23, 0.12);
+  /* Warm-tinted, layered shadows: a tight contact shadow plus a soft
+     ambient one. Grey shadows on cream look dirty. */
+  --shadow-card:
+    0 1px 1px rgba(90, 52, 30, 0.04), 0 1px 3px rgba(90, 52, 30, 0.05);
+  --shadow-card-hover:
+    0 1px 2px rgba(90, 52, 30, 0.05), 0 6px 16px rgba(90, 52, 30, 0.08);
+  --shadow-modal:
+    0 2px 6px rgba(90, 52, 30, 0.06), 0 24px 64px rgba(90, 52, 30, 0.18);
+  --shadow-dropdown:
+    0 1px 3px rgba(90, 52, 30, 0.06), 0 10px 28px rgba(90, 52, 30, 0.12);
+  --shadow-toast:
+    0 1px 3px rgba(90, 52, 30, 0.06), 0 10px 28px rgba(90, 52, 30, 0.12);
   --shadow-accent-glow: none;
   --shadow-button-primary: none;
   --shadow-button-primary-hover: none;
@@ -427,15 +566,19 @@
      6.47:1 vs --surface-1). Only the text color needs the override —
      -dim/-border stay shared since they're non-text, 3:1-exempt fills. */
   --status-danger: #b91c1c;
+  /* The rest of the status family had the same problem as danger did:
+     dark-tuned tints (amber/teal/green) measured 1.6–2.3:1 on cream.
+     Deeper shades of the same hues; each measures 4.8–6.0:1 on --bg-base. */
+  --status-overdue: #b91c1c;
+  --status-today: #a14b06;
+  --status-upcoming: #0f6e66;
+  --status-someday: #6b3fc4;
+  --status-done: #197a3e;
 
-  /* === PRIORITY COLOURS — light-mode override ===
-     No light-mode contrast measurement has been taken for these (unlike
-     --status-danger above); reusing the dark-mode hex until one is done,
-     matching every other --status-* token in this block that isn't
-     overridden. */
-  --priority-urgent: #ef4444;
-  --priority-high: #eab308;
-  --priority-medium: #22c55e;
+  /* === PRIORITY COLOURS — light-mode override === */
+  --priority-urgent: #c42020;
+  --priority-high: #8f6300;
+  --priority-medium: #197a3e;
 
   /* === TOGGLE === */
   --toggle-track-off: rgba(33, 29, 23, 0.15);
@@ -450,37 +593,97 @@
   color-scheme: light;
 }
 
-/* === DROPDOWN SYSTEM === */
+/* === MENUS & SELECTS ===
+   One look for every floating list: a raised panel with 4px of inner
+   padding, rounded rows, a quiet hover, and the selected row marked by a
+   check (never a coloured left border). */
 
-.dropdown-item {
+.select-trigger {
   display: flex;
+  width: 100%;
+  min-height: 44px;
   align-items: center;
-  gap: var(--space-3);
-  padding: 9px 14px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px 0 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-input);
+  background: var(--surface-input);
+  color: var(--text-1);
   font-size: var(--text-body-lg);
-  color: var(--text-2);
-  cursor: pointer;
+  text-align: left;
   transition:
-    background var(--transition-fast),
-    color var(--transition-fast);
-  border-left: 2px solid transparent; /* default invisible border for alignment */
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.select-trigger:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-input-focus);
+}
+.select-trigger[data-open],
+.select-trigger:focus-visible {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.select-chevron {
+  color: var(--text-3);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.select-trigger[data-open] .select-chevron {
+  transform: rotate(180deg);
 }
 
-.dropdown-item:hover {
+.select-panel,
+.dropdown-panel {
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-dropdown);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.select-option,
+.dropdown-item {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: var(--text-2);
+  font-size: var(--text-body-lg);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.select-option:hover,
+.select-option:focus-visible,
+.dropdown-item:hover,
+.dropdown-item:focus-visible {
+  outline: none;
   background: var(--surface-hover);
   color: var(--text-1);
 }
-
+.select-option[aria-selected="true"],
+.dropdown-item.selected {
+  color: var(--text-1);
+  font-weight: var(--weight-medium);
+}
 .dropdown-item.selected {
   background: var(--accent-dim);
-  color: var(--accent-text);
-  border-left: 2px solid var(--accent);
 }
 
 .dropdown-separator {
-  height: 0.5px;
+  height: 1px;
+  margin: 4px 6px;
   background: var(--border-subtle);
-  margin: 4px 0;
 }
 
 body {
@@ -511,8 +714,8 @@ h6 {
 
 .glass-panel:hover,
 .glass-panel.active {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--surface-card-hover);
+  border-color: var(--border-strong);
 }
 
 /* Typography Scale */
@@ -523,24 +726,34 @@ h6 {
   line-height: var(--leading-tight);
 }
 
+/* Page-level titles are set in Newsreader: a quiet, bookish serif that
+   gives each space a calm, editorial voice. Everything below the page
+   title stays in Inter for scanning speed. */
 .text-page-greeting {
-  font-size: 26px;
-  font-weight: var(--weight-medium);
-  letter-spacing: -0.03em;
+  font-family: var(--font-heading);
+  font-size: var(--text-title-3xl); /* 30px */
+  font-weight: var(--weight-regular);
+  letter-spacing: -0.015em;
   line-height: var(--leading-tight);
+  text-wrap: balance;
 }
 
 .text-page-title {
-  font-size: var(--text-title-2xl); /* 22px */
+  font-family: var(--font-heading);
+  /* 28px on phones → 32px on desktop: big enough to anchor the page next
+     to its 36px toolbar controls. */
+  font-size: clamp(28px, 1.2vw + 22px, 32px);
   font-weight: var(--weight-medium);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   line-height: var(--leading-tight);
+  text-wrap: balance;
 }
 
 .text-section-title {
-  font-size: var(--text-title-xl); /* 18px */
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
+  font-family: var(--font-heading);
+  font-size: var(--text-title-xl); /* 20px */
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.005em;
   line-height: var(--leading-snug);
 }
 
@@ -566,10 +779,10 @@ h6 {
 }
 
 .text-label {
-  font-size: var(--text-caption); /* 10px */
+  font-size: var(--text-caption); /* 11px */
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   line-height: 1;
 }
 
@@ -626,142 +839,6 @@ h6 {
     background: var(--surface-sidebar);
     border-right: 1px solid var(--border-subtle);
   }
-  /* DS-15 — collapsed-rail tooltip pill: hover/focus reveal within ~300ms. */
-  .sidebar-tooltip {
-    background: var(--surface-dropdown);
-    color: var(--text-1);
-    border: 0.5px solid var(--border-card);
-    border-radius: var(--radius-md);
-    padding: 6px 12px;
-    font-size: var(--text-caption);
-    font-weight: var(--weight-medium);
-    line-height: 1;
-    box-shadow: var(--shadow-dropdown);
-    opacity: 0;
-    transition:
-      opacity 0.2s ease,
-      transform 0.2s ease;
-    transform: translateX(-4px) translateY(-50%);
-  }
-  .sidebar-row:hover .sidebar-tooltip,
-  .sidebar-row:focus-within .sidebar-tooltip {
-    opacity: 1;
-    transform: translateX(0) translateY(-50%);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .sidebar-tooltip {
-      transition: none;
-    }
-    .sidebar-row:hover .sidebar-tooltip,
-    .sidebar-row:focus-within .sidebar-tooltip {
-      transform: translateX(0) translateY(-50%);
-    }
-  }
-  /* DS-15 — Inbox badge: small accent pill at the icon's top-right in the
-     collapsed rail (per M3 Navigation Rail badges); numeral beside the label
-     when expanded via `.sidebar-badge-label`. */
-  .sidebar-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 16px;
-    padding: 0 4px;
-    background: var(--accent);
-    color: var(--text-on-accent);
-    border-radius: 9999px;
-    font-size: var(--text-caption);
-    font-weight: var(--weight-semibold);
-    line-height: 1;
-  }
-  .sidebar-badge-label {
-    color: var(--accent);
-  }
-  /* DS-16 — Inbox badge v2: sits inside the 40px icon tile, offset to the
-     tile's top-right corner (M3 badge placement) instead of the row edge. */
-  .sidebar-badge-v2 {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 16px;
-    height: 14px;
-    padding: 0 4px;
-    background: var(--accent);
-    color: var(--text-on-accent);
-    border-radius: 9999px;
-    font-size: calc(var(--text-caption) - 1px);
-    font-weight: var(--weight-semibold);
-    line-height: 1;
-    box-shadow: 0 0 0 2px var(--surface-sidebar);
-  }
-  /* DS-16 — active nav row: the accent-dim pill plus a left accent bar that
-     "hugs" the content so exactly one row visibly wins the rail. */
-  .nav-row-active {
-    position: relative;
-    box-shadow: inset 3px 0 0 0 var(--accent);
-    border-radius: var(--radius-lg);
-  }
-  /* DS-16 — brand and account anchor tiles: matching rounded-square
-     containers so the rail is anchored at top and bottom when collapsed. */
-  .sidebar-brand-tile {
-    background: var(--surface-2);
-    border: 0.5px solid var(--border-card);
-    border-radius: var(--radius-lg);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .nav-row-active {
-      box-shadow: inset 3px 0 0 0 var(--accent);
-    }
-  }
-
-  /* ========================================
-     Sidebar Hover-to-Expand (DISABLED)
-     Uncomment to enable hover-to-expand
-     ======================================== */
-
-  /*
-  @media (hover: hover) and (pointer: fine) and (min-width: 768px) {
-    .sidebar:hover {
-      width: 220px !important;
-    }
-    .sidebar:hover .nav-label {
-      opacity: 1;
-    }
-    .sidebar:hover .sidebar-title {
-      opacity: 1;
-      width: auto;
-    }
-    .sidebar:hover .capture-label {
-      opacity: 1;
-      width: auto;
-    }
-  }
-  */
-
-  /* Reduced motion: disable animations */
-  @media (prefers-reduced-motion: reduce) {
-    .sidebar {
-      transition: none !important;
-    }
-
-    .nav-label,
-    .sidebar-title,
-    .capture-label {
-      transition: none !important;
-    }
-  }
-
-  /* Focus-visible styles for sidebar */
-  .sidebar button:focus-visible,
-  .sidebar a:focus-visible {
-    outline: 2px solid var(--border-focus, var(--accent));
-    outline-offset: -2px;
-    border-radius: var(--radius-sm);
-  }
-
   .modal {
     background: var(--surface-modal);
     border: 1px solid var(--border-default);
@@ -770,33 +847,24 @@ h6 {
     position: relative;
   }
 
-  [data-sonner-toast] {
-    background: var(--surface-toast);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-toast);
-    position: relative;
-  }
-
-  .dropdown-panel {
-    background: var(--surface-dropdown);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-dropdown);
-    position: relative;
-    overflow: hidden;
-  }
-
   .mobile-top-bar {
-    background: var(--surface-sidebar);
-    border-bottom: 1px solid var(--border-subtle);
-    position: relative;
+    background: var(--bg-base);
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--dur-base) var(--ease-out);
   }
-
-  .bottom-nav {
-    background: var(--surface-sidebar);
-    position: relative;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+  .mobile-top-bar[data-scrolled="true"] {
+    border-bottom-color: var(--border-subtle);
+  }
+  .mobile-top-bar-title {
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+      opacity var(--dur-base) var(--ease-out),
+      transform var(--dur-base) var(--ease-out);
+  }
+  .mobile-top-bar[data-scrolled="true"] .mobile-top-bar-title {
+    opacity: 1;
+    transform: none;
   }
 
   .mobile-drawer {
@@ -866,15 +934,20 @@ h6 {
   }
 
   .input-search {
-    background: var(--surface-1);
-    border: 0.5px solid var(--border-default);
+    height: 36px;
+    background: var(--surface-input);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-full);
-    padding: 8px 14px 8px 36px; /* 36px left for icon */
+    padding: 0 14px 0 38px; /* room for the icon */
     font-size: var(--text-ui);
     color: var(--text-1);
     width: 200px;
     outline: none;
-    transition: all var(--transition-fast);
+    transition:
+      width var(--transition-base),
+      background var(--transition-fast),
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
   }
 
   .input-search:focus {
@@ -913,7 +986,7 @@ h6 {
 
   .tag-pill .remove:hover {
     color: var(--text-1);
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--surface-active);
   }
 
   /* === TOGGLE SYSTEM === */
@@ -930,7 +1003,6 @@ h6 {
 
   .toggle-track.on {
     background: var(--toggle-track-on);
-    box-shadow: 0 0 12px var(--accent-glow);
   }
 
   .toggle-thumb {
@@ -942,7 +1014,7 @@ h6 {
     border-radius: 50%;
     background: var(--toggle-thumb);
     box-shadow: var(--toggle-thumb-shadow);
-    transition: transform var(--transition-spring) 150ms;
+    transition: transform 260ms var(--ease-spring);
   }
 
   .toggle-track.on .toggle-thumb {
@@ -973,9 +1045,8 @@ h6 {
   }
 
   .checkbox.checked {
-    background: var(--space-think);
-    border-color: var(--space-think);
-    box-shadow: 0 0 10px rgba(45, 212, 191, 0.3);
+    background: var(--accent);
+    border-color: var(--accent);
   }
 
   .checkbox.checked svg {
@@ -993,6 +1064,643 @@ h6 {
   .checkbox-sm {
     width: 16px;
     height: 16px;
+  }
+}
+
+/* ============================================================
+   APP SHELL NAVIGATION — desktop rail + mobile bottom bar
+   Markup: components/layout/Navigation.tsx
+   ============================================================ */
+@layer components {
+  /* --- Desktop rail -------------------------------------------------
+     A 72px icon rail that widens over the content (never pushes it) on
+     hover or keyboard focus. Every row keeps its icon in a fixed 48px
+     column, so icons don't move when the labels fade in. */
+  .sidebar {
+    width: var(--sidebar-w-collapsed);
+    padding-block: var(--space-2);
+    transition:
+      width var(--dur-slow) var(--ease-out),
+      box-shadow var(--dur-slow) var(--ease-out);
+    overflow: hidden;
+  }
+  .sidebar[data-expanded="true"] {
+    width: var(--sidebar-w-expanded);
+    box-shadow: var(--shadow-dropdown);
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 64px;
+    padding-inline: var(--space-3);
+    margin-bottom: var(--space-2);
+    color: var(--text-1);
+    flex-shrink: 0;
+  }
+
+  .sidebar-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: var(--space-2);
+    scrollbar-width: none;
+  }
+  .sidebar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sidebar-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 44px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .sidebar-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition:
+      opacity var(--dur-base) var(--ease-out),
+      transform var(--dur-base) var(--ease-out);
+  }
+  .sidebar[data-expanded="true"] .sidebar-label {
+    opacity: 1;
+    transform: none;
+    transition-delay: 60ms;
+  }
+
+  .sidebar-section {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    margin: var(--space-3) var(--space-3) 2px;
+    padding-inline: var(--space-3);
+    font-size: var(--text-caption);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+    color: var(--text-3);
+    position: relative;
+  }
+  /* Collapsed: the section label becomes a short hairline so the rail
+     still reads as two groups. */
+  .sidebar-section::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 20px;
+    height: 1px;
+    margin-left: -22px;
+    background: var(--border-default);
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .sidebar[data-expanded="true"] .sidebar-section::before {
+    opacity: 0;
+  }
+
+  .sidebar-tools {
+    margin-top: auto;
+    padding-top: var(--space-2);
+  }
+
+  .sidebar-link {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    width: calc(100% - var(--space-3) * 2);
+    min-height: 44px;
+    margin-inline: var(--space-3);
+    padding-right: var(--space-3);
+    border-radius: var(--radius-md);
+    color: var(--text-3);
+    text-align: left;
+    transition:
+      color var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-out);
+  }
+  .sidebar-link:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
+  }
+  .sidebar-link.is-active {
+    color: var(--text-1);
+    background: transparent;
+  }
+  .sidebar-link.is-active .sidebar-icon {
+    color: var(--accent-text);
+  }
+  .sidebar-link:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .sidebar-link:focus-visible,
+  .sidebar-account:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+  }
+
+  /* Shared-layout pill behind the active row (framer layoutId glides it
+     between rows). A soft fill only — no edge bar. */
+  .sidebar-active-indicator {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: var(--radius-md);
+    background: var(--accent-dim);
+  }
+
+  /* Quick Capture: the one filled control in the rail. */
+  .sidebar-capture {
+    margin-bottom: var(--space-2);
+    color: var(--text-1);
+  }
+  .sidebar-capture .sidebar-icon::before {
+    content: "";
+    position: absolute;
+    inset: 4px 6px;
+    z-index: -1;
+    border-radius: var(--radius-md);
+    background: var(--accent);
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+  .sidebar-capture .sidebar-icon {
+    color: var(--text-on-accent);
+  }
+  .sidebar-capture:hover {
+    background: var(--surface-hover);
+  }
+  .sidebar-capture:hover .sidebar-icon::before {
+    background: var(--accent-hot);
+  }
+
+  /* Inbox count: rides the icon's corner when collapsed, sits at the
+     row's end when expanded. */
+  .sidebar-count {
+    position: absolute;
+    top: 6px;
+    left: 30px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    color: var(--text-on-accent);
+    font-size: var(--text-caption);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    box-shadow: 0 0 0 2px var(--surface-sidebar);
+    transition:
+      left var(--dur-slow) var(--ease-out),
+      top var(--dur-slow) var(--ease-out);
+  }
+  .sidebar[data-expanded="true"] .sidebar-count {
+    left: calc(100% - 30px);
+    top: 13px;
+  }
+
+  .sidebar-shortcut {
+    margin-left: auto;
+    color: var(--text-3);
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .sidebar[data-expanded="true"] .sidebar-shortcut {
+    opacity: 1;
+  }
+
+  .sidebar-account {
+    display: flex;
+    align-items: center;
+    width: calc(100% - var(--space-3) * 2);
+    min-height: 56px;
+    margin: var(--space-2) var(--space-3) 0;
+    padding-right: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+    border-radius: 0;
+    color: var(--text-1);
+    flex-shrink: 0;
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+  .sidebar-account:hover {
+    background: var(--surface-hover);
+    border-radius: var(--radius-md);
+  }
+
+  /* --- Mobile dock -------------------------------------------------
+     A floating bar lifted off the screen edge: rounded, raised on the
+     elevated surface, with a soft pill that glides behind the active tab
+     and the Capture button as a raised ember disc in the true centre.
+     Markup: BottomNav in components/layout/Navigation.tsx. */
+  .dock {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 0 max(12px, env(safe-area-inset-right, 0px))
+      calc(10px + env(safe-area-inset-bottom, 0px))
+      max(12px, env(safe-area-inset-left, 0px));
+    pointer-events: none;
+  }
+  /* A short fade under the dock so content scrolling beneath it dissolves
+     into the page instead of being sliced off at a hard line. */
+  .dock::before {
+    content: "";
+    position: absolute;
+    inset: -24px 0 0;
+    background: linear-gradient(to top, var(--bg-base) 45%, transparent);
+    pointer-events: none;
+  }
+  .dock-inner {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--dock-cols, 5), minmax(0, 1fr));
+    align-items: center;
+    height: 64px;
+    max-width: 440px;
+    margin-inline: auto;
+    padding: 6px;
+    border-radius: 24px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-dropdown);
+    pointer-events: auto;
+  }
+  .dock-indicator {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 6px;
+    width: calc((100% - 12px) / var(--dock-cols, 5));
+    border-radius: 18px;
+    background: var(--accent-dim);
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+  .dock-tab {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    border-radius: 18px;
+    color: var(--text-3);
+    font-size: var(--text-caption);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.01em;
+    -webkit-tap-highlight-color: transparent;
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+  .dock-tab svg {
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .dock-tab:active svg {
+    transform: scale(0.9);
+  }
+  .dock-tab[aria-current="page"] {
+    color: var(--text-1);
+  }
+  .dock-tab[aria-current="page"] svg {
+    color: var(--accent-text);
+  }
+  .dock-tab:focus-visible,
+  .dock-capture:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+  }
+  .dock-capture {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border-radius: 18px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dock-capture > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    color: var(--text-on-accent);
+    box-shadow:
+      0 0 0 4px var(--bg-elevated),
+      0 8px 20px -8px var(--accent);
+    transform: translateY(-14px);
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-out);
+  }
+  .dock-capture:active > span {
+    transform: translateY(-14px) scale(0.94);
+    background: var(--accent-hot);
+  }
+
+  /* --- Filter / toggle chip ---------------------------------------
+     For filters and on/off toggles (never for switching views, which is
+     SegmentedControl's job). State lives in aria-pressed so the look and
+     the accessibility tree can't disagree. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding-inline: 14px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-default);
+    color: var(--text-3);
+    font-size: var(--text-ui);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    transition:
+      color var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
+  }
+  .chip:active {
+    transform: scale(0.97);
+  }
+  .chip:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
+  }
+  .chip[aria-pressed="true"] {
+    color: var(--text-1);
+    background: var(--accent-dim);
+    border-color: var(--accent-border);
+  }
+
+  .chip-sm {
+    min-height: 32px;
+    padding-inline: 12px;
+    font-size: var(--text-meta);
+  }
+
+  /* Form field label: sentence case and quiet. The uppercase .text-label
+     is for section eyebrows, not for every field. */
+  .field-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-2);
+    font-size: var(--text-ui);
+    font-weight: var(--weight-medium);
+  }
+
+  /* --- Settings ----------------------------------------------------
+     Grouped lists: one rounded card per group, hairlines between rows. */
+  .settings-nav {
+    border-bottom: 1px solid var(--border-subtle);
+    background: color-mix(in srgb, var(--bg-base) 55%, var(--surface-modal));
+  }
+  @media (min-width: 768px) {
+    .settings-nav {
+      border-bottom: 0;
+      border-right: 1px solid var(--border-subtle);
+    }
+  }
+  .settings-tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    flex-shrink: 0;
+    padding: 0 12px;
+    border-radius: var(--radius-md);
+    color: var(--text-3);
+    font-size: var(--text-body);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    transition:
+      color var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-out);
+  }
+  @media (min-width: 768px) {
+    .settings-tab {
+      width: 100%;
+    }
+  }
+  .settings-tab:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
+  }
+  .settings-tab[aria-current="page"] {
+    color: var(--text-1);
+    background: var(--surface-active);
+  }
+  .settings-tab[aria-current="page"] svg {
+    color: var(--accent-text);
+  }
+  .settings-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 20px 16px;
+  }
+  @media (min-width: 768px) {
+    .settings-header {
+      padding: 28px 32px 20px;
+    }
+  }
+  .settings-group {
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-card);
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 60px;
+    padding: 14px 16px;
+  }
+  .settings-row + .settings-row {
+    border-top: 1px solid var(--border-subtle);
+  }
+  .settings-row-control {
+    flex-shrink: 0;
+  }
+  .settings-row--stack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .settings-row--stack .settings-row-control {
+    width: 100%;
+  }
+  /* Segmented controls that span their row, segments sharing it: always in
+     settings, and on phones for page toolbars (.segmented-fill). */
+  @media (max-width: 767px) {
+    .segmented-fill {
+      width: 100%;
+    }
+    .segmented-fill > button {
+      flex: 1 1 0;
+      padding-inline: 8px;
+    }
+  }
+  .settings-segmented {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .settings-segmented > button {
+    flex: 1 1 0;
+    padding-inline: 10px;
+  }
+
+  /* Colour swatch buttons: a 36px hit area around a smaller disc, with a
+     ring on the chosen one. */
+  .swatch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+  .swatch:hover {
+    background: var(--surface-hover);
+  }
+  .swatch > span {
+    display: block;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-full);
+    transition:
+      box-shadow var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
+  }
+  .swatch-sm {
+    width: 36px;
+    height: 36px;
+  }
+  .swatch-sm > span {
+    width: 20px;
+    height: 20px;
+  }
+  .swatch[aria-pressed="true"] > span {
+    box-shadow:
+      0 0 0 2px var(--surface-modal),
+      0 0 0 4px var(--text-1);
+  }
+  .swatch:active > span {
+    transform: scale(0.9);
+  }
+
+  /* Range: a thin track filled to --pct in the accent, and a soft thumb. */
+  .range {
+    appearance: none;
+    -webkit-appearance: none;
+    height: 24px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .range::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(
+      to right,
+      var(--accent) var(--pct, 50%),
+      var(--surface-active) var(--pct, 50%)
+    );
+  }
+  .range::-moz-range-track {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--surface-active);
+  }
+  .range::-moz-range-progress {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+  }
+  .range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    margin-top: -7px;
+    border-radius: var(--radius-full);
+    background: var(--toggle-thumb);
+    box-shadow:
+      0 0 0 1px var(--border-default),
+      0 2px 6px rgba(0, 0, 0, 0.25);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--toggle-thumb);
+    box-shadow:
+      0 0 0 1px var(--border-default),
+      0 2px 6px rgba(0, 0, 0, 0.25);
+  }
+  .range:active::-webkit-slider-thumb {
+    transform: scale(1.1);
+  }
+  .range:focus-visible {
+    outline: none;
+  }
+  .range:focus-visible::-webkit-slider-thumb {
+    box-shadow:
+      0 0 0 1px var(--border-default),
+      0 0 0 4px var(--accent-dim-hover);
+  }
+
+  /* Mobile drawer row hooks */
+  .nav-shell-icon {
+    display: inline-flex;
+    width: 24px;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .nav-shell-section {
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+  }
+}
+
+/* Outside @layer on purpose: the global unlayered `* { scrollbar-width: thin }`
+   would otherwise beat a layered rule and draw a bar down the rail. */
+.sidebar-scroll {
+  scrollbar-width: none;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar-label,
+  .sidebar-count,
+  .dock-indicator,
+  .dock-capture > span {
+    transition: none;
   }
 }
 
@@ -1098,17 +1806,22 @@ h6 {
   background: var(--scrollbar-thumb-hover);
 }
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) transparent;
+/* In @layer base, not unlayered: an unlayered `*` rule outranks every
+   utility, so `[scrollbar-width:none]` on a chip row could never apply. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
 }
 
 /* === TOAST NOTIFICATION SYSTEM === */
 [data-sonner-toast] {
   background: var(--surface-toast) !important;
   border: 0.5px solid var(--border-default) !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-toast) !important;
+  position: relative;
   font-family: var(--font-sans) !important;
   font-size: var(--text-body-lg) !important;
   color: var(--text-1) !important;
@@ -1117,7 +1830,7 @@ h6 {
 }
 
 [data-sonner-toast][data-type="success"] {
-  border-color: rgba(74, 222, 128, 0.25) !important;
+  border-color: var(--border-default) !important;
 }
 
 [data-sonner-toast][data-type="error"] {
@@ -1160,9 +1873,9 @@ h6 {
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.04) 25%,
-    rgba(255, 255, 255, 0.09) 50%,
-    rgba(255, 255, 255, 0.04) 75%
+    var(--skeleton-base) 25%,
+    var(--skeleton-shine) 50%,
+    var(--skeleton-base) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
@@ -1247,4 +1960,72 @@ html[data-density="compact"] .task-card-wrapper p.text-body-lg {
 
 html[data-density="compact"] .thread-row-wrapper p.text-sm {
   font-size: 0.8125rem !important;
+}
+
+/* ============================================================
+   CALM LAYER — atmosphere, selection, focus, press feedback
+   ============================================================ */
+
+/* The horizon light. Rendered once by <AmbientBackground/> as a fixed
+   layer behind the app. Static gradients only — no filter, no animation,
+   no scroll listener — so it costs a single paint and never janks. */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      80% 55% at var(--atmos-a-pos),
+      var(--atmos-a),
+      transparent 70%
+    ),
+    radial-gradient(
+      60% 45% at var(--atmos-b-pos),
+      var(--atmos-b),
+      transparent 70%
+    );
+  transition: opacity var(--dur-very-slow) var(--ease-out);
+}
+
+::selection {
+  background: var(--accent-dim-hover);
+  color: var(--text-1);
+}
+
+/* One focus ring everywhere keyboard focus lands, matching the button
+   primitive. Components with their own focus-visible style still win
+   (they're more specific or come later in the cascade). */
+:where(
+  a,
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="radio"],
+  [role="menuitem"],
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Tactile press: a 2% settle on pointer-down. Opt-in via .pressable so it
+   never fights a component's own transform. Gated on a fine-or-coarse
+   pointer that can actually press (not on keyboard activation). */
+.pressable {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.pressable:active {
+  transform: scale(0.98);
+}
+
+/* Numbers that update in place (counts, timers) shouldn't jitter. */
+.tabular-nums,
+.numeric-data {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Body copy that runs long reads better with pretty wrapping. */
+p {
+  text-wrap: pretty;
 }
