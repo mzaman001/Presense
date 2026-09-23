@@ -38,6 +38,13 @@ const nextConfig: NextConfig = {
     position: "top-right",
   },
   experimental: {
+    // Turbopack's on-disk caches are on by default in Next 16.3 and reused a
+    // stale compile of globals.css: production (Vercel restores .next/cache
+    // into each build) shipped new components with the previous stylesheet,
+    // and `next dev` kept serving old CSS across restarts until
+    // .next/dev/cache was deleted. Correct CSS matters more than warm starts.
+    turbopackFileSystemCacheForBuild: false,
+    turbopackFileSystemCacheForDev: false,
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",
