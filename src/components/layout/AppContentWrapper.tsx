@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { navItems } from "@/lib/nav-config";
 import { CaptureModal, SearchModal } from "@/components/layout/DynamicModals";
 
 export function AppContentWrapper({ children }: { children: React.ReactNode }) {
@@ -21,7 +22,8 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts if user is typing in an input
+      if (e.defaultPrevented || useAppStore.getState().isMobileDrawerOpen)
+        return;
       const target = e.target as HTMLElement;
       if (
         target.tagName === "INPUT" ||
@@ -37,7 +39,7 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
         e.preventDefault();
         // PERF-20: start fetching the search chunk before the modal
         // mounts so ⌘K opens without paying the chunk transfer/eval cost
-        (SearchModal as typeof SearchModal & { preload: () => void }).preload();
+        SearchModal.preload();
         setSearchModalOpen(true);
         return;
       }
@@ -51,30 +53,19 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
 
       // Navigation shortcuts
       if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        const destination = navItems.find((item) => item.shortcut === e.key);
+        if (destination) {
+          e.preventDefault();
+          router.push(destination.href);
+          return;
+        }
         switch (e.key) {
-          case "1":
-            router.push("/inbox");
-            break;
-          case "2":
-            router.push("/do");
-            break;
-          case "3":
-            router.push("/remember/locations");
-            break;
-          case "4":
-            router.push("/think");
-            break;
-          case "6":
-            router.push("/");
-            break;
           case "c":
           case "n":
             e.preventDefault();
             // Same preload trick as ⌘K: fetch the chunk before the modal
             // mounts so the first open isn't a blank frame.
-            (
-              CaptureModal as typeof CaptureModal & { preload: () => void }
-            ).preload();
+            CaptureModal.preload();
             setCaptureModalOpen(true);
             break;
           case "/":
@@ -93,10 +84,9 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
     <main
       id="main-content"
       className={cn(
-        "relative z-10 flex flex-1 flex-col pb-24 md:pb-0",
-        "pt-[calc(env(safe-area-inset-top)+52px+0.5rem)] md:pt-8",
-        "transition-[margin-left] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)]",
-        "md:ml-[80px]",
+        "relative z-10 flex min-w-0 flex-1 flex-col pb-[calc(var(--mobile-bottom-nav-h)+env(safe-area-inset-bottom,0px)+var(--space-4))] md:pb-0",
+        "pt-[calc(env(safe-area-inset-top,0px)+var(--mobile-top-bar-h)+var(--space-2))] md:pt-8",
+        "md:ml-[var(--sidebar-w-collapsed)]",
       )}
     >
       <div className="mx-auto w-full max-w-5xl flex-1 p-4 pt-0 md:p-8">

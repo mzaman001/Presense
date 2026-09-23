@@ -3,11 +3,21 @@
 import { useEffect } from "react";
 import { useAppStore, UserSettings } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
-import { applyDocumentTheme, normalizeColorMode, normalizeThemeId } from "@/lib/theme";
+import {
+  applyDocumentTheme,
+  normalizeColorMode,
+  normalizeThemeId,
+} from "@/lib/theme";
 import { getRitualDecision } from "@/lib/rituals";
 import { usePathname } from "next/navigation";
 
-export function AppInitializer({ initialSettings }: { initialSettings?: UserSettings }) {
+const RITUAL_SNOOZE_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+export function AppInitializer({
+  initialSettings,
+}: {
+  initialSettings?: UserSettings;
+}) {
   const { userSettings, setUserSettings, setActiveRitual } = useAppStore(
     useShallow((s) => ({
       userSettings: s.userSettings,
@@ -18,7 +28,10 @@ export function AppInitializer({ initialSettings }: { initialSettings?: UserSett
   const pathname = usePathname() || "";
 
   useEffect(() => {
-    if (initialSettings && (!userSettings || Object.keys(userSettings).length === 0)) {
+    if (
+      initialSettings &&
+      (!userSettings || Object.keys(userSettings).length === 0)
+    ) {
       setUserSettings(initialSettings);
     }
   }, [initialSettings, userSettings, setUserSettings]);
@@ -30,8 +43,13 @@ export function AppInitializer({ initialSettings }: { initialSettings?: UserSett
     const checkRituals = () => {
       if (useAppStore.getState().activeRitual !== null) return;
 
-      const lastClosedAt = parseInt(localStorage.getItem("presense_ritual_closed_at") || "0", 10);
-      if (Date.now() - lastClosedAt < 5 * 60 * 1000) return;
+      const lastClosedAt = parseInt(
+        localStorage.getItem("presense_ritual_closed_at") || "0",
+        10,
+      );
+      // Closing the ritual means "not now", not "ask again in 5 minutes".
+      // Home and the rail keep a quiet "Plan my day" entry point meanwhile.
+      if (Date.now() - lastClosedAt < RITUAL_SNOOZE_MS) return;
 
       const decision = getRitualDecision({
         now: new Date(),
@@ -68,26 +86,39 @@ export function AppInitializer({ initialSettings }: { initialSettings?: UserSett
   }, [userSettings, setActiveRitual]);
 
   useEffect(() => {
-    const isPublicRoute = pathname.startsWith("/onboarding") || pathname.startsWith("/login");
-    const isSettingsLoaded = userSettings && Object.keys(userSettings).length > 0;
-    
+    const isPublicRoute =
+      pathname.startsWith("/onboarding") || pathname.startsWith("/login");
+    const isSettingsLoaded =
+      userSettings && Object.keys(userSettings).length > 0;
+
     // If not public and settings haven't loaded yet, do nothing (let layout.tsx initial script handle it)
     if (!isPublicRoute && !isSettingsLoaded) return;
 
     const theme = normalizeThemeId(
-      isPublicRoute ? "warm" : userSettings?.theme
+      isPublicRoute ? "warm" : userSettings?.theme,
     );
     const mode = normalizeColorMode(
-      isPublicRoute ? "dark" : userSettings?.color_mode
+      isPublicRoute ? "dark" : userSettings?.color_mode,
     );
 
-    applyDocumentTheme(theme, mode, Boolean(userSettings?.reduce_motion), userSettings?.density);
+    applyDocumentTheme(
+      theme,
+      mode,
+      Boolean(userSettings?.reduce_motion),
+      userSettings?.density,
+    );
     localStorage.setItem("presense_theme", theme);
     localStorage.setItem("presense_color_mode", mode);
     if (userSettings?.density) {
       localStorage.setItem("presense_density", userSettings.density as string);
     }
-  }, [userSettings?.theme, userSettings?.color_mode, userSettings?.reduce_motion, userSettings?.density, pathname]);
+  }, [
+    userSettings?.theme,
+    userSettings?.color_mode,
+    userSettings?.reduce_motion,
+    userSettings?.density,
+    pathname,
+  ]);
 
   return null;
 }

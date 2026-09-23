@@ -11,13 +11,13 @@ import path from "path";
 import { describe, expect, it } from "vitest";
 
 const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
-  dark: "#d97757",
+  dark: "#e3875f",
   light: "#9c4a2e",
 };
 
 describe("AUDIT-01 — avatar accent fallback", () => {
   it("returns the current theme's accent for both color modes", () => {
-    expect(AVATAR_ACCENT_BY_MODE["dark"]).toBe("#d97757");
+    expect(AVATAR_ACCENT_BY_MODE["dark"]).toBe("#e3875f");
     expect(AVATAR_ACCENT_BY_MODE["light"]).toBe("#9c4a2e");
   });
 

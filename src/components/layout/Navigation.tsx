@@ -1,795 +1,443 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { useUserId } from "@/components/providers/SessionProvider";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { LayoutGroup, m, useReducedMotion } from "framer-motion";
 import {
-  House as Home,
-  Check,
-  Brain,
-  MessageSquare,
   Settings,
   Search,
   Plus,
-  Inbox,
   Sparkles,
   CheckCircle2,
   Moon,
   Timer,
   Trash2,
+  CircleAlert,
+  ChevronRight,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
+import { navItems, isNavActive } from "@/lib/nav-config";
 import { Avatar } from "@/components/ui/Avatar";
 import { BrandMark } from "@/components/ui/BrandMark";
-import { Kbd } from "@/components/ui/Kbd";
-import { m } from "framer-motion";
-import { useIsTouch } from "@/hooks/useIsTouch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useInboxCount } from "@/hooks/useInboxCount";
 import { useHaptics } from "@/hooks/useHaptics";
-import { Icon as UiIcon } from "@/components/ui/Icon";
-import { createClient } from "@/lib/supabase";
-import { useRealtime } from "@/hooks/useRealtime";
 import { getRitualDecision } from "@/lib/rituals";
 
-/* AUDIT-01 (Aug 19, 2026), updated for the single-theme system (design
-   overhaul Phase 2): fallback avatar accent for a user with no
-   `avatar_color` set, resolved from the current theme's own accent —
-   keyed by color MODE now, since there's one theme with a light and a
-   dark accent value, not three theme ids. Still a plain lookup table
-   plus a client-only DOM read (never `getComputedStyle`) for the same
-   SSR-safety reason as the original fix: this ran into
-   `ReferenceError: getComputedStyle is not defined` in production
-   (Vercel, Aug 17-18) when it tried to read computed styles at SSR.
-
-   Task 2.1: these stay real hex, not `var(--accent)` — this value is
-   handed to `Avatar`, whose `getAccessibleTextColor()` parses it as a
-   6-digit hex string to compute WCAG contrast (see Avatar.tsx's own
-   comment); a CSS custom property string would fail that regex and
-   silently fall back to black text. Kept in sync by hand with the
-   `--accent` value for each mode in globals.css; `NavigationAudit.test.ts`
-   pins both the values and this file's SSR-safety contract, so update
-   that test alongside this table if `--accent` ever changes. */
 const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
-  dark: "#d97757",
+  dark: "#e3875f",
   light: "#9c4a2e",
 };
 
-export function avatarAccentFallback(): string {
-  // Client-only: color mode lives on `data-mode`; default to the dark
-  // ("sunset") accent, matching the app's default color mode.
-  if (typeof document === "undefined") return "#d97757";
-  return (
-    AVATAR_ACCENT_BY_MODE[
-      document.documentElement.getAttribute("data-mode") ?? ""
-    ] ?? "#d97757"
-  );
+export function avatarAccentFallback(mode = "dark"): string {
+  return AVATAR_ACCENT_BY_MODE[mode] ?? AVATAR_ACCENT_BY_MODE.dark;
 }
 
-const navItems = [
-  { href: "/", label: "Home", icon: Home, exact: true },
-  { href: "/inbox", label: "Inbox", icon: Inbox },
-  { href: "/do", label: "Do", icon: Check },
-  { href: "/remember/locations", label: "Remember", icon: Brain },
-  { href: "/think", label: "Think", icon: MessageSquare },
-];
-
-/**
- * Collapsed-rail tooltip pill (DS-15). Renders the row's label — and an
- * optional `Kbd` hint — as a styled pill positioned to the right of the rail.
- * Uses `.sidebar-tooltip` CSS with an `opacity`/`pointer-events` transition so
- * the pill is visible within ~300ms on hover and on keyboard focus; the native
- * `title` attribute stays as the no-CSS fallback.
- */
-function RailTooltip({
+function NavRow({
   label,
-  children,
+  icon: Icon,
+  href,
+  onClick,
+  expanded,
+  active,
+  capture,
+  disabled,
+  badge,
+  reducedMotion,
+  accessibleLabel,
 }: {
+  accessibleLabel?: string;
   label: string;
-  children: React.ReactNode;
+  icon: LucideIcon;
+  href?: string;
+  onClick?: () => void;
+  expanded: boolean;
+  active?: boolean;
+  capture?: boolean;
+  disabled?: boolean;
+  badge?: React.ReactNode;
+  reducedMotion?: boolean;
 }) {
-  return (
-    <div className="sidebar-row relative w-full">
-      {children}
-      <span
-        aria-hidden
-        className={
-          "sidebar-tooltip pointer-events-none absolute top-1/2 left-full z-50 ml-3 -translate-y-1/2 whitespace-nowrap"
-        }
-      >
-        {label}
+  const content = (
+    <>
+      {active && (
+        <m.span
+          layoutId="sidebar-active"
+          aria-hidden
+          className="sidebar-active-indicator"
+          transition={
+            reducedMotion
+              ? { duration: 0 }
+              : { type: "spring", stiffness: 420, damping: 42 }
+          }
+        />
+      )}
+      <span className="sidebar-icon">
+        <Icon size={20} strokeWidth={active ? 2 : 1.6} aria-hidden />
       </span>
-    </div>
+      <span className="sidebar-label text-body font-medium">{label}</span>
+      {badge}
+    </>
+  );
+  const className = cn(
+    "sidebar-link",
+    capture && "sidebar-capture",
+    active && "is-active",
+  );
+  const element = href ? (
+    <Link
+      href={href}
+      aria-label={accessibleLabel ?? label}
+      aria-current={active ? "page" : undefined}
+      className={className}
+    >
+      {content}
+    </Link>
+  ) : (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={className}
+    >
+      {content}
+    </button>
+  );
+  return (
+    <Tooltip disabled={expanded || disabled}>
+      <TooltipTrigger render={element} />
+      <TooltipContent side="right" sideOffset={16}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
-/**
- * Inbox count badge (DS-15). Same query contract as `inbox/page.tsx`
- * (`["inbox-tasks"]`, `items.status = 'inbox'`, user_id-filtered) so TanStack
- * Query's cache dedupes it with the inbox page while subscribed to the same
- * `useRealtime` refetch.
- */
-function useInboxCount(): number {
-  const userId = useUserId();
-  const supabase = useMemo(() => createClient(), []);
-  const { data: inboxItems = [], refetch } = useQuery({
-    queryKey: ["inbox-tasks"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("items")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("status", "inbox");
-      if (error) throw error;
-      return data as { id: string }[];
-    },
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  });
-  useRealtime("items", refetch);
-  return inboxItems.length;
+function SidebarRitual({ expanded }: { expanded: boolean }) {
+  const settings = useAppStore((s) => s.userSettings);
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    const update = () => setNow(new Date());
+    const initial = setTimeout(update, 0);
+    const interval = setInterval(update, 60_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") update();
+    };
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(interval);
+      window.removeEventListener("focus", update);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+  const decision = now
+    ? getRitualDecision({
+        now,
+        nudgeTime: settings.nudge_time || null,
+        shutdownTime: settings.shutdown_time || null,
+        lastMorningDate: settings.last_ritual_date || null,
+        lastEveningDate: settings.last_evening_ritual_date || null,
+      })
+    : null;
+  const kind =
+    decision?.kind === "morning" || decision?.kind === "evening"
+      ? decision.kind
+      : null;
+  const completed = decision?.reason === "evening_completed";
+  const label = !now
+    ? "Daily planning"
+    : kind === "evening"
+      ? "Evening review"
+      : kind === "morning"
+        ? "Plan my day"
+        : completed
+          ? "All done"
+          : "Day planned";
+  return (
+    <NavRow
+      label={label}
+      icon={
+        kind === "evening" ? Moon : kind === "morning" ? Sparkles : CheckCircle2
+      }
+      expanded={expanded}
+      onClick={() => {
+        if (useAppStore.getState().activeRitual) return;
+        if (kind) {
+          useAppStore.getState().setActiveRitual(kind);
+        } else if (now) {
+          useAppStore.getState().setActiveRitual("morning");
+        }
+      }}
+    />
+  );
 }
 
 export function Sidebar() {
   const pathname = usePathname();
-  const userSettings = useAppStore((s) => s.userSettings);
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const isTouch = useIsTouch();
-  const [now, setNow] = useState(() => new Date());
-  const inboxCount = useInboxCount();
-
-  useEffect(() => {
-    const updateTime = () => setNow(new Date());
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") updateTime();
-    };
-    const interval = setInterval(updateTime, 60000);
-    window.addEventListener("focus", updateTime);
-    window.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", updateTime);
-      window.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
-
-  /* Task 2.1 — label reveal was width-only (no fade) with manual `ml-*`
-     margins standing in for icon-label spacing; both read as cramped/abrupt.
-     Fixed geometry now: spacing between icon and label is the row's own
-     `gap-3` (see rowClass and the two non-row flex wrappers below) instead
-     of a margin toggled on the label itself. The transition combines
-     max-width and opacity but staggers them — opacity is faster (--dur-fast,
-     120ms) and starts 60ms after max-width begins (--dur-base, 200ms) — so
-     the label eases into its revealed width before it fades in, rather than
-     both animating in lockstep and reading as the text being "squeezed"
-     into place. Same easing (--ease-smooth) as the rest of the sidebar's
-     hover/focus transitions for consistency. */
-  const labelClass = cn(
-    "min-w-0 max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-ellipsis",
-    "[transition:max-width_var(--dur-base)_var(--ease-smooth),opacity_var(--dur-fast)_var(--ease-smooth)_60ms]",
-    "group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100",
+  const settings = useAppStore((s) => s.userSettings);
+  const systemReducedMotion = useReducedMotion();
+  const reducedMotion = Boolean(systemReducedMotion || settings.reduce_motion);
+  const inbox = useInboxCount();
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearTimer = () => {
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(
+    () => () => {
+      if (timer.current !== null) clearTimeout(timer.current);
+    },
+    [],
   );
-  /* DS-16 — block label that appears only when the rail is expanded.
-     DS-18 — lowered to meta-size signposts: captions label, nothing more. */
-  const blockLabelClass = cn(
-    "mx-2 hidden px-2 pt-3 pb-1 text-meta whitespace-nowrap uppercase tracking-[0.1em] text-[var(--text-decorative)] group-hover/sidebar:block group-focus-within/sidebar:block",
-  );
-  /* DS-16 — row shared geometry; state colors are applied per row.
-     Task 2.1 — row height moved off the magic `h-11` (44px) onto
-     `--sidebar-row-h` (48px, the existing --space-12 token) for more
-     vertical breathing room between rows; `gap-3` replaces the label's
-     former manual margin for icon-label spacing. */
-  const rowClass =
-    "flex h-[var(--sidebar-row-h)] w-full items-center gap-3 rounded-xl px-2 transition-colors";
-  /* DS-18 — Quick Capture stays the sole solid accent action only when the
-     rail is expanded; in the collapsed rail it is a quiet outline so it
-     never competes with the page pill (skill: one accessory at full volume). */
-  const captureCollapsedClass =
-    "border border-[var(--accent-border)] text-[var(--accent)] hover:bg-[var(--accent-dim)]";
-  const captureExpandedClass =
-    "bg-[var(--accent)] text-[var(--text-on-accent)] group-hover/sidebar:bg-[var(--accent)] group-focus-within/sidebar:bg-[var(--accent)] shadow-[0_2px_12px_-2px_var(--accent)] group-hover/sidebar:shadow-[var(--shadow-button-primary)] group-focus-within/sidebar:shadow-[var(--shadow-button-primary)]";
-  /* DS-16 — relative so the inbox badge offsets to the tile corner.
-     Task 2.1 — tokenized onto --sidebar-icon-tile (--space-10, 40px);
-     value is unchanged, only the magic number is gone. */
-  const iconClass =
-    "relative flex h-[var(--sidebar-icon-tile)] w-[var(--sidebar-icon-tile)] shrink-0 items-center justify-center";
-  /* Phase 2 (design overhaul) — left accent bar (from the .nav-row-active
-     CSS class) plus accent-colored text/icon is enough on its own now
-     that every --space-* token is aliased to the one --accent (Foundation
-     Phase 1): a colored background pill behind an already-accent-colored
-     row was redundant, not an extra signal. */
-  const activeRowClass = "nav-row-active text-[var(--accent)]";
+  const expanded = hovered || focused;
+  const email = typeof settings.email === "string" ? settings.email : "";
+  const displayName = settings.display_name || email || "Presense User";
+  const shared = { expanded, reducedMotion };
 
   return (
-    <aside
-      aria-label="Main navigation"
-      className={cn(
-        "sidebar group/sidebar fixed top-0 left-0 z-40 hidden h-dvh flex-col overflow-hidden md:flex",
-        "border-r border-[var(--border-subtle)] bg-[var(--color-background)]",
-        "w-[80px] focus-within:w-[248px] hover:w-[248px]",
-        /* Task 2.1 — duration tokenized onto --dur-base (same 200ms, no
-           behavior change); easing curve left as its own tuned
-           cubic-bezier rather than --ease-smooth — it's a steeper
-           ease-out than the design system's generic smooth easing,
-           picked for this specific 80px->248px width expand so it
-           doesn't feel sluggish at this larger delta. */
-        "transition-[width] duration-[var(--dur-base)] ease-[cubic-bezier(0.165,0.84,0.44,1)]",
-      )}
-    >
-      <div className="flex h-[var(--sidebar-header-h)] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4">
-        <div className="flex w-full min-w-0 items-center gap-3">
-          {/* DS-16 — brand tile: a rounded-square container so the top of
-              the rail is anchored in both collapsed and expanded states */}
-          <div className="sidebar-brand-tile flex h-[var(--sidebar-icon-tile)] w-[var(--sidebar-icon-tile)] shrink-0 items-center justify-center text-[var(--accent)]">
-            <BrandMark size={22} />
-          </div>
-          <span
-            className={cn(
-              "sidebar-title text-title-lg font-semibold tracking-tight text-[var(--color-text-1)]",
-              labelClass,
-            )}
-          >
+    <LayoutGroup id="desktop-navigation">
+      <aside
+        aria-label="Main navigation"
+        data-expanded={String(expanded)}
+        onPointerEnter={(event) => {
+          if (event.pointerType !== "mouse") return;
+          clearTimer();
+          timer.current = setTimeout(() => {
+            timer.current = null;
+            setHovered(true);
+          }, 100);
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType !== "mouse") return;
+          clearTimer();
+          timer.current = setTimeout(() => {
+            timer.current = null;
+            setHovered(false);
+          }, 250);
+        }}
+        onPointerCancel={() => {
+          clearTimer();
+          setHovered(false);
+        }}
+        onFocusCapture={() => setFocused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget))
+            setFocused(false);
+        }}
+        className="sidebar fixed inset-y-0 start-0 z-40 hidden h-dvh flex-col md:flex"
+      >
+        <div className="sidebar-header">
+          <span className="sidebar-icon text-[var(--accent)]">
+            <BrandMark size={26} />
+          </span>
+          <span className="sidebar-label text-title-lg font-semibold tracking-tight">
             Presense
           </span>
         </div>
-      </div>
-
-      <div className="shrink-0 px-3 pt-3 pb-1">
-        <RailTooltip label="Quick Capture">
-          <button
-            onMouseEnter={() => setHoveredItem("capture")}
-            onMouseLeave={() => setHoveredItem(null)}
+        <div className="sidebar-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+          <NavRow
+            {...shared}
+            label="Quick Capture"
+            icon={Plus}
+            capture
             onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
-            title="Quick Capture"
-            className={cn(
-              rowClass,
-              "h-10",
-              /* collapsed = quiet outline; expanded = solid primary action */
-              captureCollapsedClass,
-              "group-hover/sidebar:border-[var(--accent)] group-hover/sidebar:bg-[var(--accent)] group-hover/sidebar:text-[var(--text-on-accent)] group-hover/sidebar:shadow-[var(--shadow-button-primary)]",
-              "group-focus-within/sidebar:border-[var(--accent)] group-focus-within/sidebar:bg-[var(--accent)] group-focus-within/sidebar:text-[var(--text-on-accent)] group-focus-within/sidebar:shadow-[var(--shadow-button-primary)]",
-            )}
-          >
-            <span className={iconClass}>
-              <UiIcon size={20} strokeWidth={1.7} icon={Plus} />
-            </span>
-            <span className={cn("text-body-lg font-medium", labelClass)}>
-              Quick Capture
-            </span>
-          </button>
-        </RailTooltip>
-      </div>
-
-      <nav
-        id="sidebar-content"
-        className="flex w-full flex-1 flex-col px-3 pt-2"
-      >
-        <span aria-hidden className={blockLabelClass}>
-          Spaces
-        </span>
-        {(() => {
-          /* BUG-16 (Aug 17, 2026) — the sidebar ritual row now reads the
-             single source of truth, `getRitualDecision()` from
-             `src/lib/rituals.ts`, exactly like `AppInitializer.tsx`. The
-             inline duplicate state machine (which missed the 6-hour
-             morning window, the nudge-time start, and disagreed with the
-             engine on evening eligibility) has been deleted — labels are
-             now derived from the engine's `kind`/`reason`, and DS-17/18
-             styling semantics are preserved. */
-          const ritualNow = new Date();
-          const ritualDecision = getRitualDecision({
-            now: ritualNow,
-            nudgeTime: userSettings?.nudge_time || null,
-            shutdownTime: userSettings?.shutdown_time || null,
-            lastMorningDate: userSettings?.last_ritual_date || null,
-            lastEveningDate: userSettings?.last_evening_ritual_date || null,
-            /* Intentionally NOT `manual: true` — the manual branch in
-               `rituals.ts` always returns `kind: "morning"` (planning
-               mode), which would hide the evening-review state from the
-               sidebar entirely. The sidebar is a status display, so it
-               uses the same auto semantics as `AppInitializer.tsx`. */
-          });
-          /* Display mapping from the engine's decision to the sidebar's
-             four presentation states. Everything else (before morning
-             window, morning window missed, evening completed) reads as
-             "done": the day's pending ritual work is complete, and the
-             row stays a muted hint per DS-17. */
-          const ritualState: "morning" | "evening" | "done" | "all_done" =
-            ritualDecision.reason === "evening_due"
-              ? "evening"
-              : ritualDecision.reason === "morning_due"
-                ? "morning"
-                : ritualDecision.reason === "evening_completed"
-                  ? "all_done"
-                  : "done";
-          const ritualPending =
-            ritualState === "morning" || ritualState === "evening";
-          const ritualLabel =
-            ritualState === "all_done"
-              ? "All done"
-              : ritualState === "done"
-                ? "Day planned"
-                : ritualState === "evening"
-                  ? "Evening review"
-                  : "Plan my day";
-          /* DS-18 — full label (with checkmark) shared with the inner row;
-             computed once alongside the state mapping. */
-          const ritualLabelFull =
-            ritualState === "all_done"
-              ? "All done \u2713"
-              : ritualState === "done"
-                ? "Day planned \u2713"
-                : ritualState === "evening"
-                  ? "Evening review"
-                  : "Plan my day";
-          return (
-            <RailTooltip label={ritualLabel}>
-              <div
-                className="relative w-full"
-                onMouseEnter={() => setHoveredItem("plan-day")}
-                onMouseLeave={() => setHoveredItem(null)}
-              >
-                {(() => {
-                  /* DS-18 — the ritual state machine is computed once in the outer
-               IIFE (ritualState/ritualLabelFull); this block only maps it. */
-                  const Icon =
-                    ritualState === "all_done" || ritualState === "done"
-                      ? CheckCircle2
-                      : ritualState === "evening"
-                        ? Moon
-                        : Sparkles;
-                  const label = ritualLabelFull;
-                  const state = ritualState;
-                  const ritualRitualKind = ritualPending ? ritualState : null;
-                  return (
-                    <button
-                      onClick={() => {
-                        if (useAppStore.getState().activeRitual) return;
-                        useAppStore
-                          .getState()
-                          .setActiveRitual(ritualRitualKind);
-                      }}
-                      title={label.replace("✓", "")}
-                      className={cn(
-                        rowClass,
-                        ritualPending
-                          ? /* DS-17 — subdued hint, never the full active pill;
-                       DS-18 — theme-aware via --accent-dim token */
-                            "bg-[var(--accent-dim)] text-[var(--text-1)]"
-                          : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
-                      )}
-                    >
-                      <span className={iconClass}>
-                        <Icon
-                          size={20}
-                          strokeWidth={1.5}
-                          className={cn(
-                            "transition-colors",
-                            ritualPending
-                              ? "text-[var(--accent)]"
-                              : "group-hover:text-[var(--text-1)]",
-                          )}
-                        />
-                      </span>
+          />
+          <nav aria-label="Destinations" id="sidebar-content">
+            <div className="sidebar-section">
+              <span className="sidebar-label">Spaces</span>
+            </div>
+            {navItems.map((item) => (
+              <div key={item.href} className="relative">
+                <NavRow
+                  {...shared}
+                  label={item.label}
+                  accessibleLabel={
+                    item.href === "/inbox"
+                      ? inbox.isError
+                        ? "Inbox, count unavailable"
+                        : inbox.data === undefined
+                          ? "Inbox, count loading"
+                          : `Inbox, ${inbox.data} ${inbox.data === 1 ? "item" : "items"}`
+                      : undefined
+                  }
+                  icon={item.icon}
+                  href={item.href}
+                  active={isNavActive(pathname, item.href)}
+                  badge={
+                    item.href === "/inbox" &&
+                    !inbox.isError &&
+                    inbox.data !== undefined &&
+                    inbox.data > 0 ? (
                       <span
-                        className={cn(
-                          "nav-label text-body-lg flex flex-1 items-center leading-none font-medium",
-                          labelClass,
-                        )}
+                        className="sidebar-count"
+                        aria-label={`${inbox.data} items in Inbox`}
                       >
-                        <span
-                          className={cn(
-                            "text-body-lg leading-none whitespace-nowrap",
-                            ritualPending
-                              ? "text-[var(--accent)]"
-                              : "text-[var(--text-3)]",
-                          )}
-                        >
-                          {hoveredItem === "plan-day" && state === "done"
-                            ? "Review your day"
-                            : hoveredItem === "plan-day" && state === "all_done"
-                              ? "Already done"
-                              : label}
-                        </span>
+                        {inbox.data > 9 ? "9+" : inbox.data}
                       </span>
-                    </button>
-                  );
-                })()}
-              </div>
-            </RailTooltip>
-          );
-        })()}
-
-        {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href.startsWith("/remember")
-              ? pathname.startsWith("/remember")
-              : pathname.startsWith(`${item.href}/`));
-          const Icon = item.icon;
-          const showBadge = item.href === "/inbox" && inboxCount > 0;
-          return (
-            <RailTooltip key={item.href} label={item.label}>
-              <Link
-                href={item.href}
-                prefetch={true}
-                aria-current={isActive ? "page" : undefined}
-                title={item.label}
-                className={cn(
-                  rowClass,
-                  isActive
-                    ? activeRowClass
-                    : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
-                )}
-              >
-                <span className={iconClass}>
-                  <Icon
-                    size={20}
-                    strokeWidth={1.5}
-                    className={cn(
-                      "transition-all",
-                      isActive
-                        ? "text-[var(--accent)]"
-                        : "text-[var(--text-3)] group-hover:text-[var(--text-1)]",
-                      !isTouch && !isActive && "group-hover:translate-x-0.5",
-                    )}
-                  />
-                  {showBadge && (
-                    <span
-                      aria-label={`${inboxCount} item${inboxCount === 1 ? "" : "s"} in Inbox`}
-                      className="sidebar-badge-v2"
-                    >
-                      {inboxCount > 9 ? "9+" : inboxCount}
-                    </span>
-                  )}
-                </span>
-
-                <span
-                  className={cn(
-                    "nav-label text-body-lg flex flex-1 items-center justify-between gap-2 leading-none font-medium",
-                    labelClass,
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "text-body-lg leading-none whitespace-nowrap",
-                      isActive
-                        ? "font-medium text-[var(--accent)]"
-                        : "text-[var(--text-3)]",
-                    )}
-                  >
-                    {item.label}
-                  </span>
-                  {showBadge && (
-                    <span
-                      aria-hidden
-                      className="sidebar-badge-label text-caption leading-none font-medium whitespace-nowrap"
-                    >
-                      {inboxCount > 9 ? "9+" : inboxCount}
-                    </span>
-                  )}
-                </span>
-              </Link>
-            </RailTooltip>
-          );
-        })}
-      </nav>
-
-      <div className="mt-auto flex flex-col px-3 pb-[calc(env(safe-area-inset-bottom,24px)+84px)]">
-        <span aria-hidden className={blockLabelClass}>
-          Tools
-        </span>
-
-        {/* Search */}
-        <RailTooltip label="Search">
-          <div
-            className="relative w-full"
-            onMouseEnter={() => setHoveredItem("search")}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <button
-              onClick={() => useAppStore.getState().setSearchModalOpen(true)}
-              title="Search"
-              className={cn(
-                rowClass,
-                "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
-              )}
-            >
-              <span className={iconClass}>
-                <UiIcon
-                  size={20}
-                  strokeWidth={1.5}
-                  className="transition-colors group-hover:text-[var(--text-1)]"
-                  icon={Search}
+                    ) : undefined
+                  }
                 />
-              </span>
-              <span
-                className={cn(
-                  "nav-label text-body-lg flex flex-1 items-center justify-between leading-none font-medium text-[var(--text-3)]",
-                  labelClass,
-                )}
-              >
-                <span className="text-body-lg leading-none font-medium whitespace-nowrap text-[var(--text-3)]">
-                  Search
+              </div>
+            ))}
+            {inbox.isError && (
+              <NavRow
+                {...shared}
+                label="Retry inbox count"
+                icon={CircleAlert}
+                onClick={() => void inbox.refetch()}
+              />
+            )}
+            <SidebarRitual expanded={expanded} />
+          </nav>
+          <div className="sidebar-tools">
+            <div className="sidebar-section">
+              <span className="sidebar-label">Tools</span>
+            </div>
+            <NavRow
+              {...shared}
+              label="Search"
+              icon={Search}
+              onClick={() => useAppStore.getState().setSearchModalOpen(true)}
+              badge={
+                <span className="sidebar-shortcut text-caption" aria-hidden>
+                  ⌘K
                 </span>
-                <Kbd className="ml-2 border-none bg-transparent">Cmd+K</Kbd>
-              </span>
-            </button>
-          </div>
-        </RailTooltip>
-
-        {/* Focus (Pomodoro) */}
-        <RailTooltip label="Focus Timer">
-          <div
-            className="relative w-full"
-            onMouseEnter={() => setHoveredItem("focus")}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <button
+              }
+            />
+            <NavRow
+              {...shared}
+              label="Focus Timer"
+              icon={Timer}
               onClick={() =>
                 useAppStore
                   .getState()
                   .setActiveTimer({ taskTitle: "Focus Session" })
               }
-              title="Focus Timer"
-              className={cn(
-                rowClass,
-                "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
-              )}
-            >
-              <span className={iconClass}>
-                <UiIcon
-                  size={20}
-                  strokeWidth={1.5}
-                  className="transition-colors group-hover:text-[var(--text-1)]"
-                  icon={Timer}
-                />
-              </span>
-              <span
-                className={cn(
-                  "nav-label text-body-lg leading-none font-medium",
-                  labelClass,
-                )}
-              >
-                Focus
-              </span>
-            </button>
-          </div>
-        </RailTooltip>
-
-        {/* Trash */}
-        <RailTooltip label="Trash">
-          <div
-            className="relative w-full"
-            onMouseEnter={() => setHoveredItem("trash")}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <Link
+            />
+            <NavRow
+              {...shared}
+              label="Trash"
+              icon={Trash2}
               href="/trash"
-              prefetch={true}
-              title="Trash"
-              className={cn(
-                rowClass,
-                pathname === "/trash"
-                  ? activeRowClass
-                  : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
-              )}
-            >
-              <span className={iconClass}>
-                <UiIcon
-                  size={20}
-                  strokeWidth={1.5}
-                  className={cn(
-                    "transition-all",
-                    pathname === "/trash"
-                      ? "text-[var(--accent)]"
-                      : "text-[var(--text-3)] group-hover:text-[var(--text-1)]",
-                    !isTouch &&
-                      pathname !== "/trash" &&
-                      "group-hover:translate-x-0.5",
-                  )}
-                  icon={Trash2}
-                />
-              </span>
-              <span
-                className={cn(
-                  "nav-label text-body-lg leading-none font-medium",
-                  labelClass,
-                )}
-              >
-                Trash
-              </span>
-            </Link>
-          </div>
-        </RailTooltip>
-
-        {/* Settings */}
-        <RailTooltip label="Settings">
-          <div
-            className="relative w-full"
-            onMouseEnter={() => setHoveredItem("settings")}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <button
+              active={isNavActive(pathname, "/trash")}
+            />
+            <NavRow
+              {...shared}
+              label="Settings"
+              icon={Settings}
               onClick={() => useAppStore.getState().setSettingsModalOpen(true)}
-              title="Settings"
-              className={cn(
-                rowClass,
-                "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
-              )}
-            >
-              <span className={iconClass}>
-                <UiIcon
-                  size={20}
-                  strokeWidth={1.5}
-                  className="transition-colors group-hover:text-[var(--text-1)]"
-                  icon={Settings}
-                />
-              </span>
-              <span
-                className={cn(
-                  "nav-label text-body-lg leading-none font-medium",
-                  labelClass,
-                )}
-              >
-                Settings
-              </span>
-            </button>
+            />
           </div>
-        </RailTooltip>
-      </div>
-
-      <RailTooltip label="Account">
+        </div>
         <button
+          type="button"
+          aria-label="Account settings"
+          className="sidebar-account"
           onClick={() =>
             useAppStore.getState().setSettingsModalOpen(true, "account")
           }
-          title="Account"
-          className={cn(
-            "absolute bottom-0 left-0 flex h-[var(--sidebar-account-h)] w-full items-center border-t border-[var(--border-subtle)] px-5 text-left transition-colors",
-            "cursor-pointer hover:bg-[var(--surface-hover)]",
-          )}
         >
-          {(() => {
-            const email =
-              typeof userSettings?.email === "string" ? userSettings.email : "";
-            const displayName =
-              userSettings?.display_name || email || "Presense User";
-            const subtitle =
-              userSettings?.display_name && email ? email : "Account";
-            return (
-              <div className="flex w-full min-w-0 items-center gap-3">
-                {/* DS-16 — account tile mirrors the brand tile: a rounded-square
-                  container anchoring the bottom of the rail when collapsed.
-                  DS-17 — fallback avatar color is the current single theme's
-                  accent (terracotta family: #d97757 dark / #9c4a2e light,
-                  mode-aware), never a stale retired-theme color. MobileTopBar.tsx
-                  imports this same `avatarAccentFallback()` so the desktop and
-                  mobile fallbacks can never drift apart again. */}
-                <div className="sidebar-brand-tile flex h-[var(--sidebar-icon-tile)] w-[var(--sidebar-icon-tile)] shrink-0 items-center justify-center">
-                  <Avatar
-                    name={displayName}
-                    color={userSettings.avatar_color || avatarAccentFallback()}
-                    size="sm"
-                  />
-                </div>
-                <div className={cn("flex min-w-0 flex-col", labelClass)}>
-                  <span className="text-body truncate leading-tight font-medium whitespace-nowrap text-[var(--color-text-1)]">
-                    {displayName}
-                  </span>
-                  <span className="text-meta truncate leading-tight whitespace-nowrap text-[var(--text-muted)]">
-                    {subtitle}
-                  </span>
-                </div>
-              </div>
-            );
-          })()}
+          <span className="sidebar-icon">
+            <Avatar
+              name={displayName}
+              color={
+                settings.avatar_color ||
+                avatarAccentFallback(settings.color_mode)
+              }
+              size="sm"
+            />
+          </span>
+          <span className="sidebar-label min-w-0 flex-1 text-start">
+            <span className="text-body block truncate font-medium">
+              {displayName}
+            </span>
+            <span className="text-caption block truncate text-[var(--text-3)]">
+              {settings.display_name && email ? email : "Account settings"}
+            </span>
+          </span>
+          <ChevronRight
+            size={16}
+            className="sidebar-shortcut shrink-0 text-[var(--text-3)]"
+            aria-hidden
+          />
         </button>
-      </RailTooltip>
-    </aside>
+      </aside>
+    </LayoutGroup>
   );
 }
 
 export function BottomNav() {
   const pathname = usePathname();
-  const setCaptureModalOpen = useAppStore((s) => s.setCaptureModalOpen);
   const haptics = useHaptics();
+  const items = navItems.filter((item) => item.bottom);
+  // Capture sits in the true centre: split the tabs evenly around it.
+  const half = Math.ceil(items.length / 2);
+  const cols = items.length + 1;
+  const activeIndex = items.findIndex((item) =>
+    isNavActive(pathname, item.href),
+  );
+  const slot =
+    activeIndex < 0 ? -1 : activeIndex < half ? activeIndex : activeIndex + 1;
 
-  const mobileNavItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/do", label: "Do", icon: Check },
-    { href: "capture", label: "Capture", icon: Plus, isAction: true },
-    { href: "/think", label: "Think", icon: MessageSquare },
-  ];
+  const renderTab = (item: (typeof items)[number]) => {
+    const active = isNavActive(pathname, item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className="dock-tab"
+        aria-current={active ? "page" : undefined}
+        onClick={() => {
+          if (!active) haptics.selection();
+        }}
+      >
+        <item.icon size={21} strokeWidth={active ? 2 : 1.6} aria-hidden />
+        <span>{item.label}</span>
+      </Link>
+    );
+  };
 
   return (
-    <nav className="bottom-nav fixed bottom-0 left-0 z-40 w-full border-t border-[var(--border-subtle)] bg-[var(--color-background)]/95 md:hidden">
-      <div className="flex items-center justify-around px-2">
-        {mobileNavItems.map((item) => {
-          if (item.isAction) {
-            /* Step 3 (task 2.6a) — deliberately labeled, not left ambiguous:
-               the FAB sits between three labeled siblings, so leaving it bare
-               reads as an orphaned control rather than a distinct affordance.
-               A one-word label under the circle costs little vertical space
-               (the icon already pokes above the bar via -mt-6) and makes the
-               row scan consistently left-to-right. */
-            return (
-              <button
-                key="capture"
-                onClick={() => {
-                  haptics.light();
-                  setCaptureModalOpen(true);
-                }}
-                className="flex min-h-[56px] min-w-[44px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-2 text-[var(--color-text-1)] transition-all active:scale-95"
-              >
-                <div className="relative -mt-6 flex h-12 w-12 items-center justify-center rounded-full border-[4px] border-[var(--color-background)] bg-[var(--color-text-1)] text-[var(--color-background)] shadow-lg">
-                  <UiIcon size={24} strokeWidth={2} icon={Plus} />
-                </div>
-                <span className="text-caption font-medium text-[var(--color-text-1)]">
-                  Capture
-                </span>
-              </button>
-            );
-          }
-
-          const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              prefetch={true}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                // Minimum 44px touch target per WCAG 2.5.5
-                "flex min-h-[56px] min-w-[44px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-2 transition-all active:scale-95",
-                isActive
-                  ? "text-[var(--color-text-1)]"
-                  : "text-[var(--color-text-3)]",
-              )}
-            >
-              <div className="relative">
-                {/* Step 1 (task 2.6a) — active state now reads as an
-                    icon weight/fill change (outline -> filled + heavier
-                    stroke), not just the accent color: HIG calls for
-                    conveying selection by more than color alone. House and
-                    MessageSquare have closed shapes, so `fill` genuinely
-                    fills them in; Check is an open stroke path with no fill
-                    area, so it relies on the strokeWidth jump alone — either
-                    way every icon in this bar gets a real weight change when
-                    active, not just a recolor.
-                    Step 2 — size bumped 20 -> 22, closer to the FAB's 24px
-                    without cramping the flex-1 item width at phone widths. */}
-                <Icon
-                  size={22}
-                  strokeWidth={isActive ? 2.25 : 1.5}
-                  fill={isActive ? "currentColor" : "none"}
-                  className={cn(
-                    "shrink-0 transition-all",
-                    isActive ? "text-[var(--accent)]" : "text-[var(--text-3)]",
-                  )}
-                />
-                {isActive && (
-                  <m.div
-                    layoutId="bottom-nav-active"
-                    className="absolute -bottom-1.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--accent)]"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-              </div>
-              <span
-                className={cn(
-                  "text-caption font-medium transition-colors",
-                  isActive ? "text-[var(--accent)]" : "text-[var(--text-3)]",
-                )}
-              >
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
+    <nav
+      aria-label="Mobile navigation"
+      className="dock md:hidden"
+      style={{ "--dock-cols": cols } as React.CSSProperties}
+    >
+      <div className="dock-inner">
+        {slot >= 0 && (
+          <span
+            aria-hidden
+            className="dock-indicator"
+            style={{ transform: `translateX(${slot * 100}%)` }}
+          />
+        )}
+        {items.slice(0, half).map(renderTab)}
+        <button
+          type="button"
+          aria-label="Quick Capture"
+          className="dock-capture"
+          onClick={() => {
+            haptics.light();
+            useAppStore.getState().setCaptureModalOpen(true);
+          }}
+        >
+          <span>
+            <Plus size={22} strokeWidth={2.2} aria-hidden />
+          </span>
+        </button>
+        {items.slice(half).map(renderTab)}
       </div>
     </nav>
   );
