@@ -9,10 +9,12 @@ import ThreadDetailPage from "@/app/(app)/think/[id]/page";
 import { useAppStore } from "@/store/useAppStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
 // Mock Next.js router
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push,
     replace: vi.fn(),
     prefetch: vi.fn(),
   }),
@@ -58,6 +60,7 @@ type MockQuery = Record<string, ReturnType<typeof vi.fn>> & {
 describe("Phase 3 - Integration Test Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    queryClient.clear();
 
     // Mock matchMedia for jsdom
     Object.defineProperty(window, "matchMedia", {
@@ -110,6 +113,274 @@ describe("Phase 3 - Integration Test Suite", () => {
   }
 
   describe("R1: SearchModal Requirements", () => {
+    it.each(["reported query error", "rejected network promise"])(
+      "shows an error and stops loading for a %s",
+      async (failure) => {
+        useAppStore.setState({ isSearchModalOpen: true });
+        mockSupabase.from.mockImplementation(() => {
+          const query = mockSupabaseQuery(
+            null,
+            new Error("Search unavailable"),
+          );
+          if (failure === "rejected network promise") {
+            query.limit.mockImplementation(() =>
+              Promise.reject(new TypeError("Failed to fetch")),
+            );
+          }
+          return query;
+        });
+
+        render(<SearchModal />, { wrapper });
+        fireEvent.change(screen.getByPlaceholderText(/search everything/i), {
+          target: { value: "study" },
+        });
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+          /could not search/i,
+        );
+        expect(screen.getByRole("button", { name: /retry/i })).toBeEnabled();
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        expect(screen.queryByText("No results")).not.toBeInTheDocument();
+      },
+    );
+
+    it("retries a failed search and renders the recovered results", async () => {
+      useAppStore.setState({ isSearchModalOpen: true });
+      mockSupabase.from.mockImplementation(() =>
+        mockSupabaseQuery(null, new Error("Search unavailable")),
+      );
+      render(<SearchModal />, { wrapper });
+      fireEvent.change(screen.getByPlaceholderText(/search everything/i), {
+        target: { value: "study" },
+      });
+      const retry = await screen.findByRole("button", { name: /retry/i });
+      mockSupabase.from.mockImplementation((table) =>
+        mockSupabaseQuery(
+          table === "items"
+            ? [{ id: "recovered", title: "Recovered task" }]
+            : [],
+        ),
+      );
+
+      fireEvent.click(retry);
+
+      expect(await screen.findByText("Recovered task")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it.each(["", "   "])(
+      "ignores an in-flight response after the input becomes %j",
+      async (value) => {
+        useAppStore.setState({ isSearchModalOpen: true });
+        let resolveSearch!: (value: unknown) => void;
+        const pending = new Promise((resolve) => {
+          resolveSearch = resolve;
+        });
+        mockSupabase.from.mockImplementation((table) => {
+          const query = mockSupabaseQuery([]);
+          if (table === "items") query.limit.mockReturnValue(pending);
+          return query;
+        });
+        render(<SearchModal />, { wrapper });
+        const input = screen.getByPlaceholderText(/search everything/i);
+        fireEvent.change(input, { target: { value: "old" } });
+        await waitFor(() => expect(mockSupabase.from).toHaveBeenCalledTimes(3));
+        fireEvent.change(input, { target: { value } });
+        await act(async () => {
+          resolveSearch({
+            data: [{ id: "old", title: "Old result" }],
+            error: null,
+          });
+        });
+
+        expect(screen.queryByText("Old result")).not.toBeInTheDocument();
+        expect(screen.getByText("Search your brain")).toBeInTheDocument();
+        expect(screen.queryByText("No results")).not.toBeInTheDocument();
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        fireEvent.keyDown(input, { key: "Enter" });
+        expect(push).not.toHaveBeenCalled();
+      },
+    );
+
+    it("does not let an older response replace a newer query's results", async () => {
+      useAppStore.setState({ isSearchModalOpen: true });
+      let resolveOld!: (value: unknown) => void;
+      const pending = new Promise((resolve) => {
+        resolveOld = resolve;
+      });
+      mockSupabase.from.mockImplementation((table) => {
+        const query = mockSupabaseQuery([]);
+        if (table === "items") query.limit.mockReturnValue(pending);
+        return query;
+      });
+      render(<SearchModal />, { wrapper });
+      const input = screen.getByPlaceholderText(/search everything/i);
+      fireEvent.change(input, { target: { value: "old" } });
+      await waitFor(() => expect(mockSupabase.from).toHaveBeenCalledTimes(3));
+      mockSupabase.from.mockImplementation((table) =>
+        mockSupabaseQuery(
+          table === "items" ? [{ id: "new", title: "New result" }] : [],
+        ),
+      );
+      fireEvent.change(input, { target: { value: "new" } });
+      expect(await screen.findByText("New result")).toBeInTheDocument();
+      await act(async () => {
+        resolveOld({ data: [{ id: "old", title: "Old result" }], error: null });
+      });
+      expect(screen.queryByText("Old result")).not.toBeInTheDocument();
+      expect(screen.getByText("New result")).toBeInTheDocument();
+    });
+
+    it("hides previous results during debounce and keeps keyboard selection safe", async () => {
+      useAppStore.setState({ isSearchModalOpen: true });
+      mockSupabase.from.mockImplementation((table) =>
+        mockSupabaseQuery(
+          table === "threads"
+            ? [
+                { id: "first", title: "First thread" },
+                { id: "second", title: "Second thread" },
+              ]
+            : [],
+        ),
+      );
+      render(<SearchModal />, { wrapper });
+      const input = screen.getByPlaceholderText(/search everything/i);
+      fireEvent.change(input, { target: { value: "thread" } });
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      await screen.findByText("First thread");
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      mockSupabase.from.mockImplementation((table) =>
+        mockSupabaseQuery(
+          table === "threads" ? [{ id: "new", title: "New thread" }] : [],
+        ),
+      );
+      fireEvent.change(input, { target: { value: "new" } });
+      expect(screen.queryByText("First thread")).not.toBeInTheDocument();
+      expect(screen.queryByText("Second thread")).not.toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent(/searching/i);
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(push).not.toHaveBeenCalled();
+      await screen.findByText("New thread");
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(push).toHaveBeenCalledWith("/think/new");
+    });
+
+    it("does not search blank input or fetch while closed", async () => {
+      useAppStore.setState({ isSearchModalOpen: true });
+      mockSupabase.from.mockImplementation(() => mockSupabaseQuery([]));
+      render(<SearchModal />, { wrapper });
+      const input = screen.getByPlaceholderText(/search everything/i);
+      fireEvent.change(input, { target: { value: "   " } });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      });
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+      fireEvent.change(input, { target: { value: "study" } });
+      act(() => useAppStore.setState({ isSearchModalOpen: false }));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      });
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+    });
+
+    it("does not search without a user id", async () => {
+      useAppStore.setState({ isSearchModalOpen: true });
+      mockSupabase.from.mockImplementation(() => mockSupabaseQuery([]));
+      render(
+        <SessionProvider user={{ ...TEST_USER, id: "" }}>
+          <SearchModal />
+        </SessionProvider>,
+        { wrapper },
+      );
+      fireEvent.change(screen.getByPlaceholderText(/search everything/i), {
+        target: { value: "study" },
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      });
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("scopes cached search results to the current user", async () => {
+      useAppStore.setState({ isSearchModalOpen: true });
+      mockSupabase.from.mockImplementation((table) =>
+        mockSupabaseQuery(
+          table === "items"
+            ? [{ id: "first", title: "First user's task" }]
+            : [],
+        ),
+      );
+      const { rerender } = render(
+        <SessionProvider user={TEST_USER}>
+          <SearchModal />
+        </SessionProvider>,
+        { wrapper },
+      );
+      fireEvent.change(screen.getByPlaceholderText(/search everything/i), {
+        target: { value: "study" },
+      });
+      await screen.findByText("First user's task");
+      mockSupabase.from.mockImplementation((table) =>
+        mockSupabaseQuery(
+          table === "items"
+            ? [{ id: "second", title: "Second user's task" }]
+            : [],
+        ),
+      );
+      rerender(
+        <SessionProvider user={{ ...TEST_USER, id: "second-user" }}>
+          <SearchModal />
+        </SessionProvider>,
+      );
+      expect(screen.queryByText("First user's task")).not.toBeInTheDocument();
+      expect(await screen.findByText("Second user's task")).toBeInTheDocument();
+    });
+
+    it("re-queries the same term after unmount and reopen despite a 5-minute staleTime default", async () => {
+      const originalDefaults = queryClient.getDefaultOptions();
+      queryClient.setDefaultOptions({
+        queries: { ...originalDefaults.queries, staleTime: 5 * 60 * 1000 },
+      });
+      try {
+        useAppStore.setState({ isSearchModalOpen: true });
+        mockSupabase.from.mockImplementation((table) =>
+          mockSupabaseQuery(
+            table === "items" ? [{ id: "stale", title: "Stale row" }] : [],
+          ),
+        );
+        const first = render(<SearchModal />, { wrapper });
+        fireEvent.change(screen.getByPlaceholderText(/search everything/i), {
+          target: { value: "study" },
+        });
+        await screen.findByText("Stale row");
+        const callsAfterFirstSearch = mockSupabase.from.mock.calls.length;
+        first.unmount();
+
+        mockSupabase.from.mockImplementation((table) =>
+          mockSupabaseQuery(
+            table === "items" ? [{ id: "fresh", title: "Fresh row" }] : [],
+          ),
+        );
+        render(<SearchModal />, { wrapper });
+        fireEvent.change(screen.getByPlaceholderText(/search everything/i), {
+          target: { value: "study" },
+        });
+
+        await waitFor(() =>
+          expect(mockSupabase.from.mock.calls.length).toBeGreaterThan(
+            callsAfterFirstSearch,
+          ),
+        );
+        expect(await screen.findByText("Fresh row")).toBeInTheDocument();
+        expect(screen.queryByText("Stale row")).not.toBeInTheDocument();
+      } finally {
+        queryClient.setDefaultOptions(originalDefaults);
+      }
+    });
+
     it("should verify that SearchModal supports searching items by category", async () => {
       useAppStore.setState({ isSearchModalOpen: true });
 
@@ -166,7 +437,7 @@ describe("Phase 3 - Integration Test Suite", () => {
       });
     });
 
-    it("should verify that 'Auto-start breaks' is grouped inside a 'Timer Durations' layout card", async () => {
+    it("groups 'Start breaks automatically' with the focus rhythm settings", async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: "user-123", email: "test@example.com" } },
       });
@@ -185,13 +456,18 @@ describe("Phase 3 - Integration Test Suite", () => {
         fireEvent.click(focusTab);
       });
 
-      const timerDurationsCard = screen
-        .getByText("Timer Durations")
-        .closest(".p-5, .space-y-5, .rounded-xl");
-      expect(timerDurationsCard).toBeInTheDocument();
+      const rhythmGroup = (await screen.findByText("Rhythm"))
+        .closest("section")
+        ?.querySelector(".settings-group");
+      expect(rhythmGroup).toBeInTheDocument();
 
-      const autoStartToggle = screen.getByText("Auto-start Breaks");
-      expect(timerDurationsCard).toContainElement(autoStartToggle);
+      const autoStartToggle = screen.getByRole("switch", {
+        name: "Start breaks automatically",
+      });
+      expect(rhythmGroup).toContainElement(autoStartToggle);
+      expect(rhythmGroup).toContainElement(
+        screen.getByText("Long break every"),
+      );
     });
 
     it("should verify that the settings tab defaults to the value specified in useAppStore.getState().settingsActiveTab", async () => {
@@ -284,10 +560,8 @@ describe("Phase 3 - Integration Test Suite", () => {
 
       fireEvent.click(colorBar!);
 
-      const colorButton = container.querySelector(
-        "button[style*='background-color']",
-      );
-      expect(colorButton).toBeInTheDocument();
+      const swatches = screen.getAllByRole("button", { name: /^Use colour/ });
+      expect(swatches.length).toBeGreaterThan(0);
 
       if (originalOntouchstart === undefined) {
         delete (window as Window & { ontouchstart?: () => void }).ontouchstart;

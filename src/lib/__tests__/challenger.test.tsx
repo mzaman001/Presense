@@ -232,7 +232,9 @@ describe("Phase 5 Challenger - Think Thread Entry Persistence", () => {
       await screen.findByDisplayValue("Project Brainstorm");
 
       // Exactly one delete button per entry
-      const deleteButtons = screen.getAllByTitle("Delete entry");
+      const deleteButtons = screen.getAllByRole("button", {
+        name: "Delete entry",
+      });
       expect(deleteButtons.length).toBe(2);
 
       fireEvent.click(deleteButtons[0]);

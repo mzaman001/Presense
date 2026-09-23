@@ -294,9 +294,9 @@ describe("Console error regression — network failures and render-phase state",
 
       render(<SettingsModal />, { wrapper });
 
-      const nameInput = await screen.findByPlaceholderText(
-        "How should we call you?",
-      );
+      const nameInput = await screen.findByRole("textbox", {
+        name: "Display name",
+      });
       // Let the initial load complete (SettingsModal flips `initialLoaded`
       // ~100ms after load resolves) before the autosave effect starts
       // watching for changes.

@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "./test-utils";
+import { render, screen, fireEvent, waitFor, act, within } from "./test-utils";
+import { Input } from "@/components/ui/Input";
 import { TEST_USER } from "./test-utils";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -198,6 +199,229 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe("Phase 1 form correctness", () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+      useAppStore.setState({
+        userSettings: {
+          ...useAppStore.getState().userSettings,
+          nlp_date_parsing: false,
+        },
+      });
+    });
+
+    it.each([
+      "add subtask",
+      "toggle subtask",
+      "remove subtask",
+      "add category",
+      "repeat",
+    ])("%s does not submit a valid task form", async (action) => {
+      const onClose = vi.fn();
+      const onTaskAdded = vi.fn();
+      const query = mockSupabaseQuery();
+      mockSupabase.from.mockReturnValue(query);
+      render(
+        <TaskAddPanel
+          isOpen={true}
+          onClose={onClose}
+          onTaskAdded={onTaskAdded}
+          taskToEdit={{
+            id: "task-1",
+            title: "Existing task",
+            subtasks: [{ text: "Existing subtask", completed: false }],
+          }}
+        />,
+        { wrapper },
+      );
+      const save = screen.getByRole("button", { name: "Save changes" });
+      await waitFor(() => expect(save).toBeEnabled());
+      // Save sits in the pinned footer, tied to the form by its `form` attribute.
+      const form = (save as HTMLButtonElement).form!;
+      const onSubmit = vi.fn();
+      form.addEventListener("submit", onSubmit);
+      const subtask = screen.getByDisplayValue("Existing subtask");
+      const row = within(subtask.parentElement!);
+      // The done toggle is a real checkbox now (role="checkbox"); the
+      // remove control is the row's only button.
+      const button =
+        action === "toggle subtask"
+          ? row.getByRole("checkbox")
+          : action === "remove subtask"
+            ? row.getByRole("button", { name: /remove subtask/i })
+            : screen.getByRole("button", {
+                name:
+                  action === "add subtask"
+                    ? /add subtask/i
+                    : action === "add category"
+                      ? /^new$/i
+                      : "Repeat",
+              });
+
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(query.update).not.toHaveBeenCalled();
+      expect(query.insert).not.toHaveBeenCalled();
+      expect(onTaskAdded).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(button).toHaveAttribute("type", "button");
+      if (action === "add subtask") {
+        expect(screen.getAllByPlaceholderText("Subtask")).toHaveLength(2);
+      } else if (action === "toggle subtask") {
+        expect(subtask).toHaveClass("line-through");
+      } else if (action === "remove subtask") {
+        expect(
+          screen.queryByDisplayValue("Existing subtask"),
+        ).not.toBeInTheDocument();
+      } else if (action === "add category") {
+        expect(
+          screen.getByPlaceholderText("Type & enter..."),
+        ).toBeInTheDocument();
+      } else {
+        expect(
+          screen.getByRole("button", { name: "Weekly" }),
+        ).toBeInTheDocument();
+      }
+
+      await act(async () => {
+        fireEvent.click(save);
+      });
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(query.update).toHaveBeenCalledTimes(1);
+      expect(onTaskAdded).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("uses explicit non-submit types for scheduling options", async () => {
+      render(<TaskAddPanel isOpen={true} onClose={vi.fn()} />, { wrapper });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+        fireEvent.click(screen.getByRole("button", { name: "Repeat" }));
+      });
+      for (const name of [
+        "Today",
+        "Tomorrow",
+        "This weekend",
+        "Next week",
+        "No date",
+        "Does not repeat",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "Custom",
+      ]) {
+        expect(screen.getByRole("button", { name })).toHaveAttribute(
+          "type",
+          "button",
+        );
+      }
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Weekly" }));
+      });
+      for (const name of ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]) {
+        expect(screen.getByRole("button", { name })).toHaveAttribute(
+          "type",
+          "button",
+        );
+      }
+    });
+
+    it("links task validation to the generated input error ID and keeps invalid submit disabled", async () => {
+      render(<TaskAddPanel isOpen={true} onClose={vi.fn()} />, { wrapper });
+      const input = screen.getByRole("textbox", { name: /task name/i });
+      const save = screen.getByRole("button", { name: "Add task" });
+      expect(save).toBeDisabled();
+      fireEvent.change(input, { target: { value: "Task" } });
+      await waitFor(() => expect(save).toBeEnabled());
+      fireEvent.change(input, { target: { value: "" } });
+      await screen.findByText("Title is required");
+      expect(input).toHaveAccessibleDescription("Title is required");
+      expect(input).toHaveAttribute("aria-describedby", `${input.id}-error`);
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(save).toBeDisabled();
+      fireEvent.change(input, { target: { value: "Task" } });
+      await waitFor(() => expect(save).toBeEnabled());
+      expect(input).not.toHaveAttribute("aria-describedby");
+      expect(screen.queryByText("Title is required")).not.toBeInTheDocument();
+    });
+
+    it("links both location validation messages and keeps invalid submit disabled", async () => {
+      render(<LocationAddPanel isOpen={true} onClose={vi.fn()} />, { wrapper });
+      const name = screen.getByRole("textbox", { name: /item name/i });
+      const location = screen.getByRole("textbox", { name: /^location/i });
+      const save = screen.getByRole("button", { name: "Save" });
+      expect(save).toBeDisabled();
+      fireEvent.change(name, { target: { value: "Keys" } });
+      fireEvent.change(location, { target: { value: "Desk" } });
+      await waitFor(() => expect(save).toBeEnabled());
+      fireEvent.change(name, { target: { value: "" } });
+      fireEvent.change(location, { target: { value: "" } });
+      await screen.findByText("Name is required");
+      await screen.findByText("Location is required");
+      expect(name).toHaveAccessibleDescription("Name is required");
+      expect(location).toHaveAccessibleDescription("Location is required");
+      for (const input of [name, location]) {
+        expect(input).toHaveAttribute("aria-describedby", `${input.id}-error`);
+        expect(input).toHaveAttribute("aria-invalid", "true");
+      }
+      expect(save).toBeDisabled();
+      fireEvent.change(name, { target: { value: "Keys" } });
+      fireEvent.change(location, { target: { value: "Desk" } });
+      await waitFor(() => expect(save).toBeEnabled());
+      expect(name).not.toHaveAttribute("aria-describedby");
+      expect(location).not.toHaveAttribute("aria-describedby");
+    });
+
+    it.each([undefined, "custom-input"])(
+      "preserves custom descriptions alongside Input hints and errors with id %s",
+      (id) => {
+        const content = (error?: string, hint?: string) => (
+          <>
+            <p id="description">Custom description</p>
+            <p id="details">More details</p>
+            <Input
+              id={id}
+              label="Field"
+              aria-describedby="description details"
+              hint={hint}
+              error={error}
+            />
+          </>
+        );
+        const { rerender } = render(content(undefined, "Helpful hint"));
+        const input = screen.getByRole("textbox", { name: "Field" });
+        const inputId = input.id;
+        expect(input).toHaveAccessibleDescription(
+          "Custom description More details Helpful hint",
+        );
+        rerender(content("Required", "Helpful hint"));
+        expect(input.id).toBe(inputId);
+        expect(input).toHaveAccessibleDescription(
+          "Custom description More details Required",
+        );
+        expect(screen.queryByText("Helpful hint")).not.toBeInTheDocument();
+        expect(document.getElementById(`${inputId}-error`)).toHaveTextContent(
+          "Required",
+        );
+        rerender(content(undefined, "Helpful hint"));
+        expect(input).toHaveAccessibleDescription(
+          "Custom description More details Helpful hint",
+        );
+        expect(
+          document.getElementById(`${inputId}-error`),
+        ).not.toBeInTheDocument();
+        rerender(content());
+        expect(input).toHaveAttribute(
+          "aria-describedby",
+          "description details",
+        );
+      },
+    );
   });
 
   // =========================================================================
@@ -442,9 +666,28 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
           expect(screen.queryByText(/Preparing/i)).toBeNull();
         });
 
-        // TDD expectations: UI renders header and layout structure
         expect(screen.getByTestId("ritual-overlay")).toBeInTheDocument();
         expect(screen.getByText(/Morning Planning/i)).toBeInTheDocument();
+
+        // Each loose end offers the same three places to go.
+        expect(screen.getByText("Overdue Task")).toBeInTheDocument();
+        expect(screen.getByText("New Inbox Item")).toBeInTheDocument();
+        const choices = within(
+          screen.getByRole("group", { name: /Overdue Task/ }),
+        ).getAllByRole("button");
+        expect(choices.map((b) => b.textContent)).toEqual([
+          "Today",
+          "Tomorrow",
+          "Someday",
+        ]);
+        expect(screen.getByText("2 to place")).toBeInTheDocument();
+
+        // Placing one removes it from the list.
+        fireEvent.click(choices[0]);
+        await waitFor(() =>
+          expect(screen.queryByText("Overdue Task")).not.toBeInTheDocument(),
+        );
+        expect(screen.getByText("1 to place")).toBeInTheDocument();
       });
 
       it("should triage task to 'Do Today' (updates status to active and deadline to today)", async () => {
@@ -488,9 +731,21 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
     // --- Tier 2: Boundary & Corner Cases ---
     describe("Tier 2: Boundary & Corner Cases", () => {
-      it("should disable or hide the next button in triage flow if triage stack is not empty (mandatory triage)", () => {
+      it("lets you continue while loose ends remain (they stay where they are)", async () => {
+        vi.useRealTimers();
+        mockSupabase.from.mockReturnValue(
+          mockSupabaseQuery([
+            { id: "t1", title: "Unplaced", status: "inbox", deadline: null },
+          ]),
+        );
         render(<RitualOverlay isOpen={true} type="morning" />, { wrapper });
-        expect(screen.getByTestId("ritual-overlay")).toBeInTheDocument();
+        await screen.findByText("Unplaced");
+
+        const next = screen.getByRole("button", { name: /continue/i });
+        // Used to be disabled until the inbox was empty, with no explanation.
+        expect(next).toBeEnabled();
+        fireEvent.click(next);
+        expect(await screen.findByText("Shape your day.")).toBeInTheDocument();
       });
 
       it("should handle zero capacity or zero estimates in workload bar without division-by-zero errors", () => {
@@ -767,7 +1022,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       fireEvent.click(screen.getByText(/add subtask/i));
       fireEvent.click(screen.getByLabelText("Close"));
 
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
+      expect(screen.getByText("Discard changes?")).toBeInTheDocument();
       expect(onClose).not.toHaveBeenCalled();
     });
 
@@ -777,7 +1032,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       fireEvent.change(notesTextarea, { target: { value: "New note text" } });
       fireEvent.click(screen.getByLabelText("Close"));
 
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
+      expect(screen.getByText("Discard changes?")).toBeInTheDocument();
       expect(onClose).not.toHaveBeenCalled();
     });
 
@@ -785,7 +1040,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       const { onClose } = renderTaskPanel();
       fireEvent.click(screen.getByLabelText("Close"));
 
-      expect(screen.queryByText("Discard Changes?")).not.toBeInTheDocument();
+      expect(screen.queryByText("Discard changes?")).not.toBeInTheDocument();
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -798,7 +1053,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       });
       fireEvent.click(screen.getByLabelText("Close"));
 
-      expect(screen.queryByText("Discard Changes?")).not.toBeInTheDocument();
+      expect(screen.queryByText("Discard changes?")).not.toBeInTheDocument();
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -806,9 +1061,13 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       const { onClose } = renderTaskPanel();
       fireEvent.click(screen.getByText(/add subtask/i));
       fireEvent.click(screen.getByLabelText("Close"));
-      fireEvent.click(screen.getByText("Cancel"));
+      fireEvent.click(
+        within(
+          screen.getByRole("dialog", { name: /discard changes/i }),
+        ).getByText("Cancel"),
+      );
 
-      expect(screen.queryByText("Discard Changes?")).not.toBeInTheDocument();
+      expect(screen.queryByText("Discard changes?")).not.toBeInTheDocument();
       expect(onClose).not.toHaveBeenCalled();
     });
 
@@ -825,15 +1084,12 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       const onClose = vi.fn();
       render(<LocationAddPanel isOpen={true} onClose={onClose} />, { wrapper });
 
-      fireEvent.change(
-        screen.getByPlaceholderText("e.g. Keys, Passport, Charger"),
-        {
-          target: { value: "Keys" },
-        },
-      );
+      fireEvent.change(screen.getByRole("textbox", { name: "Item name" }), {
+        target: { value: "Keys" },
+      });
       fireEvent.click(screen.getByLabelText("Close"));
 
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
+      expect(screen.getByText("Discard changes?")).toBeInTheDocument();
       expect(onClose).not.toHaveBeenCalled();
     });
 
@@ -841,13 +1097,12 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       const onClose = vi.fn();
       render(<LocationAddPanel isOpen={true} onClose={onClose} />, { wrapper });
 
-      fireEvent.change(
-        screen.getByPlaceholderText("e.g. In the top drawer of my desk"),
-        { target: { value: "Top drawer" } },
-      );
+      fireEvent.change(screen.getByRole("textbox", { name: "Location" }), {
+        target: { value: "Top drawer" },
+      });
       fireEvent.click(screen.getByLabelText("Close"));
 
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
+      expect(screen.getByText("Discard changes?")).toBeInTheDocument();
       expect(onClose).not.toHaveBeenCalled();
     });
 
@@ -857,7 +1112,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
       fireEvent.click(screen.getByLabelText("Close"));
 
-      expect(screen.queryByText("Discard Changes?")).not.toBeInTheDocument();
+      expect(screen.queryByText("Discard changes?")).not.toBeInTheDocument();
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -866,7 +1121,7 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       fireEvent.click(screen.getByRole("button", { name: /personal/i }));
       fireEvent.click(screen.getByLabelText("Close"));
 
-      expect(screen.getByText("Discard Changes?")).toBeInTheDocument();
+      expect(screen.getByText("Discard changes?")).toBeInTheDocument();
       expect(onClose).not.toHaveBeenCalled();
     });
   });
