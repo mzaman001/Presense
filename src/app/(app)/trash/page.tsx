@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
@@ -179,19 +180,11 @@ export default function TrashPage() {
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-500">
-      <header className="mb-8">
-        <h1 className="text-page-greeting flex items-center gap-3 text-[var(--text-1)]">
-          <UiIcon
-            className="h-6 w-6 text-[var(--color-text-3)]"
-            icon={Trash2}
-          />
-          Trash
-        </h1>
-        <p className="mt-1 text-[var(--color-text-3)]">
-          Items you&apos;ve deleted. Restore or remove them permanently.
-        </p>
-      </header>
+    <div className="animate-in fade-in slide-in-from-bottom-2 mx-auto max-w-4xl space-y-6 duration-300">
+      <PageHeader
+        title="Trash"
+        description="Things you've let go of. Restore them, or remove them for good."
+      />
 
       {isPending ? (
         <div

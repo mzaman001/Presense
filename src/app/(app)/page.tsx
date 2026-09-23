@@ -17,6 +17,7 @@ import {
   MapPin,
   CalendarDays,
   Save,
+  Zap,
 } from "lucide-react";
 import { m } from "framer-motion";
 import Link from "next/link";
@@ -90,7 +91,7 @@ function RitualStatusBadge({
   return (
     <button
       onClick={() => setActiveRitual("morning")}
-      className="text-ui group inline-flex items-center gap-1.5 font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-hot)]"
+      className="text-ui group inline-flex min-h-9 items-center gap-1.5 text-left font-medium text-[var(--accent-text)] transition-colors hover:text-[var(--accent-hot)]"
     >
       <UiIcon className="h-3.5 w-3.5" icon={Sparkles} /> You haven&apos;t
       planned your day yet
@@ -393,7 +394,7 @@ export default function HomeDashboard() {
         .insert({
           user_id: userId,
           title,
-          color_accent: "#d97757",
+          color_accent: "#e3875f",
           is_pinned: true,
           entries: [entry],
         })
@@ -476,8 +477,8 @@ export default function HomeDashboard() {
   return (
     <>
       <CaptureShortcut />
-      <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-500">
-        <header className="mb-8 flex items-end justify-between">
+      <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-300">
+        <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
             <h1 className="text-page-greeting font-heading text-[var(--text-1)]">
               {greeting}
@@ -496,7 +497,7 @@ export default function HomeDashboard() {
           <button
             onClick={() => setShowReview(!showReview)}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+              "-ml-3 flex min-h-9 shrink-0 items-center gap-1.5 self-start rounded-lg px-3 text-[length:var(--text-ui)] font-medium whitespace-nowrap transition-colors sm:ml-0 sm:self-auto",
               showReview
                 ? "text-[var(--color-text-1)]"
                 : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]",
@@ -509,8 +510,8 @@ export default function HomeDashboard() {
 
         <ContextualTip
           id="home"
-          title="Welcome to your External Brain"
-          description="This is your dashboard. The 'Focus Now' task is chosen based on the most urgent deadline. Use the '+' button below anytime to capture new things."
+          title="Welcome"
+          description="Focus now is always your most urgent task. Capture anything with + whenever it comes to mind."
         />
 
         {showReview ? (
@@ -597,7 +598,7 @@ export default function HomeDashboard() {
                         className="w-full rounded-sm bg-[var(--accent)]/25"
                         style={{ height: count > 0 ? h : 4 }}
                       />
-                      <span className="text-[10px] text-[var(--color-text-3)]">
+                      <span className="text-caption text-[var(--text-3)]">
                         {labels[i]}
                       </span>
                     </div>
@@ -682,18 +683,18 @@ export default function HomeDashboard() {
             {primaryTask ? (
               <GlassCard
                 variant="hero"
-                className="relative overflow-hidden p-8"
+                className="relative overflow-hidden p-5 sm:p-8"
               >
-                <div
-                  aria-hidden="true"
-                  className="absolute top-8 right-8 h-24 w-24 rounded-full border-2 border-[var(--accent-border)]"
-                />
-
-                <div className="relative z-10 flex h-full flex-col items-center justify-center p-10 text-center">
-                  <span className="text-caption mb-4 rounded-full border border-[var(--accent)]/20 bg-[var(--accent)]/10 px-3 py-1 font-bold tracking-widest text-[var(--accent)] uppercase">
-                    ⚡ FOCUS NOW
+                <div className="relative z-10 flex h-full flex-col items-center justify-center px-1 py-6 text-center sm:p-10">
+                  <span className="text-label mb-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1.5 text-[var(--accent-text)]">
+                    <Zap
+                      aria-hidden="true"
+                      className="size-3.5"
+                      strokeWidth={2}
+                    />
+                    Focus now
                   </span>
-                  <h2 className="mb-1 text-3xl font-medium text-[var(--text-1)]">
+                  <h2 className="font-heading mb-1 text-[length:var(--text-title-3xl)] leading-tight font-medium text-balance text-[var(--text-1)]">
                     {primaryTask.title}
                   </h2>
                   <p className="text-label mb-4 text-[var(--text-3)]">
@@ -717,7 +718,7 @@ export default function HomeDashboard() {
                       className="h-4 w-4 fill-[currentColor]"
                       icon={Play}
                     />
-                    <span>Start session &rarr;</span>
+                    <span>Start session</span>
                   </Button>
                   <button
                     onClick={async () => {
@@ -855,7 +856,7 @@ export default function HomeDashboard() {
                 </div>
               </GlassCard>
             ) : (
-              <GlassCard className="border-dashed p-8 text-center text-[var(--color-text-3)]">
+              <GlassCard className="font-heading p-10 text-center text-[length:var(--text-title-xl)] text-[var(--text-2)]">
                 No active tasks. Take a breath.
               </GlassCard>
             )}
@@ -903,10 +904,10 @@ export default function HomeDashboard() {
                       icon={tile.icon}
                     />
                     <div>
-                      <div className="text-lg font-light text-[var(--color-text-2)]">
+                      <div className="font-heading text-[length:var(--text-title-2xl)] leading-none text-[var(--text-1)] tabular-nums">
                         <AnimatedNumber value={tile.value} />
                       </div>
-                      <div className="mt-0.5 text-[11px] text-[var(--color-text-3)]">
+                      <div className="text-meta mt-1.5 text-[var(--text-3)]">
                         {tile.label}
                       </div>
                     </div>
@@ -915,6 +916,7 @@ export default function HomeDashboard() {
                 return (
                   <m.div
                     key={tile.label}
+                    className="h-full"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
@@ -924,7 +926,7 @@ export default function HomeDashboard() {
                     }}
                   >
                     {tile.href ? (
-                      <Link href={tile.href} className="block">
+                      <Link href={tile.href} className="block h-full">
                         {card}
                       </Link>
                     ) : (
@@ -938,36 +940,35 @@ export default function HomeDashboard() {
             {/* Weekly-effort summary — real secondary weight: bigger type
                 and an accent-tinted number, one visible step down from the
                 hero but clearly above the bento row's minor counters. */}
-            <div className="mt-6 flex flex-col items-center gap-4 md:flex-row">
-              {[
-                { label: "Pomodoros this week", value: pomodorosThisWeek },
-                {
-                  label: "Tasks completed this week",
-                  value: doneTasks.length,
-                },
-              ].map((stat, i) => (
-                <m.div
-                  key={stat.label}
-                  className="w-full flex-1"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    delay: (4 + i) * 0.05,
-                    duration: 0.2,
-                    ease: [0.25, 0.46, 0.45, 0.94],
-                  }}
-                >
-                  <GlassCard className="flex w-full items-center justify-between p-5">
-                    <span className="text-card-title tracking-wider text-[var(--color-text-2)] uppercase">
-                      {stat.label}
+            <m.div
+              className="mt-6"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: 0.2,
+                duration: 0.24,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <GlassCard className="grid grid-cols-2 divide-x divide-[var(--border-subtle)] p-0">
+                {[
+                  { label: "Focus sessions", value: pomodorosThisWeek },
+                  { label: "Tasks finished", value: doneTasks.length },
+                ].map((stat) => (
+                  <div key={stat.label} className="flex flex-col gap-1.5 p-5">
+                    <span className="text-label text-[var(--text-3)]">
+                      This week
                     </span>
-                    <span className="text-3xl font-semibold text-[var(--accent)]">
+                    <span className="font-heading text-[length:var(--text-title-3xl)] leading-none text-[var(--accent-text)] tabular-nums">
                       <AnimatedNumber value={stat.value} />
                     </span>
-                  </GlassCard>
-                </m.div>
-              ))}
-            </div>
+                    <span className="text-body text-[var(--text-2)]">
+                      {stat.label}
+                    </span>
+                  </div>
+                ))}
+              </GlassCard>
+            </m.div>
 
             {userSettings?.daily_briefing !== false && (
               <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -1007,7 +1008,9 @@ export default function HomeDashboard() {
                         }}
                       >
                         <button
+                          type="button"
                           onClick={(e) => completeTask(e, task.id)}
+                          aria-label={`Complete ${task.title}`}
                           className={cn(
                             "checkbox mt-0.5",
                             completing === task.id && "checked",
@@ -1015,7 +1018,7 @@ export default function HomeDashboard() {
                         >
                           {completing === task.id && (
                             <UiIcon
-                              className="h-3.5 w-3.5 text-white"
+                              className="h-3.5 w-3.5 text-[var(--text-on-accent)]"
                               icon={Check}
                             />
                           )}
@@ -1036,8 +1039,8 @@ export default function HomeDashboard() {
                     </m.div>
                   ))}
                   {tasks.length <= 1 && (
-                    <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-4 text-center text-sm text-[var(--color-text-3)]">
-                      All caught up!
+                    <div className="rounded-2xl border border-[var(--border-subtle)] p-5 text-center text-[length:var(--text-body)] text-[var(--text-3)]">
+                      Nothing else waiting. Enjoy the quiet.
                     </div>
                   )}
                 </div>
@@ -1050,8 +1053,8 @@ export default function HomeDashboard() {
                         <h3 className="text-section-title text-[var(--text-1)]">
                           Inbox
                         </h3>
-                        <div className="text-caption rounded-full bg-[var(--accent-dim)] px-2 py-0.5 font-bold tracking-wider text-[var(--accent)]">
-                          {inboxItems.length} NEW
+                        <div className="text-meta rounded-full bg-[var(--accent-dim)] px-2 py-0.5 font-medium text-[var(--accent-text)] tabular-nums">
+                          {inboxItems.length} new
                         </div>
                       </div>
                       <Link

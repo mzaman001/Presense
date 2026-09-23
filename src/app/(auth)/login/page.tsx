@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { BrandMark } from "@/components/ui/BrandMark";
+import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { sendMagicLink, startGoogleSignIn } from "./actions";
 import { TurnstileWidget } from "@/components/features/TurnstileWidget";
 import { Button } from "@/components/ui/button";
@@ -80,10 +81,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[var(--bg-base)] p-4">
-      {/* Centred card — flat, no gradient/blur behind it */}
+    <div className="relative flex min-h-dvh items-center justify-center bg-[var(--bg-base)] p-4">
+      <AmbientBackground />
+      {/* Centred card on the horizon light — flat, no blur */}
       <div
-        className="w-full max-w-[400px] rounded-[var(--radius-xl)] p-8"
+        className="relative w-full max-w-[400px] rounded-[var(--radius-xl)] p-6 sm:p-8"
         style={{
           background: "var(--surface-modal)",
           border: "0.5px solid var(--border-strong)",
@@ -137,7 +139,7 @@ export default function LoginPage() {
           <>
             {/* Heading */}
             <div className="mb-7">
-              <h1 className="font-heading mb-1 text-[22px] font-semibold tracking-tight text-[var(--text-1)]">
+              <h1 className="font-heading mb-1 text-[length:var(--text-title-2xl)] font-medium tracking-[-0.01em] text-[var(--text-1)]">
                 Sign in
               </h1>
               <p className="text-body" style={{ color: "var(--text-3)" }}>
@@ -147,6 +149,12 @@ export default function LoginPage() {
 
             {/* Email form */}
             <form onSubmit={handleMagicLink} className="mb-4 space-y-3">
+              <label
+                htmlFor="email"
+                className="text-ui mb-1.5 block font-medium text-[var(--text-2)]"
+              >
+                Email
+              </label>
               <input
                 type="email"
                 name="email"
@@ -159,16 +167,12 @@ export default function LoginPage() {
                 inputMode="email"
                 autoCapitalize="none"
                 suppressHydrationWarning
+                aria-describedby="email-hint"
                 className="input w-full"
               />
-              <div className="flex justify-end">
-                <span
-                  className="text-ui"
-                  style={{ color: "var(--accent-text)" }}
-                >
-                  Magic link &#x2014; no password needed
-                </span>
-              </div>
+              <p id="email-hint" className="text-meta text-[var(--text-3)]">
+                We&apos;ll email you a sign-in link. No password needed.
+              </p>
               {captchaEnabled && (
                 <TurnstileWidget
                   sitekey={TURNSTILE_SITEKEY}
@@ -187,17 +191,17 @@ export default function LoginPage() {
               >
                 {loading === "email" ? (
                   <UiIcon
-                    size={14}
+                    size={16}
                     strokeWidth={1.5}
                     className="animate-spin"
                     icon={Loader2}
                   />
                 ) : (
-                  <UiIcon size={14} strokeWidth={1.5} icon={Sparkles} />
+                  <UiIcon size={16} strokeWidth={1.5} icon={Sparkles} />
                 )}
                 Send sign-in link
                 <UiIcon
-                  size={14}
+                  size={16}
                   strokeWidth={1.5}
                   className="ml-auto"
                   icon={ArrowRight}
@@ -232,13 +236,13 @@ export default function LoginPage() {
             >
               {loading === "google" ? (
                 <UiIcon
-                  size={14}
+                  size={16}
                   strokeWidth={1.5}
                   className="animate-spin"
                   icon={Loader2}
                 />
               ) : (
-                <UiIcon size={14} strokeWidth={1.5} icon={Globe2} />
+                <UiIcon size={16} strokeWidth={1.5} icon={Globe2} />
               )}
               Continue with Google
             </Button>
@@ -246,6 +250,7 @@ export default function LoginPage() {
             {/* Error */}
             {error && (
               <p
+                role="alert"
                 className="text-body mt-4 rounded-[var(--radius-md)] p-3 text-center"
                 style={{
                   background: "var(--status-danger-dim)",

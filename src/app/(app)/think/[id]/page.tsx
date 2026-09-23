@@ -297,13 +297,19 @@ export default function ThreadDetailPage({
             <button
               type="button"
               onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
-              className="h-10 w-1.5 shrink-0 cursor-pointer rounded-full focus:outline-none"
-              style={{ backgroundColor: thread.color_accent }}
-              title="Change thread accent color"
-            />
+              aria-label="Change thread colour"
+              aria-expanded={isColorPickerOpen}
+              className="-mx-4 -my-1 flex h-12 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-[var(--surface-hover)]"
+            >
+              <span
+                aria-hidden="true"
+                className="block h-10 w-1.5 rounded-full"
+                style={{ backgroundColor: thread.color_accent }}
+              />
+            </button>
             {isColorPickerOpen && (
               <div className="absolute top-full left-0 z-50 pt-2">
-                <div className="flex gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] p-2 shadow-xl">
+                <div className="flex gap-1 rounded-xl border border-[var(--border-default)] bg-[var(--surface-dropdown)] p-1.5 shadow-[var(--shadow-dropdown)]">
                   {[
                     "#FBBF24",
                     "#F472B6",
@@ -316,9 +322,17 @@ export default function ThreadDetailPage({
                       key={c}
                       type="button"
                       onClick={() => handleColorChange(c)}
-                      className="h-4 w-4 rounded-full border border-[var(--color-border)] transition-transform hover:scale-110"
-                      style={{ backgroundColor: c }}
-                    />
+                      aria-label={`Use colour ${c}`}
+                      aria-pressed={thread.color_accent === c}
+                      className="flex size-9 items-center justify-center rounded-lg hover:bg-[var(--surface-hover)]"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="block size-5 rounded-full ring-offset-2 ring-offset-[var(--surface-dropdown)] data-[on=true]:ring-2 data-[on=true]:ring-[var(--text-2)]"
+                        data-on={thread.color_accent === c}
+                        style={{ backgroundColor: c }}
+                      />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -347,7 +361,7 @@ export default function ThreadDetailPage({
                   e.currentTarget.blur();
                 }
               }}
-              className="-ml-2 w-full rounded-lg border-none bg-transparent px-2 py-1 text-[26px] leading-snug font-semibold tracking-tight text-[var(--color-text-1)] transition-colors outline-none placeholder:text-[var(--color-text-3)] hover:bg-[var(--surface-hover)] focus:bg-[var(--surface-hover)]"
+              className="font-heading -ml-2 w-full rounded-lg border-none bg-transparent px-2 py-1 text-[length:var(--text-title-3xl)] leading-snug font-medium tracking-[-0.01em] text-[var(--color-text-1)] transition-colors outline-none placeholder:text-[var(--color-text-3)] hover:bg-[var(--surface-hover)] focus:bg-[var(--surface-hover)]"
               placeholder="Thread Title"
             />
             <StaleResurfaceBadge
@@ -415,7 +429,7 @@ export default function ThreadDetailPage({
               exit={{ opacity: 0, y: -8, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              <GlassCard className="group relative border-l-2 border-l-[var(--color-border)] p-5 transition-all hover:border-l-[var(--accent)]">
+              <GlassCard className="group relative border-l-2 border-l-[var(--color-border)] p-5 transition hover:border-l-[var(--accent)]">
                 <p className="text-title-sm pr-12 leading-relaxed whitespace-pre-wrap text-[var(--color-text-1)]">
                   {entry.text}
                 </p>
@@ -430,8 +444,8 @@ export default function ThreadDetailPage({
                 </p>
                 <button
                   onClick={() => setDeleteEntryIndex(i)}
-                  className="row-actions absolute top-4 right-4 rounded p-1.5 text-[var(--color-text-3)] hover:bg-[var(--status-danger)]/10 hover:text-[var(--status-danger)]"
-                  title="Delete entry"
+                  aria-label="Delete entry"
+                  className="row-actions absolute top-3 right-3 flex size-9 items-center justify-center rounded-lg text-[var(--text-3)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]"
                 >
                   <UiIcon className="h-4 w-4" icon={Trash2} />
                 </button>
@@ -442,7 +456,7 @@ export default function ThreadDetailPage({
       </div>
 
       {/* Fixed bottom input for thoughts */}
-      <div className="fixed right-0 bottom-0 left-0 z-40 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent p-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] md:left-[80px]">
+      <div className="fixed right-0 bottom-[calc(var(--mobile-bottom-nav-h)+env(safe-area-inset-bottom,0px))] left-0 z-30 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/90 to-transparent p-4 md:bottom-0 md:left-[var(--sidebar-w-collapsed)] md:pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
         <div className="mx-auto max-w-2xl">
           <form onSubmit={handleAddEntry} className="relative">
             <TextareaAutosize
@@ -462,7 +476,8 @@ export default function ThreadDetailPage({
               <button
                 type="submit"
                 disabled={!newEntry.trim() || saving}
-                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-dim)] text-[var(--accent)] transition-colors hover:bg-[var(--accent-dim-hover)] disabled:opacity-50"
+                aria-label="Add to thread"
+                className="flex size-10 items-center justify-center rounded-xl bg-[var(--accent)] text-[var(--text-on-accent)] transition-colors hover:bg-[var(--accent-hot)] disabled:bg-[var(--surface-active)] disabled:text-[var(--text-3)]"
               >
                 {saving ? (
                   <UiIcon className="h-4 w-4 animate-spin" icon={Loader2} />

@@ -26,6 +26,7 @@ import {
   Wind,
   CheckCircle2,
   Trash2,
+  Archive,
 } from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -42,22 +43,29 @@ import { PageSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import dynamic from "next/dynamic";
+import { withPreload } from "@/lib/preloadable";
 
 // Heavy, closed-by-default surfaces loaded on demand (same pattern as
 // DynamicModals) so /do's initial bundle and hydration exclude them.
-export const TaskAddPanel = dynamic(
-  () =>
-    import("@/components/features/TaskAddPanel").then((m) => ({
-      default: m.TaskAddPanel,
-    })),
-  { ssr: false, loading: () => null },
+export const TaskAddPanel = withPreload(
+  dynamic(
+    () =>
+      import("@/components/features/TaskAddPanel").then((m) => ({
+        default: m.TaskAddPanel,
+      })),
+    { ssr: false, loading: () => null },
+  ),
+  () => import("@/components/features/TaskAddPanel"),
 );
-export const CalendarView = dynamic(
-  () =>
-    import("@/components/features/calendar/CalendarView").then((m) => ({
-      default: m.CalendarView,
-    })),
-  { ssr: false, loading: () => null },
+export const CalendarView = withPreload(
+  dynamic(
+    () =>
+      import("@/components/features/calendar/CalendarView").then((m) => ({
+        default: m.CalendarView,
+      })),
+    { ssr: false, loading: () => null },
+  ),
+  () => import("@/components/features/calendar/CalendarView"),
 );
 
 /**
@@ -91,8 +99,12 @@ const Column = React.memo(
   }) => (
     <div className="min-w-0 flex-1">
       <div className="mb-4 flex items-center gap-2">
-        <Icon className="h-4 w-4" style={{ color: accent }} />
-        <h2 className="text-sm font-semibold text-[var(--color-text-1)]">
+        <Icon
+          aria-hidden="true"
+          className="h-4 w-4"
+          style={{ color: accent }}
+        />
+        <h2 className="text-[length:var(--text-body)] font-medium text-[var(--text-1)]">
           {title}
         </h2>
         {colTasks.length > 0 && (
@@ -110,7 +122,7 @@ const Column = React.memo(
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
           {colTasks.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--border-subtle)] py-8 text-center text-sm text-[var(--color-text-3)]">
+            <div className="rounded-xl border border-[var(--border-subtle)] py-8 text-center text-[length:var(--text-body)] text-[var(--text-3)]">
               Nothing here
             </div>
           ) : (
@@ -209,13 +221,24 @@ export default function DoPage() {
       "board",
       "today",
       "calendar",
-    ]).withDefault(
-      (typeof window !== "undefined" &&
-        (localStorage.getItem("presense_do_view") as
-          "board" | "today" | "calendar")) ||
-        "board",
-    ),
+    ]).withDefault("board"),
   );
+
+  // Restore the last-used view after hydration. Reading localStorage during
+  // render made the server ("board") and client (stored view) disagree,
+  // which React reported as a hydration mismatch. An explicit ?view= in the
+  // URL still wins.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("view")) return;
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem("presense_do_view");
+    } catch {
+      return;
+    }
+    if (stored === "today" || stored === "calendar") void setViewMode(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleViewMode = (mode: "board" | "today" | "calendar") => {
     setViewMode(mode);
@@ -400,37 +423,37 @@ export default function DoPage() {
       <PageHeader
         title="Do"
         actions={
-          <Button
-            variant="secondary"
-            // PERF-20: start fetching the add-panel chunk on hover/focus so
-            // the panel opens without paying the chunk transfer/eval cost
-            onMouseEnter={() =>
-              (
-                TaskAddPanel as typeof TaskAddPanel & { preload: () => void }
-              ).preload()
-            }
-            onFocus={() =>
-              (
-                TaskAddPanel as typeof TaskAddPanel & { preload: () => void }
-              ).preload()
-            }
-            // PERF-20 (mobile): onMouseEnter/onFocus never fire from a touch
-            // tap, so mobile taps missed the pre-warm. onTouchStart fires
-            // before onClick on touch devices, giving the same head start.
-            onTouchStart={() =>
-              (
-                TaskAddPanel as typeof TaskAddPanel & { preload: () => void }
-              ).preload()
-            }
-            onClick={() => {
-              setTaskToEdit(null);
-              setInitialDeadline(null);
-              setIsPanelOpen(true);
-            }}
-            className="!border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)]"
-          >
-            <UiIcon className="h-4 w-4" icon={Plus} /> Add task
-          </Button>
+          <>
+            <button
+              type="button"
+              onClick={() => setShowArchive(!showArchive)}
+              aria-pressed={showArchive}
+              aria-label="Archive"
+              className="chip max-sm:!px-2.5"
+            >
+              <UiIcon className="h-4 w-4" icon={Archive} />
+              <span className="hidden sm:inline">Archive</span>
+            </button>
+            <Button
+              variant="primary"
+              size="sm"
+              // PERF-20: start fetching the add-panel chunk on hover/focus so
+              // the panel opens without paying the chunk transfer/eval cost
+              onMouseEnter={() => TaskAddPanel.preload()}
+              onFocus={() => TaskAddPanel.preload()}
+              // PERF-20 (mobile): onMouseEnter/onFocus never fire from a touch
+              // tap, so mobile taps missed the pre-warm. onTouchStart fires
+              // before onClick on touch devices, giving the same head start.
+              onTouchStart={() => TaskAddPanel.preload()}
+              onClick={() => {
+                setTaskToEdit(null);
+                setInitialDeadline(null);
+                setIsPanelOpen(true);
+              }}
+            >
+              <UiIcon className="h-4 w-4" icon={Plus} /> Add task
+            </Button>
+          </>
         }
       >
         <SegmentedControl
@@ -442,64 +465,50 @@ export default function DoPage() {
               value: "calendar",
               // PERF-20: fetch the calendar-view chunk on hover/focus so
               // switching to the calendar is already warm
-              onMouseEnter: () =>
-                (
-                  CalendarView as typeof CalendarView & { preload: () => void }
-                ).preload(),
-              onFocus: () =>
-                (
-                  CalendarView as typeof CalendarView & { preload: () => void }
-                ).preload(),
+              onMouseEnter: () => CalendarView.preload(),
+              onFocus: () => CalendarView.preload(),
             },
           ]}
           value={viewMode}
           onChange={(val) => toggleViewMode(val)}
+          label="Task view"
+          className="segmented-fill"
         />
-        <button
-          onClick={() => setShowArchive(!showArchive)}
-          className={cn(
-            "rounded-full border px-3 py-1 text-xs transition-colors",
-            showArchive
-              ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-              : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
-          )}
+        {/* Category filters: scroll sideways on phones, sit to the right
+            of the view switch on desktop. */}
+        <div
+          role="group"
+          aria-label="Filter by category"
+          className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:justify-end md:overflow-visible md:px-0"
         >
-          {showArchive ? "Hide Archive" : "Show Archive"}
-        </button>
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCategoryFilter(cat)}
+              aria-pressed={categoryFilter === cat}
+              className="chip shrink-0 capitalize"
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </PageHeader>
 
       {!showArchive && viewMode !== "calendar" && (
         <ContextualTip
           id="do_space"
           title="Tasks that move"
-          description="This is the Do space. Tasks are organized by deadline. Keep tasks small and actionable. Focus on starting them, not finishing them."
+          description="Deadlines sort your tasks for you. Keep each one small enough to start today."
         />
       )}
-
-      {/* Category filter pills */}
-      <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setCategoryFilter(cat)}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs capitalize transition-all",
-              categoryFilter === cat
-                ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] font-semibold text-[var(--color-background)]"
-                : "border-[var(--color-border)] text-[var(--color-text-3)] hover:border-[var(--color-border)]",
-            )}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
 
       {loading ? (
         <PageSkeleton count={5} type="task" />
       ) : showArchive ? (
         <div className="space-y-3">
-          <h2 className="mb-4 text-sm font-semibold text-[var(--color-text-1)]">
-            Archived Tasks
+          <h2 className="text-label mb-4 text-[var(--text-3)]">
+            Archived tasks
           </h2>
           {archivedTasks.length === 0 ? (
             <EmptyState
@@ -517,7 +526,7 @@ export default function DoPage() {
               .map((task) => (
                 <GlassCard
                   key={task.id}
-                  className="flex items-center justify-between p-4 opacity-70 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:opacity-100 hover:shadow-[var(--shadow-card-hover)]"
+                  className="flex items-center justify-between p-4 opacity-70 transition duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:opacity-100 hover:shadow-[var(--shadow-card-hover)]"
                 >
                   <div>
                     <div className="mb-1 flex items-center gap-2">
@@ -542,12 +551,13 @@ export default function DoPage() {
                       {task.title}
                     </p>
                   </div>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() => restoreTask(task.id)}
-                    className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-1)] transition-colors hover:bg-[var(--color-surface)]"
                   >
                     Restore
-                  </button>
+                  </Button>
                 </GlassCard>
               ))
           )}
@@ -564,8 +574,8 @@ export default function DoPage() {
           className={cn(
             "gap-6",
             isBoardView
-              ? "mx-auto grid max-w-3xl grid-cols-1 items-start md:grid-cols-2"
-              : "mx-auto flex max-w-2xl flex-col space-y-8",
+              ? "grid max-w-3xl grid-cols-1 items-start md:grid-cols-2"
+              : "flex w-full max-w-3xl flex-col space-y-8",
           )}
         >
           {overdue.length > 0 && (
@@ -633,7 +643,7 @@ export default function DoPage() {
             "gap-6",
             isBoardView
               ? "grid grid-cols-1 items-start md:grid-cols-3"
-              : "mx-auto flex max-w-2xl flex-col space-y-8",
+              : "flex w-full max-w-3xl flex-col space-y-8",
           )}
         >
           {overdue.length > 0 || isBoardView ? (

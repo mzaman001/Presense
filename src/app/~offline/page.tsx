@@ -5,7 +5,7 @@ import React from "react";
 export default function OfflinePage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center p-8 text-center">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)]">
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--surface-2)]">
         <svg
           width="32"
           height="32"

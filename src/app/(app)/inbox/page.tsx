@@ -5,7 +5,6 @@ import { useUserId } from "@/components/providers/SessionProvider";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createClient, safeMutate } from "@/lib/supabase";
 import {
-  Inbox,
   Loader2,
   FolderInput,
   CheckCircle2,
@@ -14,12 +13,13 @@ import {
   X,
   Trash2,
 } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
-import { GlassCard } from "@/components/ui/GlassCard";
 // INFRA-19: all status writes on entity tables go through item-lifecycle.ts
 import {
   moveItemToTrashPatch,
@@ -62,7 +62,7 @@ const InboxItemCard = ({
       animate(dragX, -300, { duration: 0.2 });
       dismissInboxItem(item.id);
     } else {
-      animate(dragX, 0, { type: "spring", stiffness: 400, damping: 30 });
+      animate(dragX, 0, { type: "spring", stiffness: 400, damping: 40 });
     }
   };
 
@@ -102,7 +102,7 @@ const InboxItemCard = ({
         style={{ x: dragX }}
         className="relative"
       >
-        <div className="glass-card group flex flex-col items-start justify-between gap-4 rounded-2xl p-4 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center">
+        <div className="glass-card group flex flex-col items-start justify-between gap-4 rounded-2xl p-4 transition duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center">
           <p className="text-card-title flex-1 text-lg text-[var(--text-1)]">
             {item.title}
           </p>
@@ -128,7 +128,7 @@ const InboxItemCard = ({
               dropdownRect &&
               createPortal(
                 <div
-                  className="dropdown-panel animate-in fade-in zoom-in-95 z-[9999] w-48 p-1 duration-100"
+                  className="dropdown-panel animate-in fade-in zoom-in-[0.97] z-[220] w-52 p-1 duration-150"
                   style={{
                     position: "fixed",
                     top: dropdownRect.bottom + 4,
@@ -308,7 +308,7 @@ export default function InboxPage() {
             .insert({
               user_id: item.user_id,
               title: item.title,
-              color_accent: "#d97757",
+              color_accent: "#e3875f",
             })
             .select("id")
             .single();
@@ -470,24 +470,12 @@ export default function InboxPage() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <p className="text-caption mb-1 font-semibold tracking-widest text-[var(--text-muted)] uppercase">
-            Space
-          </p>
-          <div className="flex items-center gap-4">
-            <h1 className="flex items-center gap-2 text-[22px] font-medium tracking-tight text-[var(--color-text-1)]">
-              <UiIcon size={22} className="text-[var(--accent)]" icon={Inbox} />
-              Inbox
-            </h1>
-          </div>
-        </div>
-      </div>
+      <PageHeader title="Inbox" />
 
       <ContextualTip
         id="inbox_space"
         title="Unload your brain"
-        description="Dump everything here. Process them later by routing them to the Do, Think, or Remember space."
+        description="Put anything here without deciding what it is. Later, send each item to Do, Think or Remember."
       />
 
       {loading ? (
@@ -500,21 +488,11 @@ export default function InboxPage() {
       ) : (
         <div className="mx-auto max-w-2xl space-y-4 pt-4">
           {inboxItems.length === 0 ? (
-            <GlassCard className="flex flex-col items-center justify-center border-dashed border-[var(--border-subtle)] p-12 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-1)]">
-                <UiIcon
-                  className="h-6 w-6 text-[var(--color-text-3)]"
-                  icon={CheckCircle2}
-                />
-              </div>
-              <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
-                Inbox Zero
-              </h3>
-              <p className="max-w-sm text-sm text-[var(--color-text-3)]">
-                You&apos;ve processed everything. Your mind is clear for the day
-                ahead.
-              </p>
-            </GlassCard>
+            <EmptyState
+              icon={CheckCircle2}
+              title="Inbox zero"
+              description="Everything has a place. Your mind is clear for the day ahead."
+            />
           ) : (
             inboxItems.map((item) => (
               <InboxItemCard

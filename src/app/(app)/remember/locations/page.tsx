@@ -43,6 +43,7 @@ import { LocationAddPanel } from "@/components/features/LocationAddPanel";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { EmptyState } from "@/components/ui/EmptyState";
+import Link from "next/link";
 
 interface LocationItem {
   id: string;
@@ -223,24 +224,24 @@ export default function LocationsPage() {
           </GlassCard>
         )}
 
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="inline text-sm font-semibold text-[var(--color-text-1)]">
-              All Locations
+        {/* With nothing logged, the empty state below carries the one call
+            to action; a "0 items" header plus a second button was noise. */}
+        {(items.length > 0 || search.trim()) && (
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-label text-[var(--text-3)]">
+              {items.length} {items.length === 1 ? "place" : "places"}
             </h2>
-            <span className="ml-2 text-xs font-normal text-[var(--color-text-3)]">
-              {items.length} item{items.length !== 1 ? "s" : ""} logged
-            </span>
+            {!showAdd && (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => setShowAdd(true)}
+              >
+                <UiIcon className="h-4 w-4" icon={Plus} /> Log item
+              </Button>
+            )}
           </div>
-          {!showAdd && (
-            <button
-              onClick={() => setShowAdd(true)}
-              className="text-card-title flex items-center gap-2 rounded-xl border border-[var(--accent-border)] bg-[var(--accent-dim)] px-4 py-2 text-[var(--accent)] transition-colors hover:bg-[var(--accent-dim-hover)]"
-            >
-              <UiIcon className="h-4 w-4" icon={Plus} /> Log item
-            </button>
-          )}
-        </div>
+        )}
 
         {loading ? (
           <div className="py-6">
@@ -249,20 +250,17 @@ export default function LocationsPage() {
         ) : items.length === 0 && !search.trim() ? (
           <EmptyState
             icon={MapPin}
-            title="No locations here"
-            description="Log an item to remember where you put it."
+            title="Nothing to remember yet"
+            description="Note where you put something, and let Presense hold onto it for you."
             pointer={
               // BUG-08 / CONF-10 (Option C): thin pointer to the global trash
-              <a
+              <Link
                 href="/trash?filter=location"
-                className="underline underline-offset-2 hover:text-[var(--color-accent)]"
+                className="inline-flex min-h-9 items-center gap-1.5 text-[var(--text-3)] underline underline-offset-4 hover:text-[var(--accent-text)]"
               >
-                <UiIcon
-                  className="mr-1 inline h-3 w-3 align-[-2px]"
-                  icon={Trash2}
-                />
-                Check the trash for deleted locations
-              </a>
+                <UiIcon className="h-3.5 w-3.5" icon={Trash2} />
+                Looking for something you deleted?
+              </Link>
             }
             action={
               <Button
@@ -270,7 +268,7 @@ export default function LocationsPage() {
                 onClick={() => setShowAdd(true)}
                 className="mx-auto gap-2"
               >
-                <UiIcon size={16} icon={Plus} /> Log Item
+                <UiIcon size={16} icon={Plus} /> Log item
               </Button>
             }
           />
@@ -290,7 +288,7 @@ export default function LocationsPage() {
                   <GlassCard
                     onClick={() => setEditingItem(item)}
                     className={cn(
-                      "group relative cursor-pointer px-4 py-3 transition-all duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:shadow-[var(--shadow-card-hover)]",
+                      "group relative cursor-pointer px-4 py-3 transition duration-200 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:-translate-y-0.5 hover:border-[var(--accent-border)] hover:shadow-[var(--shadow-card-hover)]",
                       isStale && "border-[var(--status-stale-border)]",
                       isVeryStale && "opacity-50",
                     )}

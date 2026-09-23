@@ -6,6 +6,7 @@ import { m } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Plus, Loader2, Sparkles, Pin, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -41,6 +42,11 @@ export default function ThinkPage() {
   const [loading, setLoading] = useState(true);
   const [showArchive, setShowArchive] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
+  const view: "active" | "archive" | "trash" = showTrash
+    ? "trash"
+    : showArchive
+      ? "archive"
+      : "active";
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredThreads = threads.filter(
@@ -134,7 +140,7 @@ export default function ThinkPage() {
       .insert({
         user_id: userId,
         title: "Untitled Thread",
-        color_accent: "#d97757",
+        color_accent: "#e3875f",
         is_pinned: false,
       })
       .select()
@@ -214,120 +220,62 @@ export default function ThinkPage() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <p className="text-caption mb-1 font-semibold tracking-widest text-[var(--text-muted)] uppercase">
-            Space
-          </p>
-          <div className="flex items-center gap-4">
-            <h1 className="text-[22px] font-medium tracking-tight text-[var(--color-text-1)]">
-              Think
-            </h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setShowArchive(false);
-                  setShowTrash(false);
-                  setThreads([]);
-                }}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs transition-colors",
-                  !showArchive && !showTrash
-                    ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
-                )}
-              >
-                Active
-              </button>
-              <button
-                onClick={() => {
-                  setShowArchive(true);
-                  setShowTrash(false);
-                  setThreads([]);
-                }}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs transition-colors",
-                  showArchive
-                    ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
-                )}
-              >
-                Archive
-              </button>
-              <button
-                onClick={() => {
-                  setShowTrash(true);
-                  setShowArchive(false);
-                  setThreads([]);
-                }}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs transition-colors",
-                  showTrash
-                    ? "border-[var(--color-text-1)] bg-[var(--color-text-1)] text-[var(--color-background)]"
-                    : "border-[var(--color-border)] text-[var(--color-text-3)] hover:bg-[var(--color-surface)]",
-                )}
-              >
-                Trash
-              </button>
-            </div>
-          </div>
+      <PageHeader
+        title="Think"
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDailyNote}
+              className="hidden sm:inline-flex"
+            >
+              <UiIcon className="h-4 w-4" icon={Sparkles} /> Daily note
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleNewThread}>
+              <UiIcon className="h-4 w-4" icon={Plus} /> New thread
+            </Button>
+          </>
+        }
+      >
+        <SegmentedControl
+          label="Thread view"
+          className="segmented-fill"
+          value={view}
+          onChange={(next) => {
+            setShowArchive(next === "archive");
+            setShowTrash(next === "trash");
+            setThreads([]);
+          }}
+          options={[
+            { label: "Active", value: "active" },
+            { label: "Archive", value: "archive" },
+            { label: "Trash", value: "trash" },
+          ]}
+        />
+        <div className="relative w-full md:w-64">
+          <UiIcon
+            size={16}
+            strokeWidth={1.75}
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
+            icon={Search}
+          />
+          <input
+            type="search"
+            aria-label="Search threads"
+            placeholder="Search threads"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-search !w-full"
+          />
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <UiIcon
-              size={13}
-              strokeWidth={1.5}
-              className="absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
-              icon={Search}
-            />
-            <input
-              type="text"
-              placeholder="Search threads..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-search hidden !w-48 md:block"
-            />
-          </div>
-          <Button
-            variant="secondary"
-            onClick={handleDailyNote}
-            className="hidden !border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)] sm:flex"
-          >
-            <UiIcon className="h-4 w-4" icon={Sparkles} /> Daily Note
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleNewThread}
-            className="!border-[var(--accent-border)] !bg-[var(--accent-dim)] !text-[var(--accent)] hover:!bg-[var(--accent-dim-hover)]"
-          >
-            <UiIcon className="h-4 w-4" icon={Plus} /> New thread
-          </Button>
-        </div>
-      </div>
+      </PageHeader>
 
       <ContextualTip
         id="think_space"
         title="Thoughts that stay"
-        description="This is the Think space. Create threads for ideas, journals, or long-term thoughts. We will resurface old threads to prompt new insights."
+        description="Keep ideas and journals in threads. Old ones resurface when they're worth another look."
       />
-
-      <div className="md:hidden">
-        <div className="relative">
-          <UiIcon
-            size={13}
-            strokeWidth={1.5}
-            className="absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
-            icon={Search}
-          />
-          <input
-            type="text"
-            placeholder="Search threads..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="input-search w-full md:hidden"
-          />
-        </div>
-      </div>
 
       {loading ? (
         <div className="py-6">
@@ -342,8 +290,8 @@ export default function ThinkPage() {
                   className="h-4 w-4 text-[var(--accent)]"
                   icon={Sparkles}
                 />
-                <h2 className="text-sm font-semibold text-[var(--color-text-1)]">
-                  Stale Threads
+                <h2 className="text-label text-[var(--text-3)]">
+                  Worth revisiting
                 </h2>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -354,7 +302,11 @@ export default function ThinkPage() {
                       key={thread.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
+                      transition={{
+                        delay: Math.min(i, 8) * 0.03,
+                        duration: 0.24,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
                       className="thread-row-wrapper"
                     >
                       <Link
@@ -372,7 +324,7 @@ export default function ThinkPage() {
                               deleteThread(thread);
                             }}
                             aria-label={`Move ${thread.title} to trash`}
-                            className="absolute top-3 right-3 hidden h-7 w-7 items-center justify-center rounded-lg text-[var(--status-danger)] opacity-0 transition-opacity hover:bg-[var(--status-danger)]/15 focus-visible:opacity-100 md:flex"
+                            className="row-actions absolute top-3 right-3 hidden size-9 items-center justify-center rounded-lg text-[var(--text-3)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)] md:flex"
                           >
                             <UiIcon className="h-4 w-4" icon={Trash2} />
                           </button>
@@ -397,40 +349,32 @@ export default function ThinkPage() {
           )}
 
           {filteredThreads.length === 0 ? (
-            <GlassCard className="mt-6 flex flex-col items-center justify-center border-dashed border-[var(--border-subtle)] p-12 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-1)]">
-                <UiIcon
-                  className="h-6 w-6 text-[var(--color-text-3)]"
-                  icon={Sparkles}
-                />
-              </div>
-              <h3 className="mb-2 font-medium text-[var(--color-text-1)]">
-                No threads yet
-              </h3>
-              <p className="mb-2 max-w-sm text-sm text-[var(--color-text-3)]">
-                Capture a thought — &ldquo;What if I...&rdquo; or &ldquo;I
-                wonder...&rdquo; to start expanding your ideas.
-              </p>
-              {/* BUG-08 / CONF-10 (Option C): thin pointer to the global trash */}
-              <Link
-                href="/trash?filter=thread"
-                className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-3)] underline underline-offset-2 hover:text-[var(--color-accent)]"
-              >
-                <UiIcon className="h-3 w-3" icon={Trash2} />
-                Check the trash for deleted threads
-              </Link>
-              <Button
-                variant="primary"
-                onClick={handleNewThread}
-                className="gap-2"
-              >
-                <UiIcon size={16} icon={Plus} /> New Thought
-              </Button>
-            </GlassCard>
+            <EmptyState
+              className="mt-6"
+              icon={Sparkles}
+              title={
+                showTrash
+                  ? "Trash is empty"
+                  : showArchive
+                    ? "Nothing archived"
+                    : "No threads yet"
+              }
+              description={
+                showTrash || showArchive
+                  ? "Threads you set aside will rest here."
+                  : "Start with a question you keep returning to: “What if I…” or “I wonder…”."
+              }
+              // No second "New thread" button or trash link here: the
+              // header directly above already offers both.
+            />
           ) : (
             <div>
-              <h2 className="mt-6 mb-3 text-sm font-semibold text-[var(--color-text-1)]">
-                All Threads
+              <h2 className="text-label mt-6 mb-3 text-[var(--text-3)]">
+                {showTrash
+                  ? "In trash"
+                  : showArchive
+                    ? "Archived"
+                    : "All threads"}
               </h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {filteredThreads.map((thread, i) => (
@@ -438,7 +382,11 @@ export default function ThinkPage() {
                     key={thread.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
+                    transition={{
+                      delay: Math.min(i, 8) * 0.03,
+                      duration: 0.24,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
                     className="thread-row-wrapper"
                   >
                     <Link
@@ -458,22 +406,28 @@ export default function ThinkPage() {
                                 deleteThread(thread);
                               }}
                               aria-label={`Move ${thread.title} to trash`}
-                              className="absolute top-3 right-11 hidden h-7 w-7 items-center justify-center rounded-lg text-[var(--status-danger)] opacity-0 transition-opacity hover:bg-[var(--status-danger)]/15 focus-visible:opacity-100 md:flex"
+                              className="row-actions absolute top-3 right-12 hidden size-9 items-center justify-center rounded-lg text-[var(--text-3)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)] md:flex"
                             >
                               <UiIcon className="h-4 w-4" icon={Trash2} />
                             </button>
                             <button
                               type="button"
                               onClick={(e) => togglePin(e, thread)}
-                              className={cn(
-                                "absolute top-3 right-3 rounded-lg p-1.5 transition-all",
+                              aria-label={
                                 thread.is_pinned
-                                  ? "text-[var(--accent)] opacity-100 hover:bg-[var(--surface-hover)]"
-                                  : "row-actions text-[var(--text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--text-2)]",
+                                  ? `Unpin ${thread.title}`
+                                  : `Pin ${thread.title}`
+                              }
+                              aria-pressed={Boolean(thread.is_pinned)}
+                              className={cn(
+                                "absolute top-3 right-3 flex size-9 items-center justify-center rounded-lg transition-colors",
+                                thread.is_pinned
+                                  ? "text-[var(--accent-text)] hover:bg-[var(--surface-hover)]"
+                                  : "row-actions text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
                               )}
                             >
                               <UiIcon
-                                size={14}
+                                size={16}
                                 strokeWidth={1.5}
                                 className={cn(
                                   thread.is_pinned && "fill-current",
@@ -512,8 +466,11 @@ export default function ThinkPage() {
                             )}
                             <div className="mt-3 flex items-center justify-between">
                               <span className="text-meta text-[var(--color-text-3)]">
-                                {thread.entries?.length ?? 0} entries · Updated{" "}
-                                {timeAgo(thread.last_updated)}
+                                {thread.entries?.length ?? 0}{" "}
+                                {(thread.entries?.length ?? 0) === 1
+                                  ? "entry"
+                                  : "entries"}{" "}
+                                · Updated {timeAgo(thread.last_updated)}
                               </span>
                               {thread.stale_prompt && (
                                 <span className="text-caption flex items-center gap-1 text-[var(--accent)]">
