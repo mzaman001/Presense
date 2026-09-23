@@ -10,6 +10,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { taskSchema } from "@/lib/schemas";
+import { parseTaskText } from "@/lib/nlp/parse-task-text";
 import { z } from "zod";
 import {
   X,
@@ -30,20 +31,45 @@ import { createClient, safeMutate } from "@/lib/supabase";
 import type { Database } from "@/types/database.types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
-let chronoCache: typeof import("chrono-node") | null = null;
-async function getChrono(): Promise<typeof import("chrono-node")> {
-  if (!chronoCache) {
-    const chrono = await import("chrono-node");
-    const { registerCustomParsers } = await import("@/lib/chrono-custom");
-    registerCustomParsers(chrono);
-    chronoCache = chrono;
+/**
+ * Panel repeat controls for an RRULE. INTERVAL is checked first: it used to
+ * come after the WEEKLY check, so "every other week" reopened as plain
+ * Weekly and lost its interval on save.
+ */
+function rruleToRepeatState(rrule: string | null) {
+  const state = {
+    freq: "Does not repeat",
+    days: [] as string[],
+    customRRule: "",
+    customInterval: 1,
+    customFreq: "WEEKLY",
+  };
+  if (!rrule) return state;
+  if (rrule.includes("INTERVAL=")) {
+    state.freq = "Custom";
+    state.customRRule = rrule;
+    const interval = rrule.match(/INTERVAL=(\d+)/);
+    if (interval) state.customInterval = parseInt(interval[1]);
+    const f = rrule.match(/FREQ=([A-Z]+)/);
+    if (f) state.customFreq = f[1];
+  } else if (rrule === "FREQ=DAILY") state.freq = "Daily";
+  else if (rrule === "FREQ=MONTHLY") state.freq = "Monthly";
+  else if (/^FREQ=WEEKLY(;BYDAY=[A-Z,]+)?$/.test(rrule)) {
+    state.freq = "Weekly";
+    const byDay = rrule.match(/BYDAY=([A-Z,]+)/);
+    if (byDay) state.days = byDay[1].split(",");
+  } else {
+    state.freq = "Custom";
+    state.customRRule = rrule;
+    const f = rrule.match(/FREQ=([A-Z]+)/);
+    if (f) state.customFreq = f[1];
   }
-  return chronoCache;
+  return state;
 }
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
-import { cn } from "@/lib/utils";
+import { cn, formatRRule } from "@/lib/utils";
 import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
@@ -145,6 +171,16 @@ export function TaskAddPanel({
   const [customRRule, setCustomRRule] = useState("");
   const [customInterval, setCustomInterval] = useState(1);
   const [customFreq, setCustomFreq] = useState("WEEKLY");
+  // Once the user touches the repeat controls, typing stops overriding them.
+  const [isManualRepeat, setIsManualRepeat] = useState(false);
+  const applyRepeat = (rrule: string | null) => {
+    const next = rruleToRepeatState(rrule);
+    setFreq(next.freq);
+    setDays(next.days);
+    setCustomRRule(next.customRRule);
+    setCustomInterval(next.customInterval);
+    setCustomFreq(next.customFreq);
+  };
 
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -295,36 +331,9 @@ export function TaskAddPanel({
         setTimeEstimate(taskToEdit.time_estimate || null);
         setSubtasks(withSubtaskIds(readSubtasks(taskToEdit.subtasks)));
 
-        let nextFreq = "Does not repeat";
-        let nextDays: string[] = [];
-        let nextCustomRRule = "";
-        let nextCustomInterval = 1;
-        let nextCustomFreq = "WEEKLY";
-        if (taskToEdit.recurrence) {
-          if (taskToEdit.recurrence === "FREQ=DAILY") nextFreq = "Daily";
-          else if (taskToEdit.recurrence === "FREQ=MONTHLY")
-            nextFreq = "Monthly";
-          else if (taskToEdit.recurrence.includes("FREQ=WEEKLY")) {
-            nextFreq = "Weekly";
-            const match = taskToEdit.recurrence.match(/BYDAY=([A-Z,]+)/);
-            if (match) nextDays = match[1].split(",");
-          } else if (taskToEdit.recurrence.includes("INTERVAL=")) {
-            nextFreq = "Custom";
-            nextCustomRRule = taskToEdit.recurrence;
-            const matchInterval = taskToEdit.recurrence.match(/INTERVAL=(\d+)/);
-            if (matchInterval) nextCustomInterval = parseInt(matchInterval[1]);
-            const matchFreq = taskToEdit.recurrence.match(/FREQ=([A-Z]+)/);
-            if (matchFreq) nextCustomFreq = matchFreq[1];
-          } else {
-            nextFreq = "Custom";
-            nextCustomRRule = taskToEdit.recurrence;
-          }
-        }
-        setFreq(nextFreq);
-        setDays(nextDays);
-        setCustomRRule(nextCustomRRule);
-        setCustomInterval(nextCustomInterval);
-        setCustomFreq(nextCustomFreq);
+        applyRepeat(taskToEdit.recurrence ?? null);
+        // Editing the title of an existing task must not rewrite its repeat.
+        setIsManualRepeat(true);
 
         if (taskToEdit.deadline) {
           const d = new Date(taskToEdit.deadline);
@@ -347,11 +356,7 @@ export function TaskAddPanel({
         manualBaselineRef.current = {
           subtasks: withSubtaskIds(readSubtasks(taskToEdit.subtasks)),
           timeEstimate: taskToEdit.time_estimate || null,
-          freq: nextFreq,
-          days: nextDays,
-          customRRule: nextCustomRRule,
-          customInterval: nextCustomInterval,
-          customFreq: nextCustomFreq,
+          ...rruleToRepeatState(taskToEdit.recurrence ?? null),
           startDate: nextStartDate,
         };
       } else {
@@ -368,9 +373,8 @@ export function TaskAddPanel({
         setParsedDeadline(initialDeadline ?? null);
         setStartDate("");
         setParsedStartDate(null);
-        setFreq("Does not repeat");
-        setDays([]);
-        setCustomRRule("");
+        applyRepeat(null);
+        setIsManualRepeat(false);
         setIsManualDate(false);
         setTimeEstimate(null);
         setSubtasks([]);
@@ -390,27 +394,13 @@ export function TaskAddPanel({
   }, [isOpen, taskToEdit, initialDeadline]);
 
   const handleTitleChange = async (val: string) => {
-    if (!isManualDate && userSettings?.nlp_date_parsing !== false) {
-      const chrono = await getChrono();
-      const parsedResults = chrono.parse(val);
-      if (parsedResults && parsedResults.length > 0) {
-        let d: Date;
-        if (parsedResults.length === 1) {
-          d = parsedResults[0].start.date();
-        } else {
-          // Multiple results: combine their text and re-parse to merge date+time
-          // e.g. "tomorrow" + "at 9pm" → "tomorrow at 9pm" → single correct result
-          const combined = parsedResults.map((r) => r.text).join(" ");
-          const merged = chrono.parse(combined);
-          d =
-            merged.length > 0 && merged[0].start
-              ? merged[0].start.date()
-              : parsedResults
-                  .reduce((a, b) => (a.start.date() > b.start.date() ? a : b))
-                  .start.date();
-        }
-        setParsedDeadline(d);
-        setValue("deadline", format(d, "yyyy-MM-dd'T'HH:mm"), {
+    if (userSettings?.nlp_date_parsing === false) return;
+    if (isManualDate && isManualRepeat) return;
+    const parsed = await parseTaskText(val);
+    if (!isManualDate) {
+      if (parsed.deadline) {
+        setParsedDeadline(parsed.deadline);
+        setValue("deadline", format(parsed.deadline, "yyyy-MM-dd'T'HH:mm"), {
           shouldValidate: true,
           shouldDirty: true,
         });
@@ -419,6 +409,7 @@ export function TaskAddPanel({
         setValue("deadline", "", { shouldValidate: true, shouldDirty: true });
       }
     }
+    if (!isManualRepeat) applyRepeat(parsed.recurrence);
   };
 
   const handleManualDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -484,22 +475,21 @@ export function TaskAddPanel({
         }
 
         let finalTitle = data.title.trim();
-        if (parsedDeadline && !isManualDate) {
-          const chrono = await getChrono();
-          const parsedResults = chrono.parse(finalTitle);
-          if (parsedResults && parsedResults.length > 0) {
-            parsedResults.forEach((r) => {
-              finalTitle = finalTitle.replace(r.text, "");
-            });
-            finalTitle = finalTitle.replace(/\s+/g, " ").trim();
-            finalTitle = finalTitle.replace(
-              /^(remind me to|remember to|need to|have to|must|gotta)\s+/i,
-              "",
-            );
-            if (finalTitle.length > 0)
-              finalTitle =
-                finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
-          }
+        const parsedFromText =
+          userSettings?.nlp_date_parsing !== false &&
+          ((parsedDeadline && !isManualDate) ||
+            (!isManualRepeat && finalRecurrence));
+        if (parsedFromText) {
+          finalTitle = (
+            await parseTaskText(finalTitle, { parseDates: !isManualDate })
+          ).title;
+          finalTitle = finalTitle.replace(
+            /^(remind me to|remember to|need to|have to|must|gotta)\s+/i,
+            "",
+          );
+          if (finalTitle.length > 0)
+            finalTitle =
+              finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
         }
 
         const payload: Database["public"]["Tables"]["items"]["Insert"] = {
@@ -791,7 +781,10 @@ export function TaskAddPanel({
                             <button
                               key={f}
                               type="button"
-                              onClick={() => setFreq(f)}
+                              onClick={() => {
+                                setIsManualRepeat(true);
+                                setFreq(f);
+                              }}
                               aria-pressed={freq === f}
                               className="chip chip-sm"
                             >
@@ -813,13 +806,14 @@ export function TaskAddPanel({
                               <button
                                 key={d.v}
                                 type="button"
-                                onClick={() =>
+                                onClick={() => {
+                                  setIsManualRepeat(true);
                                   setDays((prev) =>
                                     prev.includes(d.v)
                                       ? prev.filter((x) => x !== d.v)
                                       : [...prev, d.v],
-                                  )
-                                }
+                                  );
+                                }}
                                 aria-pressed={days.includes(d.v)}
                                 className="chip chip-sm !min-w-10 justify-center !px-0"
                               >
@@ -837,18 +831,22 @@ export function TaskAddPanel({
                               type="number"
                               min="1"
                               value={customInterval}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                setIsManualRepeat(true);
                                 setCustomInterval(
                                   Math.max(1, parseInt(e.target.value) || 1),
-                                )
-                              }
+                                );
+                              }}
                               aria-label="Repeat interval"
                               className="input !w-16 !px-2 !py-2 !text-center !text-[length:var(--text-ui)]"
                             />
                             <Dropdown
                               variant="select"
                               value={customFreq}
-                              onChange={(value) => setCustomFreq(value)}
+                              onChange={(value) => {
+                                setIsManualRepeat(true);
+                                setCustomFreq(value);
+                              }}
                               options={[
                                 { value: "DAILY", label: "Days" },
                                 { value: "WEEKLY", label: "Weeks" },
@@ -860,6 +858,15 @@ export function TaskAddPanel({
                             />
                           </div>
                         )}
+                        {freq === "Custom" &&
+                          customRRule &&
+                          customInterval === 1 && (
+                            // A parsed rule like "on the 1st" has no control
+                            // of its own; say what will repeat.
+                            <p className="mt-2 text-[length:var(--text-meta)] text-[var(--text-3)]">
+                              {formatRRule(customRRule)}
+                            </p>
+                          )}
                       </div>
                     }
                   />
