@@ -1,8 +1,6 @@
 import { ImageResponse } from "next/og";
 import { ENSO_PATH } from "@/components/ui/BrandMark";
 
-export const runtime = "edge";
-
 export const size = {
   width: 32,
   height: 32,
@@ -12,7 +10,7 @@ export const contentType = "image/png";
 /**
  * Deliberate exception to "never hardcode a hex value in a .tsx file"
  * (AGENTS.md §3): this file renders via next/og's satori-based
- * ImageResponse at the edge, outside any CSS cascade — there is no
+ * ImageResponse, outside any CSS cascade — there is no
  * `--accent` custom property to resolve here. The hex is the dark-mode
  * ("sunset") accent from globals.css, used because a favicon is one
  * fixed asset regardless of the viewer's OS/browser theme.
