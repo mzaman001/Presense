@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@/lib/sentry-client";
 import { logger } from "@/lib/logger";
 
 export default function GlobalError({
