@@ -58,7 +58,9 @@ describe("routeCapture", () => {
         "Pay rent every month on the 1st",
         defaults,
       );
-      expect(result[0].recurrence).toBe("FREQ=MONTHLY");
+      // Monthly on the 1st: the day of the month is kept too.
+      expect(result[0].recurrence).toBe("FREQ=MONTHLY;BYMONTHDAY=1");
+      expect(result[0].title).toBe("Pay rent");
     });
 
     it("still reads 'every mon' and 'every monday' as weekly on Monday", async () => {

@@ -1,4 +1,4 @@
-import { registerCustomParsers } from "@/lib/chrono-custom";
+import { parseTaskText } from "@/lib/nlp/parse-task-text";
 import type { UserSettings } from "@/store/useAppStore";
 
 // ─── Keyword arrays (from spec Section 12.3) ────────────────────────────────
@@ -65,10 +65,6 @@ const THOUGHT_KW = [
   "realised",
   "realized",
 ];
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -202,120 +198,18 @@ export async function routeCapture(
     return results;
   }
 
-  // 2a. Recurrence detection
-  let detectedRRule: string | null = null;
-  let recurrencePhraseToRemove = "";
-  const dayMap: Record<string, string> = {
-    monday: "MO",
-    mon: "MO",
-    tuesday: "TU",
-    tue: "TU",
-    wednesday: "WE",
-    wed: "WE",
-    thursday: "TH",
-    thu: "TH",
-    friday: "FR",
-    fri: "FR",
-    saturday: "SA",
-    sat: "SA",
-    sunday: "SU",
-    sun: "SU",
-  };
+  // 2. Task: repeats, dates and a cleaned title from the shared parser
+  // (also used by the task panel, so both read text the same way).
+  const parsed = await parseTaskText(text, {
+    parseDates: userSettings?.nlp_date_parsing !== false,
+  });
 
-  if (lower.includes("every weekday")) {
-    detectedRRule = "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR";
-    recurrencePhraseToRemove = "every weekday";
-  } else if (lower.includes("every other day")) {
-    detectedRRule = "FREQ=DAILY;INTERVAL=2";
-    recurrencePhraseToRemove = "every other day";
-  } else {
-    const intervalMatch = lower.match(
-      /every\s+(\d+)\s+(day|week|month|year)s?/,
-    );
-    if (intervalMatch) {
-      const interval = intervalMatch[1];
-      const freq = intervalMatch[2].toUpperCase() + "LY";
-      detectedRRule = `FREQ=${freq};INTERVAL=${interval}`;
-      recurrencePhraseToRemove = intervalMatch[0];
-    } else {
-      const dayNamesStr = Object.keys(dayMap).join("|");
-      const daysRegex = new RegExp(
-        // \\b after the day: "mon" must not match inside "month".
-        `every\\s+((?:(?:${dayNamesStr})\\b(?:\\s*,\\s*|\\s+and\\s+|\\s+)?)+)`,
-        "i",
-      );
-      const everyDaysMatch = lower.match(daysRegex);
-      if (everyDaysMatch) {
-        const daysStr = everyDaysMatch[1];
-        const matchedDays = Object.keys(dayMap).filter((d) =>
-          new RegExp(`\\b${d}\\b`).test(daysStr),
-        );
-        if (matchedDays.length > 0) {
-          const byDay = [...new Set(matchedDays.map((d) => dayMap[d]))].join(
-            ",",
-          );
-          detectedRRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
-          recurrencePhraseToRemove = everyDaysMatch[0].trim();
-        }
-      }
-    }
-  }
-
-  if (!detectedRRule) {
-    const recurrencePatterns: Record<string, string> = {
-      "every day": "FREQ=DAILY",
-      daily: "FREQ=DAILY",
-      "every week": "FREQ=WEEKLY",
-      weekly: "FREQ=WEEKLY",
-      "every month": "FREQ=MONTHLY",
-      monthly: "FREQ=MONTHLY",
-    };
-    for (const [pattern, rrule] of Object.entries(recurrencePatterns)) {
-      if (lower.includes(pattern)) {
-        detectedRRule = rrule;
-        recurrencePhraseToRemove = pattern;
-        break;
-      }
-    }
-  }
-
-  // 2. Task — extract natural language date
-  let parsedDate: Date | null = null;
-  let parsedText = "";
-  if (userSettings?.nlp_date_parsing !== false) {
-    const chrono = await import("chrono-node");
-    registerCustomParsers(chrono);
-    const parsedResults = chrono.parse(text);
-    if (parsedResults.length > 0) {
-      parsedDate = parsedResults[0].start.date();
-      parsedText = parsedResults[0].text;
-    }
-  }
-
-  if (TASK_KW.some((k) => lower.includes(k)) || parsedDate || detectedRRule) {
-    let deadline: string | null = null;
-    let cleanTitle = text;
-
-    if (recurrencePhraseToRemove) {
-      cleanTitle = cleanTitle
-        .replace(new RegExp(escapeRegex(recurrencePhraseToRemove), "i"), "")
-        .replace(/\s+/g, " ")
-        .trim();
-    }
-
-    if (parsedDate) {
-      deadline = parsedDate.toISOString();
-      if (
-        parsedText &&
-        cleanTitle.toLowerCase().includes(parsedText.toLowerCase())
-      ) {
-        cleanTitle = cleanTitle
-          .replace(new RegExp(escapeRegex(parsedText), "i"), "")
-          .replace(/\s+/g, " ")
-          .trim();
-      }
-    }
-
+  if (
+    TASK_KW.some((k) => lower.includes(k)) ||
+    parsed.deadline ||
+    parsed.recurrence
+  ) {
+    let cleanTitle = parsed.title;
     // Also strip common prefix patterns like "remind me to", "remember to"
     cleanTitle = cleanTitle.replace(
       /^(remind me to|remember to|need to|have to|must|gotta)\s+/i,
@@ -331,12 +225,12 @@ export async function routeCapture(
         title: cleanTitle || text,
         destination: "Do",
         destinationId: "do",
-        deadline,
-        recurrence: detectedRRule,
-        confidence: parsedDate || detectedRRule ? 0.9 : 0.82,
-        reason: parsedDate
+        deadline: parsed.deadline ? parsed.deadline.toISOString() : null,
+        recurrence: parsed.recurrence,
+        confidence: parsed.deadline || parsed.recurrence ? 0.9 : 0.82,
+        reason: parsed.deadline
           ? "task_keyword_with_date"
-          : detectedRRule
+          : parsed.recurrence
             ? "task_recurrence_rule"
             : "task_keyword",
       }),
