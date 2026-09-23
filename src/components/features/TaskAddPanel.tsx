@@ -14,8 +14,11 @@ import { z } from "zod";
 import {
   X,
   Calendar,
+  Flag,
   Loader2,
   RotateCw,
+  Tag,
+  Timer,
   Trash2,
   Check,
   Plus,
@@ -613,269 +616,64 @@ export function TaskAddPanel({
           className="flex flex-col"
         >
           <div className="space-y-6 pt-1">
-            {/* --- Core --- */}
-            {/* Title */}
-            <Input
-              aria-label="Task name"
-              autoFocus
-              data-autofocus="true"
-              inputMode="text"
-              autoCapitalize="sentences"
-              placeholder="What needs to be done?"
-              variant="title"
-              {...register("title", {
-                onChange: (e) => handleTitleChange(e.target.value),
-              })}
-              error={errors.title?.message}
-              aria-invalid={!!errors.title}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleSubmit(onSubmit)();
-                }
-              }}
-            />
-
-            {/* Subtasks */}
-            <div>
-              <label className="field-label">Subtasks</label>
-              <div className="space-y-0.5">
-                {subtasks.map((st, i) => (
-                  <div
-                    key={st.id || i}
-                    className="group flex items-center gap-1"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSubtasks(
-                          subtasks.map((st, idx) =>
-                            idx === i
-                              ? { ...st, completed: !st.completed }
-                              : st,
-                          ),
-                        );
-                      }}
-                      role="checkbox"
-                      aria-checked={st.completed}
-                      aria-label={st.text ? `Done: ${st.text}` : "Subtask done"}
-                      className="-ml-2 flex size-9 shrink-0 items-center justify-center"
-                    >
-                      <span
-                        className={cn(
-                          "flex size-[18px] items-center justify-center rounded-full border-[1.5px] transition-colors",
-                          st.completed
-                            ? "border-[var(--accent)] bg-[var(--accent)]"
-                            : "border-[var(--border-strong)] hover:border-[var(--accent)]",
-                        )}
-                      >
-                        {st.completed && (
-                          <Check
-                            aria-hidden="true"
-                            strokeWidth={3}
-                            className="size-3 text-[var(--text-on-accent)]"
-                          />
-                        )}
-                      </span>
-                    </button>
-                    <input
-                      value={st.text}
-                      onChange={(e) => {
-                        setSubtasks(
-                          subtasks.map((st, idx) =>
-                            idx === i ? { ...st, text: e.target.value } : st,
-                          ),
-                        );
-                      }}
-                      placeholder="Subtask"
-                      aria-label="Subtask"
-                      className={cn(
-                        "min-h-9 flex-1 border-none bg-transparent text-[length:var(--text-body-lg)] text-[var(--text-1)] placeholder:text-[var(--text-muted)] focus:outline-none",
-                        st.completed && "text-[var(--text-muted)] line-through",
-                      )}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSubtasks(subtasks.filter((_, idx) => idx !== i))
-                      }
-                      aria-label="Remove subtask"
-                      className="row-actions flex size-9 items-center justify-center rounded-lg text-[var(--text-3)] transition-colors hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]"
-                    >
-                      <X aria-hidden="true" className="size-4" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSubtasks([
-                      ...subtasks,
-                      { id: Date.now().toString(), text: "", completed: false },
-                    ])
+            {/* Compose: title and notes share one surface, the way
+                Things and Todoist open a task — what it is, then context. */}
+            <div className="task-compose">
+              <Input
+                aria-label="Task name"
+                autoFocus
+                data-autofocus="true"
+                inputMode="text"
+                autoCapitalize="sentences"
+                placeholder="What needs to be done?"
+                variant="title"
+                className="task-compose-title"
+                {...register("title", {
+                  onChange: (e) => handleTitleChange(e.target.value),
+                })}
+                error={errors.title?.message}
+                aria-invalid={!!errors.title}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSubmit(onSubmit)();
                   }
-                  className="-ml-2 flex min-h-9 items-center gap-2 rounded-lg pr-3 pl-2 text-[length:var(--text-body)] text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
-                >
-                  <Plus aria-hidden="true" className="size-4" /> Add subtask
-                </button>
-              </div>
-            </div>
-
-            {/* First Step */}
-            <div>
-              <label className="field-label">First step</label>
-              <input
-                placeholder="What's the smallest action to start this?"
-                className={cn(
-                  "input",
-                  errors.first_step && "!border-[var(--status-danger)]",
-                )}
-                {...register("first_step")}
-                aria-invalid={!!errors.first_step}
-                aria-describedby={
-                  errors.first_step ? `first_step-error` : undefined
-                }
+                }}
               />
-              {errors.first_step && (
+              <label className="sr-only" htmlFor="task-notes">
+                Notes
+              </label>
+              <TextareaAutosize
+                data-testid="autosize-textarea"
+                id="task-notes"
+                placeholder="Add notes"
+                {...register("notes")}
+                minRows={1}
+                className={cn(
+                  "task-compose-notes resize-none",
+                  errors.notes && "!border-[var(--status-danger)]",
+                )}
+                aria-invalid={!!errors.notes}
+                aria-describedby={errors.notes ? `notes-error` : undefined}
+              />
+              {errors.notes && (
                 <p
-                  id="first_step-error"
+                  id="notes-error"
                   className="text-caption mt-1 text-[var(--status-danger)]"
                 >
-                  {errors.first_step.message}
+                  {errors.notes.message}
                 </p>
               )}
             </div>
 
-            {/* Category */}
-            <div>
-              <label className="field-label">Category</label>
-              <div className="flex flex-wrap items-center gap-2">
-                {categoriesList.map((cat: string) => {
-                  const cColor =
-                    DEFAULT_DO_COLORS[cat] || "var(--color-text-3)";
-                  const isActive = categoryValue === cat;
-                  return (
-                    <m.button
-                      key={cat}
-                      whileTap={{ scale: 0.92 }}
-                      type="button"
-                      onClick={() =>
-                        setValue("category", isActive ? "" : cat, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                        })
-                      }
-                      style={{
-                        borderColor: isActive ? cColor : `${cColor}40`,
-                        backgroundColor: isActive
-                          ? `${cColor}20`
-                          : "transparent",
-                        color: isActive ? cColor : "var(--color-text-3)",
-                      }}
-                      aria-pressed={isActive}
-                      className={`inline-flex min-h-9 items-center rounded-full border px-3.5 text-[length:var(--text-ui)] capitalize transition-colors ${
-                        isActive
-                          ? "font-medium"
-                          : "hover:bg-[var(--surface-hover)]"
-                      }`}
-                    >
-                      {cat}
-                    </m.button>
-                  );
-                })}
-                {isAddingCategory ? (
-                  <input
-                    autoFocus
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddCategory();
-                      if (e.key === "Escape") setIsAddingCategory(false);
-                    }}
-                    onBlur={handleAddCategory}
-                    placeholder="Type & enter..."
-                    aria-label="New category name"
-                    className="input !h-9 !w-36 !rounded-full !px-3.5 !py-0 !text-[length:var(--text-ui)]"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingCategory(true)}
-                    className="chip border-dashed"
-                  >
-                    <Plus aria-hidden="true" className="size-3.5" /> New
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Priority */}
-            <div>
-              <label className="field-label">Priority</label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  {
-                    val: 1,
-                    label: "Urgent",
-                    colorClass:
-                      "bg-transparent text-[var(--status-danger)] border-[var(--status-danger-border)] hover:bg-[var(--status-danger-dim)]",
-                    activeClass:
-                      "bg-[var(--status-danger-dim)] text-[var(--status-danger)] border-[var(--status-danger)]",
-                  },
-                  {
-                    val: 2,
-                    label: "High",
-                    colorClass:
-                      "bg-transparent text-[var(--status-today)] border-[var(--status-today-border)] hover:bg-[var(--status-today-dim)]",
-                    activeClass:
-                      "bg-[var(--status-today-dim)] text-[var(--status-today)] border-[var(--status-today)]",
-                  },
-                  {
-                    val: 3,
-                    label: "Medium",
-                    colorClass:
-                      "bg-transparent text-[var(--status-upcoming)] border-[var(--status-upcoming-border)] hover:bg-[var(--status-upcoming-dim)]",
-                    activeClass:
-                      "bg-[var(--status-upcoming-dim)] text-[var(--status-upcoming)] border-[var(--status-upcoming)]",
-                  },
-                  {
-                    val: 4,
-                    label: "Low",
-                    colorClass:
-                      "bg-transparent text-[var(--text-3)] border-[var(--border-default)] hover:bg-[var(--surface-hover)]",
-                    activeClass:
-                      "bg-[var(--surface-active)] text-[var(--text-1)] border-[var(--border-strong)]",
-                  },
-                ].map((p) => (
-                  <m.button
-                    key={p.val}
-                    type="button"
-                    whileTap={{ scale: 0.92 }}
-                    onClick={() =>
-                      setValue(
-                        "priority",
-                        priorityValue === p.val ? null : p.val,
-                        { shouldValidate: true, shouldDirty: true },
-                      )
-                    }
-                    aria-pressed={priorityValue === p.val}
-                    className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3.5 text-[length:var(--text-ui)] font-medium transition-colors ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="size-2 rounded-full bg-current"
-                    />
-                    {p.label}
-                  </m.button>
-                ))}
-              </div>
-            </div>
-
-            {/* --- Scheduling --- */}
-            <div className="border-t border-[var(--border-subtle)] pt-6">
-              <div className="space-y-6">
-                <p className="field-label !mb-2">When</p>
-                {/* Action Toolbar (Date & Repeat) */}
+            {/* Properties: one labelled row each, Linear-style, so the
+                panel reads top to bottom instead of as a wall of chips. */}
+            <div className="task-props" role="group" aria-label="Details">
+              <div className="task-prop">
+                <span className="task-prop-label">
+                  <Calendar aria-hidden="true" className="size-4" />
+                  When
+                </span>
                 <div className="flex flex-wrap gap-2">
                   <Popover
                     trigger={
@@ -969,7 +767,6 @@ export function TaskAddPanel({
                       </div>
                     }
                   />
-
                   <Popover
                     trigger={
                       <button
@@ -1067,57 +864,270 @@ export function TaskAddPanel({
                     }
                   />
                 </div>
-
-                {/* Time Estimate */}
-                <div>
-                  <label className="field-label">Estimate</label>
-                  <div className="relative w-40">
-                    <input
-                      type="number"
-                      placeholder="30"
-                      aria-label="Estimate in minutes"
-                      value={timeEstimate === null ? "" : timeEstimate}
-                      onChange={(e) =>
-                        setTimeEstimate(
-                          e.target.value ? parseInt(e.target.value) : null,
+              </div>
+              <div className="task-prop">
+                <span className="task-prop-label">
+                  <Flag aria-hidden="true" className="size-4" />
+                  Priority
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    {
+                      val: 1,
+                      label: "Urgent",
+                      colorClass:
+                        "bg-transparent text-[var(--status-danger)] border-[var(--status-danger-border)] hover:bg-[var(--status-danger-dim)]",
+                      activeClass:
+                        "bg-[var(--status-danger-dim)] text-[var(--status-danger)] border-[var(--status-danger)]",
+                    },
+                    {
+                      val: 2,
+                      label: "High",
+                      colorClass:
+                        "bg-transparent text-[var(--status-today)] border-[var(--status-today-border)] hover:bg-[var(--status-today-dim)]",
+                      activeClass:
+                        "bg-[var(--status-today-dim)] text-[var(--status-today)] border-[var(--status-today)]",
+                    },
+                    {
+                      val: 3,
+                      label: "Medium",
+                      colorClass:
+                        "bg-transparent text-[var(--status-upcoming)] border-[var(--status-upcoming-border)] hover:bg-[var(--status-upcoming-dim)]",
+                      activeClass:
+                        "bg-[var(--status-upcoming-dim)] text-[var(--status-upcoming)] border-[var(--status-upcoming)]",
+                    },
+                    {
+                      val: 4,
+                      label: "Low",
+                      colorClass:
+                        "bg-transparent text-[var(--text-3)] border-[var(--border-default)] hover:bg-[var(--surface-hover)]",
+                      activeClass:
+                        "bg-[var(--surface-active)] text-[var(--text-1)] border-[var(--border-strong)]",
+                    },
+                  ].map((p) => (
+                    <m.button
+                      key={p.val}
+                      type="button"
+                      whileTap={{ scale: 0.92 }}
+                      onClick={() =>
+                        setValue(
+                          "priority",
+                          priorityValue === p.val ? null : p.val,
+                          { shouldValidate: true, shouldDirty: true },
                         )
                       }
-                      className="input !pr-14"
-                      min={1}
+                      aria-pressed={priorityValue === p.val}
+                      className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-[length:var(--text-ui)] font-medium transition-colors ${priorityValue === p.val ? p.activeClass : p.colorClass}`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="size-2 rounded-full bg-current"
+                      />
+                      {p.label}
+                    </m.button>
+                  ))}
+                </div>
+              </div>
+              <div className="task-prop">
+                <span className="task-prop-label">
+                  <Tag aria-hidden="true" className="size-4" />
+                  Category
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {categoriesList.map((cat: string) => {
+                    const cColor =
+                      DEFAULT_DO_COLORS[cat] || "var(--color-text-3)";
+                    const isActive = categoryValue === cat;
+                    return (
+                      <m.button
+                        key={cat}
+                        whileTap={{ scale: 0.92 }}
+                        type="button"
+                        onClick={() =>
+                          setValue("category", isActive ? "" : cat, {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          })
+                        }
+                        style={{
+                          borderColor: isActive ? cColor : `${cColor}40`,
+                          backgroundColor: isActive
+                            ? `${cColor}20`
+                            : "transparent",
+                          color: isActive ? cColor : "var(--color-text-3)",
+                        }}
+                        aria-pressed={isActive}
+                        className={`inline-flex min-h-8 items-center rounded-full border px-3 text-[length:var(--text-ui)] capitalize transition-colors ${
+                          isActive
+                            ? "font-medium"
+                            : "hover:bg-[var(--surface-hover)]"
+                        }`}
+                      >
+                        {cat}
+                      </m.button>
+                    );
+                  })}
+                  {isAddingCategory ? (
+                    <input
+                      autoFocus
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddCategory();
+                        if (e.key === "Escape") setIsAddingCategory(false);
+                      }}
+                      onBlur={handleAddCategory}
+                      placeholder="Type & enter..."
+                      aria-label="New category name"
+                      className="input !h-8 !w-36 !rounded-full !px-3 !py-0 !text-[length:var(--text-ui)]"
                     />
-                    <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[length:var(--text-ui)] text-[var(--text-3)]">
-                      min
-                    </span>
-                  </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCategory(true)}
+                      className="chip chip-sm border-dashed"
+                    >
+                      <Plus aria-hidden="true" className="size-3.5" /> New
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="task-prop">
+                <span className="task-prop-label">
+                  <Timer aria-hidden="true" className="size-4" />
+                  Estimate
+                </span>
+                <div className="relative w-32">
+                  <input
+                    type="number"
+                    placeholder="30"
+                    aria-label="Estimate in minutes"
+                    value={timeEstimate === null ? "" : timeEstimate}
+                    onChange={(e) =>
+                      setTimeEstimate(
+                        e.target.value ? parseInt(e.target.value) : null,
+                      )
+                    }
+                    className="input !h-8 !py-0 !pr-12 !text-[length:var(--text-ui)]"
+                    min={1}
+                  />
+                  <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[length:var(--text-ui)] text-[var(--text-3)]">
+                    min
+                  </span>
                 </div>
               </div>
             </div>
-            {/* --- Notes --- */}
-            <div className="border-t border-[var(--border-subtle)] pt-6">
-              <label className="field-label" htmlFor="task-notes">
-                Notes
+
+            {/* Getting it done: the first move, then the checklist. */}
+            <div>
+              <label className="field-label" htmlFor="task-first-step">
+                First step
               </label>
-              <TextareaAutosize
-                data-testid="autosize-textarea"
-                id="task-notes"
-                placeholder="Anything worth remembering about this"
-                {...register("notes")}
-                minRows={2}
+              <input
+                id="task-first-step"
+                placeholder="What's the smallest action to start this?"
                 className={cn(
-                  "input resize-none",
-                  errors.notes && "!border-[var(--status-danger)]",
+                  "input",
+                  errors.first_step && "!border-[var(--status-danger)]",
                 )}
-                aria-invalid={!!errors.notes}
-                aria-describedby={errors.notes ? `notes-error` : undefined}
+                {...register("first_step")}
+                aria-invalid={!!errors.first_step}
+                aria-describedby={
+                  errors.first_step ? `first_step-error` : undefined
+                }
               />
-              {errors.notes && (
+              {errors.first_step && (
                 <p
-                  id="notes-error"
+                  id="first_step-error"
                   className="text-caption mt-1 text-[var(--status-danger)]"
                 >
-                  {errors.notes.message}
+                  {errors.first_step.message}
                 </p>
               )}
+            </div>
+
+            <div>
+              <p className="field-label">Subtasks</p>
+              <div className="space-y-0.5">
+                {subtasks.map((st, i) => (
+                  <div
+                    key={st.id || i}
+                    className="group flex items-center gap-1"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubtasks(
+                          subtasks.map((st, idx) =>
+                            idx === i
+                              ? { ...st, completed: !st.completed }
+                              : st,
+                          ),
+                        );
+                      }}
+                      role="checkbox"
+                      aria-checked={st.completed}
+                      aria-label={st.text ? `Done: ${st.text}` : "Subtask done"}
+                      className="-ml-2 flex size-9 shrink-0 items-center justify-center"
+                    >
+                      <span
+                        className={cn(
+                          "flex size-[18px] items-center justify-center rounded-full border-[1.5px] transition-colors",
+                          st.completed
+                            ? "border-[var(--accent)] bg-[var(--accent)]"
+                            : "border-[var(--border-strong)] hover:border-[var(--accent)]",
+                        )}
+                      >
+                        {st.completed && (
+                          <Check
+                            aria-hidden="true"
+                            strokeWidth={3}
+                            className="size-3 text-[var(--text-on-accent)]"
+                          />
+                        )}
+                      </span>
+                    </button>
+                    <input
+                      value={st.text}
+                      onChange={(e) => {
+                        setSubtasks(
+                          subtasks.map((st, idx) =>
+                            idx === i ? { ...st, text: e.target.value } : st,
+                          ),
+                        );
+                      }}
+                      placeholder="Subtask"
+                      aria-label="Subtask"
+                      className={cn(
+                        "min-h-9 flex-1 border-none bg-transparent text-[length:var(--text-body-lg)] text-[var(--text-1)] placeholder:text-[var(--text-muted)] focus:outline-none",
+                        st.completed && "text-[var(--text-muted)] line-through",
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSubtasks(subtasks.filter((_, idx) => idx !== i))
+                      }
+                      aria-label="Remove subtask"
+                      className="row-actions flex size-9 items-center justify-center rounded-lg text-[var(--text-3)] transition-colors hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]"
+                    >
+                      <X aria-hidden="true" className="size-4" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSubtasks([
+                      ...subtasks,
+                      { id: Date.now().toString(), text: "", completed: false },
+                    ])
+                  }
+                  className="-ml-2 flex min-h-9 items-center gap-2 rounded-lg pr-3 pl-2 text-[length:var(--text-body)] text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+                >
+                  <Plus aria-hidden="true" className="size-4" /> Add subtask
+                </button>
+              </div>
             </div>
           </div>
         </form>

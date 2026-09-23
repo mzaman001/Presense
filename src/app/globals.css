@@ -1169,6 +1169,61 @@ h6 {
     outline: 2px solid var(--accent);
     outline-offset: -2px;
   }
+
+  /* === TASK PANEL (TaskAddPanel) === */
+  .task-compose {
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--surface-input);
+    padding: 6px 14px 10px;
+    transition: border-color var(--dur-fast) var(--ease-out);
+  }
+  .task-compose:focus-within {
+    border-color: var(--accent-border, var(--accent));
+  }
+  .task-compose .task-compose-title {
+    border-bottom: none;
+    padding-block: 6px 2px;
+  }
+  .task-compose-notes {
+    display: block;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 2px 0 0;
+    font-size: var(--text-body);
+    line-height: 1.55;
+    color: var(--text-2);
+    outline: none;
+  }
+  .task-compose-notes::placeholder {
+    color: var(--text-muted);
+  }
+
+  .task-props {
+    border-block: 1px solid var(--border-subtle);
+  }
+  .task-prop {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    /* Top-aligned so a label stays level with the first row of chips when
+       they wrap. Labels are as tall as a chip (32px) to centre on it. */
+    align-items: start;
+    gap: 12px;
+    min-height: 52px;
+    padding-block: 8px;
+  }
+  .task-prop + .task-prop {
+    border-top: 1px solid var(--border-subtle);
+  }
+  .task-prop-label {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--text-ui);
+    color: var(--text-3);
+  }
 }
 
 /* ============================================================
