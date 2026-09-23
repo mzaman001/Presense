@@ -274,7 +274,7 @@ export function ThinkView({
 
       <ContextualTip
         id="think_space"
-        title="Thoughts that stay"
+        title="Threads for ongoing ideas"
         description="Keep ideas and journals in threads. Old ones resurface when they're worth another look."
       />
 

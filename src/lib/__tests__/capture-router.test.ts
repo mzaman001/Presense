@@ -51,6 +51,23 @@ describe("routeCapture", () => {
       expect(result[0].recurrence).toBe("FREQ=WEEKLY;BYDAY=MO,WE");
     });
 
+    // "mon" inside "month" used to match the every-<weekday> pattern, so
+    // "every month" saved as weekly on Mondays.
+    it("reads 'every month' as monthly, not every Monday", async () => {
+      const result = await routeCapture(
+        "Pay rent every month on the 1st",
+        defaults,
+      );
+      expect(result[0].recurrence).toBe("FREQ=MONTHLY");
+    });
+
+    it("still reads 'every mon' and 'every monday' as weekly on Monday", async () => {
+      for (const text of ["Gym every mon", "Standup every monday"]) {
+        const result = await routeCapture(text, defaults);
+        expect(result[0].recurrence).toBe("FREQ=WEEKLY;BYDAY=MO");
+      }
+    });
+
     it("detects recurrence 'daily'", async () => {
       const result = await routeCapture("daily meditation", defaults);
       expect(result[0].type).toBe("task");

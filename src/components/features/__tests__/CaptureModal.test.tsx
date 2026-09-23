@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase", () => ({
   })),
 }));
 
-describe("CaptureModal — task 2.6b one-tap capture default", () => {
+describe("CaptureModal — one-tap capture with a live preview", () => {
   beforeEach(() => {
     insertMock.mockClear();
     fromMock.mockClear();
@@ -56,113 +56,127 @@ describe("CaptureModal — task 2.6b one-tap capture default", () => {
     useAppStore.setState({ isCaptureModalOpen: false });
   });
 
-  it("saves immediately on the primary Capture action, without showing the review screen", async () => {
+  const typeCapture = (value: string) => {
+    const input = screen.getByRole("textbox", { name: "Capture" });
+    fireEvent.change(input, { target: { value } });
+    return input;
+  };
+
+  it("saves immediately on the primary action, without showing the review form", async () => {
     render(<CaptureModal />);
+    typeCapture("Buy milk");
 
-    const input = screen.getByPlaceholderText(/Capture anything/i);
-    fireEvent.change(input, {
-      target: { value: "Buy milk" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: /^Save/ }));
 
-    fireEvent.click(screen.getByRole("button", { name: /^Capture$/ }));
-
-    // The review screen's markers (destination dropdown / Confirm & Save)
-    // must never appear on the default path.
-    expect(screen.queryByText(/AI Extracted Context/i)).not.toBeInTheDocument();
+    // The review form's markers must never appear on the default path.
     expect(
-      screen.queryByRole("button", { name: /Confirm & Save/i }),
+      screen.queryByRole("textbox", { name: "Title" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
     ).not.toBeInTheDocument();
 
     await waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
     expect(fromMock).toHaveBeenCalledWith("items");
-    expect(insertMock.mock.calls[0][0]).toMatchObject({
-      title: "Buy milk",
-    });
+    expect(insertMock.mock.calls[0][0]).toMatchObject({ title: "Buy milk" });
 
     await waitFor(() =>
-      expect(screen.getByText(/Saved!/i)).toBeInTheDocument(),
+      expect(screen.getByText("Saved to Do")).toBeInTheDocument(),
     );
   });
 
   it("saves immediately when Enter is pressed, matching the button's fast path", async () => {
     render(<CaptureModal />);
-
-    const input = screen.getByPlaceholderText(/Capture anything/i);
-    fireEvent.change(input, { target: { value: "Buy milk" } });
+    const input = typeCapture("Buy milk");
     fireEvent.keyDown(input, { key: "Enter" });
 
     await waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
     expect(
-      screen.queryByRole("button", { name: /Confirm & Save/i }),
+      screen.queryByRole("textbox", { name: "Title" }),
     ).not.toBeInTheDocument();
   });
 
-  it("opens the review screen instead of saving when 'Edit before saving' is tapped", async () => {
+  it("opens the review form instead of saving on 'Review first'", async () => {
     render(<CaptureModal />);
+    typeCapture("Buy milk");
 
-    const input = screen.getByPlaceholderText(/Capture anything/i);
-    fireEvent.change(input, { target: { value: "Buy milk" } });
+    fireEvent.click(screen.getByRole("button", { name: "Review first" }));
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Edit before saving/i }),
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText(/AI Extracted Context/i)).toBeInTheDocument(),
-    );
-    // Nothing is persisted just by opening the review screen.
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    expect(title).toHaveValue("Buy milk");
+    // Nothing is persisted just by opening the review form.
     expect(insertMock).not.toHaveBeenCalled();
 
-    const confirmButton = await screen.findByRole("button", {
-      name: /Confirm & Save/i,
-    });
-    fireEvent.click(confirmButton);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(screen.getByText(/Saved!/i)).toBeInTheDocument(),
+      expect(screen.getByText("Saved to Do")).toBeInTheDocument(),
     );
   });
 
   it("only inserts once when Enter fires twice in rapid succession (OS key-repeat)", async () => {
     render(<CaptureModal />);
+    const input = typeCapture("Buy milk");
 
-    const input = screen.getByPlaceholderText(/Capture anything/i);
-    fireEvent.change(input, { target: { value: "Buy milk" } });
-
-    // Fire two Enter keydowns back to back, neither awaited, simulating
-    // OS key-repeat on a held Enter key or a fast double-tap. Without the
-    // `if (isCapturing) return;` guard at the top of handleQuickCapture,
-    // the second keydown would race the first's async routeCapture/insert
-    // call and produce a duplicate insert.
+    // Two keydowns back to back, neither awaited: OS key-repeat on a held
+    // Enter, or a fast double-tap. The re-entry guard must drop the second.
     fireEvent.keyDown(input, { key: "Enter" });
     fireEvent.keyDown(input, { key: "Enter" });
 
     await waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(screen.getByText(/Saved!/i)).toBeInTheDocument(),
+      expect(screen.getByText("Saved to Do")).toBeInTheDocument(),
     );
   });
 
-  it("falls back to the review screen (without losing the capture) if the quick-save insert fails", async () => {
+  it("falls back to the review form (without losing the capture) if the save fails", async () => {
     insertMock.mockImplementationOnce(async () => ({
       error: { message: "network down" },
     }));
 
     render(<CaptureModal />);
+    typeCapture("Buy milk");
+    fireEvent.click(screen.getByRole("button", { name: /^Save/ }));
 
-    const input = screen.getByPlaceholderText(/Capture anything/i);
-    fireEvent.change(input, { target: { value: "Buy milk" } });
-    fireEvent.click(screen.getByRole("button", { name: /^Capture$/ }));
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    expect(title).toHaveValue("Buy milk");
+  });
 
+  it("previews the destination as you type and saves to an overridden space", async () => {
+    render(<CaptureModal />);
+    const input = typeCapture("Buy milk");
+
+    // "buy" routes to Do; the live preview shows it before saving.
     await waitFor(() =>
-      expect(screen.getByText(/AI Extracted Context/i)).toBeInTheDocument(),
+      expect(screen.getByRole("radio", { name: "Do" })).toBeChecked(),
     );
-    // The routed title survives into the review screen (as the chip's own
-    // editable title field) so the user can retry rather than having their
-    // capture silently disappear.
-    // The Sheet renders into document.body (a portal), not the container.
-    const chipTitleInput = document.body.querySelector(".input-title");
-    expect(chipTitleInput).toHaveValue("Buy milk");
+    expect(
+      screen.getByRole("button", { name: "Save to Do" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Think" }));
+    expect(screen.getByRole("radio", { name: "Think" })).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Save to Think" }),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(fromMock).toHaveBeenCalledWith("threads"));
+    expect(fromMock).not.toHaveBeenCalledWith("items");
+  });
+
+  it("switches the space with Alt+1…4 from the text field", async () => {
+    render(<CaptureModal />);
+    const input = typeCapture("Buy milk");
+    await waitFor(() =>
+      expect(screen.getByRole("radio", { name: "Do" })).toBeChecked(),
+    );
+
+    fireEvent.keyDown(input, { key: "™", code: "Digit3", altKey: true });
+    expect(screen.getByRole("radio", { name: "Remember" })).toBeChecked();
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(fromMock).toHaveBeenCalledWith("locations"));
   });
 });

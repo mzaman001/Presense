@@ -198,7 +198,7 @@ export function LocationsView({
             placeholder="Search for anything you've placed somewhere..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-[var(--border-input)] bg-[var(--surface-input)] py-3 pr-4 pl-11 text-sm text-[var(--color-text-1)] transition-colors outline-none placeholder:text-[var(--color-text-3)] focus:border-[var(--border-input-focus)]"
+            className="w-full rounded-xl border border-[var(--border-input)] py-3 pr-4 pl-11 text-sm text-[var(--color-text-1)] transition-colors outline-none [background:linear-gradient(var(--surface-input),var(--surface-input)),var(--bg-base)] placeholder:text-[var(--color-text-3)] focus:border-[var(--border-input-focus)]"
           />
         </div>
 

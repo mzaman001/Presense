@@ -143,7 +143,7 @@ export default function LoginPage() {
                 Sign in
               </h1>
               <p className="text-body" style={{ color: "var(--text-3)" }}>
-                Welcome back, second brain.
+                Pick up where you left off.
               </p>
             </div>
 

@@ -154,22 +154,36 @@ Column.displayName = "Column";
 
 const subscribeNoop = () => () => {};
 
+/**
+ * Resolves the server's streamed tasks, then renders the view with plain
+ * data. Kept separate on purpose: when a component suspends on use() during
+ * server rendering and is replayed, nuqs's useQueryState (useOptimistic
+ * underneath) came back without a URLSearchParams whenever the URL had a
+ * query string — "initialSearchParams.getAll is not a function", and React
+ * fell back to client rendering for /do?view=... . Nothing below this
+ * boundary suspends.
+ */
 export function DoView({
   tasksPromise,
 }: {
   /** Started by the server page and streamed; null when that fetch failed. */
   tasksPromise: Promise<Task[] | null>;
 }) {
-  const userId = useUserId();
-  const supabase = useMemo(() => createClient(), []);
-  const initialFilter = "all";
-
   const queryClient = useQueryClient();
   // Returning to Do renders from the cache at once; only a cold load waits
   // on the server's streamed tasks, already resolved by hydration.
   const serverTasks = queryClient.getQueryData<Task[]>(["tasks"])
     ? undefined
     : (use(tasksPromise) ?? undefined);
+  return <DoBoard serverTasks={serverTasks} />;
+}
+
+function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
+  const userId = useUserId();
+  const supabase = useMemo(() => createClient(), []);
+  const initialFilter = "all";
+
+  const queryClient = useQueryClient();
   // Grouping (Overdue/Today) and TaskCard dates use the device's timezone, so
   // the list is first rendered after hydration, never on the server.
   const hydrated = useSyncExternalStore(
@@ -504,7 +518,7 @@ export function DoView({
       {!showArchive && viewMode !== "calendar" && (
         <ContextualTip
           id="do_space"
-          title="Tasks that move"
+          title="Sorted by deadline"
           description="Deadlines sort your tasks for you. Keep each one small enough to start today."
         />
       )}
@@ -580,8 +594,8 @@ export function DoView({
           className={cn(
             "gap-6",
             isBoardView
-              ? "grid max-w-3xl grid-cols-1 items-start md:grid-cols-2"
-              : "flex w-full max-w-3xl flex-col space-y-7",
+              ? "grid grid-cols-1 items-start md:grid-cols-2"
+              : "flex w-full flex-col space-y-7",
           )}
         >
           {overdue.length > 0 && (
@@ -612,7 +626,7 @@ export function DoView({
             <EmptyState
               icon={Wind}
               title="You're all caught up"
-              description="No tasks due today. Take a well-deserved break, or plan ahead for tomorrow."
+              description="Nothing is due today. Add a task or plan tomorrow."
               pointer={
                 // BUG-08 / CONF-10 (Option C): thin pointer to the global trash
                 <Link
@@ -649,7 +663,7 @@ export function DoView({
             "gap-6",
             isBoardView
               ? "grid grid-cols-1 items-start md:grid-cols-2 xl:grid-cols-4"
-              : "flex w-full max-w-3xl flex-col space-y-7",
+              : "flex w-full flex-col space-y-7",
           )}
         >
           {overdue.length > 0 || isBoardView ? (
@@ -711,7 +725,7 @@ export function DoView({
               <EmptyState
                 icon={Wind}
                 title="You're all caught up"
-                description="No tasks in this view. Take a well-deserved break, or plan ahead."
+                description="No tasks match this view. Add one to get started."
                 className="md:col-span-2 xl:col-span-4"
                 action={
                   <Button

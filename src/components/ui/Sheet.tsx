@@ -19,6 +19,8 @@ interface SheetProps {
   className?: string;
   /** Replaces the body's default padding, e.g. "p-0" for edge-to-edge lists. */
   bodyClassName?: string;
+  /** Accessible name when there is no visible string title. */
+  ariaLabel?: string;
 }
 
 /**
@@ -37,6 +39,7 @@ export function Sheet({
   footer,
   className,
   bodyClassName,
+  ariaLabel,
 }: SheetProps) {
   const dialogRef = useDialogFocus(isOpen);
   const vp = useVisualViewport();
@@ -111,7 +114,7 @@ export function Sheet({
               )}
               role="dialog"
               aria-modal="true"
-              aria-label={typeof title === "string" ? title : undefined}
+              aria-label={typeof title === "string" ? title : ariaLabel}
             >
               {/* Drag handle: the only element that starts swipe-to-dismiss */}
               <div

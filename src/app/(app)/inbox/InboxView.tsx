@@ -470,7 +470,7 @@ export function InboxView({
 
       <ContextualTip
         id="inbox_space"
-        title="Unload your brain"
+        title="Capture now, sort later"
         description="Put anything here without deciding what it is. Later, send each item to Do, Think or Remember."
       />
 
@@ -482,12 +482,12 @@ export function InboxView({
           />
         </div>
       ) : (
-        <div className="mx-auto max-w-2xl space-y-4 pt-4">
+        <div className="space-y-4 pt-4">
           {inboxItems.length === 0 ? (
             <EmptyState
               icon={CheckCircle2}
               title="Inbox zero"
-              description="Everything has a place. Your mind is clear for the day ahead."
+              description="Everything you captured has been sorted."
             />
           ) : (
             inboxItems.map((item) => (

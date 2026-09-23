@@ -40,7 +40,7 @@ export default async function TrashPage({
     <div className="animate-in fade-in slide-in-from-bottom-2 mx-auto max-w-4xl space-y-6 duration-300">
       <PageHeader
         title="Trash"
-        description="Things you've let go of. Restore them, or remove them for good."
+        description="Deleted items. Restore them or delete them for good."
       />
       <Suspense fallback={<TrashLoading />}>
         <TrashList

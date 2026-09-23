@@ -4,10 +4,14 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Welcome — Presense",
-  description: "Set up your Presense external brain.",
+  description: "Set up Presense.",
 };
 
-export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
+export default function OnboardingLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <MotionProvider>
       <AmbientBackground />

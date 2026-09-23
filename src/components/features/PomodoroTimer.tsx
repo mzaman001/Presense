@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import { completeTaskPatch } from "@/lib/item-lifecycle";
+import { playChime } from "@/lib/chime";
 
 type Phase = "work" | "short_break" | "long_break";
 
@@ -204,9 +205,7 @@ export function PomodoroTimer() {
   const handleComplete = useCallback(() => {
     setIsRunning(false);
     saveTimerState(null);
-    if (userSettings?.pomodoro_sound !== false) {
-      new Audio("/notification.mp3").play().catch(() => {});
-    }
+    if (userSettings?.pomodoro_sound !== false) playChime();
 
     if (phase === "work" && activeTimer) {
       toast.success(
