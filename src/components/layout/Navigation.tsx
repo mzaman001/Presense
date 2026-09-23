@@ -253,6 +253,11 @@ export function Sidebar() {
             icon={Plus}
             capture
             onClick={() => useAppStore.getState().setCaptureModalOpen(true)}
+            badge={
+              <kbd className="sidebar-shortcut sidebar-capture-kbd" aria-hidden>
+                C
+              </kbd>
+            }
           />
           <nav aria-label="Destinations" id="sidebar-content">
             <div className="sidebar-section">

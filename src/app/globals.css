@@ -1378,28 +1378,59 @@ h6 {
     background: var(--accent-dim);
   }
 
-  /* Quick Capture: the one filled control in the rail. */
+  /* Quick Capture: the one filled control in the rail. The whole row is an
+     ember pill — a square tile when collapsed, a full-width button with its
+     "C" shortcut when expanded — lifted by a soft accent-tinted shadow. */
   .sidebar-capture {
-    margin-bottom: var(--space-2);
-    color: var(--text-1);
-  }
-  .sidebar-capture .sidebar-icon::before {
-    content: "";
-    position: absolute;
-    inset: 4px 6px;
-    z-index: -1;
-    border-radius: var(--radius-md);
+    margin-top: var(--space-1);
+    margin-bottom: var(--space-3);
+    min-height: 46px;
     background: var(--accent);
-    transition: background-color var(--dur-fast) var(--ease-out);
+    color: var(--text-on-accent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 6px 18px -8px color-mix(in srgb, var(--accent) 70%, transparent),
+      0 1px 2px color-mix(in srgb, var(--accent) 35%, transparent);
+    transition:
+      background-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
   }
-  .sidebar-capture .sidebar-icon {
+  .sidebar-capture .sidebar-icon,
+  .sidebar-capture .sidebar-label {
     color: var(--text-on-accent);
   }
-  .sidebar-capture:hover {
-    background: var(--surface-hover);
+  .sidebar-capture .sidebar-label {
+    font-weight: var(--weight-semibold);
   }
-  .sidebar-capture:hover .sidebar-icon::before {
+  .sidebar-capture:hover {
+    color: var(--text-on-accent);
     background: var(--accent-hot);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 10px 24px -10px color-mix(in srgb, var(--accent) 80%, transparent),
+      0 1px 2px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  .sidebar-capture:active {
+    transform: scale(0.98);
+  }
+  .sidebar-capture:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .sidebar-capture-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: var(--radius-xs);
+    background: rgb(255 255 255 / 0.18);
+    color: var(--text-on-accent);
+    font-family: var(--font-sans);
+    font-size: var(--text-caption);
+    font-weight: var(--weight-semibold);
   }
 
   /* Inbox count: rides the icon's corner when collapsed, sits at the
