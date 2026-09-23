@@ -165,10 +165,14 @@
   --bg-elevated: #1c1820;
   --bg-overlay: rgba(14, 11, 16, 0.72);
 
-  /* === SURFACE SYSTEM — flat, opacity-stacked, no blur === */
-  --surface-1: rgba(255, 255, 255, 0.03);
-  --surface-2: rgba(255, 255, 255, 0.05);
-  --surface-3: rgba(255, 255, 255, 0.07);
+  /* === SURFACE SYSTEM — flat, no blur ===
+     Opaque on purpose: these are white at 3/5/7% pre-composited over
+     --bg-base. As rgba they let the .atmosphere glow tint every card, the
+     calendar and the controls. Hover/active stay translucent: they are
+     momentary overlays that stack on top of a surface. */
+  --surface-1: #1b181f;
+  --surface-2: #201d24;
+  --surface-3: #242228;
   --surface-hover: rgba(255, 255, 255, 0.06);
   --surface-active: rgba(255, 255, 255, 0.08);
   --surface-sidebar: var(--bg-base);
@@ -178,8 +182,8 @@
   --surface-toast: var(--bg-elevated);
   --surface-input: rgba(255, 255, 255, 0.04);
   --surface-input-focus: rgba(255, 255, 255, 0.06);
-  --surface-card: rgba(255, 255, 255, 0.03);
-  --surface-card-hover: rgba(255, 255, 255, 0.05);
+  --surface-card: #1b181f;
+  --surface-card-hover: #201d24;
   /* The one hero card per page (Home's Focus now). */
   --surface-hero: var(--accent-dim);
 
@@ -1617,6 +1621,8 @@ h6 {
     padding-inline: 14px;
     border-radius: var(--radius-full);
     border: 1px solid var(--border-default);
+    /* Page-coloured and opaque, so the background glow stays behind it. */
+    background-color: var(--bg-base);
     color: var(--text-3);
     font-size: var(--text-ui);
     font-weight: var(--weight-medium);
@@ -1632,11 +1638,14 @@ h6 {
   }
   .chip:hover {
     color: var(--text-1);
-    background: var(--surface-hover);
+    background:
+      linear-gradient(var(--surface-hover), var(--surface-hover)),
+      var(--bg-base);
   }
   .chip[aria-pressed="true"] {
     color: var(--text-1);
-    background: var(--accent-dim);
+    background:
+      linear-gradient(var(--accent-dim), var(--accent-dim)), var(--bg-base);
     border-color: var(--accent-border);
   }
 
