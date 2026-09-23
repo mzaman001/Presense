@@ -22,6 +22,12 @@ import { createContext, useContext } from "react";
 export interface SessionUser {
   id: string;
   email: string;
+  /**
+   * IANA zone from user_settings, read by the layout, so server and client
+   * format dates identically. Refreshes on the next server render after the
+   * user changes it.
+   */
+  timeZone?: string;
 }
 
 const SessionContext = createContext<SessionUser | null>(null);
@@ -54,4 +60,9 @@ export function useSessionUser(): SessionUser {
  */
 export function useUserId(): string {
   return useSessionUser().id;
+}
+
+/** The user's saved timezone, or UTC when none is set. */
+export function useUserTimeZone(): string {
+  return useSessionUser().timeZone || "UTC";
 }

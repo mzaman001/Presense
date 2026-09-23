@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { use, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useUserId } from "@/components/providers/SessionProvider";
+import {
+  useUserId,
+  useUserTimeZone,
+} from "@/components/providers/SessionProvider";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Loader2, RefreshCw, Trash2 } from "lucide-react";
@@ -20,19 +23,37 @@ import {
   type TrashType,
 } from "@/lib/trash";
 
+export function TrashLoading() {
+  return (
+    <div
+      className="flex items-center justify-center py-20"
+      role="status"
+      aria-label="Loading trash"
+    >
+      <UiIcon
+        className="h-8 w-8 animate-spin text-[var(--color-text-3)]"
+        icon={Loader2}
+      />
+    </div>
+  );
+}
+
 export function TrashList({
   filterType,
-  initialEntries,
-  timeZone,
+  entriesPromise,
 }: {
   filterType: TrashType | null;
-  /** Server-fetched first page; undefined when that fetch failed. */
-  initialEntries: TrashEntry[] | undefined;
-  timeZone: string;
+  /** Streamed by the server page; undefined when that fetch failed. */
+  entriesPromise: Promise<TrashEntry[] | undefined>;
 }) {
   const userId = useUserId();
+  const timeZone = useUserTimeZone();
   const queryClient = useQueryClient();
   const supabase = useMemo(() => createClient(), []);
+  // A cached list renders at once; only a cold load reads the stream.
+  const serverEntries = queryClient.getQueryData(trashQueryKey(filterType))
+    ? undefined
+    : use(entriesPromise);
 
   const [itemToPermanentDelete, setItemToPermanentDelete] =
     useState<TrashEntry | null>(null);
@@ -46,7 +67,7 @@ export function TrashList({
   } = useQuery({
     queryKey: trashQueryKey(filterType),
     queryFn: () => fetchTrash(supabase, userId, filterType),
-    initialData: initialEntries,
+    initialData: serverEntries,
   });
 
   const handleRestore = async (entry: TrashEntry) => {
@@ -89,16 +110,7 @@ export function TrashList({
   return (
     <>
       {isPending ? (
-        <div
-          className="flex items-center justify-center py-20"
-          role="status"
-          aria-label="Loading trash"
-        >
-          <UiIcon
-            className="h-8 w-8 animate-spin text-[var(--color-text-3)]"
-            icon={Loader2}
-          />
-        </div>
+        <TrashLoading />
       ) : isError ? (
         /* A failed query used to render as "Trash is empty", which quietly
            told the user their deleted items were gone. Say what happened

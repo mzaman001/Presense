@@ -102,7 +102,9 @@ export default async function AppLayout({
       <AppInitializer
         initialSettings={(settings as UserSettings) || undefined}
       />
-      <SessionProvider user={sessionUser}>
+      <SessionProvider
+        user={{ ...sessionUser, timeZone: settings?.timezone ?? undefined }}
+      >
         <MotionProvider>
           <QueryProvider>
             <TooltipProvider>
