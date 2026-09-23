@@ -11,8 +11,8 @@ import { createContext, useContext } from "react";
  * single navigation could spend three or four of them before any data was
  * requested.
  *
- * The id is safe to hand down from the server: `src/proxy.ts` validates the
- * JWT with `getUser()` on every matched request, and the app layout only
+ * The id is safe to hand down from the server: `src/proxy.ts` verifies the
+ * JWT with `getClaims()` on every matched request, and the app layout only
  * renders for a user that check accepted. Authorization itself never depends
  * on this value — row ownership is enforced by RLS (`users_own_*`, scoped
  * `TO authenticated` with `(select auth.uid()) = user_id`), so a tampered id

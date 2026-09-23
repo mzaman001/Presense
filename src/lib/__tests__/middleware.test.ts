@@ -88,9 +88,13 @@ vi.mock("next/server", () => {
 });
 
 // Mock Supabase Server Client
+const mockGetClaims = vi.fn();
+// The proxy must verify the JWT locally; getUser() is a round trip to the
+// Supabase Auth server on every request.
 const mockGetUser = vi.fn();
 const mockSupabaseClient = {
   auth: {
+    getClaims: mockGetClaims,
     getUser: mockGetUser,
   },
 };
@@ -138,7 +142,7 @@ describe("Edge Auth Middleware Routing", () => {
 
   describe("Unauthenticated requests", () => {
     it("redirects unauthenticated requests to / to /login with 307 redirect", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/");
       const res = await proxy(req);
 
@@ -148,7 +152,7 @@ describe("Edge Auth Middleware Routing", () => {
     });
 
     it("redirects unauthenticated requests to protected paths (e.g., /do) to /login with 307 redirect", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/do");
       const res = await proxy(req);
 
@@ -162,7 +166,7 @@ describe("Edge Auth Middleware Routing", () => {
        usable response. Page routes keep the 307 behavior unchanged. */
 
     it("returns JSON 401 for unauthenticated requests to /api/* routes", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/api/capture");
       const res = await proxy(req);
 
@@ -175,7 +179,7 @@ describe("Edge Auth Middleware Routing", () => {
     });
 
     it("carries a stable error payload on the /api/* 401", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/api/items/reorder");
       const res = await proxy(req);
 
@@ -186,7 +190,7 @@ describe("Edge Auth Middleware Routing", () => {
     });
 
     it("keeps the 307 /login redirect for unauthenticated page routes", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/do");
       const res = await proxy(req);
 
@@ -195,7 +199,7 @@ describe("Edge Auth Middleware Routing", () => {
     });
 
     it("copies cookies set by Supabase to the redirect response", async () => {
-      mockGetUser.mockImplementation(async () => {
+      mockGetClaims.mockImplementation(async () => {
         mockCreateServerClientConfig.cookies.setAll([
           {
             name: "sb-access-token",
@@ -208,7 +212,7 @@ describe("Edge Auth Middleware Routing", () => {
             options: { path: "/" },
           },
         ]);
-        return { data: { user: null } };
+        return { data: null, error: null };
       });
 
       const req = createMockRequest("/");
@@ -230,8 +234,22 @@ describe("Edge Auth Middleware Routing", () => {
   });
 
   describe("Authenticated requests", () => {
+    it("verifies the session locally instead of calling the Auth server", async () => {
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "user-123" } },
+        error: null,
+      });
+      await proxy(createMockRequest("/do"));
+
+      expect(mockGetClaims).toHaveBeenCalledTimes(1);
+      expect(mockGetUser).not.toHaveBeenCalled();
+    });
+
     it("redirects authenticated requests to /login to / with 307 redirect", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "user-123" } },
+        error: null,
+      });
       const req = createMockRequest("/login");
       const res = await proxy(req);
 
@@ -241,7 +259,10 @@ describe("Edge Auth Middleware Routing", () => {
     });
 
     it("allows authenticated requests to protected paths (e.g., /do) without redirecting", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: "user-123" } } });
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "user-123" } },
+        error: null,
+      });
       const req = createMockRequest("/do");
       const res = await proxy(req);
 
@@ -279,7 +300,7 @@ describe("Edge Auth Middleware Routing", () => {
 
     it("omits report-uri from the CSP when no DSN is configured", async () => {
       delete process.env.NEXT_PUBLIC_SENTRY_DSN;
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/do");
       await proxy(req);
 
@@ -313,7 +334,7 @@ describe("Edge Auth Middleware Routing", () => {
 
     it("omits the Sentry origin from connect-src when no DSN is configured", async () => {
       delete process.env.NEXT_PUBLIC_SENTRY_DSN;
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+      mockGetClaims.mockResolvedValue({ data: null, error: null });
       const req = createMockRequest("/do");
       await proxy(req);
 
@@ -328,7 +349,7 @@ describe("Edge Auth Middleware Routing", () => {
       process.env.NEXT_PUBLIC_SENTRY_DSN =
         "https://3b802d3cf21ac6b135bbde1081dc639d@o4511896684789760.ingest.de.sentry.io/4511896692850768";
       try {
-        mockGetUser.mockResolvedValue({ data: { user: null } });
+        mockGetClaims.mockResolvedValue({ data: null, error: null });
         const req = createMockRequest("/do");
         await proxy(req);
 
@@ -345,7 +366,7 @@ describe("Edge Auth Middleware Routing", () => {
       process.env.NEXT_PUBLIC_SENTRY_DSN =
         "https://3b802d3cf21ac6b135bbde1081dc639d@o4511896684789760.ingest.de.sentry.io/4511896692850768";
       try {
-        mockGetUser.mockResolvedValue({ data: { user: null } });
+        mockGetClaims.mockResolvedValue({ data: null, error: null });
         const req = createMockRequest("/do");
         await proxy(req);
 
@@ -359,11 +380,11 @@ describe("Edge Auth Middleware Routing", () => {
   });
 
   describe("Exception handling", () => {
-    it("redirects to /login when supabase.auth.getUser() throws an error on a protected path", async () => {
+    it("redirects to /login when supabase.auth.getClaims() throws an error on a protected path", async () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
-      mockGetUser.mockRejectedValue(new Error("Supabase connection failed"));
+      mockGetClaims.mockRejectedValue(new Error("Supabase connection failed"));
       const req = createMockRequest("/do");
       const res = await proxy(req);
 
@@ -374,11 +395,11 @@ describe("Edge Auth Middleware Routing", () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it("returns original response when supabase.auth.getUser() throws an error on the /login path", async () => {
+    it("returns original response when supabase.auth.getClaims() throws an error on the /login path", async () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
-      mockGetUser.mockRejectedValue(new Error("Supabase connection failed"));
+      mockGetClaims.mockRejectedValue(new Error("Supabase connection failed"));
       const req = createMockRequest("/login");
       const res = await proxy(req);
 

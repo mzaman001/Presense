@@ -32,9 +32,9 @@ export default async function AppLayout({
     data: { session },
   } = await supabase.auth.getSession();
 
-  // The proxy (src/proxy.ts) already validated the session via getUser() on
-  // every request, so the layout reads the session from cookies instead of
-  // repeating a ~300ms auth-server round trip.
+  // The proxy (src/proxy.ts) already verified the access token with
+  // getClaims() on this request, so the layout reads the session from
+  // cookies instead of repeating the check.
   if (!session?.user) {
     redirect("/login");
   }
