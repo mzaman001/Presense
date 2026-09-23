@@ -116,8 +116,22 @@ export async function checkRateLimit(
   const limiter = getRateLimit(bucket, maxRequests, windowMs);
 
   if (limiter) {
-    const { success } = await limiter.limit(key);
-    return success;
+    try {
+      const { success } = await limiter.limit(key);
+      return success;
+    } catch (err) {
+      // Redis configured but unreachable (a deleted Upstash database made
+      // every magic-link sign-in a 500). Keep limiting per instance rather
+      // than failing the request, and report it once per bucket.
+      if (!reportedUnreachable.has(bucket)) {
+        reportedUnreachable.add(bucket);
+        Sentry.captureException(err, {
+          tags: { subsystem: "rate-limit" },
+          extra: { bucket },
+        });
+      }
+      return memoryLimit(bucket, key, maxRequests, windowMs);
+    }
   }
 
   // Fail closed in production without Redis.
@@ -128,6 +142,17 @@ export async function checkRateLimit(
     return false;
   }
 
+  return memoryLimit(bucket, key, maxRequests, windowMs);
+}
+
+const reportedUnreachable = new Set<string>();
+
+function memoryLimit(
+  bucket: string,
+  key: string,
+  maxRequests: number,
+  windowMs: number,
+): boolean {
   // SEC-01: the in-memory fallback keys on limit + window too, so it always
   // mirrors what the Redis path now does.
   const memKey = `${bucket}:${key}:${maxRequests}:${windowMs}`;

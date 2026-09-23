@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 
 vi.mock("@sentry/nextjs", () => ({
   captureMessage: vi.fn(),
+  captureException: vi.fn(),
 }));
 
 const redisConstructor = vi.fn();
@@ -16,9 +17,11 @@ interface RatelimitInit {
 
 const ratelimitInits: RatelimitInit[] = [];
 
+const limitImpl = vi.fn(async (_key: string) => ({ success: true }));
+
 class MockRatelimit {
   static slidingWindow = vi.fn(() => ({ type: "sliding-window" }));
-  limit = vi.fn(async () => ({ success: true }));
+  limit = vi.fn((key: string) => limitImpl(key));
   constructor(init: RatelimitInit) {
     ratelimitInits.push(init);
   }
@@ -46,6 +49,7 @@ beforeEach(() => {
   for (const key of REDIS_ENV_KEYS) delete process.env[key];
   vi.stubEnv("NODE_ENV", "development");
   vi.clearAllMocks();
+  limitImpl.mockImplementation(async () => ({ success: true }));
   ratelimitInits.length = 0;
 });
 
@@ -225,5 +229,30 @@ describe("Redis env resolution", () => {
       expect.stringContaining("UPSTASH_REDIS_REST_URL"),
       expect.objectContaining({ level: "error" }),
     );
+  });
+});
+
+// Preview sign-in returned 500 (Sep 2026): the Upstash integration's host
+// no longer resolved (getaddrinfo ENOTFOUND), limiter.limit() rejected, and
+// the magic-link server action threw. An unreachable Redis must degrade to
+// the per-instance limiter, not take the route down.
+describe("Redis unreachable at request time", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("falls back to the in-memory limiter and reports once", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.UPSTASH_REDIS_REST_URL = "https://gone.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "token";
+    limitImpl.mockRejectedValue(new TypeError("fetch failed"));
+    vi.resetModules();
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+
+    expect(await checkRateLimit("unreachable", "u1", 2, 60_000)).toBe(true);
+    expect(await checkRateLimit("unreachable", "u1", 2, 60_000)).toBe(true);
+    // Still limited, per instance.
+    expect(await checkRateLimit("unreachable", "u1", 2, 60_000)).toBe(false);
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
   });
 });
