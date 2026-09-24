@@ -19,6 +19,9 @@ import {
   CloudSun,
   Loader2,
   CalendarDays,
+  Minus,
+  Plus,
+  Redo2,
 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
@@ -43,11 +46,22 @@ import {
 // ─── WorkloadBar ──────────────────────────────────────────────────────────────
 // Planned minutes against the daily capacity from Settings. One calm bar;
 // the over-capacity note is advice, not an alarm.
-function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
+const fmtMinutes = (m: number) =>
+  m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${m}m`;
+
+function WorkloadBar({
+  total,
+  capacity,
+  unestimated = 0,
+}: {
+  total: number;
+  capacity: number;
+  /** Tasks with no estimate: the bar can't count them, so say so. */
+  unestimated?: number;
+}) {
   const pct = capacity > 0 ? Math.min((total / capacity) * 100, 100) : 0;
   const isOver = capacity > 0 && total > capacity;
-  const fmt = (m: number) =>
-    m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${m}m`;
+  const fmt = fmtMinutes;
 
   return (
     <div className="space-y-2.5" data-testid="workload-bar">
@@ -78,19 +92,24 @@ function WorkloadBar({ total, capacity }: { total: number; capacity: number }) {
           )}
         />
       </div>
-      <AnimatePresence initial={false}>
-        {isOver && (
-          <m.p
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden text-[length:var(--text-ui)] leading-relaxed text-[var(--text-3)]"
-          >
-            That&apos;s more than your day holds. Consider moving one or two to
-            tomorrow. Rest is part of the plan.
-          </m.p>
+      <p
+        className="text-[length:var(--text-ui)] leading-relaxed text-[var(--text-3)]"
+        aria-live="polite"
+      >
+        {isOver
+          ? `That's ${fmt(total - capacity)} more than your day holds. Move something to tomorrow with ↷, or trim an estimate. Rest is part of the plan.`
+          : capacity > 0 && total > 0
+            ? `${fmt(capacity - total)} left over for the unexpected.`
+            : null}
+        {unestimated > 0 && (
+          <>
+            {isOver || (capacity > 0 && total > 0) ? " " : ""}
+            {unestimated === 1
+              ? "1 task has no estimate, so it isn't counted."
+              : `${unestimated} tasks have no estimate, so they aren't counted.`}
+          </>
         )}
-      </AnimatePresence>
+      </p>
     </div>
   );
 }
@@ -131,11 +150,9 @@ function TriageRow({
         {task.title}
       </p>
       <p className="mt-0.5 text-[length:var(--text-meta)] text-[var(--text-3)]">
-        {isOverdue ? (
-          <span className="text-[var(--status-overdue)]">Overdue</span>
-        ) : (
-          "In your inbox"
-        )}
+        {/* Neutral on purpose: a red "Overdue" wall feeds the guilt that
+            drives avoidance; this is just where it came from. */}
+        {isOverdue ? "From an earlier day" : "In your inbox"}
         {task.deadline && (
           <>
             {" · "}
@@ -364,6 +381,10 @@ export function RitualOverlay({
   const [saving, setSaving] = useState(false);
 
   const capacity = userSettings?.daily_capacity_minutes ?? 240;
+  // Today's real time, starting from the Settings default: a day with
+  // appointments holds less. Only this morning's plan uses it.
+  const [availableMinutes, setAvailableMinutes] = useState<number | null>(null);
+  const dayMinutes = availableMinutes ?? capacity;
 
   const [todayString, setTodayString] = useState(() =>
     new Date().toLocaleDateString("en-CA"),
@@ -534,6 +555,7 @@ export function RitualOverlay({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(0);
     setSweptCount(0);
+    setAvailableMinutes(null);
     void loadData();
   }, [activeRitual, loadData, todayString]);
 
@@ -614,6 +636,49 @@ export function RitualOverlay({
     } catch {
       toast.error("Failed to update task");
     }
+  };
+
+  /** Shape step: take a task out of today when the day is too full. */
+  const handleMoveToTomorrow = async (taskId: string) => {
+    const task = todayTasks.find((t) => t.id === taskId);
+    if (!task) return;
+    // Tomorrow's date, keeping the task's time of day.
+    const now = new Date();
+    const tomorrow = task.deadline ? new Date(task.deadline) : new Date(now);
+    tomorrow.setFullYear(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    if (!task.deadline) tomorrow.setHours(23, 59, 0, 0);
+    setTodayTasks((prev) => prev.filter((t) => t.id !== taskId));
+    const { success } = await safeMutate(
+      () =>
+        supabase
+          .from("items")
+          .update({ deadline: tomorrow.toISOString() })
+          .eq("id", taskId),
+      "Couldn't move the task",
+    );
+    if (!success) {
+      setTodayTasks((prev) => [...prev, task]);
+      return;
+    }
+    markMutation("items");
+    toast.success("Moved to tomorrow", {
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const { success: undone } = await safeMutate(
+            () =>
+              supabase
+                .from("items")
+                .update({ deadline: task.deadline })
+                .eq("id", taskId),
+            "Failed to undo",
+          );
+          if (!undone) return;
+          markMutation("items");
+          setTodayTasks((prev) => [...prev, task]);
+        },
+      },
+    });
   };
 
   const handleEstimateChange = async (taskId: string, minutes: number) => {
@@ -1173,13 +1238,76 @@ export function RitualOverlay({
                                     min
                                   </span>
                                 </label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    haptics.selection();
+                                    void handleMoveToTomorrow(task.id);
+                                  }}
+                                  aria-label={`Move "${task.title}" to tomorrow`}
+                                  title="Move to tomorrow"
+                                  className="-mr-2 flex size-9 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+                                >
+                                  <Redo2
+                                    aria-hidden="true"
+                                    className="size-4"
+                                  />
+                                </button>
                               </li>
                             ))}
                           </ul>
                         </RitualSection>
+                        <div className="flex items-center justify-between gap-3 px-1">
+                          <span
+                            id="ritual-available"
+                            className="text-[length:var(--text-ui)] font-medium text-[var(--text-2)]"
+                          >
+                            Time you have today
+                          </span>
+                          <div
+                            role="group"
+                            aria-labelledby="ritual-available"
+                            className="flex items-center gap-1"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAvailableMinutes(
+                                  Math.max(0, dayMinutes - 30),
+                                )
+                              }
+                              disabled={dayMinutes <= 0}
+                              aria-label="30 minutes less"
+                              className="flex size-8 items-center justify-center rounded-full text-[var(--text-2)] hover:bg-[var(--surface-hover)] disabled:opacity-40"
+                            >
+                              <Minus aria-hidden="true" className="size-4" />
+                            </button>
+                            <output
+                              aria-live="polite"
+                              className="min-w-[4.5rem] text-center text-[length:var(--text-ui)] text-[var(--text-1)] tabular-nums"
+                            >
+                              {fmtMinutes(dayMinutes)}
+                            </output>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAvailableMinutes(
+                                  Math.min(16 * 60, dayMinutes + 30),
+                                )
+                              }
+                              aria-label="30 minutes more"
+                              className="flex size-8 items-center justify-center rounded-full text-[var(--text-2)] hover:bg-[var(--surface-hover)]"
+                            >
+                              <Plus aria-hidden="true" className="size-4" />
+                            </button>
+                          </div>
+                        </div>
                         <WorkloadBar
                           total={totalEstimate}
-                          capacity={capacity}
+                          capacity={dayMinutes}
+                          unestimated={
+                            todayTasks.filter((t) => !t.time_estimate).length
+                          }
                         />
                       </>
                     )}

@@ -47,11 +47,12 @@ type TaskItem = TaskRecord;
 /* @todo: Untyped usage justified per TOOL-01 */
 function RitualStatusBadge({
   userSettings,
-  streak,
+  plannedDays,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userSettings: any;
-  streak: number;
+  /** Days with a morning plan in the last 7 (a rolling count, not a streak). */
+  plannedDays: number;
 }) {
   const setActiveRitual = useAppStore((s) => s.setActiveRitual);
   const now = new Date();
@@ -70,8 +71,10 @@ function RitualStatusBadge({
       <div className="text-ui inline-flex items-center gap-1.5 font-medium text-[var(--status-done)]">
         <UiIcon className="h-3.5 w-3.5" icon={CheckCircle2} /> Day complete —
         Great work today
-        {streak > 1 && (
-          <span className="ml-1 opacity-80">· {streak}-day streak</span>
+        {plannedDays > 1 && (
+          <span className="ml-1 opacity-80">
+            · planned {plannedDays} of the last 7 days
+          </span>
         )}
       </div>
     );
@@ -86,8 +89,10 @@ function RitualStatusBadge({
         />{" "}
         Day planned <span className="mx-1 opacity-50">•</span> Evening review at{" "}
         {shutdownAmPm}
-        {streak > 1 && (
-          <span className="ml-1 opacity-50">· {streak}-day streak</span>
+        {plannedDays > 1 && (
+          <span className="ml-1 opacity-50">
+            · planned {plannedDays} of the last 7 days
+          </span>
         )}
       </div>
     );
@@ -152,7 +157,7 @@ function HomeDashboard({
   const [completing, setCompleting] = useState<string | null>(null);
   const haptics = useHaptics();
 
-  // Week, day and streak boundaries use the device's timezone, so Home is
+  // Week, day and planned-day boundaries use the device's timezone, so Home is
   // first rendered with data after hydration, never on the server.
   const hydrated = useSyncExternalStore(
     subscribeNoop,
@@ -180,7 +185,7 @@ function HomeDashboard({
     focusMinutesThisWeek = 0,
     focusMinutesLastWeek = 0,
     dayCounts = [],
-    ritualStreak = 0,
+    plannedDays = 0,
     locationsCount = 0,
   } = dashboardData || {};
 
@@ -379,7 +384,7 @@ function HomeDashboard({
             </h1>
             <RitualStatusBadge
               userSettings={userSettings}
-              streak={ritualStreak}
+              plannedDays={plannedDays}
             />
           </div>
           <button
@@ -765,8 +770,8 @@ function HomeDashboard({
                 {
                   href: null,
                   icon: Sparkles,
-                  value: ritualStreak,
-                  label: "Day Streak",
+                  value: plannedDays,
+                  label: "of 7 days planned",
                 },
                 {
                   href: "/think",
