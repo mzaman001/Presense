@@ -34,7 +34,6 @@ import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
-import { CaptureShortcut } from "@/components/layout/CaptureShortcut";
 import {
   fetchDashboardRows,
   summarizeDashboard,
@@ -364,12 +363,8 @@ function HomeDashboard({
         heroReason = `Due ${new Date(primaryTask.deadline).toLocaleDateString()}`;
     }
   }
-
-  // PWA2-01: the manifest "Quick Capture" shortcut navigates to /?capture=1,
-  // which opens the capture modal directly from the installed app.
   return (
     <>
-      <CaptureShortcut />
       <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-300">
         <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">

@@ -1,6 +1,14 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { screen, fireEvent, waitFor, render } from "@/lib/__tests__/test-utils";
+import {
+  screen,
+  fireEvent,
+  waitFor,
+  render,
+  TEST_USER,
+  act,
+} from "@/lib/__tests__/test-utils";
+import { readOutbox } from "@/lib/capture-outbox";
 import { useAppStore } from "@/store/useAppStore";
 import { CaptureModal } from "@/components/features/CaptureModal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -17,6 +25,20 @@ const insertMock = vi.fn(
 );
 const fromMock = vi.fn(() => ({ insert: insertMock }));
 
+// Lets a test make sorting fail, as it does offline before the date parser
+// has loaded.
+const routing = vi.hoisted(() => ({ fail: false }));
+vi.mock("@/lib/capture-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/capture-router")>();
+  return {
+    ...actual,
+    routeCapture: (...args: Parameters<typeof actual.routeCapture>) =>
+      routing.fail
+        ? Promise.reject(new Error("Loading chunk failed"))
+        : actual.routeCapture(...args),
+  };
+});
+
 vi.mock("@/lib/supabase", () => ({
   createClient: vi.fn(() => ({
     from: fromMock,
@@ -28,6 +50,10 @@ describe("CaptureModal — one-tap capture with a live preview", () => {
     insertMock.mockClear();
     fromMock.mockClear();
     insertMock.mockImplementation(async () => ({ error: null }));
+    // The capture outbox lives in localStorage; never carry one test's
+    // pending capture into the next.
+    localStorage.clear();
+    routing.fail = false;
     useAppStore.setState({
       isCaptureModalOpen: true,
       captureModalPrefill: null,
@@ -152,7 +178,9 @@ describe("CaptureModal — one-tap capture with a live preview", () => {
     );
   });
 
-  it("falls back to the review form (without losing the capture) if the save fails", async () => {
+  // Zero-loss capture: a failed network save must neither lose the capture
+  // nor stop the user. It is kept on the device for CaptureSync to retry.
+  it("says saved and keeps the capture on the device when the network save fails", async () => {
     insertMock.mockImplementationOnce(async () => ({
       error: { message: "network down" },
     }));
@@ -161,8 +189,33 @@ describe("CaptureModal — one-tap capture with a live preview", () => {
     typeCapture("Buy milk");
     fireEvent.click(screen.getByRole("button", { name: /^Save/ }));
 
-    const title = await screen.findByRole("textbox", { name: "Title" });
-    expect(title).toHaveValue("Buy milk");
+    await waitFor(() =>
+      expect(screen.getByText("Saved to Do")).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(readOutbox(TEST_USER.id)).toEqual([
+        expect.objectContaining({
+          text: "Buy milk",
+          attempts: 1,
+          lastError: "network down",
+        }),
+      ]),
+    );
+  });
+
+  it("clears the capture from the device once it reaches the database", async () => {
+    render(<CaptureModal />);
+    typeCapture("Buy milk");
+    fireEvent.click(screen.getByRole("button", { name: /^Save/ }));
+
+    await waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
+    // The row is sent with the id fixed at capture time, so a retry can
+    // never create a second copy.
+    expect(insertMock.mock.calls[0][0]).toMatchObject({
+      id: expect.any(String),
+      title: "Buy milk",
+    });
+    await waitFor(() => expect(readOutbox(TEST_USER.id)).toEqual([]));
   });
 
   it("previews the destination as you type and saves to an overridden space", async () => {
@@ -200,5 +253,85 @@ describe("CaptureModal — one-tap capture with a live preview", () => {
 
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() => expect(fromMock).toHaveBeenCalledWith("locations"));
+  });
+  it("saves the exact words to Inbox when sorting fails, instead of stopping", async () => {
+    routing.fail = true;
+    render(<CaptureModal />);
+    typeCapture("call the plumber about the leak");
+    fireEvent.click(screen.getByRole("button", { name: /^Save/ }));
+
+    await waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
+    expect(insertMock.mock.calls[0][0]).toMatchObject({
+      title: "call the plumber about the leak",
+      status: "inbox",
+    });
+    expect(
+      screen.queryByRole("textbox", { name: "Title" }),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("voice", () => {
+    type Handler = ((e: unknown) => void) | null;
+    const instances: Array<{
+      onresult: Handler;
+      onend: (() => void) | null;
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+    }> = [];
+    class FakeRecognition {
+      lang = "";
+      continuous = false;
+      interimResults = false;
+      onresult: Handler = null;
+      onerror: Handler = null;
+      onend: (() => void) | null = null;
+      start = vi.fn();
+      stop = vi.fn(() => this.onend?.());
+      abort = vi.fn();
+      constructor() {
+        instances.push(this);
+      }
+    }
+
+    afterEach(() => {
+      delete (window as unknown as Record<string, unknown>)
+        .webkitSpeechRecognition;
+      instances.length = 0;
+    });
+
+    it("hides the mic where the browser can't transcribe speech", () => {
+      render(<CaptureModal />);
+      expect(
+        screen.queryByRole("button", { name: "Speak" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("adds what you say after what you typed", () => {
+      (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+        FakeRecognition;
+      render(<CaptureModal />);
+      typeCapture("Groceries:");
+      fireEvent.click(screen.getByRole("button", { name: "Speak" }));
+
+      const recognition = instances[0];
+      expect(recognition.start).toHaveBeenCalled();
+      expect(
+        screen.getByRole("button", { name: "Stop listening" }),
+      ).toHaveAttribute("aria-pressed", "true");
+
+      act(() =>
+        recognition.onresult?.({
+          resultIndex: 0,
+          results: [{ isFinal: true, 0: { transcript: "eggs and bread" } }],
+        }),
+      );
+      expect(screen.getByRole("textbox", { name: "Capture" })).toHaveValue(
+        "Groceries: eggs and bread",
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Stop listening" }));
+      expect(recognition.stop).toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Speak" })).toBeInTheDocument();
+    });
   });
 });

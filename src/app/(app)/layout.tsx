@@ -20,6 +20,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Suspense } from "react";
+import { CaptureSync } from "@/components/layout/CaptureSync";
+import { CaptureShortcut } from "@/components/layout/CaptureShortcut";
 
 // App layout — shown for all protected (app) pages
 export default async function AppLayout({
@@ -110,6 +113,12 @@ export default async function AppLayout({
             <TooltipProvider>
               <RealtimeProvider>
                 <ConnectionStatus />
+                {/* Zero-loss capture: sends captures saved on this device. */}
+                <CaptureSync />
+                {/* Home-screen shortcut and share sheet open capture on any route. */}
+                <Suspense fallback={null}>
+                  <CaptureShortcut />
+                </Suspense>
                 <UpdatePrompt />
                 <AmbientBackground />
                 <MobileTopBar />

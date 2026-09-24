@@ -15,6 +15,11 @@ import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { routeCapture } from "@/lib/capture-router";
+import {
+  enqueueCapture,
+  flushOutbox,
+  invalidateForCaptures,
+} from "@/lib/capture-outbox";
 import { cn, formatRRule } from "@/lib/utils";
 import {
   Brain,
@@ -23,6 +28,7 @@ import {
   Inbox,
   Loader2,
   MessageSquare,
+  Mic,
   PenLine,
   Repeat,
   Tag,
@@ -34,6 +40,7 @@ import { destinationIdToLabel, type RoutedItem } from "@/lib/capture-router";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
 import { useHaptics } from "@/hooks/useHaptics";
+import { useSpeechCapture } from "@/hooks/useSpeechCapture";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
@@ -315,6 +322,34 @@ export function CaptureModal() {
     if (!value.trim()) setPreview(null);
   };
 
+  // Voice: spoken words are appended to whatever was already typed.
+  const speechBaseRef = useRef("");
+  const speech = useSpeechCapture({
+    onTranscript: (spoken) => {
+      const base = speechBaseRef.current;
+      handleInputChange(base ? `${base} ${spoken}` : spoken);
+    },
+    onError: (error) => {
+      if (error === "denied") {
+        toast.error("Microphone is blocked", {
+          description: "Allow it in your browser's site settings to speak.",
+        });
+      } else if (error === "failed") {
+        toast.error("Couldn't start voice capture. Type it instead.");
+      }
+    },
+  });
+  const toggleSpeech = () => {
+    if (speech.listening) {
+      speech.stop();
+      inputRef.current?.focus();
+      return;
+    }
+    speechBaseRef.current = input.trim();
+    haptics.light();
+    speech.start();
+  };
+
   const setDestination = useCallback(
     (index: number | "all", id: DestinationId) => {
       const count = preview?.items.length ?? 1;
@@ -331,64 +366,21 @@ export function CaptureModal() {
     [preview],
   );
 
+  /**
+   * Saves on this device first (capture-outbox), then syncs. The capture is
+   * safe the moment this returns, online or not; CaptureSync retries
+   * anything that didn't reach the database. It used to wait on the network
+   * and, on failure, drop the user into a form with an error.
+   */
   const persistItems = useCallback(
-    async (items: RoutedItem[]) => {
-      await Promise.all(
-        items.map(async (item) => {
-          if (item.destinationId === "do" || item.destinationId === "inbox") {
-            const { error } = await supabase.from("items").insert({
-              user_id: userId,
-              title: item.title,
-              deadline: item.deadline
-                ? new Date(item.deadline).toISOString()
-                : null,
-              recurrence: item.recurrence ?? null,
-              status: item.destinationId === "inbox" ? "inbox" : "active",
-            });
-            if (error) throw new Error(`Tasks: ${error.message}`);
-          } else if (item.destinationId === "think") {
-            const { error } = await supabase.from("threads").insert({
-              user_id: userId,
-              title: item.title.slice(0, 60),
-              entries: [
-                {
-                  text: item.title,
-                  created_at: new Date().toISOString(),
-                  starred: false,
-                },
-              ],
-            });
-            if (error) throw new Error(`Think: ${error.message}`);
-          } else if (item.destinationId === "locations") {
-            const { error } = await supabase.from("locations").insert({
-              user_id: userId,
-              item_name: item.item_name || item.title.split(" ")[0] || "Item",
-              location_text: item.title,
-            });
-            if (error) throw new Error(`Locations: ${error.message}`);
-          }
-        }),
-      );
-      // Refresh the lists this capture landed in. Waiting for the Realtime
-      // echo left new tasks missing: our own echo is ignored when it lands
-      // within the echo window, so the list only caught up on a later refetch.
-      const keys = new Set(
-        items
-          .flatMap((item) =>
-            item.destinationId === "think"
-              ? [["threads"], ["dashboard"]]
-              : item.destinationId === "locations"
-                ? [["locations"]]
-                : [["tasks"], ["inbox-tasks"], ["dashboard"]],
-          )
-          .map((key) => JSON.stringify(key)),
-      );
-      for (const key of keys) {
-        void queryClient.invalidateQueries(
-          { queryKey: JSON.parse(key) as string[] },
-          { cancelRefetch: false },
-        );
-      }
+    (items: RoutedItem[], text: string) => {
+      enqueueCapture(userId, text, items);
+      void flushOutbox(supabase, userId).then(({ synced }) => {
+        // Refresh the lists these captures landed in. Waiting for the
+        // Realtime echo left them missing: our own echo is ignored when it
+        // lands within the echo window.
+        if (synced.length) invalidateForCaptures(queryClient, synced);
+      });
     },
     [supabase, userId, queryClient],
   );
@@ -410,7 +402,11 @@ export function CaptureModal() {
       const where = labels.join(" and ");
       setSavedTo(where);
       haptics.success();
-      toast.success(`Saved to ${where}`);
+      if (navigator.onLine) toast.success(`Saved to ${where}`);
+      else
+        toast.success(`Saved to ${where}`, {
+          description: "Saved on this device. It syncs when you're online.",
+        });
       setTimeout(() => setCaptureModalOpen(false), 800);
     },
     [haptics, setCaptureModalOpen],
@@ -421,50 +417,39 @@ export function CaptureModal() {
       if (savingRef.current) return;
       savingRef.current = true;
       setIsSaving(true);
+      const text = input;
       let items: RoutedItem[];
       try {
         items = await getItems();
-      } catch {
-        // Routing failed: keep the text and let the user pick a space.
-        setReviewItems([
+      } catch (e: unknown) {
+        // Sorting failed (e.g. offline before the date parser has loaded).
+        // Never lose the thought: keep it word for word in Inbox, to sort
+        // later, instead of stopping the user with a form.
+        logger.warn("[capture] routing failed, saving to Inbox:", e);
+        items = [
           {
             type: "unknown",
-            title: input,
+            title: text.trim(),
             destination: "Inbox",
             destinationId: "inbox",
             confidence: 0.1,
             reason: "route_request_failed",
           },
-        ]);
-        toast.error("Couldn't sort this capture", {
-          description: "Pick a space and save it yourself.",
-        });
-        savingRef.current = false;
-        setIsSaving(false);
-        return;
+        ];
       }
-      try {
-        await persistItems(items);
-      } catch (e: unknown) {
-        // Never drop a capture: open the review form with it filled in.
-        setReviewItems(items);
-        const message = e instanceof Error ? e.message : String(e);
-        logger.error(message);
-        toast.error("Couldn't save your capture", { description: message });
-        savingRef.current = false;
-        setIsSaving(false);
-        return;
-      }
+      persistItems(items, text);
       setIsSaving(false);
       finishSaved(items);
     },
     [input, persistItems, finishSaved],
   );
 
+  const stopSpeech = speech.stop;
   const handleSave = useCallback(() => {
     if (!input.trim()) return;
+    stopSpeech();
     void runSave(resolveItems);
-  }, [input, runSave, resolveItems]);
+  }, [input, runSave, resolveItems, stopSpeech]);
 
   const handleSaveReview = useCallback(() => {
     if (!reviewItems) return;
@@ -584,7 +569,34 @@ export function CaptureModal() {
               disabled={busy || reviewItems !== null}
               onKeyDown={handleKeyDown}
             />
-            {hasText && !busy && reviewItems === null && (
+            {speech.supported && !busy && reviewItems === null && (
+              <button
+                type="button"
+                onClick={toggleSpeech}
+                aria-label={speech.listening ? "Stop listening" : "Speak"}
+                aria-pressed={speech.listening}
+                title={
+                  speech.listening
+                    ? "Stop listening"
+                    : "Speak instead of typing"
+                }
+                className={cn(
+                  "relative flex size-8 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:outline-none",
+                  speech.listening
+                    ? "bg-[var(--accent)] text-[var(--text-on-accent)]"
+                    : "text-[var(--text-3)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]",
+                )}
+              >
+                {speech.listening && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 animate-ping rounded-full bg-[var(--accent)] opacity-30 motion-reduce:animate-none"
+                  />
+                )}
+                <UiIcon className="relative h-4 w-4" icon={Mic} />
+              </button>
+            )}
+            {hasText && !busy && reviewItems === null && !speech.listening && (
               <button
                 type="button"
                 onClick={() => {
