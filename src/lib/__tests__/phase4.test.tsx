@@ -801,6 +801,9 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
 
         expect(screen.getByTestId("ritual-overlay")).toBeInTheDocument();
         expect(screen.getByText(/Morning Planning/i)).toBeInTheDocument();
+        // Step 1 empties your head; sorting is step 2.
+        expect(screen.getByText("What's on your mind?")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
         // Each loose end offers the same three places to go.
         expect(screen.getByText("Overdue Task")).toBeInTheDocument();
@@ -872,6 +875,8 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
           ]),
         );
         render(<RitualOverlay isOpen={true} type="morning" />, { wrapper });
+        await screen.findByText("What's on your mind?");
+        fireEvent.click(screen.getByRole("button", { name: /continue/i }));
         await screen.findByText("Unplaced");
 
         const next = screen.getByRole("button", { name: /continue/i });

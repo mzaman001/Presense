@@ -18,6 +18,7 @@ import {
   Sunrise,
   CloudSun,
   Loader2,
+  CalendarDays,
 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
@@ -29,8 +30,15 @@ import { cn } from "@/lib/utils";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import {
   activateItemWithDeadlinePatch,
+  moveItemToTrashPatch,
+  restoreItemPatch,
   revertItemPatch,
 } from "@/lib/item-lifecycle";
+import { flushOutbox } from "@/lib/capture-outbox";
+import {
+  MindSweepPrompt,
+  eveningSweepPrompts,
+} from "@/components/features/MindSweep";
 
 // ─── WorkloadBar ──────────────────────────────────────────────────────────────
 // Planned minutes against the daily capacity from Settings. One calm bar;
@@ -164,6 +172,70 @@ function TriageRow({
   );
 }
 
+// ─── StillOpenRow ─────────────────────────────────────────────────────────────
+// An evening leftover and three neutral choices: carry it, pick a day, or let
+// it go. Nothing is labelled overdue or failed.
+function StillOpenRow({
+  title,
+  onTomorrow,
+  onPickDay,
+  onDrop,
+}: {
+  title: string;
+  onTomorrow: () => void;
+  onPickDay: (day: string) => void;
+  onDrop: () => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDay = tomorrow.toLocaleDateString("en-CA");
+
+  return (
+    <div className="flex w-full flex-col gap-2 py-1">
+      <p className="min-w-0 truncate text-[length:var(--text-body)] text-[var(--text-2)]">
+        {title}
+      </p>
+      <div
+        role="group"
+        aria-label={`What to do with "${title}"`}
+        className="flex flex-wrap items-center gap-1.5"
+      >
+        <button type="button" onClick={onTomorrow} className="chip chip-sm">
+          <Sunrise aria-hidden="true" className="size-3.5" />
+          Tomorrow
+        </button>
+        {picking ? (
+          <input
+            type="date"
+            autoFocus
+            min={minDay}
+            aria-label={`Pick a day for "${title}"`}
+            onChange={(e) => {
+              if (e.target.value) onPickDay(e.target.value);
+            }}
+            onBlur={() => setPicking(false)}
+            className="input !h-8 !w-auto !rounded-full !px-3 !py-0 !text-[length:var(--text-ui)]"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPicking(true)}
+            className="chip chip-sm"
+          >
+            <CalendarDays aria-hidden="true" className="size-3.5" />
+            Pick a day
+          </button>
+        )}
+        <button type="button" onClick={onDrop} className="chip chip-sm">
+          <X aria-hidden="true" className="size-3.5" />
+          Let it go
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Quiet centred message for an empty step.
 function RitualEmpty({
   icon: Icon,
@@ -268,7 +340,12 @@ export function RitualOverlay({
     else storeSetActiveRitual(null);
   }, [onClose, storeSetActiveRitual]);
 
-  const [step, setStep] = useState<1 | 2>(1);
+  // Morning: 0 = empty your head, 1 = sort loose ends, 2 = shape the day.
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  // Anything captured in the morning sweep; if so, sorting reloads first so
+  // what just landed in Inbox is there to place.
+  const [sweptCount, setSweptCount] = useState(0);
+  const [advancing, setAdvancing] = useState(false);
   const [triageTasks, setTriageTasks] = useState<
     Database["public"]["Tables"]["items"]["Row"][]
   >([]);
@@ -352,12 +429,9 @@ export function RitualOverlay({
     };
   }, [isCurrentlyOpen]);
 
-  useEffect(() => {
-    if (!activeRitual) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStep(1);
-    const fetchData = async () => {
-      setLoading(true);
+  const loadData = useCallback(
+    async ({ quiet = false }: { quiet?: boolean } = {}) => {
+      if (!quiet) setLoading(true);
       try {
         if (activeRitual === "morning") {
           // INFRA-18: explicit user_id filter for planner index usage.
@@ -451,9 +525,29 @@ export function RitualOverlay({
       } finally {
         setLoading(false);
       }
-    };
-    fetchData();
-  }, [activeRitual, supabase, todayString]);
+    },
+    [activeRitual, supabase, userId],
+  );
+
+  useEffect(() => {
+    if (!activeRitual) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStep(0);
+    setSweptCount(0);
+    void loadData();
+  }, [activeRitual, loadData, todayString]);
+
+  /** Morning: leave the sweep for sorting, with anything just captured. */
+  const continueFromSweep = async () => {
+    if (sweptCount > 0) {
+      setAdvancing(true);
+      // Wait for the captures to reach the database so they're listed.
+      await flushOutbox(supabase, userId).catch(() => undefined);
+      await loadData({ quiet: true });
+      setAdvancing(false);
+    }
+    setStep(1);
+  };
 
   const handleTriageAction = async (
     taskId: string,
@@ -579,21 +673,40 @@ export function RitualOverlay({
     }
   };
 
-  const handleCarryOver = async (taskId: string) => {
+  /**
+   * Evening leftovers: carry to tomorrow or to a chosen day, keeping the
+   * task's time of day. A neutral decision, never an "overdue" pile.
+   */
+  const handleCarryOver = async (taskId: string, day?: string) => {
     const task = triageTasks.find((t) => t.id === taskId);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    let target: Date;
+    if (day) {
+      const [y, mo, d] = day.split("-").map(Number);
+      target = task?.deadline ? new Date(task.deadline) : new Date();
+      target.setFullYear(y, mo - 1, d);
+      if (!task?.deadline) target.setHours(23, 59, 0, 0);
+    } else {
+      target = new Date();
+      target.setDate(target.getDate() + 1);
+    }
     setTriageTasks((prev) => prev.filter((t) => t.id !== taskId));
 
     try {
       const { error } = await supabase
         .from("items")
-        .update({ deadline: tomorrow.toISOString() })
+        .update({ deadline: target.toISOString() })
         .eq("id", taskId);
       if (error) throw error;
       markMutation("items");
 
-      toast.success("Carried over to tomorrow", {
+      const label = day
+        ? `Moved to ${target.toLocaleDateString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          })}`
+        : "Carried over to tomorrow";
+      toast.success(label, {
         action: {
           label: "Undo",
           onClick: async () => {
@@ -620,6 +733,42 @@ export function RitualOverlay({
     } catch {
       toast.error("Failed to carry over");
     }
+  };
+
+  /** "Let it go": to Trash, with Undo. Dropping is a valid decision. */
+  const handleDrop = async (taskId: string) => {
+    const task = triageTasks.find((t) => t.id === taskId);
+    if (!task) return;
+    setTriageTasks((prev) => prev.filter((t) => t.id !== taskId));
+    const { success } = await safeMutate(
+      () =>
+        supabase.from("items").update(moveItemToTrashPatch()).eq("id", taskId),
+      "Couldn't drop the task",
+    );
+    if (!success) {
+      setTriageTasks((prev) => [task, ...prev]);
+      return;
+    }
+    markMutation("items");
+    toast.success("Let go", {
+      description: "It's in Trash if you change your mind.",
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const { success: restored } = await safeMutate(
+            () =>
+              supabase
+                .from("items")
+                .update(restoreItemPatch("active"))
+                .eq("id", taskId),
+            "Failed to undo",
+          );
+          if (!restored) return;
+          markMutation("items");
+          setTriageTasks((prev) => [task, ...prev]);
+        },
+      },
+    });
   };
 
   const handleFinishEvening = async () => {
@@ -754,22 +903,28 @@ export function RitualOverlay({
     0,
   );
   const isMorning = activeRitual === "morning";
+  // Local noon of today, so the prompts rotate on the viewer's own date.
+  const eveningPrompts = eveningSweepPrompts(new Date(`${todayString}T12:00`));
 
   if (!isCurrentlyOpen || !activeRitual) return null;
 
   const hour = new Date().getHours();
   const heading = isMorning
-    ? step === 1
+    ? step === 0
       ? hour < 12
         ? "Good morning."
         : "Let's plan the day."
-      : "Shape your day."
+      : step === 1
+        ? "Sort the loose ends."
+        : "Shape your day."
     : "Let the day go.";
   const guidance = isMorning
-    ? step === 1
-      ? "First, give each loose end a place."
-      : "This is what you've chosen for today. Estimates keep it honest."
-    : "Close the open loops, note one thing, and rest.";
+    ? step === 0
+      ? "First, empty your head. Anything at all, one at a time."
+      : step === 1
+        ? "Give each one a place."
+        : "This is what you've chosen for today. Estimates keep it honest."
+    : "Close the open loops, empty your head, and rest.";
 
   return (
     <AnimatePresence>
@@ -827,7 +982,7 @@ export function RitualOverlay({
                 {isMorning && (
                   <span className="flex items-center gap-2 text-[length:var(--text-meta)] text-[var(--text-3)] tabular-nums">
                     <span aria-hidden="true" className="flex gap-1">
-                      {[1, 2].map((s) => (
+                      {[0, 1, 2].map((s) => (
                         <span
                           key={s}
                           className={cn(
@@ -840,7 +995,7 @@ export function RitualOverlay({
                       ))}
                     </span>
                     <span className="sr-only">Step </span>
-                    {step} of 2
+                    {step + 1} of 3
                   </span>
                 )}
               </div>
@@ -891,7 +1046,31 @@ export function RitualOverlay({
               </div>
             ) : isMorning ? (
               <AnimatePresence mode="wait" initial={false}>
-                {step === 1 ? (
+                {step === 0 ? (
+                  <m.div
+                    key="step0"
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{
+                      opacity: 0,
+                      x: -12,
+                      transition: { duration: 0.12 },
+                    }}
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                    className="space-y-3"
+                  >
+                    <MindSweepPrompt
+                      prompt="What's on your mind?"
+                      placeholder="A task, a worry, an idea… Enter after each"
+                      autoFocus
+                      onCaptured={() => setSweptCount((n) => n + 1)}
+                    />
+                    <p className="px-1 text-[length:var(--text-meta)] text-[var(--text-3)]">
+                      Each one is sorted and saved as you go. Nothing here is
+                      required. Continue whenever your head feels clear.
+                    </p>
+                  </m.div>
+                ) : step === 1 ? (
                   <m.div
                     key="step1"
                     initial={{ opacity: 0, x: -12 }}
@@ -1082,23 +1261,21 @@ export function RitualOverlay({
                             }}
                             className="flex items-center justify-between gap-3 overflow-hidden px-4 py-2"
                           >
-                            <p className="min-w-0 flex-1 truncate text-[length:var(--text-body)] text-[var(--text-2)]">
-                              {t.title}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => {
+                            <StillOpenRow
+                              title={t.title}
+                              onTomorrow={() => {
                                 haptics.selection();
-                                handleCarryOver(t.id);
+                                void handleCarryOver(t.id);
                               }}
-                              className="chip chip-sm shrink-0"
-                            >
-                              <Sunrise
-                                aria-hidden="true"
-                                className="size-3.5"
-                              />
-                              Tomorrow
-                            </button>
+                              onPickDay={(day) => {
+                                haptics.selection();
+                                void handleCarryOver(t.id, day);
+                              }}
+                              onDrop={() => {
+                                haptics.selection();
+                                void handleDrop(t.id);
+                              }}
+                            />
                           </m.li>
                         ))}
                       </AnimatePresence>
@@ -1124,6 +1301,18 @@ export function RitualOverlay({
                   </RitualSection>
                 )}
 
+                <RitualSection title="Anything else on your mind?">
+                  <div className="space-y-4 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
+                    {eveningPrompts.map((prompt) => (
+                      <MindSweepPrompt key={prompt} prompt={prompt} />
+                    ))}
+                    <p className="text-[length:var(--text-meta)] text-[var(--text-3)]">
+                      Skip any that don&apos;t apply. Whatever you add is sorted
+                      and waiting for tomorrow&apos;s plan.
+                    </p>
+                  </div>
+                </RitualSection>
+
                 <div>
                   <label htmlFor="ritual-reflection" className="field-label">
                     One line about today
@@ -1146,10 +1335,10 @@ export function RitualOverlay({
 
           {/* ── Footer ──────────────────────────────────────── */}
           <footer className="relative flex shrink-0 items-center justify-between gap-3 border-t border-[var(--border-subtle)] px-6 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] md:pb-4">
-            {isMorning && step === 2 ? (
+            {isMorning && step > 0 ? (
               <Button
                 variant="ghost"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(step === 2 ? 1 : 0)}
                 className="-ml-3"
               >
                 <ChevronLeft aria-hidden="true" className="size-4" /> Back
@@ -1165,7 +1354,26 @@ export function RitualOverlay({
             )}
 
             {isMorning ? (
-              step === 1 ? (
+              step === 0 ? (
+                <Button
+                  variant="primary"
+                  disabled={advancing}
+                  onClick={() => void continueFromSweep()}
+                  className="min-w-32"
+                >
+                  {advancing ? (
+                    <Loader2
+                      aria-hidden="true"
+                      className="size-4 animate-spin"
+                    />
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight aria-hidden="true" className="size-4" />
+                    </>
+                  )}
+                </Button>
+              ) : step === 1 ? (
                 // Always available: anything left unplaced simply stays where
                 // it is. It used to be disabled until the inbox was empty,
                 // with no explanation, which left people stuck.
