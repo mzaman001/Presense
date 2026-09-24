@@ -5,6 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+function ordinal(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+}
+
 export function formatRRule(rrule: string | null | undefined): string {
   if (!rrule) return "";
   const intervalMatch = rrule.match(/INTERVAL=(\d+)/);
@@ -16,8 +22,15 @@ export function formatRRule(rrule: string | null | undefined): string {
       : interval > 1
         ? `Every ${interval} days`
         : "Every day";
-  if (rrule.includes("FREQ=MONTHLY"))
-    return interval > 1 ? `Every ${interval} months` : "Every month";
+  if (rrule.includes("FREQ=MONTHLY")) {
+    if (interval > 1) return `Every ${interval} months`;
+    const day = rrule.match(/BYMONTHDAY=(\d+)/);
+    return day
+      ? `Every month on the ${ordinal(Number(day[1]))}`
+      : "Every month";
+  }
+  if (rrule.includes("FREQ=YEARLY"))
+    return interval > 1 ? `Every ${interval} years` : "Every year";
   if (rrule.includes("FREQ=WEEKLY")) {
     const match = rrule.match(/BYDAY=([A-Z,]+)/);
     if (match) {
@@ -37,6 +50,7 @@ export function formatRRule(rrule: string | null | undefined): string {
       });
       if (days.length === 5 && match[1] === "MO,TU,WE,TH,FR")
         return "Every weekday";
+      if (match[1] === "SA,SU") return "Every weekend";
       if (days.length === 2) return `Every ${days.join(" & ")}`;
       if (days.length > 2) {
         const last = days.pop();
@@ -44,7 +58,11 @@ export function formatRRule(rrule: string | null | undefined): string {
       }
       return `Every ${days[0]}`;
     }
-    return interval > 1 ? `Every ${interval} weeks` : "Every week";
+    return interval === 2
+      ? "Every other week"
+      : interval > 1
+        ? `Every ${interval} weeks`
+        : "Every week";
   }
   return "Recurring";
 }

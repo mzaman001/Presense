@@ -341,6 +341,52 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       }
     });
 
+    // A parsed date used to make the form invalid (local "yyyy-MM-ddTHH:mm"
+    // failed an offset-only datetime check), so "Add task" stayed disabled;
+    // repeats typed into the title were never read at all.
+    it("reads a typed repeat and time, keeps Add task enabled, and saves a clean title", async () => {
+      // This block turns parsing off in beforeEach; this test is about it.
+      useAppStore.setState({
+        userSettings: {
+          ...useAppStore.getState().userSettings,
+          nlp_date_parsing: true,
+        },
+      });
+      const onClose = vi.fn();
+      const query = mockSupabaseQuery();
+      mockSupabase.from.mockReturnValue(query);
+      render(<TaskAddPanel isOpen={true} onClose={onClose} />, { wrapper });
+      const input = screen.getByRole("textbox", { name: /task name/i });
+      const save = screen.getByRole("button", { name: "Add task" });
+
+      fireEvent.change(input, {
+        target: { value: "Everyday 9pm Do the Work" },
+      });
+
+      await waitFor(
+        () =>
+          expect(screen.getByRole("button", { name: "Daily" })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+          ),
+        // The date parser is lazy-loaded; the first parse can take a while.
+        { timeout: 5000 },
+      );
+      await waitFor(() => expect(save).toBeEnabled());
+
+      await act(async () => {
+        fireEvent.click(save);
+      });
+      await waitFor(() => expect(query.insert).toHaveBeenCalledTimes(1));
+      expect(query.insert.mock.calls[0][0]).toMatchObject({
+        title: "Do the Work",
+        recurrence: "FREQ=DAILY",
+      });
+      expect(query.insert.mock.calls[0][0].deadline).toEqual(
+        expect.any(String),
+      );
+    });
+
     it("links task validation to the generated input error ID and keeps invalid submit disabled", async () => {
       render(<TaskAddPanel isOpen={true} onClose={vi.fn()} />, { wrapper });
       const input = screen.getByRole("textbox", { name: /task name/i });
