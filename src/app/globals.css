@@ -1331,7 +1331,7 @@ h6 {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    height: 64px;
+    height: 56px;
     padding-inline: var(--space-3);
     margin-bottom: var(--space-2);
     color: var(--text-1);
@@ -1379,7 +1379,7 @@ h6 {
     display: flex;
     align-items: center;
     height: 28px;
-    margin: var(--space-3) var(--space-3) 2px;
+    margin: var(--space-2) var(--space-3) 2px;
     padding-inline: var(--space-3);
     font-size: var(--text-caption);
     font-weight: var(--weight-semibold);
@@ -1478,20 +1478,15 @@ h6 {
 
   /* Quick Capture: the one filled control in the rail. The whole row is an
      ember pill — a square tile when collapsed, a full-width button with its
-     "C" shortcut when expanded — lifted by a soft accent-tinted shadow. */
+     "C" shortcut when expanded. Flat fill, no glow: hover only
+     brightens the ember. */
   .sidebar-capture {
-    margin-top: var(--space-1);
     margin-bottom: var(--space-3);
     min-height: 46px;
     background: var(--accent);
     color: var(--text-on-accent);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.18),
-      0 6px 18px -8px color-mix(in srgb, var(--accent) 70%, transparent),
-      0 1px 2px color-mix(in srgb, var(--accent) 35%, transparent);
     transition:
       background-color var(--dur-fast) var(--ease-out),
-      box-shadow var(--dur-base) var(--ease-out),
       transform var(--dur-fast) var(--ease-out);
   }
   .sidebar-capture .sidebar-icon,
@@ -1504,10 +1499,6 @@ h6 {
   .sidebar-capture:hover {
     color: var(--text-on-accent);
     background: var(--accent-hot);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.22),
-      0 10px 24px -10px color-mix(in srgb, var(--accent) 80%, transparent),
-      0 1px 2px color-mix(in srgb, var(--accent) 40%, transparent);
   }
   .sidebar-capture:active {
     transform: scale(0.98);
@@ -1690,9 +1681,8 @@ h6 {
     border-radius: var(--radius-full);
     background: var(--accent);
     color: var(--text-on-accent);
-    box-shadow:
-      0 0 0 4px var(--bg-elevated),
-      0 8px 20px -8px var(--accent);
+    /* Ring only — it cuts the button out of the dock. No glow. */
+    box-shadow: 0 0 0 4px var(--bg-elevated);
     transform: translateY(-14px);
     transition:
       transform var(--dur-fast) var(--ease-out),
