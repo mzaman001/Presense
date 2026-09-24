@@ -145,8 +145,12 @@ export async function proxy(request: NextRequest) {
     const pathname = request.nextUrl.pathname.toLowerCase();
     const isAuthRoute =
       pathname.startsWith("/login") || pathname.startsWith("/auth");
+    // Web Vitals and client errors are reported from /login too, before
+    // there is a session; every one of those came back 401. The route
+    // validates, size-caps and rate-limits by IP on its own.
+    const isPublicApi = pathname === "/api/telemetry";
 
-    if (!user && !isAuthRoute) {
+    if (!user && !isAuthRoute && !isPublicApi) {
       /* AUDIT-02 (Aug 19, 2026): programmatic consumers of /api/* routes
          (capture bot, future mobile) received an HTML 307 to /login, which
          most HTTP clients handle uselessly. API routes now get a JSON 401

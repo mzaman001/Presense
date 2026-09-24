@@ -1,6 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+/** Largest payload the schema can produce is well under this. */
+const MAX_BODY_BYTES = 4096;
+/**
+ * Per IP. A page view reports about five Web Vitals, so this leaves room
+ * for normal browsing while stopping anyone from flooding Sentry: the
+ * route is public (see proxy.ts) because /login reports vitals too.
+ */
+const MAX_REPORTS_PER_MINUTE = 60;
+
+function clientIp(request: Request) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown"
+  );
+}
 
 const telemetrySchema = z.discriminatedUnion("kind", [
   z.object({
@@ -20,10 +38,24 @@ const telemetrySchema = z.discriminatedUnion("kind", [
 ]);
 
 export async function POST(request: Request) {
-  let body: unknown;
+  if (
+    !(await checkRateLimit(
+      "telemetry",
+      clientIp(request),
+      MAX_REPORTS_PER_MINUTE,
+      60_000,
+    ))
+  ) {
+    return new NextResponse(null, { status: 429 });
+  }
 
+  let body: unknown;
   try {
-    body = await request.json();
+    const text = await request.text();
+    if (text.length > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+    }
+    body = JSON.parse(text);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
