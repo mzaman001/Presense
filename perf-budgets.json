@@ -1,9 +1,9 @@
 {
-  "comment": "PERF-09 bundle budgets. Measured with node scripts/check-budgets.mjs against a production build (ANALYZE=true next build --webpack), excluding polyfills; the only public route is /login (src/proxy.ts gates everything else). Budget = measured baseline + ~0.7 KiB margin. History: 165 KiB (164.3 measured, 13 scripts, Aug 9 2026). 205 KiB (203.8 measured in CI, 14 scripts, Sep 23 2026): the Sentry browser SDK (Aug 12, OBS-01) and Next 16.2.9 -> 16.3.5 added ~40 KiB, unnoticed because CI failed at npm ci until then. 172.5 KiB (171.8 measured, 13 scripts, Sep 23 2026): the browser Sentry SDK (~32 KiB gz) moved out of initial JS into an async chunk loaded after the load event + idle (src/lib/sentry-client.ts); errors before it loads are buffered and replayed. Update deliberately and record each change here.",
+  "comment": "PERF-09 bundle budgets. Measured with node scripts/check-budgets.mjs against a production build (ANALYZE=true next build --webpack), excluding polyfills; the only public route is /login (src/proxy.ts gates everything else). Budget = measured baseline + ~0.7 KiB margin. History: 165 KiB (164.3 measured, 13 scripts, Aug 9 2026). 205 KiB (203.8 measured in CI, 14 scripts, Sep 23 2026): the Sentry browser SDK (Aug 12, OBS-01) and Next 16.2.9 -> 16.3.5 added ~40 KiB, unnoticed because CI failed at npm ci until then. 172.5 KiB (171.8 measured, 13 scripts, Sep 23 2026): the browser Sentry SDK (~32 KiB gz) moved out of initial JS into an async chunk loaded after the load event + idle (src/lib/sentry-client.ts); errors before it loads are buffered and replayed. 173.3 KiB (172.55 measured on main and on feat/realistic-day, 13 scripts, Sep 25 2026): /login's own code is unchanged; the growth is webpack's runtime chunk, which lists every lazy chunk in the app, so each code-split feature (capture outbox, focus timer, rituals) adds a few bytes to every page. Main had drifted to the limit, and the branch differed from it by 2 bytes, in that runtime chunk. Next trim target: tailwind-merge (~8 KiB gz) pulled into /login by cn(). Update deliberately and record each change here.",
   "routes": [
     {
       "path": "/login",
-      "initialGzKiB": 172.5
+      "initialGzKiB": 173.3
     }
   ]
 }
