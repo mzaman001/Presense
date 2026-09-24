@@ -25,6 +25,7 @@ import {
   RotateCw,
   Tag,
   Timer,
+  Clock,
   Trash2,
   Check,
   Plus,
@@ -75,6 +76,7 @@ import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
+import { formatMinutes } from "@/lib/format-minutes";
 import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
@@ -1054,6 +1056,18 @@ export function TaskAddPanel({
                   </span>
                 </div>
               </div>
+              {/* Focus-timer minutes add up here (session_logs trigger). */}
+              {taskToEdit?.time_spent_minutes ? (
+                <div className="task-prop">
+                  <span className="task-prop-label">
+                    <Clock aria-hidden="true" className="size-4" />
+                    Time spent
+                  </span>
+                  <span className="text-[length:var(--text-ui)] text-[var(--text-2)] tabular-nums">
+                    {formatMinutes(taskToEdit.time_spent_minutes)} focused
+                  </span>
+                </div>
+              ) : null}
             </div>
 
             {/* Getting it done: the first move, then the checklist. */}

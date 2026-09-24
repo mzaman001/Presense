@@ -5,7 +5,18 @@ import { useUserId } from "@/components/providers/SessionProvider";
 import { createClient, safeMutate } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
-import { X, Play, Pause, SkipForward, Square, Timer } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Maximize2,
+  Minimize2,
+  Pause,
+  Play,
+  SkipForward,
+  Square,
+  Timer,
+  X,
+} from "lucide-react";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { m, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -15,8 +26,14 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import { completeTaskPatch } from "@/lib/item-lifecycle";
 import { playChime } from "@/lib/chime";
-
-type Phase = "work" | "short_break" | "long_break";
+import {
+  loadFocusTimer,
+  remainingSeconds,
+  saveFocusTimer,
+  startLengths,
+  type FocusTimerState,
+  type Phase,
+} from "@/lib/focus-timer";
 
 const PHASE_CONFIG: Record<
   Phase,
@@ -42,38 +59,22 @@ const PHASE_CONFIG: Record<
   },
 };
 
-const STORAGE_KEY = "pomodoro_state";
-
 // The overlay's fade-in; initial focus waits for it so the handoff from
 // whatever opened the timer (e.g. the mobile drawer closing) settles first.
 const OVERLAY_FADE_MS = 350;
 
-interface PersistedState {
-  taskId: string | null;
-  taskTitle: string | null;
-  phase: Phase;
-  sessionCount: number;
-  startedAt: number;
-  duration: number;
-}
+/**
+ * ready  – nothing is counting yet: the task, its first step, a length to
+ *          pick. The timer only starts when the user presses Start.
+ * active – a phase is running or paused.
+ * done   – a short start finished: keep going, or stop there.
+ */
+type Stage = "ready" | "active" | "done";
 
-function saveTimerState(state: PersistedState | null) {
-  if (state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } else {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-}
-
-function loadTimerState(): PersistedState | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
+const fmt = (seconds: number) =>
+  `${Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
 
 export function PomodoroTimer() {
   const userId = useUserId();
@@ -89,15 +90,27 @@ export function PomodoroTimer() {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
+  const workMinutes = userSettings?.pomodoro_duration || 25;
+  const workDuration = workMinutes * 60;
+  const shortBreakDuration = (userSettings?.short_break_duration || 5) * 60;
+  const longBreakDuration = (userSettings?.long_break_duration || 15) * 60;
+  const longBreakInterval = userSettings?.pomodoro_long_break_interval || 4;
+  const autoStartBreaks = userSettings?.auto_start_breaks || false;
+
+  const [stage, setStage] = useState<Stage>("ready");
   const [phase, setPhase] = useState<Phase>("work");
   const [sessionCount, setSessionCount] = useState(1);
   const [isRunning, setIsRunning] = useState(false);
-  const [showConfirmEnd, setShowConfirmEnd] = useState(false);
   const [displayTime, setDisplayTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [minimized, setMinimized] = useState(false);
+  const [shortStart, setShortStart] = useState(false);
+  const [lastFocusMinutes, setLastFocusMinutes] = useState(0);
+  const [chosenMinutes, setChosenMinutes] = useState(workMinutes);
+  const [firstStepDraft, setFirstStepDraft] = useState("");
+  const [showConfirmEnd, setShowConfirmEnd] = useState(false);
 
   const startedAtRef = useRef<number>(0);
-  const didInitRef = useRef(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const primaryRef = useRef<HTMLButtonElement>(null);
   const initialFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -105,11 +118,8 @@ export function PomodoroTimer() {
   );
   const confirmReturnFocusRef = useRef<HTMLElement | null>(null);
 
-  const workDuration = (userSettings?.pomodoro_duration || 25) * 60;
-  const shortBreakDuration = (userSettings?.short_break_duration || 5) * 60;
-  const longBreakDuration = (userSettings?.long_break_duration || 15) * 60;
-  const longBreakInterval = userSettings?.pomodoro_long_break_interval || 4;
-  const autoStartBreaks = userSettings?.auto_start_breaks || false;
+  const taskId = activeTimer?.taskId ?? null;
+  const firstStep = activeTimer?.firstStep?.trim() || "";
 
   const getDuration = useCallback(
     (p: Phase) => {
@@ -120,11 +130,24 @@ export function PomodoroTimer() {
     [workDuration, shortBreakDuration, longBreakDuration],
   );
 
+  /** Saves the phase as given; every transition passes its new values. */
+  const persist = useCallback(
+    (state: Omit<FocusTimerState, "taskId" | "taskTitle" | "firstStep">) => {
+      saveFocusTimer({
+        taskId,
+        taskTitle: activeTimer?.taskTitle ?? null,
+        firstStep: activeTimer?.firstStep ?? null,
+        ...state,
+      });
+    },
+    [taskId, activeTimer?.taskTitle, activeTimer?.firstStep],
+  );
+
   const logSession = useCallback(
     async (type: Phase, minutes: number) => {
       if (!activeTimer || minutes < 1) return;
       try {
-        await safeMutate(
+        const { success } = await safeMutate(
           () =>
             supabase.from("session_logs").insert({
               user_id: userId,
@@ -134,64 +157,63 @@ export function PomodoroTimer() {
             }),
           "Failed to log session",
         );
+        // A trigger adds work minutes to the task's time spent; refresh the
+        // lists so the new total shows without waiting for a refetch.
+        if (success && type === "work") {
+          for (const queryKey of [["tasks"], ["dashboard"]]) {
+            void queryClient.invalidateQueries(
+              { queryKey },
+              { cancelRefetch: false },
+            );
+          }
+        }
       } catch {}
     },
-    [activeTimer, supabase],
+    [activeTimer, supabase, userId, queryClient],
+  );
+
+  const runPhase = useCallback(
+    (
+      p: Phase,
+      count: number,
+      seconds: number,
+      opts: { running: boolean; short?: boolean },
+    ) => {
+      startedAtRef.current = Date.now();
+      setStage("active");
+      setPhase(p);
+      setSessionCount(count);
+      setDuration(seconds);
+      setDisplayTime(seconds);
+      setIsRunning(opts.running);
+      setShortStart(Boolean(opts.short));
+      // Every new phase (start, keep going, break, next session) is shown
+      // in full, including one that begins while the pill was showing.
+      setMinimized(false);
+      persist({
+        phase: p,
+        sessionCount: count,
+        startedAt: startedAtRef.current,
+        duration: seconds,
+        pausedRemaining: opts.running ? null : seconds,
+        minimized: false,
+        shortStart: Boolean(opts.short),
+      });
+    },
+    [persist],
   );
 
   const advance = useCallback(() => {
     if (phase === "work") {
-      const nextPhase =
+      const next =
         sessionCount % longBreakInterval === 0 ? "long_break" : "short_break";
-      const d = getDuration(nextPhase);
-      setPhase(nextPhase);
-      setSessionCount(sessionCount);
-      setDuration(d);
-      setDisplayTime(d);
-      startedAtRef.current = Date.now();
-      // nextPhase is always a break phase here, so auto-start breaks if enabled
-      const shouldAutoStart = autoStartBreaks;
-      setIsRunning(shouldAutoStart);
-      saveTimerState({
-        taskId: activeTimer?.taskId || null,
-        taskTitle: activeTimer?.taskTitle || null,
-        phase: nextPhase,
-        sessionCount: sessionCount,
-        startedAt: startedAtRef.current,
-        duration: d,
+      runPhase(next, sessionCount, getDuration(next), {
+        running: autoStartBreaks,
       });
     } else if (phase === "long_break") {
-      const d = getDuration("work");
-      setPhase("work");
-      setSessionCount(1);
-      setDuration(d);
-      setDisplayTime(d);
-      startedAtRef.current = Date.now();
-      setIsRunning(false);
-      saveTimerState({
-        taskId: activeTimer?.taskId || null,
-        taskTitle: activeTimer?.taskTitle || null,
-        phase: "work",
-        sessionCount: 1,
-        startedAt: startedAtRef.current,
-        duration: d,
-      });
+      runPhase("work", 1, workDuration, { running: false });
     } else {
-      const d = getDuration("work");
-      setPhase("work");
-      setSessionCount(sessionCount + 1);
-      setDuration(d);
-      setDisplayTime(d);
-      startedAtRef.current = Date.now();
-      setIsRunning(false);
-      saveTimerState({
-        taskId: activeTimer?.taskId || null,
-        taskTitle: activeTimer?.taskTitle || null,
-        phase: "work",
-        sessionCount: sessionCount + 1,
-        startedAt: startedAtRef.current,
-        duration: d,
-      });
+      runPhase("work", sessionCount + 1, workDuration, { running: false });
     }
   }, [
     phase,
@@ -199,15 +221,44 @@ export function PomodoroTimer() {
     longBreakInterval,
     getDuration,
     autoStartBreaks,
-    activeTimer,
+    workDuration,
+    runPhase,
   ]);
+
+  const markTaskDone = useCallback(async () => {
+    if (!activeTimer?.taskId) return;
+    markMutation();
+    const { success } = await safeMutate(
+      () =>
+        supabase
+          .from("items")
+          .update(completeTaskPatch())
+          .eq("id", activeTimer.taskId as string),
+      "Failed to mark task done",
+    );
+    if (!success) return;
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    saveFocusTimer(null);
+    setActiveTimer(null);
+  }, [activeTimer, markMutation, supabase, queryClient, setActiveTimer]);
 
   const handleComplete = useCallback(() => {
     setIsRunning(false);
-    saveTimerState(null);
+    // Time's up needs attention: bring the full view back if minimised.
+    setMinimized(false);
     if (userSettings?.pomodoro_sound !== false) playChime();
+    logSession(phase, Math.round(duration / 60));
 
-    if (phase === "work" && activeTimer) {
+    if (phase === "work" && shortStart) {
+      // A short start ends on a choice, not a break.
+      setLastFocusMinutes(Math.round(duration / 60));
+      setStage("done");
+      saveFocusTimer(null);
+      return;
+    }
+
+    if (phase === "work" && activeTimer?.taskId) {
       toast.success(
         `Session complete! Did you finish '${activeTimer.taskTitle}'?`,
         {
@@ -215,109 +266,45 @@ export function PomodoroTimer() {
           icon: (
             <UiIcon className="h-4 w-4 text-[var(--accent)]" icon={Timer} />
           ),
-          action: {
-            label: "Mark Done",
-            onClick: async () => {
-              markMutation();
-              const { success } = await safeMutate(
-                () =>
-                  supabase
-                    .from("items")
-                    .update(completeTaskPatch())
-                    .eq("id", activeTimer.taskId as string),
-                "Failed to mark task done",
-              );
-              if (!success) return;
-              queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-              setActiveTimer(null);
-            },
-          },
+          action: { label: "Mark Done", onClick: () => void markTaskDone() },
         },
       );
     }
-
-    logSession(phase, Math.round(duration / 60));
     advance();
   }, [
     phase,
     duration,
+    shortStart,
     logSession,
     advance,
     userSettings,
     activeTimer,
-    markMutation,
-    supabase,
-    queryClient,
-    setActiveTimer,
+    markTaskDone,
   ]);
 
-  const startPhase = useCallback(
-    (p: Phase, count: number, autoStart: boolean) => {
-      const d = getDuration(p);
-      setPhase(p);
-      setSessionCount(count);
-      setDuration(d);
-      setDisplayTime(d);
-      startedAtRef.current = Date.now();
-      setIsRunning(autoStart);
-      saveTimerState({
-        taskId: activeTimer?.taskId || null,
-        taskTitle: activeTimer?.taskTitle || null,
-        phase: p,
-        sessionCount: count,
-        startedAt: startedAtRef.current,
-        duration: d,
-      });
-    },
-    [getDuration, activeTimer],
-  );
-
-  // Restore from localStorage on mount — intentional sync initialization
+  // Open: resume a saved session for this task, otherwise wait on "ready".
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (activeTimer) {
-      const saved = loadTimerState();
-      if (saved && saved.taskId === activeTimer.taskId) {
-        const elapsed = Math.floor((Date.now() - saved.startedAt) / 1000);
-        const remaining = Math.max(0, saved.duration - elapsed);
-        setPhase(saved.phase);
-        setSessionCount(saved.sessionCount);
-        setDuration(saved.duration);
-        setDisplayTime(remaining);
-        startedAtRef.current = saved.startedAt;
-        setIsRunning(remaining > 0);
-        didInitRef.current = true;
-      } else {
-        startPhase("work", 1, true);
-        didInitRef.current = true;
-      }
+    if (!activeTimer) return;
+    const saved = loadFocusTimer();
+    if (saved && saved.taskId === (activeTimer.taskId ?? null)) {
+      const remaining = remainingSeconds(saved);
+      startedAtRef.current = Date.now() - (saved.duration - remaining) * 1000;
+      setStage("active");
+      setPhase(saved.phase);
+      setSessionCount(saved.sessionCount);
+      setDuration(saved.duration);
+      setDisplayTime(remaining);
+      // A running phase that ended while away completes on the next tick.
+      setIsRunning(saved.pausedRemaining == null);
+      setMinimized(Boolean(saved.minimized));
+      setShortStart(Boolean(saved.shortStart));
+    } else {
+      setStage("ready");
+      setMinimized(false);
     }
   }, [activeTimer?.taskId]); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Phase change → reset timer — intentional sync initialization
-  // Skipped on first run if restore effect already handled initialization
-  useEffect(() => {
-    if (!activeTimer) return;
-    if (didInitRef.current) {
-      didInitRef.current = false;
-      return;
-    }
-    const d = getDuration(phase);
-    setDuration(d);
-    setDisplayTime(d);
-    startedAtRef.current = Date.now();
-    const shouldAutoStart = phase !== "work" ? autoStartBreaks : false;
-    setIsRunning(shouldAutoStart);
-    saveTimerState({
-      taskId: activeTimer?.taskId || null,
-      taskTitle: activeTimer?.taskTitle || null,
-      phase,
-      sessionCount,
-      startedAt: startedAtRef.current,
-      duration: d,
-    });
-  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wall-clock countdown — immune to tab throttling
   useEffect(() => {
@@ -334,24 +321,83 @@ export function PomodoroTimer() {
     return () => clearInterval(interval);
   }, [isRunning, duration, handleComplete]);
 
-  // Persist state on visibility change
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "hidden" && activeTimer) {
-        saveTimerState({
-          taskId: activeTimer.taskId || null,
-          taskTitle: activeTimer.taskTitle || null,
-          phase,
-          sessionCount,
-          startedAt: startedAtRef.current,
-          duration,
-        });
+  const saveFirstStep = useCallback(
+    async (text: string) => {
+      if (!activeTimer?.taskId) return;
+      setActiveTimer({ ...activeTimer, firstStep: text });
+      markMutation();
+      const { success } = await safeMutate(
+        () =>
+          supabase
+            .from("items")
+            .update({ first_step: text })
+            .eq("id", activeTimer.taskId as string),
+        "Couldn't save the first step",
+      );
+      if (success) {
+        void queryClient.invalidateQueries(
+          { queryKey: ["tasks"] },
+          { cancelRefetch: false },
+        );
       }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibility);
-  }, [activeTimer, phase, sessionCount, duration]);
+    },
+    [activeTimer, setActiveTimer, markMutation, supabase, queryClient],
+  );
+
+  const start = () => {
+    const draft = firstStepDraft.trim();
+    if (draft && !firstStep) void saveFirstStep(draft);
+    runPhase("work", sessionCount, chosenMinutes * 60, {
+      running: true,
+      short: chosenMinutes < workMinutes,
+    });
+  };
+
+  const togglePause = () => {
+    if (isRunning) {
+      setIsRunning(false);
+      persist({
+        phase,
+        sessionCount,
+        startedAt: startedAtRef.current,
+        duration,
+        pausedRemaining: displayTime,
+        minimized,
+        shortStart,
+      });
+    } else {
+      startedAtRef.current = Date.now() - (duration - displayTime) * 1000;
+      setIsRunning(true);
+      persist({
+        phase,
+        sessionCount,
+        startedAt: startedAtRef.current,
+        duration,
+        pausedRemaining: null,
+        minimized,
+        shortStart,
+      });
+    }
+  };
+
+  const setMinimizedAndSave = (value: boolean) => {
+    setMinimized(value);
+    persist({
+      phase,
+      sessionCount,
+      startedAt: startedAtRef.current,
+      duration,
+      pausedRemaining: isRunning ? null : displayTime,
+      minimized: value,
+      shortStart,
+    });
+  };
+
+  const close = useCallback(() => {
+    setShowConfirmEnd(false);
+    saveFocusTimer(null);
+    setActiveTimer(null);
+  }, [setActiveTimer]);
 
   // Opening the confirm hands focus to Radix: cancel any pending initial
   // focus so it can't pull focus back out of the confirm, and remember the
@@ -369,11 +415,18 @@ export function PomodoroTimer() {
     setShowConfirmEnd(true);
   }, []);
 
-  // The overlay is modal: move focus onto the primary control once it has
-  // faded in, unless the user already put focus inside it.
-  const hasTimer = activeTimer !== null;
+  /** X / Escape: nothing to lose before a session starts or after it ends. */
+  const requestClose = useCallback(() => {
+    if (stage === "active") openConfirmEnd();
+    else close();
+  }, [stage, openConfirmEnd, close]);
+
+  // The full view is modal: move focus onto its primary control once it has
+  // faded in (and again when the stage changes), unless the user already
+  // put focus inside it.
+  const showOverlay = activeTimer !== null && !minimized;
   useEffect(() => {
-    if (!hasTimer) return;
+    if (!showOverlay) return;
     initialFocusTimerRef.current = setTimeout(() => {
       initialFocusTimerRef.current = null;
       if (!overlayRef.current?.contains(document.activeElement)) {
@@ -386,23 +439,19 @@ export function PomodoroTimer() {
         initialFocusTimerRef.current = null;
       }
     };
-  }, [hasTimer]);
+  }, [showOverlay, stage]);
 
-  // Escape opens the same confirm-end flow as the X / End-session buttons —
-  // keyboard parity for exiting the overlay. Deliberately not an instant
-  // close: ending a running focus session should still be confirmed. When
-  // the confirm dialog is already open, its own Radix Escape handler closes
-  // it instead, so this listener steps aside in that case.
+  // Escape: closes before a session starts; once one is running it opens the
+  // same confirm as the X / End buttons (ending should be confirmed). When
+  // the confirm is already open, its own Radix Escape handler closes it.
   useEffect(() => {
-    if (!activeTimer) return;
+    if (!showOverlay) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !showConfirmEnd) {
-        openConfirmEnd();
-      }
+      if (e.key === "Escape" && !showConfirmEnd) requestClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [activeTimer, showConfirmEnd, openConfirmEnd]);
+  }, [showOverlay, showConfirmEnd, requestClose]);
 
   // Keep Tab inside the overlay. The confirm is portalled out of this DOM
   // subtree (its React events still bubble here), and Radix traps it.
@@ -412,7 +461,7 @@ export function PomodoroTimer() {
       return;
     }
     const focusable = overlay.querySelectorAll<HTMLElement>(
-      "button:not([disabled])",
+      "button:not([disabled]), input:not([disabled])",
     );
     if (focusable.length === 0) return;
     const first = focusable[0];
@@ -444,23 +493,87 @@ export function PomodoroTimer() {
     const spent = duration - displayTime;
     if (spent > 60 && phase === "work")
       logSession(phase, Math.round(spent / 60));
-    setShowConfirmEnd(false);
-    saveTimerState(null);
-    setActiveTimer(null);
+    close();
   };
 
   if (!activeTimer) return null;
 
-  const mins = Math.floor(displayTime / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = (displayTime % 60).toString().padStart(2, "0");
+  const cfg = PHASE_CONFIG[phase];
+  const title = activeTimer.taskTitle || "Focus Session";
+  const spentSeconds = duration - displayTime;
+
+  if (minimized && stage === "active") {
+    return (
+      <div
+        role="region"
+        aria-label="Focus timer"
+        className="fixed right-4 bottom-[calc(var(--mobile-bottom-nav-h)+env(safe-area-inset-bottom,0px)+var(--space-3))] z-[95] flex max-w-[calc(100vw-2rem)] items-center gap-1 rounded-full border border-[var(--border-default)] bg-[var(--surface-1)] py-1 pr-1 pl-1 shadow-[var(--shadow-lg)] md:right-6 md:bottom-6"
+      >
+        <button
+          type="button"
+          onClick={() => setMinimizedAndSave(false)}
+          aria-label={`Open focus timer: ${title}`}
+          className="flex min-w-0 items-center gap-2.5 rounded-full py-1.5 pr-2 pl-3 text-left transition-colors hover:bg-[var(--surface-hover)]"
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "size-2 shrink-0 rounded-full",
+              isRunning && "animate-pulse motion-reduce:animate-none",
+            )}
+            style={{ background: cfg.ring }}
+          />
+          <span className="max-w-[9rem] truncate text-[length:var(--text-ui)] text-[var(--text-2)]">
+            {phase === "work" ? title : cfg.label}
+          </span>
+          <span
+            className="font-mono text-[length:var(--text-ui)] font-medium tabular-nums"
+            style={{ color: cfg.text }}
+          >
+            {fmt(displayTime)}
+          </span>
+          <UiIcon
+            className="h-3.5 w-3.5 shrink-0 text-[var(--text-3)]"
+            icon={Maximize2}
+          />
+        </button>
+        <button
+          type="button"
+          onClick={togglePause}
+          aria-label={isRunning ? "Pause" : "Play"}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full transition hover:scale-105 active:scale-95"
+          style={{ background: cfg.ring }}
+        >
+          <UiIcon
+            size={14}
+            strokeWidth={0}
+            fill="black"
+            className={isRunning ? undefined : "ml-0.5"}
+            icon={isRunning ? Pause : Play}
+          />
+        </button>
+      </div>
+    );
+  }
+
   const r = 90;
   const circ = 2 * Math.PI * r;
   const progress = duration > 0 ? displayTime / duration : 1;
   const dashoffset = circ * (1 - progress);
 
-  const cfg = PHASE_CONFIG[phase];
+  const FirstStep = firstStep ? (
+    <p className="text-ui flex max-w-[300px] items-start gap-1.5 text-left text-[var(--text-2)]">
+      <UiIcon
+        size={14}
+        className="mt-0.5 shrink-0 text-[var(--accent-text)]"
+        icon={ArrowRight}
+      />
+      <span>
+        <span className="text-[var(--text-3)]">First step: </span>
+        {firstStep}
+      </span>
+    </p>
+  ) : null;
 
   return (
     <AnimatePresence>
@@ -478,7 +591,7 @@ export function PomodoroTimer() {
           duration: OVERLAY_FADE_MS / 1000,
           ease: [0.25, 0.46, 0.45, 0.94],
         }}
-        className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden"
+        className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden px-6"
         style={{
           background: "rgba(8, 6, 16, 0.92)",
           backdropFilter: "blur(20px)",
@@ -504,157 +617,285 @@ export function PomodoroTimer() {
           }}
         />
 
-        {/* Close button */}
+        {/* Close button (first in the tab order) */}
         <button
-          onClick={openConfirmEnd}
+          onClick={requestClose}
           aria-label="Close focus session"
           className="absolute top-6 right-6 z-10 rounded-full p-2 text-[var(--text-3)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
         >
           <UiIcon size={18} strokeWidth={1.5} icon={X} />
         </button>
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col items-center gap-0">
-          {/* Phase label */}
-          <p
-            className="text-caption mb-1 font-semibold tracking-[0.18em] uppercase"
-            style={{ color: "var(--text-3)" }}
+        {stage === "active" && (
+          <button
+            onClick={() => setMinimizedAndSave(true)}
+            aria-label="Minimise timer"
+            title="Minimise — keep the timer while you use the app"
+            className="absolute top-6 right-16 z-10 rounded-full p-2 text-[var(--text-3)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
           >
-            {phase === "work"
-              ? "Work Session"
-              : phase === "short_break"
-                ? "Short Break"
-                : "Long Break"}
-          </p>
-          <p className="text-ui mb-10" style={{ color: "var(--text-3)" }}>
-            {phase === "work"
-              ? `${sessionCount} of ${longBreakInterval}`
-              : "Take a breather"}
-          </p>
+            <UiIcon size={18} strokeWidth={1.5} icon={Minimize2} />
+          </button>
+        )}
 
-          {/* SVG Ring + Timer */}
-          <div
-            className="relative mb-10 flex items-center justify-center"
-            style={{ width: 220, height: 220 }}
-          >
-            <svg
-              width="220"
-              height="220"
-              viewBox="0 0 220 220"
-              className="absolute inset-0 -rotate-90"
+        {stage === "ready" && (
+          <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-6 text-center">
+            <p className="text-caption font-semibold tracking-[0.18em] text-[var(--text-3)] uppercase">
+              Ready when you are
+            </p>
+            <h2 className="text-title-sm font-medium text-[var(--text-1)]">
+              {title}
+            </h2>
+            {FirstStep ??
+              (taskId && (
+                <label className="flex w-full flex-col gap-1.5 text-left">
+                  <span className="text-ui text-[var(--text-3)]">
+                    Smallest first step (optional)
+                  </span>
+                  <input
+                    value={firstStepDraft}
+                    onChange={(e) => setFirstStepDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        start();
+                      }
+                    }}
+                    placeholder="e.g. open the doc and write the heading"
+                    maxLength={500}
+                    className="text-ui rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-2)] px-3 py-2 text-[var(--text-1)] outline-none placeholder:text-[var(--text-decorative)] focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+                  />
+                </label>
+              ))}
+
+            <div
+              role="radiogroup"
+              aria-label="Session length"
+              className="flex flex-wrap justify-center gap-2"
             >
-              <circle
-                cx="110"
-                cy="110"
-                r={r}
-                fill="none"
-                stroke="var(--border-subtle)"
-                strokeWidth="6"
-              />
-              <circle
-                cx="110"
-                cy="110"
-                r={r}
-                fill="none"
-                stroke={cfg.ring}
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeDasharray={circ}
-                strokeDashoffset={dashoffset}
-                style={{ transition: "stroke-dashoffset 0.9s linear" }}
-              />
-            </svg>
-
-            <div className="absolute flex flex-col items-center">
-              <span
-                style={{
-                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                  fontSize: 48,
-                  fontWeight: 400,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1,
-                  color: cfg.text,
-                }}
-              >
-                {mins}:{s}
-              </span>
+              {startLengths(workMinutes).map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  role="radio"
+                  aria-checked={chosenMinutes === minutes}
+                  onClick={() => setChosenMinutes(minutes)}
+                  className={cn(
+                    "text-ui h-9 rounded-full border px-4 font-medium transition-colors",
+                    chosenMinutes === minutes
+                      ? "border-[var(--accent-border)] bg-[var(--accent-dim)] text-[var(--accent-text)]"
+                      : "border-[var(--border-default)] text-[var(--text-2)] hover:bg-[var(--surface-hover)]",
+                  )}
+                >
+                  {minutes} min
+                </button>
+              ))}
             </div>
-          </div>
-
-          {/* Task title */}
-          <h2
-            className="text-body-lg mb-12 max-w-[260px] truncate text-center font-medium"
-            style={{ color: "var(--text-2)" }}
-          >
-            {activeTimer.taskTitle || "Focus Session"}
-          </h2>
-
-          {/* Controls */}
-          <div className="flex items-center gap-5">
-            <button
-              onClick={openConfirmEnd}
-              aria-label="End session"
-              className={cn(
-                "flex h-11 w-11 items-center justify-center rounded-full transition",
-                "border border-[var(--border-default)] bg-[var(--surface-2)] text-[var(--text-3)]",
-                "hover:border-[var(--status-danger-border)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]",
-              )}
-              title="End session"
-            >
-              <UiIcon size={16} strokeWidth={1.5} icon={Square} />
-            </button>
 
             <button
               ref={primaryRef}
-              onClick={() => {
-                if (isRunning) {
-                  setIsRunning(false);
-                  saveTimerState({
-                    taskId: activeTimer?.taskId || null,
-                    taskTitle: activeTimer?.taskTitle || null,
-                    phase,
-                    sessionCount,
-                    startedAt: startedAtRef.current,
-                    duration,
-                  });
-                } else {
-                  const elapsed = duration - displayTime;
-                  startedAtRef.current = Date.now() - elapsed * 1000;
-                  setIsRunning(true);
-                }
-              }}
-              aria-label={isRunning ? "Pause" : "Play"}
-              className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition hover:scale-105 active:scale-95"
+              type="button"
+              onClick={start}
+              className="flex h-12 items-center gap-2 rounded-full px-7 font-semibold text-black shadow-lg transition hover:scale-[1.03] active:scale-95"
               style={{ background: cfg.ring }}
-              title={isRunning ? "Pause" : "Play"}
             >
-              {isRunning ? (
-                <UiIcon size={20} strokeWidth={0} fill="black" icon={Pause} />
-              ) : (
-                <UiIcon
-                  size={20}
-                  strokeWidth={0}
-                  fill="black"
-                  className="ml-0.5"
-                  icon={Play}
-                />
-              )}
+              <UiIcon size={16} strokeWidth={0} fill="black" icon={Play} />
+              Start · {chosenMinutes} min
             </button>
-
-            <button
-              onClick={handleSkip}
-              aria-label="Skip phase"
-              className={cn(
-                "flex h-11 w-11 items-center justify-center rounded-full transition",
-                "border border-[var(--border-default)] bg-[var(--surface-2)] text-[var(--text-3)]",
-                "hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]",
-              )}
-              title="Skip"
-            >
-              <UiIcon size={16} strokeWidth={1.5} icon={SkipForward} />
-            </button>
+            <p className="text-ui text-[var(--text-3)]">
+              {chosenMinutes < workMinutes
+                ? "Just this long. Stop or keep going when it ends."
+                : "A full session, then a break."}
+            </p>
           </div>
-        </div>
+        )}
+
+        {stage === "done" && (
+          <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-5 text-center">
+            <span className="flex size-12 items-center justify-center rounded-full bg-[var(--status-done-dim)] text-[var(--status-done)]">
+              <UiIcon size={22} icon={Check} />
+            </span>
+            <h2 className="text-title-sm font-medium text-[var(--text-1)]">
+              Nice start.
+            </h2>
+            <p className="text-body text-[var(--text-2)]">
+              {lastFocusMinutes} min on {title}. Keep going, or stop here;
+              either way it counts.
+            </p>
+            <div className="flex w-full flex-col gap-2">
+              <button
+                ref={primaryRef}
+                type="button"
+                onClick={() =>
+                  runPhase("work", sessionCount, workDuration, {
+                    running: true,
+                  })
+                }
+                className="h-11 rounded-full font-semibold text-black transition hover:scale-[1.02] active:scale-95"
+                style={{ background: cfg.ring }}
+              >
+                Keep going · {workMinutes} min
+              </button>
+              {taskId && (
+                <button
+                  type="button"
+                  onClick={() => void markTaskDone()}
+                  className="text-ui h-11 rounded-full border border-[var(--border-default)] font-medium text-[var(--text-1)] hover:bg-[var(--surface-hover)]"
+                >
+                  Mark task done
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={close}
+                className="text-ui h-11 rounded-full font-medium text-[var(--text-2)] hover:bg-[var(--surface-hover)]"
+              >
+                Done for now
+              </button>
+            </div>
+          </div>
+        )}
+
+        {stage === "active" && (
+          <div className="relative z-10 flex flex-col items-center gap-0">
+            {/* Phase label */}
+            <p
+              className="text-caption mb-1 font-semibold tracking-[0.18em] uppercase"
+              style={{ color: "var(--text-3)" }}
+            >
+              {phase === "work"
+                ? shortStart
+                  ? "Short start"
+                  : "Work Session"
+                : phase === "short_break"
+                  ? "Short Break"
+                  : "Long Break"}
+            </p>
+            <p className="text-ui mb-10" style={{ color: "var(--text-3)" }}>
+              {phase !== "work"
+                ? "Take a breather"
+                : shortStart
+                  ? "Just this long"
+                  : `${sessionCount} of ${longBreakInterval}`}
+            </p>
+
+            {/* SVG Ring + Timer */}
+            <div
+              className="relative mb-10 flex items-center justify-center"
+              style={{ width: 220, height: 220 }}
+            >
+              <svg
+                width="220"
+                height="220"
+                viewBox="0 0 220 220"
+                className="absolute inset-0 -rotate-90"
+              >
+                <circle
+                  cx="110"
+                  cy="110"
+                  r={r}
+                  fill="none"
+                  stroke="var(--border-subtle)"
+                  strokeWidth="6"
+                />
+                <circle
+                  cx="110"
+                  cy="110"
+                  r={r}
+                  fill="none"
+                  stroke={cfg.ring}
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={circ}
+                  strokeDashoffset={dashoffset}
+                  style={{ transition: "stroke-dashoffset 0.9s linear" }}
+                />
+              </svg>
+
+              <div className="absolute flex flex-col items-center">
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                    fontSize: 48,
+                    fontWeight: 400,
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1,
+                    color: cfg.text,
+                  }}
+                >
+                  {fmt(displayTime)}
+                </span>
+                {!isRunning && (
+                  <span className="text-caption mt-2 tracking-[0.18em] text-[var(--text-3)] uppercase">
+                    Paused
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Task title and first step */}
+            <h2
+              className={cn(
+                "text-body-lg max-w-[280px] truncate text-center font-medium",
+                phase === "work" && FirstStep ? "mb-3" : "mb-12",
+              )}
+              style={{ color: "var(--text-2)" }}
+            >
+              {title}
+            </h2>
+            {phase === "work" && FirstStep && (
+              <div className="mb-10">{FirstStep}</div>
+            )}
+
+            {/* Controls */}
+            <div className="flex items-center gap-5">
+              <button
+                onClick={openConfirmEnd}
+                aria-label="End session"
+                className={cn(
+                  "flex h-11 w-11 items-center justify-center rounded-full transition",
+                  "border border-[var(--border-default)] bg-[var(--surface-2)] text-[var(--text-3)]",
+                  "hover:border-[var(--status-danger-border)] hover:bg-[var(--status-danger-dim)] hover:text-[var(--status-danger)]",
+                )}
+                title="End session"
+              >
+                <UiIcon size={16} strokeWidth={1.5} icon={Square} />
+              </button>
+
+              <button
+                ref={primaryRef}
+                onClick={togglePause}
+                aria-label={isRunning ? "Pause" : "Play"}
+                className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition hover:scale-105 active:scale-95"
+                style={{ background: cfg.ring }}
+                title={isRunning ? "Pause" : "Play"}
+              >
+                {isRunning ? (
+                  <UiIcon size={20} strokeWidth={0} fill="black" icon={Pause} />
+                ) : (
+                  <UiIcon
+                    size={20}
+                    strokeWidth={0}
+                    fill="black"
+                    className="ml-0.5"
+                    icon={Play}
+                  />
+                )}
+              </button>
+
+              <button
+                onClick={handleSkip}
+                aria-label="Skip phase"
+                className={cn(
+                  "flex h-11 w-11 items-center justify-center rounded-full transition",
+                  "border border-[var(--border-default)] bg-[var(--surface-2)] text-[var(--text-3)]",
+                  "hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]",
+                )}
+                title="Skip"
+              >
+                <UiIcon size={16} strokeWidth={1.5} icon={SkipForward} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/*
           The Pomodoro overlay renders at z-[200], above the shared Dialog
@@ -676,8 +917,8 @@ export function PomodoroTimer() {
           title={phase === "work" ? "End focus session?" : "End break early?"}
           description={
             phase === "work"
-              ? duration - displayTime > 60
-                ? `If you end now, ${Math.round((duration - displayTime) / 60)} minutes will be saved.`
+              ? spentSeconds > 60
+                ? `If you end now, ${Math.round(spentSeconds / 60)} minutes will be saved.`
                 : "This session is too short to be saved."
               : "This will close the timer."
           }

@@ -211,7 +211,8 @@ describe("MobileDrawer", () => {
       const timer = screen.getByRole("dialog", { name: "Focus session" });
       await waitFor(() =>
         expect(
-          screen.getByRole("button", { name: /^(Play|Pause)$/ }),
+          // The timer opens ready; its primary control is Start.
+          screen.getByRole("button", { name: /^Start/ }),
         ).toHaveFocus(),
       );
       expect(timer).toContainElement(document.activeElement as HTMLElement);

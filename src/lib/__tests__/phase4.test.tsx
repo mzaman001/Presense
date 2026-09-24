@@ -445,6 +445,25 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       );
     });
 
+    // Focus-timer minutes add up on the task (session_logs trigger); the
+    // panel is where you look a task up, so the total shows there too.
+    it("shows the focus time already spent on a task", () => {
+      render(
+        <TaskAddPanel
+          isOpen={true}
+          onClose={vi.fn()}
+          taskToEdit={{
+            id: "task-1",
+            title: "Existing task",
+            time_spent_minutes: 80,
+          }}
+        />,
+        { wrapper },
+      );
+      expect(screen.getByText("Time spent")).toBeInTheDocument();
+      expect(screen.getByText("1h 20m focused")).toBeInTheDocument();
+    });
+
     it("links task validation to the generated input error ID and keeps invalid submit disabled", async () => {
       render(<TaskAddPanel isOpen={true} onClose={vi.fn()} />, { wrapper });
       const input = screen.getByRole("textbox", { name: /task name/i });

@@ -6,6 +6,8 @@ import dynamic from "next/dynamic";
 import { withPreload } from "@/lib/preloadable";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow";
+import { useEffect } from "react";
+import { loadFocusTimer } from "@/lib/focus-timer";
 
 export const CaptureModal = withPreload(
   dynamic(
@@ -72,6 +74,21 @@ export function DynamicModals() {
       hasTimer: s.activeTimer !== null,
     })),
   );
+
+  // Bring back a focus session that was open before a reload or a closed
+  // tab. Its countdown was always saved, but the open timer itself wasn't,
+  // so it used to vanish.
+  useEffect(() => {
+    const saved = loadFocusTimer();
+    const { activeTimer, setActiveTimer } = useAppStore.getState();
+    if (saved && !activeTimer) {
+      setActiveTimer({
+        taskId: saved.taskId ?? undefined,
+        taskTitle: saved.taskTitle ?? undefined,
+        firstStep: saved.firstStep ?? null,
+      });
+    }
+  }, []);
 
   return (
     <>

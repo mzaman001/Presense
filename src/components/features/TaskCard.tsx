@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
+import { formatMinutes } from "@/lib/format-minutes";
 import { resolveCategoryColor } from "@/lib/constants";
 import { toast } from "sonner";
 import {
@@ -44,14 +45,6 @@ function formatDeadline(d: string | null) {
   if (isToday) return "Today";
   if (isTomorrow) return "Tomorrow";
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function formatTimeSpent(minutes: number | undefined | null) {
-  if (!minutes || minutes <= 0) return null;
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
 const SWIPE_DELETE_THRESHOLD = -80;
@@ -227,7 +220,7 @@ export const TaskCard = React.memo(
       task.snoozed_until && new Date(task.snoozed_until) > new Date()
         ? new Date(task.snoozed_until)
         : null;
-    const timeSpent = formatTimeSpent(task.time_spent_minutes);
+    const timeSpent = formatMinutes(task.time_spent_minutes);
     const allSubtasksDone =
       subtasks.length > 0 && completedSubtasks === subtasks.length;
     const shortTitle = String(task.title ?? "task").slice(0, 40);
@@ -445,7 +438,11 @@ export const TaskCard = React.memo(
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setActiveTimer({ taskId: task.id, taskTitle: task.title });
+                    setActiveTimer({
+                      taskId: task.id,
+                      taskTitle: task.title,
+                      firstStep: task.first_step,
+                    });
                   }}
                   title="Start focus session"
                   aria-label={`Start focus session: ${shortTitle}`}

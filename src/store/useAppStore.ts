@@ -31,6 +31,14 @@ export interface UserSettings {
   [key: string]: unknown;
 }
 
+/** The focus session that is open, if any (see lib/focus-timer.ts). */
+export interface ActiveTimer {
+  taskId?: string;
+  taskTitle?: string;
+  /** The task's "smallest action to start", shown in the timer. */
+  firstStep?: string | null;
+}
+
 interface AppState {
   isCaptureModalOpen: boolean;
   setCaptureModalOpen: (open: boolean) => void;
@@ -47,10 +55,8 @@ interface AppState {
   userSettings: UserSettings;
   setUserSettings: (settings: UserSettings) => void;
   updateUserSetting: (key: string, value: unknown) => void;
-  activeTimer: { taskId?: string; taskTitle?: string } | null;
-  setActiveTimer: (
-    timer: { taskId?: string; taskTitle?: string } | null,
-  ) => void;
+  activeTimer: ActiveTimer | null;
+  setActiveTimer: (timer: ActiveTimer | null) => void;
 
   /**
    * Records a local write so RealtimeProvider can ignore the echo it
