@@ -75,7 +75,8 @@ function rruleToRepeatState(rrule: string | null) {
 import { DEFAULT_DO_COLORS } from "@/lib/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
-import { cn, formatMinutes, formatRRule } from "@/lib/utils";
+import { cn, formatRRule } from "@/lib/utils";
+import { formatMinutes } from "@/lib/format-minutes";
 import { format } from "date-fns";
 import { Sheet } from "@/components/ui/Sheet";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts

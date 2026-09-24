@@ -17,7 +17,8 @@ import {
   X,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
-import { cn, formatMinutes, formatRRule } from "@/lib/utils";
+import { cn, formatRRule } from "@/lib/utils";
+import { formatMinutes } from "@/lib/format-minutes";
 import { resolveCategoryColor } from "@/lib/constants";
 import { toast } from "sonner";
 import {
