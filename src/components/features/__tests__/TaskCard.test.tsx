@@ -99,4 +99,27 @@ describe("TaskCard", () => {
     expect(wrapperEl).toBeTruthy();
     expect(wrapperEl?.getAttribute("style")).not.toMatch(/blur\(/i);
   });
+  // A red "Overdue" on every late task feeds the guilt that drives
+  // avoidance; past dates read as where the task came from.
+  it("shows a past date neutrally, not as overdue", () => {
+    const task = makeTask({
+      id: "task-late",
+      title: "Late task",
+      status: "active",
+      deadline: "2020-09-01T09:00:00Z",
+    });
+    const { container, getByText, queryByText } = render(
+      <TaskCard
+        task={task}
+        completing={null}
+        completeTask={vi.fn()}
+        openEditPanel={vi.fn()}
+        fetchTasks={vi.fn()}
+      />,
+      { wrapper },
+    );
+    expect(getByText(/^From Sep 1$/)).toBeInTheDocument();
+    expect(queryByText(/Overdue/)).not.toBeInTheDocument();
+    expect(container.innerHTML).not.toContain("--status-overdue");
+  });
 });

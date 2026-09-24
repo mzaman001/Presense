@@ -594,9 +594,9 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
         >
           {overdue.length > 0 && (
             <Column
-              title="Overdue"
+              title="Earlier"
               tasks={overdue}
-              accent="var(--status-overdue)"
+              accent="var(--text-3)"
               icon={Zap}
               completing={completing}
               completeTask={completeTask}
@@ -662,9 +662,9 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
         >
           {overdue.length > 0 || isBoardView ? (
             <Column
-              title="Overdue"
+              title="Earlier"
               tasks={overdue}
-              accent="var(--status-overdue)"
+              accent="var(--text-3)"
               icon={Zap}
               completing={completing}
               completeTask={completeTask}

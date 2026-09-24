@@ -363,17 +363,16 @@ export const TaskCard = React.memo(
                   )}
                   {label && (
                     <span
+                      // Past dates read neutrally: a red "Overdue" on every
+                      // late task feeds the guilt that drives avoidance.
                       style={{
-                        color: isOverdue
-                          ? "var(--status-overdue)"
-                          : label === "Today"
-                            ? "var(--status-today)"
-                            : undefined,
+                        color:
+                          label === "Today" ? "var(--status-today)" : undefined,
                       }}
                     >
                       <UiIcon size={12} icon={CalendarDays} />
                       {isOverdue && task.deadline
-                        ? `Overdue · ${new Date(task.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        ? `From ${new Date(task.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
                         : label}
                     </span>
                   )}
