@@ -6,7 +6,11 @@ import { BrandMark } from "@/components/ui/BrandMark";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { sendMagicLink, startGoogleSignIn } from "./actions";
 import { TurnstileWidget } from "@/components/features/TurnstileWidget";
-import { Button } from "@/components/ui/button";
+// Not ui/button: that merges classes through cn(), which would bring
+// tailwind-merge (~8 KiB gz) into the one public page. These buttons add
+// only non-conflicting classes, so plain variant classes are enough.
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 // SEC2-02/SEC2-03 (2026-08-16): Turnstile sitekey is OPTIONAL — when unset the
@@ -179,15 +183,18 @@ export default function LoginPage() {
                   onTokenChange={setCaptchaToken}
                 />
               )}
-              <Button
-                variant="primary"
+              <ButtonPrimitive
+                data-slot="button"
                 type="submit"
                 disabled={
                   !!loading ||
                   !email.trim() ||
                   (captchaEnabled && !captchaToken)
                 }
-                className="flex w-full items-center justify-center gap-2"
+                className={buttonVariants({
+                  variant: "primary",
+                  className: "w-full",
+                })}
               >
                 {loading === "email" ? (
                   <UiIcon
@@ -206,7 +213,7 @@ export default function LoginPage() {
                   className="ml-auto"
                   icon={ArrowRight}
                 />
-              </Button>
+              </ButtonPrimitive>
             </form>
 
             {/* Divider */}
@@ -228,11 +235,14 @@ export default function LoginPage() {
             </div>
 
             {/* Google */}
-            <Button
-              variant="secondary"
+            <ButtonPrimitive
+              data-slot="button"
               onClick={handleGoogle}
               disabled={!!loading}
-              className="flex w-full items-center justify-center gap-2.5"
+              className={buttonVariants({
+                variant: "secondary",
+                className: "w-full",
+              })}
             >
               {loading === "google" ? (
                 <UiIcon
@@ -245,7 +255,7 @@ export default function LoginPage() {
                 <UiIcon size={16} strokeWidth={1.5} icon={Globe2} />
               )}
               Continue with Google
-            </Button>
+            </ButtonPrimitive>
 
             {/* Error */}
             {error && (
