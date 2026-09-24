@@ -3,6 +3,7 @@ import {
   render as rtlRender,
   type RenderOptions,
 } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import type { TaskRecord } from "@/lib/task-cache";
 
@@ -17,7 +18,16 @@ export const TEST_USER = { id: "user-123", email: "test@example.com" };
  * care about live updates wrap in it explicitly.
  */
 function AllProviders({ children }: { children: React.ReactNode }) {
-  return <SessionProvider user={TEST_USER}>{children}</SessionProvider>;
+  // A fresh cache per render so no test sees another's data. Suites that
+  // need to inspect the cache still wrap in their own provider (inner wins).
+  const [queryClient] = React.useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  );
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider user={TEST_USER}>{children}</SessionProvider>
+    </QueryClientProvider>
+  );
 }
 
 export function render(ui: React.ReactElement, options?: RenderOptions) {

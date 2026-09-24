@@ -23,6 +23,8 @@ export function useInboxCount() {
     },
     staleTime: 60_000,
   });
-  useRealtime("items", query.refetch);
+  // ["inbox-tasks"] is already invalidated by useRealtime("items"); passing
+  // query.refetch as well cancelled that refetch and started another.
+  useRealtime("items");
   return query;
 }

@@ -51,13 +51,19 @@ export function useRealtime(
   const extraQueryKey = options?.queryKey;
 
   // Collapse bursts (a batch write emits one event per row) into one refetch.
+  // Every mounted consumer of a table gets the same event, so a refetch
+  // already in flight is joined rather than cancelled and restarted: one
+  // echo used to fan out into ~9 requests (measured on /do).
   const debouncedUpdate = useDebouncedCallback(() => {
     if (queryClient) {
       for (const queryKey of TABLE_QUERY_KEYS[table] ?? []) {
-        queryClient.invalidateQueries({ queryKey });
+        queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false });
       }
       if (extraQueryKey) {
-        queryClient.invalidateQueries({ queryKey: extraQueryKey });
+        queryClient.invalidateQueries(
+          { queryKey: extraQueryKey },
+          { cancelRefetch: false },
+        );
       }
     }
     onUpdateRef.current?.();

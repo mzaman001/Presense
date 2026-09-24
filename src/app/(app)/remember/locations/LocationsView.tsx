@@ -136,10 +136,8 @@ export function LocationsView({
     [queryClient, search],
   );
 
-  const refresh = useCallback(() => {
-    void fetchItems();
-  }, [fetchItems]);
-  useRealtime("locations", refresh);
+  // ["locations", …] is invalidated by useRealtime("locations") itself.
+  useRealtime("locations");
 
   const markStillHere = async (id: string) => {
     try {

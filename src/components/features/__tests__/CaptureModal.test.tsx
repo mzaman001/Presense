@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor, render } from "@/lib/__tests__/test-utils";
 import { useAppStore } from "@/store/useAppStore";
 import { CaptureModal } from "@/components/features/CaptureModal";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // CaptureModal reaches for a Supabase client on render via createClient().
 // insertMock lets each test assert what was persisted and, when set to
@@ -94,6 +95,27 @@ describe("CaptureModal — one-tap capture with a live preview", () => {
     expect(
       screen.queryByRole("textbox", { name: "Title" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("refreshes the task lists itself instead of waiting for Realtime", async () => {
+    // Our own Realtime echo is ignored inside the echo window, so a capture
+    // that relied on it could sit missing from Do until a later refetch.
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CaptureModal />
+      </QueryClientProvider>,
+    );
+    typeCapture("Buy milk");
+    fireEvent.click(screen.getByRole("button", { name: /^Save/ }));
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith(
+        { queryKey: ["tasks"] },
+        { cancelRefetch: false },
+      ),
+    );
   });
 
   it("opens the review form instead of saving on 'Review first'", async () => {
