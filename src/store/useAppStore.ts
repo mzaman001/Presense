@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { TaskRecord } from "@/lib/task-cache";
 import { markMutation as markProviderMutation } from "@/components/providers/RealtimeProvider";
 
 export interface UserSettings {
@@ -37,6 +38,8 @@ export interface ActiveTimer {
   taskTitle?: string;
   /** The task's "smallest action to start", shown in the timer. */
   firstStep?: string | null;
+  /** Length to preselect, in minutes (e.g. 2 for "ugly first version"). */
+  minutes?: number;
 }
 
 interface AppState {
@@ -57,6 +60,9 @@ interface AppState {
   updateUserSetting: (key: string, value: unknown) => void;
   activeTimer: ActiveTimer | null;
   setActiveTimer: (timer: ActiveTimer | null) => void;
+  /** The task the stuck-task help ("What's in the way?") is open for. */
+  stuckHelpTask: TaskRecord | null;
+  setStuckHelpTask: (task: TaskRecord | null) => void;
 
   /**
    * Records a local write so RealtimeProvider can ignore the echo it
@@ -93,6 +99,8 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ userSettings: { ...state.userSettings, [key]: value } })),
   activeTimer: null,
   setActiveTimer: (timer) => set({ activeTimer: timer }),
+  stuckHelpTask: null,
+  setStuckHelpTask: (task) => set({ stuckHelpTask: task }),
 
   markMutation: (table) => markProviderMutation(table),
   activeRitual: null,

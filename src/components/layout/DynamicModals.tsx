@@ -39,6 +39,14 @@ export const SettingsModal = dynamic(
   { ssr: false, loading: () => null },
 );
 
+export const StuckTaskHelp = dynamic(
+  () =>
+    import("@/components/features/StuckTaskHelp").then((m) => ({
+      default: m.StuckTaskHelp,
+    })),
+  { ssr: false, loading: () => null },
+);
+
 export const PomodoroTimer = dynamic(
   () =>
     import("@/components/features/PomodoroTimer").then((m) => ({
@@ -66,12 +74,14 @@ export function DynamicModals() {
     isSearchModalOpen,
     isSettingsModalOpen,
     hasTimer,
+    hasStuckHelp,
   } = useAppStore(
     useShallow((s) => ({
       isCaptureModalOpen: s.isCaptureModalOpen,
       isSearchModalOpen: s.isSearchModalOpen,
       isSettingsModalOpen: s.isSettingsModalOpen,
       hasTimer: s.activeTimer !== null,
+      hasStuckHelp: s.stuckHelpTask !== null,
     })),
   );
 
@@ -94,6 +104,7 @@ export function DynamicModals() {
     <>
       {isCaptureModalOpen && <CaptureModal />}
       {isSearchModalOpen && <SearchModal />}
+      {hasStuckHelp && <StuckTaskHelp />}
       {isSettingsModalOpen && <SettingsModal />}
       {hasTimer && <PomodoroTimer />}
     </>

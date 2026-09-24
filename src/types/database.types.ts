@@ -69,7 +69,9 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           deadline: string | null
+          defer_count: number
           deleted_at: string | null
+          first_deferred_at: string | null
           first_step: string | null
           id: string
           ifthen_trigger: string | null
@@ -84,6 +86,8 @@ export type Database = {
           snoozed_until: string | null
           start_date: string | null
           status: string | null
+          stuck_dismissals: number
+          stuck_dismissed_until: string | null
           subtasks: Json[] | null
           time_estimate: number | null
           time_spent_minutes: number | null
@@ -95,7 +99,9 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           deadline?: string | null
+          defer_count?: number
           deleted_at?: string | null
+          first_deferred_at?: string | null
           first_step?: string | null
           id?: string
           ifthen_trigger?: string | null
@@ -110,6 +116,8 @@ export type Database = {
           snoozed_until?: string | null
           start_date?: string | null
           status?: string | null
+          stuck_dismissals?: number
+          stuck_dismissed_until?: string | null
           subtasks?: Json[] | null
           time_estimate?: number | null
           time_spent_minutes?: number | null
@@ -121,7 +129,9 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           deadline?: string | null
+          defer_count?: number
           deleted_at?: string | null
+          first_deferred_at?: string | null
           first_step?: string | null
           id?: string
           ifthen_trigger?: string | null
@@ -136,6 +146,8 @@ export type Database = {
           snoozed_until?: string | null
           start_date?: string | null
           status?: string | null
+          stuck_dismissals?: number
+          stuck_dismissed_until?: string | null
           subtasks?: Json[] | null
           time_estimate?: number | null
           time_spent_minutes?: number | null
