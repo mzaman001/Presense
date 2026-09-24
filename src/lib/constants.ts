@@ -22,3 +22,10 @@ export function resolveCategoryColor(
   if (!category) return fallback;
   return overrides?.[category] || DEFAULT_DO_COLORS[category] || fallback;
 }
+
+/**
+ * How long a completed task stays on screen so its completion moment (check
+ * pop, tick draw, strike-through; see globals.css) can play before the row is
+ * removed.
+ */
+export const COMPLETE_HOLD_MS = 480;

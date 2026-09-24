@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { useHaptics } from "@/hooks/useHaptics";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
-import { resolveCategoryColor } from "@/lib/constants";
+import { COMPLETE_HOLD_MS, resolveCategoryColor } from "@/lib/constants";
 // INFRA-19: all status writes on entity tables go through item-lifecycle.ts
 import { completeTaskPatch, uncompleteTaskPatch } from "@/lib/item-lifecycle";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -284,7 +284,8 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
     if (showArchive) fetchArchived();
   }, [fetchArchived, showArchive]);
 
-  useRealtime("items", fetchTasks);
+  // ["tasks"] is invalidated by useRealtime("items") itself.
+  useRealtime("items");
 
   const completeTask = useCallback(
     async (e: React.MouseEvent, id: string) => {
@@ -294,13 +295,14 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
       setCompleting(id);
       haptics.success();
 
-      // Delay removal so AnimatePresence can play the exit animation
+      // Let the completion moment (pop, tick, strike-through; globals.css)
+      // finish before AnimatePresence folds the row away.
       setTimeout(() => {
         queryClient.setQueryData<Task[]>(["tasks"], (old) =>
           old?.filter((t) => t.id !== id),
         );
         setCompleting(null);
-      }, 400);
+      }, COMPLETE_HOLD_MS);
 
       try {
         const { error } = await supabase

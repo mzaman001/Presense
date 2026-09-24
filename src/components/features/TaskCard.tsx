@@ -31,6 +31,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useHaptics } from "@/hooks/useHaptics";
 import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { CheckTick } from "@/components/ui/CheckTick";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -255,11 +256,7 @@ export const TaskCard = React.memo(
         layout
         layoutId={task.id}
         initial={{ opacity: 0, y: 8 }}
-        animate={{
-          opacity: isCompleting ? 0.6 : 1,
-          y: 0,
-          scale: isCompleting ? 0.99 : 1,
-        }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{
           opacity: 0,
           scale: 0.97,
@@ -317,13 +314,12 @@ export const TaskCard = React.memo(
             )}
           >
             <div className="flex items-start gap-3">
-              <m.button
+              <button
                 type="button"
                 onClick={(e) => completeTask(e, task.id)}
                 aria-label={`Complete ${shortTitle}`}
+                aria-pressed={isCompleting}
                 title={`${priorityLabel} priority`}
-                animate={isCompleting ? { scale: [1, 1.18, 1] } : {}}
-                transition={{ duration: 0.3, ease: "easeOut" }}
                 className={cn("task-check", isCompleting && "checked")}
                 style={
                   priority < 4
@@ -332,33 +328,25 @@ export const TaskCard = React.memo(
                 }
               >
                 {isCompleting && (
-                  <UiIcon
-                    className="h-3 w-3 text-[var(--text-on-accent)]"
-                    strokeWidth={3}
-                    icon={Check}
-                  />
+                  <CheckTick className="h-3 w-3 text-[var(--text-on-accent)]" />
                 )}
-              </m.button>
+              </button>
 
-              <div className="min-w-0 flex-1 py-px">
-                <m.p
+              <div
+                className={cn(
+                  "min-w-0 flex-1 py-px",
+                  isCompleting && "is-done",
+                )}
+              >
+                <p
                   // Element Timing: reports when task titles first paint, the
                   // metric the Do page's load work is measured against.
                   // (not in React's attribute types, hence the spread)
                   {...{ elementtiming: "task-title" }}
                   className="text-body-lg line-clamp-2 leading-snug font-medium text-[var(--text-1)]"
-                  animate={
-                    isCompleting
-                      ? {
-                          textDecoration: "line-through",
-                          color: "var(--text-3)",
-                        }
-                      : {}
-                  }
-                  transition={{ duration: 0.25 }}
                 >
-                  {task.title}
-                </m.p>
+                  <span className="task-title-strike">{task.title}</span>
+                </p>
 
                 {task.first_step && (
                   <p className="text-ui mt-0.5 flex min-w-0 items-center gap-1.5 text-[var(--text-3)]">

@@ -1129,6 +1129,81 @@ h6 {
     background: var(--status-done);
   }
 
+  /* === COMPLETION MOMENT ===
+     One sequence for every task checkbox (Do rows, Home list): the check
+     pops, a ring ripples out, the tick draws itself and the title is struck
+     through left to right, then the row folds away. ~450ms end to end so it
+     reads as a reward without holding up the next tap. Reduce-motion
+     collapses every step to its end state (see :root.reduce-motion). */
+  .task-check.checked,
+  .checkbox.checked {
+    animation: check-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .task-check.checked::before,
+  .checkbox.checked::before {
+    content: "";
+    position: absolute;
+    inset: -1.5px;
+    border-radius: inherit;
+    border: 2px solid var(--status-done);
+    pointer-events: none;
+    animation: check-ripple 560ms var(--ease-out) forwards;
+  }
+  .checkbox.checked {
+    position: relative;
+    background: var(--status-done);
+    border-color: var(--status-done);
+  }
+  .check-tick {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: check-tick 240ms 90ms var(--ease-out) forwards;
+  }
+  .task-title-strike {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-repeat: no-repeat;
+    background-position: 0 58%;
+    background-size: 0% 1.5px;
+    transition:
+      background-size 300ms var(--ease-out),
+      color 300ms var(--ease-out);
+  }
+  .is-done .task-title-strike {
+    background-size: 100% 1.5px;
+    color: var(--text-3);
+    transition-delay: 100ms;
+  }
+
+  @keyframes check-pop {
+    0% {
+      transform: scale(1);
+    }
+    35% {
+      transform: scale(0.82);
+    }
+    70% {
+      transform: scale(1.18);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes check-ripple {
+    from {
+      opacity: 0.75;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(2.1);
+    }
+  }
+  @keyframes check-tick {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
   .task-meta {
     display: flex;
     flex-wrap: wrap;
