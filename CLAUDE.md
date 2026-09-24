@@ -18,15 +18,19 @@
 
 `types:check` is **not** wired into `build`. It used to run as a `prebuild` hook, which meant any build without Supabase CLI access — CI included — failed before it started. Run it deliberately after a migration.
 
-## Verified state (2026-09-23)
+## Verified state (2026-09-25)
 
 | Gate | Result |
 |---|---|
 | `npm ci` | not re-run since 2026-09-13 (lockfile content unchanged) |
-| `npm run lint` | ✅ 0 errors (52 warnings) |
+| `npm run lint` | ✅ 0 errors (38 warnings) |
 | `npx tsc --noEmit` | ✅ clean |
-| `npm test` | ✅ 340 passed / 38 files |
+| `npm test` | ✅ 524 passed / 56 files |
 | `npm run build` | ✅ |
+| `npx playwright test tests/onboarding.spec.ts` | ✅ 2 passed (Axe, phone + desktop) |
+| `npm audit --omit=dev` | ✅ 0 vulnerabilities |
+
+`/onboarding` initial JS: 200.1 KiB gz, 13 scripts (`next build` + `next start`, measured like check-budgets but with the seeded session; `/login` measured the same way: 202.9 KiB). check-budgets can't cover it: the route needs a signed-in account that hasn't finished onboarding.
 
 The bundle and Web Vitals figures below predate the 2026-09 design pass; re-measure before relying on them.
 

@@ -2312,3 +2312,370 @@ html[data-density="compact"] .thread-row-wrapper p.text-sm {
 p {
   text-wrap: pretty;
 }
+
+/* === ONBOARDING ===
+   One question per screen. Motion is CSS only (onboarding ships without
+   framer-motion) and collapses to the end state under reduced motion, via
+   the global prefers-reduced-motion and :root.reduce-motion overrides. */
+.onb-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  padding: max(env(safe-area-inset-top, 0px), 16px) 16px
+    max(env(safe-area-inset-bottom, 0px), 20px);
+}
+@media (min-width: 640px) {
+  .onb-shell {
+    padding-inline: 32px;
+  }
+}
+.onb-header {
+  margin-inline: auto;
+  display: flex;
+  width: 100%;
+  max-width: 34rem;
+  flex-direction: column;
+  gap: 12px;
+}
+.onb-progress {
+  height: 3px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--surface-active);
+}
+.onb-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+.onb-main {
+  margin-inline: auto;
+  display: flex;
+  width: 100%;
+  max-width: 34rem;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding-block: 32px 8px;
+}
+.onb-step {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: onb-in var(--dur-very-slow) var(--ease-out) both;
+}
+@keyframes onb-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.onb-title {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 1.35rem + 3.2vw, 3.25rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  text-wrap: balance;
+}
+.onb-sub {
+  max-width: 30rem;
+  font-size: var(--text-body-lg);
+  line-height: 1.55;
+  color: var(--text-2);
+  text-wrap: pretty;
+}
+.onb-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@media (min-width: 640px) {
+  .onb-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+.onb-cta {
+  height: 52px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-body-lg);
+}
+.onb-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid var(--border-default);
+  background: transparent;
+  padding: 8px 2px 12px;
+  font-family: var(--font-heading);
+  font-size: clamp(1.75rem, 1.4rem + 1.8vw, 2.5rem);
+  color: var(--text-1);
+  outline: none;
+  transition: border-color var(--dur-base) var(--ease-out);
+}
+.onb-input::placeholder {
+  color: var(--text-decorative);
+}
+.onb-input:focus-visible {
+  border-bottom-color: var(--accent);
+}
+.onb-time {
+  font-variant-numeric: tabular-nums;
+  color-scheme: light dark;
+}
+
+/* Selectable cards (theme, daily capacity): native radios, so arrow keys
+   and screen readers work without script. */
+.onb-choice {
+  display: flex;
+  cursor: pointer;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  padding: 10px;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.onb-choice:hover {
+  border-color: var(--border-strong);
+}
+.onb-choice:active {
+  transform: scale(0.98);
+}
+.onb-choice:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.onb-choice:has(input:focus-visible) {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+.onb-chip {
+  min-height: 72px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Theme previews: fixed colours, so each shows its own mode whatever mode
+   the page is in (values = --bg-base and --atmos-* for each mode). */
+.onb-swatch {
+  position: relative;
+  display: flex;
+  aspect-ratio: 4 / 3;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 5px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  padding: 12%;
+}
+.onb-swatch-light {
+  background:
+    radial-gradient(
+      90% 70% at 50% -10%,
+      rgba(255, 176, 128, 0.55),
+      transparent 70%
+    ),
+    #f7f2ec;
+  --swatch-line: rgba(45, 30, 25, 0.22);
+}
+.onb-swatch-dark {
+  background:
+    radial-gradient(
+      90% 70% at 50% 115%,
+      rgba(227, 120, 82, 0.5),
+      transparent 70%
+    ),
+    radial-gradient(
+      70% 50% at 85% -10%,
+      rgba(128, 92, 170, 0.35),
+      transparent 70%
+    ),
+    #141118;
+  --swatch-line: rgba(244, 237, 228, 0.26);
+}
+.onb-swatch-system {
+  background: linear-gradient(135deg, #f7f2ec 0 50%, #141118 50% 100%);
+  --swatch-line: rgba(227, 135, 95, 0.7);
+}
+.onb-swatch-line {
+  display: block;
+  height: 5px;
+  width: 70%;
+  border-radius: var(--radius-full);
+  background: var(--swatch-line);
+}
+.onb-swatch-line-short {
+  width: 45%;
+}
+
+.onb-summary {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+}
+.onb-summary li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  font-size: var(--text-body);
+  color: var(--text-2);
+}
+.onb-summary li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+.onb-summary li span:last-child {
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Welcome picture: thoughts land, the day fills, Start lights up. One 7s
+   cycle; only opacity and transform animate. */
+.onb-loop {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  padding: 20px;
+  box-shadow: 0 24px 60px -32px var(--accent-glow);
+}
+.onb-loop-label {
+  font-size: var(--text-meta);
+  font-weight: 500;
+  color: var(--text-3);
+}
+.onb-loop-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-body);
+  color: var(--text-1);
+  animation: onb-land 7s var(--ease-out) infinite both;
+}
+.onb-loop-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+}
+@keyframes onb-land {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  8%,
+  88% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+.onb-loop-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--surface-active);
+}
+.onb-loop-bar-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform: scaleX(0.82);
+  transform-origin: left;
+  animation: onb-fill 7s var(--ease-out) infinite both;
+}
+@keyframes onb-fill {
+  0%,
+  30% {
+    transform: scaleX(0);
+  }
+  50%,
+  90% {
+    transform: scaleX(0.82);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+.onb-loop-start {
+  position: relative;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  padding: 6px 16px;
+  font-size: var(--text-ui);
+  font-weight: 600;
+  color: var(--text-on-accent);
+  animation: onb-start 7s var(--ease-out) infinite both;
+}
+/* The pill stays fully opaque (text contrast); a glow ring pulses behind it. */
+.onb-loop-start::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 4px var(--accent-glow);
+  opacity: 0;
+  animation: onb-glow 7s var(--ease-out) infinite both;
+}
+@keyframes onb-start {
+  0%,
+  55%,
+  100% {
+    transform: none;
+  }
+  62% {
+    transform: scale(1.08);
+  }
+  70% {
+    transform: none;
+  }
+}
+@keyframes onb-glow {
+  0%,
+  55%,
+  100% {
+    opacity: 0;
+  }
+  62%,
+  88% {
+    opacity: 1;
+  }
+}
+/* Reduced motion: show the finished picture, not frame 0. */
+@media (prefers-reduced-motion: reduce) {
+  .onb-loop-item,
+  .onb-loop-bar-fill,
+  .onb-loop-start,
+  .onb-loop-start::after {
+    animation: none;
+  }
+}
+:root.reduce-motion .onb-loop-item,
+:root.reduce-motion .onb-loop-bar-fill,
+:root.reduce-motion .onb-loop-start,
+:root.reduce-motion .onb-loop-start::after {
+  animation: none;
+}

@@ -10,6 +10,7 @@ import {
   normalizeThemeId,
 } from "@/lib/theme";
 import { getRitualDecision } from "@/lib/rituals";
+import { isFirstRun } from "@/lib/first-run";
 import { usePathname } from "next/navigation";
 
 const RITUAL_SNOOZE_MS = 3 * 60 * 60 * 1000; // 3 hours
@@ -44,6 +45,13 @@ export function AppInitializer({
     const checkRituals = () => {
       if (useAppStore.getState().activeRitual !== null) return;
 
+      // Straight from onboarding: the first Plan my day opens now, whatever
+      // the time, and isn't held back by an earlier close.
+      if (isFirstRun()) {
+        setActiveRitual("morning");
+        return;
+      }
+
       const lastClosedAt = parseInt(
         localStorage.getItem("presense_ritual_closed_at") || "0",
         10,
@@ -72,7 +80,7 @@ export function AppInitializer({
       }
     };
 
-    const initialTimer = setTimeout(checkRituals, 2000);
+    const initialTimer = setTimeout(checkRituals, isFirstRun() ? 300 : 2000);
     const interval = setInterval(checkRituals, 5 * 60 * 1000);
     return () => {
       clearTimeout(initialTimer);

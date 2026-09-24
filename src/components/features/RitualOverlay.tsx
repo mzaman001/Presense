@@ -38,6 +38,7 @@ import {
   revertItemPatch,
 } from "@/lib/item-lifecycle";
 import { flushOutbox } from "@/lib/capture-outbox";
+import { endFirstRun, isFirstRun } from "@/lib/first-run";
 import {
   MindSweepPrompt,
   eveningSweepPrompts,
@@ -334,6 +335,7 @@ export function RitualOverlay({
     userSettings,
     updateUserSetting,
     markMutation,
+    setActiveTimer,
   } = useAppStore(
     useShallow((s) => ({
       activeRitual: s.activeRitual,
@@ -341,6 +343,7 @@ export function RitualOverlay({
       userSettings: s.userSettings,
       updateUserSetting: s.updateUserSetting,
       markMutation: s.markMutation,
+      setActiveTimer: s.setActiveTimer,
     })),
   );
 
@@ -353,6 +356,8 @@ export function RitualOverlay({
   const handleClose = useCallback(() => {
     // Stamp close time so AppInitializer holds off re-prompting (RITUAL_SNOOZE_MS)
     localStorage.setItem("presense_ritual_closed_at", String(Date.now()));
+    // However the first plan ends (done, skipped or closed), it's over.
+    if (isFirstRun()) endFirstRun();
     if (onClose) onClose();
     else storeSetActiveRitual(null);
   }, [onClose, storeSetActiveRitual]);
@@ -362,6 +367,10 @@ export function RitualOverlay({
   // Anything captured in the morning sweep; if so, sorting reloads first so
   // what just landed in Inbox is there to place.
   const [sweptCount, setSweptCount] = useState(0);
+  // The first plan after onboarding: greet by name, ask for at least one
+  // thing, and finish in the focus view on a task picked here.
+  const [firstRun, setFirstRun] = useState(false);
+  const [startTaskId, setStartTaskId] = useState<string | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [triageTasks, setTriageTasks] = useState<
     Database["public"]["Tables"]["items"]["Row"][]
@@ -556,6 +565,8 @@ export function RitualOverlay({
     setStep(0);
     setSweptCount(0);
     setAvailableMinutes(null);
+    setFirstRun(activeRitual === "morning" && isFirstRun());
+    setStartTaskId(null);
     void loadData();
   }, [activeRitual, loadData, todayString]);
 
@@ -705,6 +716,12 @@ export function RitualOverlay({
     markMutation("items");
   };
 
+  // First run: the task "Start my day" opens the focus view on. The one
+  // tapped in "Shape your day", else the first planned for today.
+  const startTask = firstRun
+    ? (todayTasks.find((t) => t.id === startTaskId) ?? todayTasks[0])
+    : undefined;
+
   const handleFinishMorning = async () => {
     setSaving(true);
     try {
@@ -729,6 +746,14 @@ export function RitualOverlay({
       });
       handleClose();
       router.push("/");
+      // Opens ready: nothing counts down until they press Start.
+      if (startTask) {
+        setActiveTimer({
+          taskId: startTask.id,
+          taskTitle: startTask.title,
+          firstStep: startTask.first_step,
+        });
+      }
     } catch (err: unknown) {
       toast.error("Failed to save", {
         description: err instanceof Error ? err.message : "Unknown error",
@@ -974,11 +999,16 @@ export function RitualOverlay({
   if (!isCurrentlyOpen || !activeRitual) return null;
 
   const hour = new Date().getHours();
+  const firstName = firstRun
+    ? (userSettings?.display_name ?? "").trim().split(/\s+/)[0]
+    : "";
+  const greet = (text: string) =>
+    firstName ? `${text}, ${firstName}.` : `${text}.`;
   const heading = isMorning
     ? step === 0
       ? hour < 12
-        ? "Good morning."
-        : "Let's plan the day."
+        ? greet("Good morning")
+        : greet("Let's plan the day")
       : step === 1
         ? "Sort the loose ends."
         : "Shape your day."
@@ -988,7 +1018,9 @@ export function RitualOverlay({
       ? "First, empty your head. Anything at all, one at a time."
       : step === 1
         ? "Give each one a place."
-        : "This is what you've chosen for today. Estimates keep it honest."
+        : firstRun
+          ? "This is what you've chosen for today. Tap the one to start with."
+          : "This is what you've chosen for today. Estimates keep it honest."
     : "Close the open loops, empty your head, and rest.";
 
   return (
@@ -1131,8 +1163,9 @@ export function RitualOverlay({
                       onCaptured={() => setSweptCount((n) => n + 1)}
                     />
                     <p className="px-1 text-[length:var(--text-meta)] text-[var(--text-3)]">
-                      Each one is sorted and saved as you go. Nothing here is
-                      required. Continue whenever your head feels clear.
+                      {firstRun
+                        ? "Tasks, errands, ideas, worries: one at a time. Each one is sorted and saved as you go. Add at least one to continue."
+                        : "Each one is sorted and saved as you go. Nothing here is required. Continue whenever your head feels clear."}
                     </p>
                   </m.div>
                 ) : step === 1 ? (
@@ -1203,15 +1236,40 @@ export function RitualOverlay({
                             {todayTasks.map((task) => (
                               <li
                                 key={task.id}
-                                className="flex min-h-14 items-center gap-3 px-4 py-2"
+                                className={cn(
+                                  "flex min-h-14 items-center gap-3 px-4 py-2",
+                                  startTask?.id === task.id &&
+                                    "bg-[var(--accent-dim)]",
+                                )}
                               >
                                 <span
                                   aria-hidden="true"
                                   className="size-1.5 shrink-0 rounded-full bg-[var(--accent)]"
                                 />
-                                <p className="min-w-0 flex-1 truncate text-[length:var(--text-body-lg)] text-[var(--text-1)]">
-                                  {task.title}
-                                </p>
+                                {firstRun ? (
+                                  <button
+                                    type="button"
+                                    aria-pressed={startTask?.id === task.id}
+                                    onClick={() => {
+                                      haptics.selection();
+                                      setStartTaskId(task.id);
+                                    }}
+                                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                  >
+                                    <span className="truncate text-[length:var(--text-body-lg)] text-[var(--text-1)]">
+                                      {task.title}
+                                    </span>
+                                    {startTask?.id === task.id && (
+                                      <span className="shrink-0 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[length:var(--text-caption)] font-medium text-[var(--text-on-accent)]">
+                                        First up
+                                      </span>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <p className="min-w-0 flex-1 truncate text-[length:var(--text-body-lg)] text-[var(--text-1)]">
+                                    {task.title}
+                                  </p>
+                                )}
                                 <label className="relative shrink-0">
                                   <span className="sr-only">
                                     Estimate for {task.title}, in minutes
@@ -1485,7 +1543,7 @@ export function RitualOverlay({
               step === 0 ? (
                 <Button
                   variant="primary"
-                  disabled={advancing}
+                  disabled={advancing || (firstRun && sweptCount === 0)}
                   onClick={() => void continueFromSweep()}
                   className="min-w-32"
                 >

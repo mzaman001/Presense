@@ -30,7 +30,9 @@ profile first, "You're all set").
 | 6 | "How much time do you usually have for your own things?" (Daily capacity) 2h/4h/6h/8h. Default 4h. | `daily_capacity_minutes` |
 | 7 | "Let's plan your first day." "Plan my day" or "Skip for now". | `timezone`, `onboarding_complete` |
 
-- Each answer is saved when the user continues. The current step is kept in
+- Each answer is saved when the user continues, through a server action
+  (`app/onboarding/actions.ts`) that accepts only the onboarding fields,
+  validated, so supabase-js stays out of the onboarding bundle (as /login). The current step is kept in
   `sessionStorage`, so a refresh resumes. A failed save keeps the user on the
   screen (toast; they can retry).
 - Back on every screen after 1. Enter advances. Progress bar across 2–7.
@@ -47,10 +49,10 @@ profile first, "You're all set").
   - "Start my day" opens the focus view (existing `setActiveTimer`, ready
     state) on the first task planned for today, or on the task the user
     tapped in "Shape your day". With no tasks for today it closes normally.
-- The marker is cleared when the ritual completes or is closed. Afterwards a
-  one-time "You're all set" card shows on Home (Quick Capture incl. voice and
-  share, Evening review at their time, no streaks), dismissed permanently
-  via `localStorage["presense_welcome_card_dismissed"]`.
+- The marker is cleared when the ritual completes or is closed.
+- Home's existing one-time tip (`ContextualTip id="home"`) becomes "You're
+  all set": Quick Capture (typed, spoken or shared), Evening review at their
+  time, and no streaks. No second welcome card.
 - "Skip for now" completes onboarding without the marker.
 
 ## Verification

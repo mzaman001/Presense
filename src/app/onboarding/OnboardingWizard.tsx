@@ -1,443 +1,512 @@
 "use client";
-import { logger } from "@/lib/logger";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { m, AnimatePresence } from "framer-motion";
-import { createClient, safeMutate } from "@/lib/supabase";
-import {
-  ArrowRight,
-  Loader2,
-  Brain,
-  MessageSquare,
-  CheckCircle2,
-  Zap,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { routeCapture, type RoutedItem } from "@/lib/capture-router";
-import { Icon as UiIcon } from "@/components/ui/Icon";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { BrandMark } from "@/components/ui/BrandMark";
-import { Button } from "@/components/ui/button";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { applyDocumentTheme, type ColorMode } from "@/lib/theme";
+import {
+  CAPACITY_CHOICES,
+  endFirstRun,
+  formatClock,
+  loadOnboardingStep,
+  saveOnboardingStep,
+  startFirstRun,
+  toDbTime,
+  type OnboardingPatch,
+} from "@/lib/first-run";
+import { saveOnboardingSettings } from "./actions";
 
-interface OnboardingWizardProps {
-  initialName: string;
+export interface OnboardingInitial {
+  name: string;
+  colorMode: ColorMode;
+  morning: string;
+  evening: string;
+  capacityMinutes: number;
 }
 
-const SPACES = [
-  {
-    id: "do",
-    icon: CheckCircle2,
-    title: "Do",
-    desc: "One task at a time. No overwhelm.",
-  },
-  {
-    id: "think",
-    icon: MessageSquare,
-    title: "Think",
-    desc: "Ongoing thoughts and a daily note.",
-  },
-  {
-    id: "remember",
-    icon: Brain,
-    title: "Remember",
-    desc: "Where you left things.",
-  },
+interface OnboardingWizardProps {
+  initial: OnboardingInitial;
+}
+
+// 1 Welcome · 2 Name · 3 Look · 4 Morning planning · 5 Evening review ·
+// 6 Daily capacity · 7 First plan
+const LAST_STEP = 7;
+
+const THEMES: { value: ColorMode; label: string; hint: string }[] = [
+  { value: "light", label: "Light", hint: "Warm, like sunrise" },
+  { value: "dark", label: "Dark", hint: "Soft, like sunset" },
+  { value: "system", label: "System", hint: "Matches your device" },
 ];
 
-const LARGE_BUTTON = "h-14 w-full text-[length:var(--text-lg)]";
+const primary = buttonVariants({
+  variant: "primary",
+  className: "onb-cta w-full sm:w-auto sm:min-w-44",
+});
+const ghost = buttonVariants({ variant: "ghost" });
 
-export function OnboardingWizard({ initialName }: OnboardingWizardProps) {
+/** Show a colour mode on the page now, and on the next load before hydration. */
+function applyMode(mode: ColorMode) {
+  const html = document.documentElement;
+  applyDocumentTheme(
+    "warm",
+    mode,
+    html.classList.contains("reduce-motion"),
+    html.getAttribute("data-density"),
+  );
+  try {
+    localStorage.setItem("presense_color_mode", mode);
+  } catch {
+    // Storage unavailable: the choice is still saved to the account.
+  }
+}
+
+export function OnboardingWizard({ initial }: OnboardingWizardProps) {
   const router = useRouter();
-  const supabase = createClient();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
 
-  // Step 1: Welcome + name
-  const [name, setName] = useState(initialName || "");
+  const [name, setName] = useState(initial.name);
+  const [colorMode, setColorMode] = useState<ColorMode>(initial.colorMode);
+  const [morning, setMorning] = useState(initial.morning);
+  const [evening, setEvening] = useState(initial.evening);
+  const [capacity, setCapacity] = useState(initial.capacityMinutes);
 
-  // Step 2: Ritual loop setup
-  const [wakeTime, setWakeTime] = useState("07:00");
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const firstName = name.trim().split(/\s+/)[0] ?? "";
 
-  // Step 3: First capture
-  const [captureInput, setCaptureInput] = useState("");
-  const [routedItem, setRoutedItem] = useState<RoutedItem | null>(null);
-
-  // Auto-route on capture input
+  // Resume where a refresh left off.
   useEffect(() => {
-    const routeItem = async () => {
-      if (captureInput.trim()) {
-        const items = await routeCapture(captureInput);
-        setRoutedItem(items[0] || null);
-      } else {
-        setRoutedItem(null);
-      }
-    };
-    routeItem();
-  }, [captureInput]);
+    const saved = loadOnboardingStep(LAST_STEP);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved > 1) setStep(saved);
+  }, []);
 
-  const handleStep1Next = async () => {
-    setSaving(true);
+  // Each screen is one question: move focus to it so keyboard and screen
+  // reader users land on the new content, not the old button.
+  const mounted = useRef(false);
+  useEffect(() => {
+    // The look screen previews the selected mode on the page itself, so
+    // what's ticked is what's shown.
+    if (step === 3) applyMode(colorMode);
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    const root = headingRef.current?.closest("form");
+    const field = root?.querySelector<HTMLElement>("[data-autofocus]");
+    (field ?? headingRef.current)?.focus();
+    // Runs on step changes only; colorMode changes apply in onChange.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  const save = async (patch: OnboardingPatch) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user && name.trim()) {
-        const { success } = await safeMutate(
-          () =>
-            supabase.from("user_settings").upsert(
-              {
-                user_id: user.id,
-                display_name: name.trim(),
-              },
-              { onConflict: "user_id" },
-            ),
-          "Failed to save your name",
-        );
-        if (!success) return;
-      }
-      setStep(2);
-    } catch (e) {
-      logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to save your name");
-    } finally {
-      setSaving(false);
+      const result = await saveOnboardingSettings(patch);
+      if (result.ok) return true;
+      toast.error("Couldn't save that. Please try again.", {
+        description: result.error,
+      });
+    } catch {
+      toast.error("Couldn't save that. Please check your connection.");
+    }
+    return false;
+  };
+
+  const goTo = (next: number) => {
+    setStep(next);
+    saveOnboardingStep(next);
+  };
+
+  const patchForStep = (): OnboardingPatch | null => {
+    switch (step) {
+      case 2:
+        return { display_name: name.trim() };
+      case 3:
+        return { color_mode: colorMode };
+      case 4:
+        return { nudge_time: toDbTime(morning) };
+      case 5:
+        return { shutdown_time: toDbTime(evening) };
+      case 6:
+        return { daily_capacity_minutes: capacity };
+      default:
+        return null;
     }
   };
 
-  const handleStep2Next = async () => {
-    setSaving(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        // Calculate nudge_time (wakeTime + 30 mins)
-        const [wH, wM] = wakeTime.split(":").map(Number);
-        const nudgeDate = new Date();
-        nudgeDate.setHours(wH, wM + 30, 0);
-        const nudgeTimeStr = `${String(nudgeDate.getHours()).padStart(2, "0")}:${String(nudgeDate.getMinutes()).padStart(2, "0")}:00`;
-
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        const { success } = await safeMutate(
-          () =>
-            supabase
-              .from("user_settings")
-              .update({
-                nudge_time: nudgeTimeStr,
-                timezone: timezone,
-              })
-              .eq("user_id", user.id),
-          "Failed to save your preferences",
-        );
-        if (!success) return;
-      }
-      setStep(3);
-    } catch (e) {
-      logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to save your preferences");
-    } finally {
+  const handleNext = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    if (step === 2 && !name.trim()) return;
+    const patch = patchForStep();
+    if (patch) {
+      setSaving(true);
+      const ok = await save(patch);
       setSaving(false);
+      if (!ok) return;
     }
+    goTo(Math.min(step + 1, LAST_STEP));
   };
 
-  const completeOnboarding = async (user: { id: string }) => {
-    const { success } = await safeMutate(
-      () =>
-        supabase.from("user_settings").upsert(
-          {
-            user_id: user.id,
-            onboarding_complete: true,
-          },
-          { onConflict: "user_id" },
-        ),
-      "Failed to complete onboarding",
-    );
-    if (!success) return false;
-    router.push("/");
-    return true;
-  };
-
-  const handleStep3Finish = async () => {
+  const finish = async (planNow: boolean) => {
+    if (saving) return;
     setSaving(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-
-      if (captureInput.trim()) {
-        const item = routedItem || (await routeCapture(captureInput))[0];
-        if (item) {
-          if (item.destination === "Do" || item.destination === "Inbox") {
-            const { success } = await safeMutate(
-              () =>
-                supabase.from("items").insert({
-                  user_id: user.id,
-                  title: item.title,
-                  status: item.destination === "Inbox" ? "inbox" : "active",
-                  deadline: item.deadline || null,
-                }),
-              "Failed to save your thought",
-            );
-            if (!success) return;
-          } else if (item.destination.startsWith("Remember")) {
-            const { success } = await safeMutate(
-              () =>
-                supabase.from("locations").insert({
-                  user_id: user.id,
-                  item_name:
-                    item.item_name || item.title.split(" ")[0] || "Item",
-                  location_text: item.title,
-                }),
-              "Failed to save your item",
-            );
-            if (!success) return;
-          } else if (item.destination === "Think") {
-            const { success } = await safeMutate(
-              () =>
-                supabase.from("threads").insert({
-                  user_id: user.id,
-                  title: item.title.slice(0, 60),
-                  entries: [
-                    {
-                      text: item.title,
-                      created_at: new Date().toISOString(),
-                      starred: false,
-                    },
-                  ],
-                }),
-              "Failed to save your thought",
-            );
-            if (!success) return;
-          }
-          toast.success(`Saved to ${item.destination}`);
-        }
-      }
-
-      await completeOnboarding(user);
-    } catch (e) {
-      logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to finish setup");
+    const ok = await save({
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      onboarding_complete: true,
+    });
+    if (!ok) {
       setSaving(false);
+      return;
     }
+    saveOnboardingStep(null);
+    if (planNow) startFirstRun();
+    else endFirstRun();
+    router.replace("/");
   };
 
-  const handleSkipToFinish = async () => {
-    setSaving(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-      const completed = await completeOnboarding(user);
-      if (!completed) setSaving(false);
-    } catch (e) {
-      logger.error(e instanceof Error ? e.message : String(e));
-      toast.error("Failed to finish setup");
-      setSaving(false);
-    }
-  };
+  const spinner = (
+    <Loader2 aria-hidden="true" className="size-5 animate-spin" />
+  );
+  const continueLabel = (
+    <>
+      Continue <ArrowRight aria-hidden="true" className="size-4" />
+    </>
+  );
+
+  const heading = (text: React.ReactNode, sub?: React.ReactNode) => (
+    <div className="space-y-3">
+      <h1
+        ref={headingRef}
+        id="onb-heading"
+        tabIndex={-1}
+        className="onb-title outline-none"
+      >
+        {text}
+      </h1>
+      {sub && <p className="onb-sub">{sub}</p>}
+    </div>
+  );
 
   return (
-    <div
-      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[var(--bg-base)] p-6 font-sans"
-      style={{ zIndex: 1 }}
-    >
-      <AnimatePresence mode="wait">
-        {step === 1 && (
-          <m.div
-            key="step1"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-xl space-y-7"
-          >
-            <div className="flex items-center gap-2.5 text-[var(--accent)]">
-              <BrandMark size={26} />
-              <span className="font-heading text-title-lg font-semibold tracking-tight text-[var(--text-1)]">
+    <div className="onb-shell">
+      <header className="onb-header">
+        <div className="flex h-10 items-center">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={() => goTo(step - 1)}
+              disabled={saving}
+              className={`${ghost} -ml-3 gap-1.5`}
+            >
+              <ArrowLeft aria-hidden="true" className="size-4" /> Back
+            </button>
+          ) : (
+            <span className="flex items-center gap-2 text-[var(--accent)]">
+              <BrandMark size={22} />
+              <span className="font-heading text-[length:var(--text-title-sm)] font-semibold tracking-tight text-[var(--text-1)]">
                 Presense
               </span>
-            </div>
+            </span>
+          )}
+        </div>
+        {step > 1 && (
+          <div
+            role="progressbar"
+            aria-label="Setup progress"
+            aria-valuemin={1}
+            aria-valuemax={LAST_STEP - 1}
+            aria-valuenow={step - 1}
+            aria-valuetext={`Step ${step - 1} of ${LAST_STEP - 1}`}
+            className="onb-progress"
+          >
+            <span
+              className="onb-progress-fill"
+              style={{ transform: `scaleX(${(step - 1) / (LAST_STEP - 1)})` }}
+            />
+          </div>
+        )}
+      </header>
 
-            <div className="space-y-2">
-              <h1 className="font-heading text-3xl font-semibold tracking-tight text-[var(--text-1)] sm:text-4xl">
-                Everything you need to remember, in one place.
-              </h1>
-              <p className="text-body text-[var(--text-3)]">
-                Presense captures what you&apos;d otherwise forget — tasks,
-                thoughts, and things you&apos;re keeping track of — and brings
-                it back to you at the right moment.
-              </p>
-            </div>
+      <main className="onb-main">
+        <form
+          key={step}
+          onSubmit={handleNext}
+          aria-labelledby="onb-heading"
+          className="onb-step"
+          noValidate
+        >
+          {step === 1 && (
+            <>
+              {heading(
+                <>
+                  Clear your head.
+                  <br />
+                  <span className="text-[var(--accent-text)]">Get going.</span>
+                </>,
+                "Get everything out of your head, pick what fits today, and actually start.",
+              )}
+              <WelcomeLoop />
+              <div className="onb-actions">
+                <button type="submit" className={primary}>
+                  Get started
+                  <ArrowRight aria-hidden="true" className="size-4" />
+                </button>
+              </div>
+            </>
+          )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {SPACES.map((space) => (
-                <GlassCard key={space.id} className="flex flex-col gap-2">
-                  <UiIcon
-                    size={20}
-                    strokeWidth={1.5}
-                    className="text-[var(--accent)]"
-                    icon={space.icon}
-                  />
-                  <div className="text-card-title text-[var(--text-1)]">
-                    {space.title}
-                  </div>
-                  <p className="text-sm text-[var(--text-3)]">{space.desc}</p>
-                </GlassCard>
-              ))}
-            </div>
-
-            <div className="space-y-2">
+          {step === 2 && (
+            <>
+              {heading("What should we call you?")}
               <input
-                autoFocus
-                placeholder="Your name (optional)"
+                data-autofocus
+                aria-labelledby="onb-heading"
+                autoComplete="given-name"
+                autoCapitalize="words"
+                enterKeyHint="next"
+                maxLength={60}
+                placeholder="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleStep1Next()}
-                className="input !rounded-2xl !px-5 !py-4 !text-xl"
+                className="onb-input"
               />
-            </div>
+              <div className="onb-actions">
+                <button
+                  type="submit"
+                  disabled={saving || !name.trim()}
+                  className={primary}
+                >
+                  {saving ? spinner : continueLabel}
+                </button>
+              </div>
+            </>
+          )}
 
-            <Button
-              variant="primary"
-              onClick={handleStep1Next}
-              disabled={saving}
-              className={LARGE_BUTTON}
-            >
-              {saving ? (
-                <UiIcon className="h-6 w-6 animate-spin" icon={Loader2} />
-              ) : (
-                <>
-                  Continue <UiIcon className="h-5 w-5" icon={ArrowRight} />
-                </>
+          {step === 3 && (
+            <>
+              {heading(
+                "How should Presense look?",
+                "You can change this any time in Settings.",
               )}
-            </Button>
-          </m.div>
-        )}
+              <div
+                role="radiogroup"
+                aria-labelledby="onb-heading"
+                className="grid grid-cols-3 gap-2.5 sm:gap-3"
+              >
+                {THEMES.map((t) => (
+                  <label key={t.value} className="onb-choice onb-theme">
+                    <input
+                      type="radio"
+                      name="color_mode"
+                      value={t.value}
+                      checked={colorMode === t.value}
+                      data-autofocus={colorMode === t.value || undefined}
+                      onChange={() => {
+                        setColorMode(t.value);
+                        applyMode(t.value);
+                      }}
+                      className="sr-only"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className={`onb-swatch onb-swatch-${t.value}`}
+                    >
+                      <span className="onb-swatch-line" />
+                      <span className="onb-swatch-line onb-swatch-line-short" />
+                    </span>
+                    <span className="text-[length:var(--text-body)] font-medium text-[var(--text-1)]">
+                      {t.label}
+                    </span>
+                    <span className="hidden text-[length:var(--text-meta)] text-[var(--text-3)] sm:block">
+                      {t.hint}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div className="onb-actions">
+                <button type="submit" disabled={saving} className={primary}>
+                  {saving ? spinner : continueLabel}
+                </button>
+              </div>
+            </>
+          )}
 
-        {step === 2 && (
-          <m.div
-            key="step2"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-md space-y-8"
+          {step === 4 && (
+            <>
+              {heading(
+                `When do you like to plan your day${firstName ? `, ${firstName}` : ""}?`,
+                "Morning planning opens then. Two minutes to decide what today holds.",
+              )}
+              <TimeField value={morning} onChange={setMorning} />
+              <div className="onb-actions">
+                <button
+                  type="submit"
+                  disabled={saving || !morning}
+                  className={primary}
+                >
+                  {saving ? spinner : continueLabel}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 5 && (
+            <>
+              {heading(
+                "When do you usually call it a day?",
+                "Your Evening review opens then, to close the day and rest.",
+              )}
+              <TimeField value={evening} onChange={setEvening} />
+              <div className="onb-actions">
+                <button
+                  type="submit"
+                  disabled={saving || !evening}
+                  className={primary}
+                >
+                  {saving ? spinner : continueLabel}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 6 && (
+            <>
+              {heading(
+                "How much time do you usually have for your own things?",
+                "Your daily capacity. Presense uses it to keep each day realistic.",
+              )}
+              <div
+                role="radiogroup"
+                aria-labelledby="onb-heading"
+                className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3"
+              >
+                {CAPACITY_CHOICES.map((minutes) => (
+                  <label key={minutes} className="onb-choice onb-chip">
+                    <input
+                      type="radio"
+                      name="capacity"
+                      value={minutes}
+                      checked={capacity === minutes}
+                      data-autofocus={capacity === minutes || undefined}
+                      onChange={() => setCapacity(minutes)}
+                      className="sr-only"
+                    />
+                    <span className="font-heading text-[length:var(--text-title-lg)] leading-none text-[var(--text-1)] tabular-nums">
+                      {minutes / 60}h
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div className="onb-actions">
+                <button type="submit" disabled={saving} className={primary}>
+                  {saving ? spinner : continueLabel}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 7 && (
+            <>
+              {heading(
+                `You're ready${firstName ? `, ${firstName}` : ""}. Let's plan your first day.`,
+                "Empty your head, pick what fits today, and start on one thing. It takes about two minutes.",
+              )}
+              <ul className="onb-summary">
+                <li>
+                  <span>Morning planning</span>
+                  <span>{formatClock(morning)}</span>
+                </li>
+                <li>
+                  <span>Evening review</span>
+                  <span>{formatClock(evening)}</span>
+                </li>
+                <li>
+                  <span>Daily capacity</span>
+                  <span>{capacity / 60}h</span>
+                </li>
+              </ul>
+              <div className="onb-actions">
+                <button
+                  type="button"
+                  data-autofocus
+                  disabled={saving}
+                  onClick={() => void finish(true)}
+                  className={primary}
+                >
+                  {saving ? spinner : "Plan my day"}
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void finish(false)}
+                  className={`${ghost} w-full text-[var(--text-3)] sm:w-auto`}
+                >
+                  Skip for now
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      </main>
+    </div>
+  );
+}
+
+function TimeField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      type="time"
+      data-autofocus
+      aria-labelledby="onb-heading"
+      required
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="onb-input onb-time"
+    />
+  );
+}
+
+/**
+ * The loop in one small, looping picture: a few thoughts land, the day fills
+ * to what fits, and Start lights up. CSS only (no JS, no images); under
+ * reduced motion it shows the finished picture.
+ */
+function WelcomeLoop() {
+  const thoughts = ["Call the dentist", "Finish the report", "Buy a gift"];
+  return (
+    <div aria-hidden="true" className="onb-loop">
+      <p className="onb-loop-label">What&apos;s on your mind?</p>
+      <ul className="space-y-2">
+        {thoughts.map((t, i) => (
+          <li
+            key={t}
+            className="onb-loop-item"
+            style={{ animationDelay: `${0.3 + i * 0.45}s` }}
           >
-            <div className="space-y-2">
-              <h1 className="font-heading text-3xl font-semibold tracking-tight text-[var(--text-1)]">
-                Presense works in a loop, not a list.
-              </h1>
-              <p className="text-body text-[var(--text-3)]">
-                Each morning, Presense helps you plan the day. Each evening, a
-                quick review closes the loop. It only takes a minute, and
-                it&apos;s the one habit that makes everything else here work.
-              </p>
-            </div>
-
-            <div className="space-y-2 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-1)] p-5">
-              <label className="block text-sm font-semibold tracking-wider text-[var(--text-2)] uppercase">
-                When should your morning planning nudge arrive?
-              </label>
-              <input
-                type="time"
-                value={wakeTime}
-                onChange={(e) => setWakeTime(e.target.value)}
-                className="w-full bg-transparent text-2xl font-bold text-[var(--text-1)] outline-none"
-              />
-            </div>
-
-            <div className="flex gap-4">
-              <Button
-                variant="secondary"
-                onClick={() => setStep(1)}
-                className="h-14 flex-1 text-[length:var(--text-lg)]"
-              >
-                Back
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleStep2Next}
-                disabled={saving}
-                className="h-14 flex-[2] text-[length:var(--text-lg)]"
-              >
-                {saving ? (
-                  <UiIcon className="h-6 w-6 animate-spin" icon={Loader2} />
-                ) : (
-                  <>
-                    Continue <UiIcon className="h-5 w-5" icon={ArrowRight} />
-                  </>
-                )}
-              </Button>
-            </div>
-          </m.div>
-        )}
-
-        {step === 3 && (
-          <m.div
-            key="step3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-xl space-y-8"
-          >
-            <h1 className="font-heading text-3xl font-semibold tracking-tight text-[var(--text-1)]">
-              Let&apos;s try it. What&apos;s on your mind right now?
-            </h1>
-            <div className="relative">
-              <textarea
-                autoFocus
-                placeholder="Remind me to call Mom on Sunday..."
-                value={captureInput}
-                onChange={(e) => setCaptureInput(e.target.value)}
-                className="h-32 w-full resize-none rounded-2xl border border-[var(--border-default)] bg-[var(--surface-1)] p-5 text-xl text-[var(--text-1)] transition-colors outline-none placeholder:text-[var(--text-3)] focus:border-[var(--accent)]"
-              />
-              <AnimatePresence>
-                {routedItem && (
-                  <m.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute bottom-4 left-4 flex items-center gap-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1.5 text-sm font-medium text-[var(--accent)]"
-                  >
-                    <UiIcon className="h-4 w-4" icon={Zap} /> → This will go to{" "}
-                    {routedItem.destination}
-                  </m.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <div className="flex gap-4">
-              <Button
-                variant="secondary"
-                onClick={() => setStep(2)}
-                className="h-14 flex-1 text-[length:var(--text-lg)]"
-              >
-                Back
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleStep3Finish}
-                disabled={saving || !captureInput.trim()}
-                className="h-14 flex-[2] text-[length:var(--text-lg)]"
-              >
-                {saving ? (
-                  <UiIcon className="h-6 w-6 animate-spin" icon={Loader2} />
-                ) : (
-                  "Save & start using Presense"
-                )}
-              </Button>
-            </div>
-            <button
-              onClick={handleSkipToFinish}
-              disabled={saving}
-              className="text-ui block w-full text-center text-[var(--text-3)] transition-colors hover:text-[var(--text-1)] disabled:opacity-50"
-            >
-              Skip and start using Presense
-            </button>
-          </m.div>
-        )}
-      </AnimatePresence>
+            <span className="onb-loop-dot" />
+            {t}
+          </li>
+        ))}
+      </ul>
+      <div className="onb-loop-bar">
+        <span className="onb-loop-bar-fill" />
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-[length:var(--text-meta)] text-[var(--text-3)]">
+          Fits your day
+        </span>
+        <span className="onb-loop-start">Start</span>
+      </div>
     </div>
   );
 }

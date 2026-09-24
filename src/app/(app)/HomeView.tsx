@@ -41,6 +41,7 @@ import {
   type DashboardRows,
 } from "@/lib/dashboard";
 import { PageSkeleton } from "@/components/ui/Skeleton";
+import { formatClock, fromDbTime } from "@/lib/first-run";
 
 /** Shared with Do and TaskCard — one generated shape, not a local copy. */
 type TaskItem = TaskRecord;
@@ -404,8 +405,8 @@ function HomeDashboard({
 
         <ContextualTip
           id="home"
-          title="Welcome"
-          description="Focus now is always your most urgent task. Capture anything with + whenever it comes to mind."
+          title="You're all set"
+          description={`Quick Capture takes anything, typed, spoken or shared from another app. Your Evening review opens at ${formatClock(fromDbTime(userSettings?.shutdown_time, "18:00"))}. And there are no streaks here: miss a day and nothing breaks.`}
         />
 
         {showReview ? (

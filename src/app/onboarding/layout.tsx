@@ -1,5 +1,4 @@
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
-import { MotionProvider } from "@/components/layout/MotionProvider";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -7,15 +6,17 @@ export const metadata: Metadata = {
   description: "Set up Presense.",
 };
 
+// No MotionProvider: the wizard animates with CSS only, so onboarding ships
+// without framer-motion.
 export default function OnboardingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <MotionProvider>
+    <>
       <AmbientBackground />
       {children}
-    </MotionProvider>
+    </>
   );
 }
