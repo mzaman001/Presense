@@ -1,7 +1,17 @@
 "use client";
 
-import { LazyMotion, domMax, MotionConfig } from "framer-motion";
+import { LazyMotion, MotionConfig } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
+
+/**
+ * The animation, layout and drag features (domMax) were bundled into every
+ * page's initial JavaScript, ~25 KiB gz that had to parse before first
+ * paint. Loaded asynchronously instead: `m.*` elements render in their final
+ * state straight away and start animating once the features arrive, a
+ * moment after hydration.
+ */
+const loadFeatures = () =>
+  import("./motion-features").then((mod) => mod.default);
 
 /**
  * `reducedMotion="user"` only follows the OS setting. Presense also has its
@@ -15,7 +25,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   );
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
-      <LazyMotion features={domMax} strict>
+      <LazyMotion features={loadFeatures} strict>
         {children}
       </LazyMotion>
     </MotionConfig>

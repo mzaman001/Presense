@@ -20,7 +20,7 @@ import {
 import { m, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
-import { TaskAddPanel } from "@/components/features/TaskAddPanel";
+import { TaskAddPanel } from "@/components/features/TaskAddPanelLazy";
 import { useRealtime } from "@/hooks/useRealtime";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { toast } from "sonner";
