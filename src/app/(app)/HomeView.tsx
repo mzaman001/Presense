@@ -598,6 +598,7 @@ function HomeDashboard({
                       setActiveTimer({
                         taskId: primaryTask.id,
                         taskTitle: primaryTask.title,
+                        firstStep: primaryTask.first_step,
                       })
                     }
                     className=""

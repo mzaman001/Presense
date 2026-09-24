@@ -89,3 +89,12 @@ export function escapeFilterValue(term: string): string {
 export function ilikeContains(term: string): string {
   return escapeFilterValue(`%${term}%`);
 }
+
+/** Minutes as "45m", "2h" or "1h 20m"; null for none. */
+export function formatMinutes(minutes: number | undefined | null) {
+  if (!minutes || minutes <= 0) return null;
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
