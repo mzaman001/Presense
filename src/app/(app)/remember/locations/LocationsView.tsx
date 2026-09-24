@@ -44,7 +44,17 @@ import {
   locationsQueryKey,
   type LocationItem,
 } from "@/lib/locations";
-import { LocationAddPanel } from "@/components/features/LocationAddPanel";
+import dynamic from "next/dynamic";
+
+// Starts closed but carries zod and react-hook-form; loaded as its own chunk
+// after hydration so Remember's initial JavaScript excludes them.
+const LocationAddPanel = dynamic(
+  () =>
+    import("@/components/features/LocationAddPanel").then((m) => ({
+      default: m.LocationAddPanel,
+    })),
+  { ssr: false, loading: () => null },
+);
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { EmptyState } from "@/components/ui/EmptyState";

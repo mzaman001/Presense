@@ -1,5 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { env } from "@/lib/env";
+import { publicEnv as env } from "@/lib/public-env";
 import { Database } from "@/types/database.types";
 import { toast } from "sonner";
 import { trackWrites } from "@/lib/mutation-tracking";

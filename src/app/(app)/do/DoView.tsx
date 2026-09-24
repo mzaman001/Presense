@@ -45,20 +45,12 @@ import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import dynamic from "next/dynamic";
 import { withPreload } from "@/lib/preloadable";
+import { TaskAddPanel } from "@/components/features/TaskAddPanelLazy";
 import { fetchActiveTasks } from "@/lib/do-tasks";
 
 // Heavy, closed-by-default surfaces loaded on demand (same pattern as
-// DynamicModals) so /do's initial bundle and hydration exclude them.
-export const TaskAddPanel = withPreload(
-  dynamic(
-    () =>
-      import("@/components/features/TaskAddPanel").then((m) => ({
-        default: m.TaskAddPanel,
-      })),
-    { ssr: false, loading: () => null },
-  ),
-  () => import("@/components/features/TaskAddPanel"),
-);
+// DynamicModals) so /do's initial bundle and hydration exclude them. The
+// task panel's lazy wrapper is shared with Home (TaskAddPanelLazy).
 export const CalendarView = withPreload(
   dynamic(
     () =>
