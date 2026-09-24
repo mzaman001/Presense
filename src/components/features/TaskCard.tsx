@@ -33,6 +33,7 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { CheckTick } from "@/components/ui/CheckTick";
+import { isStuck } from "@/lib/stuck-tasks";
 
 function formatDeadline(d: string | null) {
   if (!d) return null;
@@ -70,6 +71,7 @@ export const TaskCard = React.memo(
   }) => {
     const userSettings = useAppStore((s) => s.userSettings);
     const setActiveTimer = useAppStore((s) => s.setActiveTimer);
+    const setStuckHelpTask = useAppStore((s) => s.setStuckHelpTask);
     const markMutation = useAppStore((s) => s.markMutation);
     const supabase = useMemo(() => createClient(), []);
     const [deleted, setDeleted] = useState(false);
@@ -427,6 +429,20 @@ export const TaskCard = React.memo(
                     />
                     {task.category}
                   </span>
+                  {/* Pull, not push: offered on the task itself once it has
+                      been put off repeatedly, never as a notification. */}
+                  {isStuck(task) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStuckHelpTask(task);
+                      }}
+                      className="-my-0.5 rounded-full px-1.5 text-[var(--accent-text)] underline decoration-dotted underline-offset-2 hover:bg-[var(--accent-dim)]"
+                    >
+                      What&apos;s in the way?
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -492,7 +508,11 @@ export const TaskCard = React.memo(
       prevTask.first_step !== nextTask.first_step ||
       prevTask.recurrence !== nextTask.recurrence ||
       prevTask.time_spent_minutes !== nextTask.time_spent_minutes ||
-      prevTask.snoozed_until !== nextTask.snoozed_until
+      prevTask.snoozed_until !== nextTask.snoozed_until ||
+      // Stuck-task help: the link comes and goes with these.
+      prevTask.defer_count !== nextTask.defer_count ||
+      prevTask.first_deferred_at !== nextTask.first_deferred_at ||
+      prevTask.stuck_dismissed_until !== nextTask.stuck_dismissed_until
     ) {
       return false;
     }

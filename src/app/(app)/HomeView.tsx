@@ -30,6 +30,7 @@ import { completeTaskPatch, uncompleteTaskPatch } from "@/lib/item-lifecycle";
 import { COMPLETE_HOLD_MS } from "@/lib/constants";
 import { useHaptics } from "@/hooks/useHaptics";
 import { CheckTick } from "@/components/ui/CheckTick";
+import { isStuck } from "@/lib/stuck-tasks";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { Button } from "@/components/ui/button";
@@ -747,6 +748,19 @@ function HomeDashboard({
                   >
                     Snooze until tomorrow
                   </button>
+                  {/* Offered at the moment of putting it off again, never
+                      pushed: the stuck-task help (What's in the way?). */}
+                  {isStuck(primaryTask) && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        useAppStore.getState().setStuckHelpTask(primaryTask)
+                      }
+                      className="mt-4 ml-4 text-xs text-[var(--accent-text)] underline decoration-dotted underline-offset-4 transition-colors hover:text-[var(--accent-hot)]"
+                    >
+                      What&apos;s in the way?
+                    </button>
+                  )}
                 </div>
               </GlassCard>
             ) : (

@@ -106,7 +106,9 @@ export function PomodoroTimer() {
   const [minimized, setMinimized] = useState(false);
   const [shortStart, setShortStart] = useState(false);
   const [lastFocusMinutes, setLastFocusMinutes] = useState(0);
-  const [chosenMinutes, setChosenMinutes] = useState(workMinutes);
+  const [chosenMinutes, setChosenMinutes] = useState(
+    activeTimer?.minutes ?? workMinutes,
+  );
   const [firstStepDraft, setFirstStepDraft] = useState("");
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
 
