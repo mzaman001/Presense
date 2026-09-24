@@ -25,7 +25,7 @@ export default function DoLoading() {
 
       {/* Board columns skeleton */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {["Overdue", "Today", "Upcoming"].map((col) => (
+        {["Earlier", "Today", "Upcoming"].map((col) => (
           <div key={col} className="space-y-3">
             <div className="mb-4 flex items-center gap-2">
               <div className="h-4 w-4 animate-pulse rounded bg-[var(--surface-hover)]" />

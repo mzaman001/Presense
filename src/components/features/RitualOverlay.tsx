@@ -1149,7 +1149,7 @@ export function RitualOverlay({
                   >
                     {triageTasks.length === 0 ? (
                       <RitualEmpty icon={Check} title="Nothing to sort.">
-                        Your inbox is clear and nothing is overdue.
+                        Your inbox is clear and nothing is carried over.
                       </RitualEmpty>
                     ) : (
                       <RitualSection

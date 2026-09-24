@@ -355,7 +355,7 @@ function HomeDashboard({
       primaryTask.deadline &&
       new Date(primaryTask.deadline).getTime() < new Date().getTime()
     ) {
-      heroReason = `Overdue since ${new Date(primaryTask.deadline).toLocaleDateString()}`;
+      heroReason = `Carried over from ${new Date(primaryTask.deadline).toLocaleDateString()}`;
     } else if (primaryTask.priority === 1) {
       heroReason = "Highest priority";
     } else if (primaryTask.deadline) {
