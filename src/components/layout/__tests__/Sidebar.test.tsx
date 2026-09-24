@@ -239,6 +239,46 @@ describe("Sidebar", () => {
     expect(useAppStore.getState().settingsActiveTab).toBe("account");
   });
 
+  it("places daily planning under Quick Capture, outside the Spaces list", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 17, 12));
+    const sidebar = renderSidebar();
+    advanceTime(0);
+    const capture = within(sidebar).getByRole("button", {
+      name: "Quick Capture",
+    });
+    const planning = within(sidebar).getByRole("button", {
+      name: /day planned/i,
+    });
+    const spaces = within(sidebar).getByRole("navigation", {
+      name: "Destinations",
+    });
+    // Not a space, so not inside the Spaces navigation…
+    expect(spaces).not.toContainElement(planning);
+    // …but directly after Quick Capture and before the Spaces list.
+    const follows = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(capture.compareDocumentPosition(planning) & follows).toBeTruthy();
+    expect(planning.compareDocumentPosition(spaces) & follows).toBeTruthy();
+  });
+
+  it("marks planning as due when the morning plan is waiting", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 17, 11));
+    useAppStore.setState({
+      userSettings: {
+        ...useAppStore.getState().userSettings,
+        nudge_time: "10:00",
+        last_ritual_date: undefined,
+      },
+    });
+    const sidebar = renderSidebar();
+    advanceTime(0);
+    const planning = within(sidebar).getByRole("button", {
+      name: "Plan my day, due now",
+    });
+    expect(planning).toHaveAttribute("data-due", "true");
+  });
+
   it.each([
     { hour: 12, eveningDate: undefined, label: /Day planned/i },
     { hour: 18, eveningDate: "2026-09-17", label: /All done/i },
