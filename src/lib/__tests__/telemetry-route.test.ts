@@ -129,4 +129,37 @@ describe("telemetry route", () => {
     expect(response.status).toBe(400);
     expect(mockCaptureMessage).not.toHaveBeenCalled();
   });
+  it("rejects an oversized body before parsing it", async () => {
+    const { POST } = await import("@/app/api/telemetry/route");
+    const response = await POST(
+      new Request("http://localhost/api/telemetry", {
+        method: "POST",
+        headers: { "x-forwarded-for": "198.51.100.1" },
+        body: JSON.stringify({
+          kind: "client-error",
+          message: "x".repeat(5000),
+        }),
+      }),
+    );
+    expect(response.status).toBe(413);
+    expect(mockCaptureMessage).not.toHaveBeenCalled();
+  });
+
+  // Public route (anonymous /login visitors report vitals), so one client
+  // must not be able to flood Sentry.
+  it("rate-limits a single client", async () => {
+    const { POST } = await import("@/app/api/telemetry/route");
+    const send = () =>
+      POST(
+        new Request("http://localhost/api/telemetry", {
+          method: "POST",
+          headers: { "x-forwarded-for": "198.51.100.2" },
+          body: JSON.stringify({ kind: "web-vital", name: "LCP", value: 1 }),
+        }),
+      );
+    const statuses: number[] = [];
+    for (let i = 0; i < 61; i++) statuses.push((await send()).status);
+    expect(statuses.slice(0, 60).every((s) => s === 204)).toBe(true);
+    expect(statuses[60]).toBe(429);
+  });
 });

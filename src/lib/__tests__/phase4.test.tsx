@@ -387,6 +387,64 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       );
     });
 
+    // Adding used to wait for the insert and then a refetch (two database
+    // round trips) before the task appeared; it now shows at once.
+    it("shows a new task and closes the panel before the save finishes", async () => {
+      const onClose = vi.fn();
+      const query = mockSupabaseQuery();
+      let finishInsert: (v: { error: null }) => void = () => {};
+      query.insert = vi.fn(
+        () => new Promise((resolve) => (finishInsert = resolve)),
+      );
+      mockSupabase.from.mockReturnValue(query);
+      queryClient.setQueryData(["tasks"], []);
+
+      render(<TaskAddPanel isOpen={true} onClose={onClose} />, { wrapper });
+      fireEvent.change(screen.getByRole("textbox", { name: /task name/i }), {
+        target: { value: "Water plants" },
+      });
+      const save = screen.getByRole("button", { name: "Add task" });
+      await waitFor(() => expect(save).toBeEnabled());
+      await act(async () => {
+        fireEvent.click(save);
+      });
+
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+      const cached = queryClient.getQueryData<{ id: string; title: string }[]>([
+        "tasks",
+      ]);
+      expect(cached).toEqual([
+        expect.objectContaining({ title: "Water plants" }),
+      ]);
+      // The row is written with the same id the screen already shows.
+      expect(query.insert.mock.calls[0][0]).toMatchObject({
+        id: cached?.[0].id,
+      });
+
+      await act(async () => finishInsert({ error: null }));
+    });
+
+    it("takes a new task back out and offers a retry if the save fails", async () => {
+      const query = mockSupabaseQuery();
+      query.insert = vi.fn(async () => ({ error: { message: "offline" } }));
+      mockSupabase.from.mockReturnValue(query);
+      queryClient.setQueryData(["tasks"], []);
+
+      render(<TaskAddPanel isOpen={true} onClose={vi.fn()} />, { wrapper });
+      fireEvent.change(screen.getByRole("textbox", { name: /task name/i }), {
+        target: { value: "Water plants" },
+      });
+      const save = screen.getByRole("button", { name: "Add task" });
+      await waitFor(() => expect(save).toBeEnabled());
+      await act(async () => {
+        fireEvent.click(save);
+      });
+
+      await waitFor(() =>
+        expect(queryClient.getQueryData(["tasks"])).toEqual([]),
+      );
+    });
+
     it("links task validation to the generated input error ID and keeps invalid submit disabled", async () => {
       render(<TaskAddPanel isOpen={true} onClose={vi.fn()} />, { wrapper });
       const input = screen.getByRole("textbox", { name: /task name/i });

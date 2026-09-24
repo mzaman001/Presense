@@ -13,6 +13,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 import { routeCapture } from "@/lib/capture-router";
 import { cn, formatRRule } from "@/lib/utils";
 import {
@@ -274,6 +275,7 @@ export function CaptureModal() {
   // before React re-renders the disabled state, which used to double-insert.
   const savingRef = useRef(false);
   const supabase = useMemo(() => createClient(), []);
+  const queryClient = useQueryClient();
   const haptics = useHaptics();
   const inputRef = useRef<HTMLInputElement>(null);
   const [mac] = useState(isMac);
@@ -367,8 +369,28 @@ export function CaptureModal() {
           }
         }),
       );
+      // Refresh the lists this capture landed in. Waiting for the Realtime
+      // echo left new tasks missing: our own echo is ignored when it lands
+      // within the echo window, so the list only caught up on a later refetch.
+      const keys = new Set(
+        items
+          .flatMap((item) =>
+            item.destinationId === "think"
+              ? [["threads"], ["dashboard"]]
+              : item.destinationId === "locations"
+                ? [["locations"]]
+                : [["tasks"], ["inbox-tasks"], ["dashboard"]],
+          )
+          .map((key) => JSON.stringify(key)),
+      );
+      for (const key of keys) {
+        void queryClient.invalidateQueries(
+          { queryKey: JSON.parse(key) as string[] },
+          { cancelRefetch: false },
+        );
+      }
     },
-    [supabase, userId],
+    [supabase, userId, queryClient],
   );
 
   /** The items to save: the live preview if it matches the text, else fresh. */

@@ -1,6 +1,11 @@
 "use client";
 import { Input } from "../ui/Input";
-import { readSubtasks, type TaskRecord } from "@/lib/task-cache";
+import {
+  insertNewTaskIntoCaches,
+  readSubtasks,
+  updateTaskInCaches,
+  type TaskRecord,
+} from "@/lib/task-cache";
 import { useUserId } from "@/components/providers/SessionProvider";
 import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
@@ -519,31 +524,57 @@ export function TaskAddPanel({
           payload.notification_sent_overdue = false;
         }
 
-        let error;
-        useAppStore.getState().markMutation();
-        if (taskToEdit) {
-          const res = await supabase
-            .from("items")
-            .update(payload)
-            .eq("id", taskToEdit.id);
-          error = res.error;
-        } else {
-          const res = await supabase.from("items").insert(insertPayload);
-          error = res.error;
-        }
+        // Show the result straight away and save in the background. The
+        // list used to wait for the insert and then a full refetch (two
+        // round trips to the database) before the task appeared.
+        const id = taskToEdit?.id ?? crypto.randomUUID();
+        const isEdit = Boolean(taskToEdit);
+        const save = async () => {
+          const nowIso = new Date().toISOString();
+          const rollback = isEdit
+            ? updateTaskInCaches(
+                queryClient,
+                id,
+                payload as Partial<TaskRecord>,
+              )
+            : insertNewTaskIntoCaches(queryClient, {
+                ...insertPayload,
+                id,
+                created_at: nowIso,
+                updated_at: nowIso,
+              } as unknown as TaskRecord);
 
-        if (error) {
-          logger.error("Save error:", error);
-          toast.error(`Failed to ${taskToEdit ? "update" : "save"} task`, {
-            description: error.message,
-          });
-          setSaving(false);
-          return;
-        }
+          useAppStore.getState().markMutation();
+          const { error } = isEdit
+            ? await supabase.from("items").update(payload).eq("id", id)
+            : await supabase.from("items").insert({ ...insertPayload, id });
 
-        toast.success(`Task ${taskToEdit ? "updated" : "saved"} successfully`);
-        if (onTaskAdded) onTaskAdded();
+          if (error) {
+            rollback();
+            logger.error("Save error:", error);
+            // The panel is already closed, so the toast carries the retry.
+            toast.error(
+              isEdit
+                ? `Couldn't save changes to “${payload.title}”`
+                : `Couldn't add “${payload.title}”`,
+              {
+                description: error.message,
+                action: { label: "Retry", onClick: () => void save() },
+              },
+            );
+            return;
+          }
+
+          toast.success(isEdit ? "Task updated" : "Task added");
+          // Reconcile with the server's copy (defaults, triggers, ordering).
+          if (onTaskAdded) onTaskAdded();
+        };
+
+        // save() updates the caches synchronously before its first await,
+        // so the task is on screen by the time the panel closes.
+        const pending = save();
         onClose();
+        await pending;
       }
     } catch (err: unknown) {
       const message =

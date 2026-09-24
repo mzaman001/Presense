@@ -11,8 +11,7 @@ const mockServiceCreateClient = vi.fn((_args?: unknown[]) => ({
   from: mockServiceFrom,
 }));
 
-// AUDIT-06 (Aug 19, 2026): mockServiceFrom is declared after this const but
-// the `from:` property is read lazily, so the reference resolves fine.
+// mockServiceFrom is declared below; `from:` is read lazily.
 
 vi.mock("@/lib/supabase-server", () => ({
   createClient: vi.fn(async () => ({
@@ -30,11 +29,8 @@ vi.mock("@/lib/rate-limit", () => ({
   checkRateLimit: vi.fn(async () => true),
 }));
 
-// AUDIT-06 (Aug 19, 2026): after deleteUser, every owned row must be purged.
-const mockFromDelete = vi.fn();
-const mockServiceFrom = vi.fn(() => ({
-  delete: () => mockFromDelete(),
-}));
+// Owned rows are removed by ON DELETE CASCADE; the route must not sweep.
+const mockServiceFrom = vi.fn();
 
 vi.mock("@/lib/env", () => ({
   env: {
@@ -53,7 +49,7 @@ describe("account DELETE route", () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   });
 
-  it("purges every owned table after deleteUser and only reports success when all succeed", async () => {
+  it("deletes the auth user and nothing else: owned rows go with it via ON DELETE CASCADE", async () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
     const { DELETE } = await import("@/app/api/account/route");
 
@@ -61,11 +57,6 @@ describe("account DELETE route", () => {
       data: { user: { id: "user-123", email: "user@example.com" } },
     });
     mockAdminDeleteUser.mockResolvedValue({ data: null, error: null });
-    // Eight owned tables, all succeeding.
-    mockFromDelete.mockImplementation(() => {
-      const chain = { eq: () => Promise.resolve({ data: null, error: null }) };
-      return chain;
-    });
 
     const response = await DELETE(
       new Request("http://localhost/api/account", {
@@ -75,43 +66,23 @@ describe("account DELETE route", () => {
     );
 
     expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body).toEqual({
-      success: true,
-      purgedTables: expect.arrayContaining([
-        "items",
-        "threads",
-        "locations",
-        "push_subscriptions",
-        "user_settings",
-        "categories",
-        "session_logs",
-        "ritual_logs",
-      ]),
-    });
-    // deleteUser must run before the purge; purge runs exactly 8 sweeps.
-    expect(mockAdminDeleteUser).toHaveBeenCalledOnce();
+    expect(await response.json()).toEqual({ success: true });
     expect(mockAdminDeleteUser).toHaveBeenCalledWith("user-123");
-    expect(mockFromDelete).toHaveBeenCalledTimes(8);
+    // The old per-table sweep always found nothing after the cascade.
+    expect(mockServiceFrom).not.toHaveBeenCalled();
   });
 
-  it("reports PURGE_PARTIAL (207) when any owned-table delete fails", async () => {
+  it("reports a failure when the auth user cannot be deleted", async () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
     const { DELETE } = await import("@/app/api/account/route");
 
     mockServerGetUser.mockResolvedValue({
       data: { user: { id: "user-123", email: "user@example.com" } },
     });
-    mockAdminDeleteUser.mockResolvedValue({ data: null, error: null });
-    let call = 0;
-    mockFromDelete.mockImplementation(() => ({
-      eq: () =>
-        Promise.resolve(
-          call++ === 2
-            ? { data: null, error: { message: "table gone" } }
-            : { data: null, error: null },
-        ),
-    }));
+    mockAdminDeleteUser.mockResolvedValue({
+      data: null,
+      error: { message: "boom" },
+    });
 
     const response = await DELETE(
       new Request("http://localhost/api/account", {
@@ -120,12 +91,8 @@ describe("account DELETE route", () => {
       }),
     );
 
-    expect(response.status).toBe(207);
-    const body = await response.json();
-    expect(body.code).toBe("PURGE_PARTIAL");
-    expect(body.failedTables.length).toBe(1);
+    expect(response.status).toBe(500);
   });
-
   it("fails closed before creating a service-role client when the service key is missing", async () => {
     const { DELETE } = await import("@/app/api/account/route");
     mockServerGetUser.mockResolvedValue({

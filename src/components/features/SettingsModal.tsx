@@ -992,7 +992,8 @@ function SettingsModalContent({
   const handleDeleteAccount = async () => {
     try {
       // The server route owns the complete deletion flow with a service-role
-      // client and reports partial purges. Deleting in the browser first made
+      // client (the user's rows go with it via ON DELETE CASCADE). Deleting
+      // in the browser first made
       // this irreversible operation split across two unreliable authorities.
       const res = await fetch("/api/account", {
         method: "DELETE",

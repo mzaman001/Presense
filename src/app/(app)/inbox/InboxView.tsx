@@ -231,7 +231,8 @@ export function InboxView({
     initialData: serverItems,
   });
 
-  useRealtime("items", refetch);
+  // ["inbox-tasks"] is invalidated by useRealtime("items") itself.
+  useRealtime("items");
 
   const routeInboxItem = async (id: string, space: string) => {
     if (!space) return;

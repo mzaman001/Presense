@@ -16,7 +16,14 @@
 // and Sentry.init()'s config is read at runtime.
 import { bufferEarlyErrors, loadSentry } from "@/lib/sentry-client";
 
-if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+// Production builds only. The Sentry project accepts browser events from the
+// deployed domains, so every event from `next dev` on localhost was rejected
+// with a 403 (console noise, nothing recorded); dev errors already show in
+// the Next.js overlay.
+if (
+  process.env.NEXT_PUBLIC_SENTRY_DSN &&
+  process.env.NODE_ENV === "production"
+) {
   bufferEarlyErrors();
 
   const loadWhenIdle = () => {
