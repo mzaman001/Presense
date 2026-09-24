@@ -190,6 +190,96 @@ describe("Evening", () => {
   });
 });
 
+describe("Morning: a realistic day", () => {
+  const todayAt = (h: number) => {
+    const d = new Date();
+    d.setHours(h, 0, 0, 0);
+    return d.toISOString();
+  };
+  const toShapeStep = async () => {
+    render(<RitualOverlay isOpen={true} type="morning" />);
+    await screen.findByText("What's on your mind?");
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await screen.findByText("Sort the loose ends.");
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await screen.findByText("Shape your day.");
+  };
+
+  beforeEach(() => {
+    useAppStore.setState({ userSettings: { daily_capacity_minutes: 120 } });
+    db.rows.items = [
+      {
+        id: "a",
+        title: "Write report",
+        status: "active",
+        deadline: todayAt(15),
+        time_estimate: 90,
+      },
+      {
+        id: "b",
+        title: "Groceries",
+        status: "active",
+        deadline: todayAt(18),
+        time_estimate: 60,
+      },
+      {
+        id: "c",
+        title: "Call bank",
+        status: "active",
+        deadline: todayAt(11),
+        time_estimate: null,
+      },
+    ];
+  });
+
+  it("measures the plan against the time you actually have today", async () => {
+    await toShapeStep();
+    const bar = screen.getByTestId("workload-bar");
+    expect(within(bar).getByText("2h 30m")).toBeInTheDocument();
+    expect(bar).toHaveTextContent("of 2h");
+    expect(bar).toHaveTextContent("30m more than your day holds");
+    // Unestimated tasks are called out rather than silently counted as 0.
+    expect(bar).toHaveTextContent("1 task has no estimate");
+
+    // A freer day: 30 minutes more and the plan fits with nothing over.
+    fireEvent.click(screen.getByRole("button", { name: "30 minutes more" }));
+    expect(screen.getByText("2h 30m", { selector: "output" })).toBeTruthy();
+    expect(bar).not.toHaveTextContent("more than your day holds");
+  });
+
+  it("moves a task to tomorrow from the plan, keeping its time", async () => {
+    await toShapeStep();
+    fireEvent.click(
+      screen.getByRole("button", { name: 'Move "Groceries" to tomorrow' }),
+    );
+    await waitFor(() => expect(db.updates).toHaveLength(1));
+    const moved = new Date(db.updates[0].patch.deadline as string);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    expect(moved.toDateString()).toBe(tomorrow.toDateString());
+    expect(moved.getHours()).toBe(18);
+    expect(screen.getByTestId("workload-bar")).toHaveTextContent(
+      "30m left over",
+    );
+  });
+
+  it("describes carried-over tasks neutrally, not as overdue", async () => {
+    db.rows.items = [
+      {
+        id: "old",
+        title: "Old task",
+        status: "active",
+        deadline: "2020-01-01T09:00:00Z",
+      },
+    ];
+    render(<RitualOverlay isOpen={true} type="morning" />);
+    await screen.findByText("What's on your mind?");
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    expect(await screen.findByText(/From an earlier day/)).toBeInTheDocument();
+    expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
+  });
+});
+
 describe("eveningSweepPrompts", () => {
   it("rotates two questions a day from the pool, never repeating within a day", () => {
     const seen = new Set<string>();

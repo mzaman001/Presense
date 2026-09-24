@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { TaskRecord } from "@/lib/task-cache";
-import { computeRitualStreak } from "@/lib/ritualStreak";
+import { daysPlannedInLastWeek } from "@/lib/planned-days";
 
 type Row<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Row"];
@@ -17,8 +17,8 @@ const DAY_MS = 86_400_000;
  * timezone, so it never does the cutting itself.
  */
 const HISTORY_DAYS = 15;
-/** Long enough for any real morning-ritual streak, still a cheap query. */
-const RITUAL_DAYS = 60;
+/** Morning plans; the rolling week count needs only 7 days. */
+const RITUAL_DAYS = 8; // 7 days, plus one for the widest UTC offset
 
 /**
  * Home's raw rows, the same on the server (streamed first load) and in the
@@ -186,7 +186,7 @@ export function summarizeDashboard(rows: DashboardRows, now: Date) {
       rows.recentSessions.filter((s) => inWeek(s.completed_at, lastWeekStart)),
     ),
     dayCounts,
-    ritualStreak: computeRitualStreak(
+    plannedDays: daysPlannedInLastWeek(
       rows.ritualCompletedAt.map((iso) =>
         new Date(iso).toLocaleDateString("en-CA"),
       ),
