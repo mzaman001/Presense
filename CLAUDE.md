@@ -42,7 +42,7 @@ Measured on the authenticated app shell (`next start`, uncompressed, headless Ch
 | JS requests | 52 | 45 |
 | Total transferred | 2,567 KB | 2,361 KB |
 
-The bundle is still large. The Lighthouse figures under "Known weak points" predate this work — treat them as not yet re-measured, not as current truth.
+The bundle is still large. See "Known weak points" for the current Lighthouse figures.
 
 ## Known weak points
 
