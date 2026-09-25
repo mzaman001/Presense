@@ -46,7 +46,6 @@ The bundle is still large. The Lighthouse figures under "Known weak points" pred
 
 ## Known weak points
 
-- **Nearly every page is a Client Component.** This is the single biggest cause of the bundle size and the loading spinners. Moving pages to Server Components with interactive islands is the highest-value remaining work.
-- **Core Web Vitals were last measured 2026-08-09** on `/do`: LCP 6.4s, TBT 440ms, CLS 0.138 — all over budget. Re-measure before claiming any improvement.
-- **`/login` ships ~1.1 MB of JS** for a single email field.
-- Realtime echo suppression is a 500ms global window per table; it can drop a genuine remote update that lands right after a local write.
+- **Total Blocking Time is still over budget.** Lighthouse (`scripts/lighthouse-authed.mjs`, mobile preset, two runs, 2026-09-25): `/do` LCP 2.3 / 2.4 s, TBT 400 / 440 ms, CLS 0, score 85 / 85. Home LCP 3.3 / 2.8 s, TBT 450 / 470 ms, CLS 0, score 74 / 80. LCP and CLS are fixed; TBT (budget 200 ms) is hydration work: every page UI is a client view (react-dom alone is ~1.2 s of scripting under 4x CPU throttling). Moving the page UIs to Server Components with client islands is the remaining fix.
+- **Anything that server-renders hidden and waits for JS to show will wreck LCP.** The (app) template used to render every page at `opacity: 0` until framer-motion loaded (6.3 s of render delay on `/do`). Page entrances are CSS now; keep them that way.
+- `/login` initial JS is 202.9 KiB gz under `next build` + `next start` (the old "~1.1 MB" note was stale). `perf-budgets.json` measures a webpack ANALYZE build, which reads lower.
