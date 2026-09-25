@@ -42,11 +42,10 @@ Measured on the authenticated app shell (`next start`, uncompressed, headless Ch
 | JS requests | 52 | 45 |
 | Total transferred | 2,567 KB | 2,361 KB |
 
-The bundle is still large. The Lighthouse figures under "Known weak points" predate this work — treat them as not yet re-measured, not as current truth.
+The bundle is still large. See "Known weak points" for the current Lighthouse figures.
 
 ## Known weak points
 
-- **Nearly every page is a Client Component.** This is the single biggest cause of the bundle size and the loading spinners. Moving pages to Server Components with interactive islands is the highest-value remaining work.
-- **Core Web Vitals were last measured 2026-08-09** on `/do`: LCP 6.4s, TBT 440ms, CLS 0.138 — all over budget. Re-measure before claiming any improvement.
-- **`/login` ships ~1.1 MB of JS** for a single email field.
-- Realtime echo suppression is a 500ms global window per table; it can drop a genuine remote update that lands right after a local write.
+- **The page UIs are all Client Components.** Every `page.tsx` except `think/[id]` is now a Server Component that streams its data, but each renders a client view, so the JS weight hasn't moved (Home: 391.5 KiB gz initial JS, measured 2026-09-25). This is the main cause of the slow LCP and TBT below.
+- **Core Web Vitals on `/do`, re-measured 2026-09-25** (`scripts/lighthouse-authed.mjs`, mobile preset, two runs): LCP 8.9 s / 7.3 s, TBT 590 / 610 ms, CLS 0.001 / 0.02, score 48 / 55. CLS is fixed; LCP and TBT are still well over budget (2.5 s, 200 ms).
+- `/login` initial JS is 202.9 KiB gz under `next build` + `next start` (the old "~1.1 MB" note was stale). `perf-budgets.json` measures a webpack ANALYZE build, which reads lower.
