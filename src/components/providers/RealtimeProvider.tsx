@@ -17,6 +17,7 @@ import { logger } from "@/lib/logger";
 import { RealtimeStatusContext } from "./realtime-status";
 import {
   getLastMutationTime,
+  isRecentLocalWrite,
   markMutation,
   resetMutationTracking,
 } from "@/lib/mutation-tracking";
@@ -157,11 +158,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             { event: "*", schema: "public", table },
             (payload: RealtimePayload) => {
               // A local write echoes back over the socket. Refetching on our
-              // own change would clobber the optimistic UI, so ignore events
-              // that land immediately after one.
-              if (Date.now() - getLastMutationTime(table) < ECHO_WINDOW_MS) {
-                return;
-              }
+              // own change would clobber the optimistic UI, so ignore the
+              // event when it's for a row this tab just wrote (or the table,
+              // when the write's rows weren't known).
+              const row = (payload?.new ?? payload?.old) as
+                { id?: unknown } | undefined;
+              const rowId =
+                typeof row?.id === "string" || typeof row?.id === "number"
+                  ? String(row.id)
+                  : null;
+              if (isRecentLocalWrite(table, rowId, ECHO_WINDOW_MS)) return;
 
               if (document.visibilityState === "hidden") {
                 // Buffer instead of refetching into a tab nobody is looking at;
