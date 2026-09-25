@@ -46,6 +46,6 @@ The bundle is still large. See "Known weak points" for the current Lighthouse fi
 
 ## Known weak points
 
-- **The page UIs are all Client Components.** Every `page.tsx` except `think/[id]` is now a Server Component that streams its data, but each renders a client view, so the JS weight hasn't moved (Home: 391.5 KiB gz initial JS, measured 2026-09-25). This is the main cause of the slow LCP and TBT below.
-- **Core Web Vitals on `/do`, re-measured 2026-09-25** (`scripts/lighthouse-authed.mjs`, mobile preset, two runs): LCP 8.9 s / 7.3 s, TBT 590 / 610 ms, CLS 0.001 / 0.02, score 48 / 55. CLS is fixed; LCP and TBT are still well over budget (2.5 s, 200 ms).
+- **Total Blocking Time is still over budget.** Lighthouse (`scripts/lighthouse-authed.mjs`, mobile preset, two runs, 2026-09-25): `/do` LCP 2.3 / 2.4 s, TBT 400 / 440 ms, CLS 0, score 85 / 85. Home LCP 3.3 / 2.8 s, TBT 450 / 470 ms, CLS 0, score 74 / 80. LCP and CLS are fixed; TBT (budget 200 ms) is hydration work: every page UI is a client view (react-dom alone is ~1.2 s of scripting under 4x CPU throttling). Moving the page UIs to Server Components with client islands is the remaining fix.
+- **Anything that server-renders hidden and waits for JS to show will wreck LCP.** The (app) template used to render every page at `opacity: 0` until framer-motion loaded (6.3 s of render delay on `/do`). Page entrances are CSS now; keep them that way.
 - `/login` initial JS is 202.9 KiB gz under `next build` + `next start` (the old "~1.1 MB" note was stale). `perf-budgets.json` measures a webpack ANALYZE build, which reads lower.

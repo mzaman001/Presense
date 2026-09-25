@@ -41,7 +41,7 @@ import {
   type DashboardRows,
 } from "@/lib/dashboard";
 import { PageSkeleton } from "@/components/ui/Skeleton";
-import { formatClock, fromDbTime } from "@/lib/first-run";
+import { greetingFor } from "@/lib/greeting";
 
 /** Shared with Do and TaskCard — one generated shape, not a local copy. */
 type TaskItem = TaskRecord;
@@ -117,6 +117,14 @@ function RitualStatusBadge({
 
 const subscribeNoop = () => () => {};
 
+/** Rendered on the server so Home's first paint has real text. */
+export interface HomeHeader {
+  greeting: string;
+  firstName: string;
+  /** The Evening review time, e.g. "6 PM". */
+  eveningReview: string;
+}
+
 /**
  * Reads the rows the server streamed on a cold load; a return visit renders
  * straight from the client cache. Split from HomeDashboard so the hooks
@@ -124,20 +132,24 @@ const subscribeNoop = () => () => {};
  */
 export function HomeView({
   rowsPromise,
+  header,
 }: {
   rowsPromise: Promise<DashboardRows | null>;
+  header: HomeHeader;
 }) {
   const queryClient = useQueryClient();
   const serverRows = queryClient.getQueryData<DashboardRows>(["dashboard"])
     ? undefined
     : (use(rowsPromise) ?? undefined);
-  return <HomeDashboard serverRows={serverRows} />;
+  return <HomeDashboard serverRows={serverRows} header={header} />;
 }
 
 function HomeDashboard({
   serverRows,
+  header,
 }: {
   serverRows: DashboardRows | undefined;
+  header: HomeHeader;
 }) {
   const userId = useUserId();
   const supabase = useMemo(() => createClient(), []);
@@ -342,14 +354,13 @@ function HomeDashboard({
 
   const primaryTask = tasks.length > 0 ? tasks[0] : null;
 
-  if (loading) {
-    return <PageSkeleton count={4} type="card" />;
-  }
-
-  const hour = new Date().getHours();
-  let greeting = "Good evening";
-  if (hour < 12) greeting = "Good morning";
-  else if (hour < 18) greeting = "Good afternoon";
+  // The server's greeting (in the saved timezone) until hydrated, so the
+  // first render matches the HTML; the device clock after.
+  const greeting = hydrated
+    ? greetingFor(new Date().getHours())
+    : header.greeting;
+  const firstName =
+    userSettings?.display_name?.split(" ")[0] || header.firstName;
 
   let heroReason = "Earliest deadline";
   if (primaryTask) {
@@ -378,16 +389,19 @@ function HomeDashboard({
             <h1 className="text-page-greeting font-heading text-[var(--text-1)]">
               {greeting}
               <span className="text-[var(--text-3)]">
-                {userSettings?.display_name
-                  ? `, ${userSettings.display_name.split(" ")[0]}`
-                  : ", you"}
-                .
+                {firstName ? `, ${firstName}` : ", you"}.
               </span>
             </h1>
-            <RitualStatusBadge
-              userSettings={userSettings}
-              plannedDays={plannedDays}
-            />
+            {/* Height reserved: the badge needs the data, and appearing
+                later must not push the page down. */}
+            <div className="min-h-9">
+              {!loading && (
+                <RitualStatusBadge
+                  userSettings={userSettings}
+                  plannedDays={plannedDays}
+                />
+              )}
+            </div>
           </div>
           <button
             onClick={() => setShowReview(!showReview)}
@@ -406,10 +420,12 @@ function HomeDashboard({
         <ContextualTip
           id="home"
           title="You're all set"
-          description={`Quick Capture takes anything, typed, spoken or shared from another app. Your Evening review opens at ${formatClock(fromDbTime(userSettings?.shutdown_time, "18:00"))}. And there are no streaks here: miss a day and nothing breaks.`}
+          description={`Quick Capture takes anything, typed, spoken or shared from another app. Your Evening review opens at ${header.eveningReview}. And there are no streaks here: miss a day and nothing breaks.`}
         />
 
-        {showReview ? (
+        {loading ? (
+          <PageSkeleton count={4} type="card" />
+        ) : showReview ? (
           <div className="space-y-6">
             <GlassCard className="flex items-center gap-3 p-4">
               <UiIcon

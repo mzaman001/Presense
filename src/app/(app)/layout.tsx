@@ -21,6 +21,7 @@ import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Suspense } from "react";
+import { getUserSettings } from "@/lib/user-settings-server";
 import { CaptureSync } from "@/components/layout/CaptureSync";
 import { CaptureShortcut } from "@/components/layout/CaptureShortcut";
 
@@ -47,11 +48,8 @@ export default async function AppLayout({
   };
 
   // Check if onboarding is complete by looking for user_settings
-  const { data: settings } = await supabase
-    .from("user_settings")
-    .select("*")
-    .eq("user_id", sessionUser.id)
-    .maybeSingle();
+  // Cached per request: Home reads the same row for its greeting.
+  const settings = await getUserSettings(sessionUser.id);
 
   if (!settings || settings.onboarding_complete === false) {
     // PERF-18: the redirect decision still needs the items count inline

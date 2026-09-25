@@ -1,29 +1,18 @@
-"use client";
-
-import { m } from "framer-motion";
-import { usePathname } from "next/navigation";
-
 /**
- * Page entrance. Enter-only on purpose: the previous `AnimatePresence
- * mode="wait"` held every navigation for a 200ms fade-out before the next
- * page could even start, which read as lag rather than calm. Now the new
- * page is there immediately and settles in with a short rise.
+ * Page entrance: a short rise, re-run on every navigation (a template
+ * remounts per route). Enter-only on purpose: the previous `AnimatePresence
+ * mode="wait"` held every navigation for a 200ms fade-out first.
+ *
+ * CSS, not framer-motion. The framer version server-rendered each page at
+ * `opacity: 0` and only revealed it once React hydrated and the motion
+ * features loaded, so every signed-in page painted blank until its
+ * JavaScript had run: 6.3 s of /do's 7.3 s LCP was that render delay. A CSS
+ * animation starts on first paint.
  */
 export default function AppTemplate({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
-  return (
-    <m.div
-      key={pathname}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </m.div>
-  );
+  return <div className="page-enter">{children}</div>;
 }

@@ -119,6 +119,21 @@ export default async function RootLayout({
                 } else {
                   html.classList.remove('reduce-motion');
                 }
+
+                // Dismissed one-time tips (ContextualTip) are server-rendered;
+                // hide them before first paint.
+                var hiddenTips = [];
+                for (var i = 0; i < localStorage.length; i++) {
+                  var tipKey = localStorage.key(i);
+                  if (tipKey && tipKey.indexOf('hide_tip_') === 0) {
+                    hiddenTips.push('[data-tip="' + tipKey.slice(9).replace(/[^a-z0-9_-]/gi, '') + '"]');
+                  }
+                }
+                if (hiddenTips.length) {
+                  var tipStyle = document.createElement('style');
+                  tipStyle.textContent = hiddenTips.join(',') + '{display:none}';
+                  document.head.appendChild(tipStyle);
+                }
                 
                 var metaTheme = document.createElement('meta');
                 metaTheme.name = 'theme-color';
