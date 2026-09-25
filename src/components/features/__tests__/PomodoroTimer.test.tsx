@@ -72,6 +72,15 @@ describe("PomodoroTimer", () => {
     vi.useRealTimers();
   });
 
+  // Regression: the backdrop was a fixed near-black while its text and
+  // buttons follow the theme, so light mode showed dark text on dark.
+  it("draws its backdrop and icons from the theme, not fixed colours", () => {
+    const { container } = renderTimer();
+    const overlay = screen.getByRole("dialog", { name: "Focus session" });
+    expect(overlay.getAttribute("style")).toContain("var(--bg-base)");
+    expect(container.innerHTML).not.toMatch(/fill="black"|text-black|#2DD4BF/i);
+  });
+
   describe("starting", () => {
     it("opens ready, without counting, until Start is pressed", () => {
       vi.useFakeTimers();
