@@ -48,14 +48,14 @@ const PHASE_CONFIG: Record<
   short_break: {
     label: "Short Break",
     orb: "rgba(45,212,191,0.15)",
-    ring: "#2DD4BF",
-    text: "#2DD4BF",
+    ring: "var(--status-upcoming)",
+    text: "var(--status-upcoming)",
   },
   long_break: {
     label: "Long Break",
     orb: "rgba(129,140,248,0.15)",
-    ring: "#818CF8",
-    text: "#818CF8",
+    ring: "var(--status-someday)",
+    text: "var(--status-someday)",
   },
 };
 
@@ -549,7 +549,7 @@ export function PomodoroTimer() {
           <UiIcon
             size={14}
             strokeWidth={0}
-            fill="black"
+            fill="var(--bg-base)"
             className={isRunning ? undefined : "ml-0.5"}
             icon={isRunning ? Pause : Play}
           />
@@ -595,7 +595,10 @@ export function PomodoroTimer() {
         }}
         className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden px-6"
         style={{
-          background: "rgba(8, 6, 16, 0.92)",
+          // Theme-aware: this was a fixed near-black, while the text and
+          // buttons on it follow the theme, so light mode put dark text on
+          // a dark screen.
+          background: "color-mix(in srgb, var(--bg-base) 94%, transparent)",
           backdropFilter: "blur(20px)",
         }}
       >
@@ -696,10 +699,15 @@ export function PomodoroTimer() {
               ref={primaryRef}
               type="button"
               onClick={start}
-              className="flex h-12 items-center gap-2 rounded-full px-7 font-semibold text-black shadow-lg transition hover:scale-[1.03] active:scale-95"
+              className="flex h-12 items-center gap-2 rounded-full px-7 font-semibold text-[var(--bg-base)] shadow-lg transition hover:scale-[1.03] active:scale-95"
               style={{ background: cfg.ring }}
             >
-              <UiIcon size={16} strokeWidth={0} fill="black" icon={Play} />
+              <UiIcon
+                size={16}
+                strokeWidth={0}
+                fill="var(--bg-base)"
+                icon={Play}
+              />
               Start · {chosenMinutes} min
             </button>
             <p className="text-ui text-[var(--text-3)]">
@@ -731,7 +739,7 @@ export function PomodoroTimer() {
                     running: true,
                   })
                 }
-                className="h-11 rounded-full font-semibold text-black transition hover:scale-[1.02] active:scale-95"
+                className="h-11 rounded-full font-semibold text-[var(--bg-base)] transition hover:scale-[1.02] active:scale-95"
                 style={{ background: cfg.ring }}
               >
                 Keep going · {workMinutes} min
@@ -871,12 +879,17 @@ export function PomodoroTimer() {
                 title={isRunning ? "Pause" : "Play"}
               >
                 {isRunning ? (
-                  <UiIcon size={20} strokeWidth={0} fill="black" icon={Pause} />
+                  <UiIcon
+                    size={20}
+                    strokeWidth={0}
+                    fill="var(--bg-base)"
+                    icon={Pause}
+                  />
                 ) : (
                   <UiIcon
                     size={20}
                     strokeWidth={0}
-                    fill="black"
+                    fill="var(--bg-base)"
                     className="ml-0.5"
                     icon={Play}
                   />
