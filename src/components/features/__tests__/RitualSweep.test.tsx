@@ -292,3 +292,78 @@ describe("eveningSweepPrompts", () => {
     expect(seen.size).toBe(EVENING_SWEEP_POOL.length);
   });
 });
+
+describe("First run (straight from onboarding)", () => {
+  const todayAt = (h: number) => {
+    const d = new Date();
+    d.setHours(h, 0, 0, 0);
+    return d.toISOString();
+  };
+
+  beforeEach(() => {
+    localStorage.setItem("presense_first_run", "1");
+    useAppStore.setState({
+      activeTimer: null,
+      userSettings: {
+        display_name: "Sam Rivera",
+        smart_routing_enabled: true,
+        nlp_date_parsing: true,
+      },
+    });
+  });
+
+  it("greets by name and needs one thing before continuing", async () => {
+    render(<RitualOverlay isOpen={true} type="morning" />);
+    expect(
+      await screen.findByRole("heading", { name: /, Sam\.$/ }),
+    ).toBeInTheDocument();
+    const next = screen.getByRole("button", { name: /continue/i });
+    expect(next).toBeDisabled();
+
+    const input = screen.getByRole("textbox", { name: "What's on your mind?" });
+    fireEvent.change(input, { target: { value: "Buy milk" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await screen.findByText("Buy milk");
+    expect(next).toBeEnabled();
+  });
+
+  it("finishes in the focus view on the task picked, and ends the first run", async () => {
+    db.rows.items = [
+      {
+        id: "a",
+        title: "Write report",
+        status: "active",
+        deadline: todayAt(15),
+      },
+      { id: "b", title: "Groceries", status: "active", deadline: todayAt(18) },
+    ];
+    render(<RitualOverlay isOpen={true} type="morning" />);
+    const input = await screen.findByRole("textbox", {
+      name: "What's on your mind?",
+    });
+    fireEvent.change(input, { target: { value: "Buy milk" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await screen.findByText("Buy milk");
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await screen.findByText("Sort the loose ends.");
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await screen.findByText("Shape your day.");
+
+    // The first task is first up until another is tapped.
+    const report = screen.getByRole("button", { name: /^Write report/ });
+    const groceries = screen.getByRole("button", { name: /^Groceries/ });
+    expect(report).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(groceries);
+    expect(groceries).toHaveAttribute("aria-pressed", "true");
+    expect(report).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Start my day" }));
+    await waitFor(() =>
+      expect(useAppStore.getState().activeTimer).toMatchObject({
+        taskId: "b",
+        taskTitle: "Groceries",
+      }),
+    );
+    expect(localStorage.getItem("presense_first_run")).toBeNull();
+  });
+});
