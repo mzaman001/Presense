@@ -53,13 +53,44 @@ Start any task to see just that task and its first step, nothing else. Set a 2, 
   </picture>
 </p>
 
-## Also
+## Spaces
 
-- **Think** — running threads of notes for ideas that aren't tasks yet.
-- **Remember** — places worth keeping track of.
-- **Everywhere** — installs as an app, works offline, and syncs live across devices.
-- **Forgiving** — everything deleted sits in the trash for 30 days.
-- **Light and dark** — a warm sunrise and a plum sunset.
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/space-inbox-dark.webp" />
+        <img src="docs/assets/space-inbox-light.webp" alt="The Inbox with five unsorted captures" />
+      </picture>
+      <p><b>Inbox</b> · Captures you haven’t sorted yet, waiting until you’re ready.</p>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/space-do-dark.webp" />
+        <img src="docs/assets/space-do-light.webp" alt="Do, showing today’s tasks with first steps, categories and a recurring run" />
+      </picture>
+      <p><b>Do</b> · Tasks by deadline, with first steps, checklists and repeats.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/space-think-dark.webp" />
+        <img src="docs/assets/space-think-light.webp" alt="Think, showing four note threads with the garden redesign pinned" />
+      </picture>
+      <p><b>Think</b> · Running threads of notes for ideas that aren’t tasks yet.</p>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/space-remember-dark.webp" />
+        <img src="docs/assets/space-remember-light.webp" alt="Remember, listing where the spare key, passport and winter tyres are kept" />
+      </picture>
+      <p><b>Remember</b> · Where you put things, so you don’t have to remember.</p>
+    </td>
+  </tr>
+</table>
+
+It installs as an app, works offline and syncs live across your devices. Anything you delete stays in the trash for 30 days.
 
 ## Keyboard
 
