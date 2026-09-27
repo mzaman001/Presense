@@ -8,7 +8,7 @@ import {
   Settings,
   Search,
   Plus,
-  Sparkles,
+  Sunrise,
   CheckCircle2,
   Moon,
   Timer,
@@ -175,7 +175,7 @@ function SidebarRitual({ expanded }: { expanded: boolean }) {
       accessibleLabel={kind ? `${label}, due now` : undefined}
       due={Boolean(kind)}
       icon={
-        kind === "evening" ? Moon : kind === "morning" ? Sparkles : CheckCircle2
+        kind === "evening" ? Moon : kind === "morning" ? Sunrise : CheckCircle2
       }
       expanded={expanded}
       onClick={() => {
