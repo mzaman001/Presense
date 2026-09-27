@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+// Imported statically (mocks below are hoisted above it) so the module graph
+// loads during collection, not inside the first test's timeout: under a full
+// parallel run that cold load alone has exceeded 15s.
+import { sendMagicLink } from "./actions";
 
 const mockSignInWithOtp = vi.fn();
 const mockCheckRateLimit = vi.fn();
@@ -15,6 +19,9 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 
 vi.mock("next/headers", () => ({ headers: () => mockHeaders() }));
+
+// The real SDK is the heaviest import here (~750ms cold) and isn't under test.
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
 
 function createMagicLinkForm(email: string) {
   const formData = new FormData();
@@ -36,7 +43,6 @@ describe("sendMagicLink", () => {
     mockSignInWithOtp.mockResolvedValue({
       error: { message: "User not found" },
     });
-    const { sendMagicLink } = await import("./actions");
 
     const result = await sendMagicLink(
       createMagicLinkForm("Known@Example.com"),
@@ -57,7 +63,6 @@ describe("sendMagicLink", () => {
 
   it("rejects a fourth request before contacting Supabase", async () => {
     mockCheckRateLimit.mockResolvedValue(false);
-    const { sendMagicLink } = await import("./actions");
 
     const result = await sendMagicLink(createMagicLinkForm("user@example.com"));
 

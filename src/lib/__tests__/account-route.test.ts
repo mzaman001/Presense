@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+// Imported statically (mocks below are hoisted above it) so the module graph
+// loads during collection, not inside the first test's timeout: under a full
+// parallel run that cold load alone has exceeded 15s.
+import { DELETE } from "@/app/api/account/route";
 
 const mockServerGetUser = vi.fn();
 const mockAdminDeleteUser = vi.fn();
@@ -29,6 +33,9 @@ vi.mock("@/lib/rate-limit", () => ({
   checkRateLimit: vi.fn(async () => true),
 }));
 
+// The real SDK is the heaviest import here (~750ms cold) and isn't under test.
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+
 // Owned rows are removed by ON DELETE CASCADE; the route must not sweep.
 const mockServiceFrom = vi.fn();
 
@@ -51,7 +58,6 @@ describe("account DELETE route", () => {
 
   it("deletes the auth user and nothing else: owned rows go with it via ON DELETE CASCADE", async () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
-    const { DELETE } = await import("@/app/api/account/route");
 
     mockServerGetUser.mockResolvedValue({
       data: { user: { id: "user-123", email: "user@example.com" } },
@@ -74,7 +80,6 @@ describe("account DELETE route", () => {
 
   it("reports a failure when the auth user cannot be deleted", async () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
-    const { DELETE } = await import("@/app/api/account/route");
 
     mockServerGetUser.mockResolvedValue({
       data: { user: { id: "user-123", email: "user@example.com" } },
@@ -94,7 +99,6 @@ describe("account DELETE route", () => {
     expect(response.status).toBe(500);
   });
   it("fails closed before creating a service-role client when the service key is missing", async () => {
-    const { DELETE } = await import("@/app/api/account/route");
     mockServerGetUser.mockResolvedValue({
       data: { user: { id: "user-123", email: "user@example.com" } },
     });
