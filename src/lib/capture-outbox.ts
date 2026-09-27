@@ -133,6 +133,11 @@ export function rowsForCapture(
         title: item.title,
         deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
         recurrence: item.recurrence ?? null,
+        ...(item.priority ? { priority: item.priority } : {}),
+        ...(item.category ? { category: item.category } : {}),
+        ...(item.estimateMinutes
+          ? { time_estimate: item.estimateMinutes }
+          : {}),
         status: item.destinationId === "inbox" ? "inbox" : "active",
         created_at: createdAt,
       },

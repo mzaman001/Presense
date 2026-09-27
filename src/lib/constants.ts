@@ -1,3 +1,12 @@
+/** Task categories for someone who hasn't saved their own list. */
+export const DEFAULT_DO_CATEGORIES = [
+  "work",
+  "study",
+  "personal",
+  "errand",
+  "health",
+];
+
 export const DEFAULT_DO_COLORS: Record<string, string> = {
   work: "#3B82F6",
   study: "#8B5CF6",

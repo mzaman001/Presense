@@ -72,7 +72,7 @@ function rruleToRepeatState(rrule: string | null) {
   }
   return state;
 }
-import { DEFAULT_DO_COLORS } from "@/lib/constants";
+import { DEFAULT_DO_CATEGORIES, DEFAULT_DO_COLORS } from "@/lib/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
@@ -118,8 +118,6 @@ interface ManualSnapshot {
   customFreq: string;
   startDate: string;
 }
-
-const DEFAULT_DO_CATEGORIES = ["work", "study", "personal", "errand", "health"];
 
 interface TaskAddPanelProps {
   isOpen: boolean;
@@ -197,6 +195,19 @@ export function TaskAddPanel({
   const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const manualBaselineRef = useRef<ManualSnapshot | null>(null);
+  // What the title text last set for priority, estimate and category
+  // ("p1", "30m", "#health"), and the category to return to without a tag.
+  const parsedDetailsRef = useRef<{
+    priority: number | null;
+    estimate: number | null;
+    category: string | null;
+    categoryFallback: string;
+  }>({
+    priority: null,
+    estimate: null,
+    category: null,
+    categoryFallback: "work",
+  });
 
   const manualSnapshot = (): ManualSnapshot => ({
     subtasks,
@@ -323,6 +334,12 @@ export function TaskAddPanel({
 
   useEffect(() => {
     if (isOpen) {
+      parsedDetailsRef.current = {
+        priority: null,
+        estimate: null,
+        category: null,
+        categoryFallback: taskToEdit?.category || "work",
+      };
       if (taskToEdit) {
         reset({
           title: taskToEdit.title || "",
@@ -402,8 +419,28 @@ export function TaskAddPanel({
 
   const handleTitleChange = async (val: string) => {
     if (userSettings?.nlp_date_parsing === false) return;
-    if (isManualDate && isManualRepeat) return;
-    const parsed = await parseTaskText(val);
+    const parsed = await parseTaskText(val, { categories: categoriesList });
+    // Priority, estimate and category follow the text only while they still
+    // hold what the text last set, so a value picked by hand is never
+    // overwritten.
+    const last = parsedDetailsRef.current;
+    if (categoryValue === (last.category ?? last.categoryFallback)) {
+      setValue("category", parsed.category ?? last.categoryFallback, {
+        shouldDirty: true,
+      });
+    }
+    if (priorityValue === parsedDetailsRef.current.priority) {
+      setValue("priority", parsed.priority, { shouldDirty: true });
+    }
+    if (timeEstimate === parsedDetailsRef.current.estimate) {
+      setTimeEstimate(parsed.estimateMinutes);
+    }
+    parsedDetailsRef.current = {
+      ...last,
+      priority: parsed.priority,
+      estimate: parsed.estimateMinutes,
+      category: parsed.category,
+    };
     if (!isManualDate) {
       if (parsed.deadline) {
         setParsedDeadline(parsed.deadline);
@@ -485,18 +522,17 @@ export function TaskAddPanel({
         const parsedFromText =
           userSettings?.nlp_date_parsing !== false &&
           ((parsedDeadline && !isManualDate) ||
-            (!isManualRepeat && finalRecurrence));
+            (!isManualRepeat && finalRecurrence) ||
+            parsedDetailsRef.current.priority !== null ||
+            parsedDetailsRef.current.estimate !== null ||
+            parsedDetailsRef.current.category !== null);
         if (parsedFromText) {
           finalTitle = (
-            await parseTaskText(finalTitle, { parseDates: !isManualDate })
+            await parseTaskText(finalTitle, {
+              parseDates: !isManualDate,
+              categories: categoriesList,
+            })
           ).title;
-          finalTitle = finalTitle.replace(
-            /^(remind me to|remember to|need to|have to|must|gotta)\s+/i,
-            "",
-          );
-          if (finalTitle.length > 0)
-            finalTitle =
-              finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
         }
 
         const payload: Database["public"]["Tables"]["items"]["Insert"] = {

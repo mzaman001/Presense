@@ -48,15 +48,21 @@ export function formatRRule(rrule: string | null | undefined): string {
         };
         return map[d] || d;
       });
+      const every =
+        interval === 2
+          ? "Every other"
+          : interval > 2
+            ? `Every ${interval} weeks on`
+            : "Every";
       if (days.length === 5 && match[1] === "MO,TU,WE,TH,FR")
-        return "Every weekday";
-      if (match[1] === "SA,SU") return "Every weekend";
-      if (days.length === 2) return `Every ${days.join(" & ")}`;
+        return `${every} weekday`;
+      if (match[1] === "SA,SU") return `${every} weekend`;
+      if (days.length === 2) return `${every} ${days.join(" & ")}`;
       if (days.length > 2) {
         const last = days.pop();
-        return `Every ${days.join(", ")} & ${last}`;
+        return `${every} ${days.join(", ")} & ${last}`;
       }
-      return `Every ${days[0]}`;
+      return `${every} ${days[0]}`;
     }
     return interval === 2
       ? "Every other week"

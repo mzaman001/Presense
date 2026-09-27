@@ -25,6 +25,8 @@ import {
   Brain,
   Calendar,
   Check,
+  Flag,
+  Hash,
   Inbox,
   Loader2,
   MessageSquare,
@@ -32,6 +34,7 @@ import {
   PenLine,
   Repeat,
   Tag,
+  Timer,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -207,6 +210,15 @@ function MetaChip({
   );
 }
 
+const PRIORITY_LABEL = { 1: "Urgent", 2: "High", 3: "Medium", 4: "Low" };
+
+function formatEstimate(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (!h) return `${m} min`;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
 /** What the router understood about one item, beyond where it goes. */
 function ItemMeta({ item }: { item: RoutedItem }) {
   const showDate =
@@ -222,6 +234,21 @@ function ItemMeta({ item }: { item: RoutedItem }) {
       {item.destinationId === "do" && item.recurrence && (
         <MetaChip key="repeat" icon={Repeat}>
           {formatRRule(item.recurrence)}
+        </MetaChip>
+      )}
+      {item.destinationId === "do" && item.category && (
+        <MetaChip key="category" icon={Hash}>
+          {item.category}
+        </MetaChip>
+      )}
+      {item.destinationId === "do" && item.priority && (
+        <MetaChip key="priority" icon={Flag}>
+          {PRIORITY_LABEL[item.priority]}
+        </MetaChip>
+      )}
+      {item.destinationId === "do" && item.estimateMinutes && (
+        <MetaChip key="estimate" icon={Timer}>
+          {formatEstimate(item.estimateMinutes)}
         </MetaChip>
       )}
       {item.destinationId === "locations" && item.item_name && (
@@ -240,6 +267,15 @@ function describeItem(item: RoutedItem) {
     item.deadline
   ) {
     parts.push(`due ${formatCaptureDeadline(item.deadline)}`);
+  }
+  if (item.destinationId === "do" && item.category) {
+    parts.push(`in ${item.category}`);
+  }
+  if (item.destinationId === "do" && item.priority) {
+    parts.push(`${PRIORITY_LABEL[item.priority].toLowerCase()} priority`);
+  }
+  if (item.destinationId === "do" && item.estimateMinutes) {
+    parts.push(`about ${formatEstimate(item.estimateMinutes)}`);
   }
   return parts.join(", ");
 }
