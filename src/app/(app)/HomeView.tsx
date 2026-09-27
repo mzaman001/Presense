@@ -16,6 +16,9 @@ import {
   CalendarDays,
   Save,
   Zap,
+  Sunrise,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -361,6 +364,14 @@ function HomeDashboard({
     : header.greeting;
   const firstName =
     userSettings?.display_name?.split(" ")[0] || header.firstName;
+  // Follows the greeting text (not the clock) so the server HTML and the
+  // first client render always pick the same glyph.
+  const GreetingGlyph =
+    greeting === "Good morning"
+      ? Sunrise
+      : greeting === "Good afternoon"
+        ? Sun
+        : Moon;
 
   let heroReason = "Earliest deadline";
   if (primaryTask) {
@@ -387,6 +398,11 @@ function HomeDashboard({
         <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
             <h1 className="text-page-greeting font-heading text-[var(--text-1)]">
+              <GreetingGlyph
+                aria-hidden="true"
+                strokeWidth={1.5}
+                className="mr-2.5 inline-block size-[0.72em] -translate-y-[0.1em] text-[var(--accent-text)]"
+              />
               {greeting}
               <span className="text-[var(--text-3)]">
                 {firstName ? `, ${firstName}` : ", you"}.
