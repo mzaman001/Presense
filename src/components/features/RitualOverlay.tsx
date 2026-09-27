@@ -1051,8 +1051,8 @@ export function RitualOverlay({
             className="pointer-events-none absolute inset-x-0 top-0 h-40"
             style={{
               background: isMorning
-                ? "radial-gradient(120% 100% at 50% -30%, var(--atmos-a), transparent 70%)"
-                : "radial-gradient(120% 100% at 50% -30%, var(--atmos-b), transparent 70%)",
+                ? "radial-gradient(70% 70% at 50% -30%, var(--sky-sun), transparent 70%), radial-gradient(120% 100% at 50% -30%, var(--sky-horizon), transparent 70%)"
+                : "radial-gradient(120% 100% at 50% -30%, var(--sky-top), transparent 70%)",
             }}
           />
 

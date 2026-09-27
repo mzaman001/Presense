@@ -219,14 +219,18 @@
   --accent-border: rgba(227, 135, 95, 0.36);
   --accent-text: #eb9a76;
 
-  /* === ATMOSPHERE — the horizon light behind every page ===
-     Two static radial washes, no blur filter, no animation: they cost one
-     paint. Dark mode puts the glow low (the sun has just set); light mode
-     puts it high (the sky is warming). */
-  --atmos-a: rgba(227, 120, 82, 0.16); /* ember, horizon */
-  --atmos-b: rgba(128, 92, 170, 0.12); /* violet, upper sky */
-  --atmos-a-pos: 50% 108%;
-  --atmos-b-pos: 80% -10%;
+  /* === SKY — the horizon behind every page ===
+     A real sky, not a glow: a vertical fall from the upper sky to a warm
+     horizon at the bottom edge. Dark mode is dusk just after sunset —
+     violet overhead, a rose band, ember where the sun went down. Static
+     gradients on one fixed layer (.atmosphere): one paint, no blur, no
+     animation. Alphas are capped so muted text on the page background
+     still clears 4.5:1 at the brightest point (measured: text-muted
+     4.6:1 at the horizon, 5.1:1 under the violet). */
+  --sky-top: rgba(92, 70, 150, 0.16); /* violet, upper sky */
+  --sky-rose: rgba(176, 88, 120, 0.06); /* rose band above the horizon */
+  --sky-horizon: rgba(232, 124, 84, 0.1); /* ember, the horizon */
+  --sky-sun: rgba(245, 160, 105, 0.06); /* where the sun went down */
 
   /* Per-space identity is retired in favor of one accent (spec §4) —
      aliased, not deleted, so existing consumers keep working unchanged
@@ -517,11 +521,13 @@
   --accent-border: rgba(156, 74, 46, 0.28);
   --accent-text: #9c4a2e;
 
-  /* Sunrise: the glow sits high — apricot overhead, a blush of rose. */
-  --atmos-a: rgba(255, 176, 128, 0.2);
-  --atmos-b: rgba(236, 150, 160, 0.1);
-  --atmos-a-pos: 50% -22%;
-  --atmos-b-pos: 100% 0%;
+  /* Sunrise: the same sky at first light — soft lilac overhead, a peach
+     band, apricot and gold where the sun is coming up. Measured on the
+     brightest point: text-muted 4.6:1, accent text 4.7:1. */
+  --sky-top: rgba(214, 200, 232, 0.22);
+  --sky-rose: rgba(250, 196, 180, 0.1);
+  --sky-horizon: rgba(255, 170, 110, 0.18);
+  --sky-sun: rgba(255, 196, 120, 0.14);
 
   --skeleton-base: rgba(90, 58, 40, 0.05);
   --skeleton-shine: rgba(90, 58, 40, 0.1);
@@ -2249,26 +2255,59 @@ html[data-density="compact"] .thread-row-wrapper p.text-sm {
    CALM LAYER — atmosphere, selection, focus, press feedback
    ============================================================ */
 
-/* The horizon light. Rendered once by <AmbientBackground/> as a fixed
-   layer behind the app. Static gradients only — no filter, no animation,
-   no scroll listener — so it costs a single paint and never janks. */
+/* The sky. Rendered once by <AmbientBackground/> as a fixed layer behind
+   the app. Three static gradients, back to front: the upper sky fading
+   down into a rose band, the broad horizon glow, and the brighter point
+   where the sun sits. No filter, no animation, no scroll listener — it
+   costs a single paint and never janks. Colours come from --sky-*. */
 .atmosphere {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  /* Its own compositor layer, rastered once: scrolling, the sidebar
+     sliding over it, and dialogs opening never repaint the gradients. */
+  will-change: transform;
+  contain: strict;
   background:
-    radial-gradient(
-      80% 55% at var(--atmos-a-pos),
-      var(--atmos-a),
-      transparent 70%
-    ),
-    radial-gradient(
-      60% 45% at var(--atmos-b-pos),
-      var(--atmos-b),
-      transparent 70%
+    radial-gradient(55% 20% at 50% 100%, var(--sky-sun), transparent 100%),
+    radial-gradient(130% 50% at 50% 100%, var(--sky-horizon), transparent 75%),
+    linear-gradient(
+      to bottom,
+      var(--sky-top) 0%,
+      transparent 40%,
+      transparent 55%,
+      var(--sky-rose) 100%
     );
   transition: opacity var(--dur-very-slow) var(--ease-out);
+}
+
+/* Changing mode (applyDocumentTheme in lib/theme.ts): one view
+   transition that crossfades the old theme into the new. Opacity only, so
+   it runs on the compositor and stays smooth on a busy page. A mask sweep
+   looked nicer on paper but repainted the whole screen every frame. The
+   page's own colour transitions are switched off for the swap
+   (.theme-switching), so nothing else animates underneath. Reduced motion
+   and browsers without the API get the instant switch. */
+/* The old theme holds still and the new one fades in over it, so the
+   midpoint is a blend of the two, never a dim flash of both half-gone. */
+html[data-mode-transition]::view-transition-old(root) {
+  animation: none;
+}
+html[data-mode-transition]::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: theme-fade-in 420ms var(--ease-out) both;
+}
+@keyframes theme-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
 }
 
 ::selection {
@@ -2471,7 +2510,7 @@ p {
 }
 
 /* Theme previews: fixed colours, so each shows its own mode whatever mode
-   the page is in (values = --bg-base and --atmos-* for each mode). */
+   the page is in (a small copy of each mode's --bg-base and --sky-*). */
 .onb-swatch {
   position: relative;
   display: flex;
@@ -2486,10 +2525,11 @@ p {
 .onb-swatch-light {
   background:
     radial-gradient(
-      90% 70% at 50% -10%,
-      rgba(255, 176, 128, 0.55),
-      transparent 70%
+      110% 60% at 50% 115%,
+      rgba(255, 170, 110, 0.55),
+      transparent 75%
     ),
+    linear-gradient(to bottom, rgba(214, 200, 232, 0.5), transparent 55%),
     #f7f2ec;
   --swatch-line: rgba(45, 30, 25, 0.22);
 }
@@ -2500,12 +2540,7 @@ p {
       rgba(227, 120, 82, 0.5),
       transparent 70%
     ),
-    radial-gradient(
-      70% 50% at 85% -10%,
-      rgba(128, 92, 170, 0.35),
-      transparent 70%
-    ),
-    #141118;
+    linear-gradient(to bottom, rgba(92, 70, 150, 0.4), transparent 55%), #141118;
   --swatch-line: rgba(244, 237, 228, 0.26);
 }
 .onb-swatch-system {

@@ -46,49 +46,87 @@ export function applyDocumentTheme(
       : false;
 
   const theme = normalizeThemeId(themeValue);
-  let mode = normalizeColorMode(modeValue);
-  if (mode === "system") {
-    mode = prefersLight ? "light" : "dark";
-  }
+  const chosen = normalizeColorMode(modeValue);
+  const mode: "light" | "dark" =
+    chosen === "system" ? (prefersLight ? "light" : "dark") : chosen;
 
   const html = document.documentElement;
+  const previousMode = html.getAttribute("data-mode");
+  // Not on load: the boot script in app/layout.tsx has already set it.
+  const modeChanges = previousMode !== null && previousMode !== mode;
 
-  // Clear legacy classes
-  html.classList.remove(
-    "theme-blue",
-    "theme-navy",
-    "theme-midnight",
-    "theme-forest",
-    "theme-meadow",
-    "light",
-  );
+  const commit = () => {
+    // Every colour on the page changes at once. With the elements' own
+    // colour transitions running (body alone has a 300ms one) that is a
+    // full-page repaint for every frame of them, so they're switched off
+    // for the swap: styles are flushed once with transitions disabled,
+    // then re-enabled on the next frame (which starts none).
+    if (modeChanges) html.classList.add("theme-switching");
 
-  // Set modern attributes
-  html.setAttribute("data-theme", theme);
-  html.setAttribute("data-mode", mode);
+    // Clear legacy classes
+    html.classList.remove(
+      "theme-blue",
+      "theme-navy",
+      "theme-midnight",
+      "theme-forest",
+      "theme-meadow",
+      "light",
+    );
 
-  let meta = document.querySelector<HTMLMetaElement>(
-    'meta[name="theme-color"]',
-  );
-  if (!meta) {
-    meta = document.createElement("meta");
-    meta.name = "theme-color";
-    document.head.appendChild(meta);
+    // Set modern attributes
+    html.setAttribute("data-theme", theme);
+    html.setAttribute("data-mode", mode);
+
+    let meta = document.querySelector<HTMLMetaElement>(
+      'meta[name="theme-color"]',
+    );
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = THEME_COLOR[mode];
+
+    if (reduceMotion) {
+      html.classList.add("reduce-motion");
+    } else {
+      html.classList.remove("reduce-motion");
+    }
+
+    if (densityValue === "comfortable" || densityValue === "compact") {
+      html.setAttribute("data-density", densityValue as string);
+    } else {
+      const isTouch =
+        typeof window !== "undefined" &&
+        ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+      html.setAttribute("data-density", isTouch ? "comfortable" : "compact");
+    }
+
+    if (modeChanges) {
+      void document.body?.offsetHeight;
+      requestAnimationFrame(() => html.classList.remove("theme-switching"));
+    }
+  };
+
+  // A mode change crossfades through one view transition (the fade is in
+  // globals.css). Reduced motion, a hidden tab and browsers without the
+  // API get the instant switch.
+  const motionOk =
+    !reduceMotion &&
+    !html.classList.contains("reduce-motion") &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (
+    modeChanges &&
+    motionOk &&
+    document.visibilityState === "visible" &&
+    typeof document.startViewTransition === "function"
+  ) {
+    html.dataset.modeTransition = "";
+    const transition = document.startViewTransition(commit);
+    void transition.finished.finally(() => {
+      delete html.dataset.modeTransition;
+    });
+    return;
   }
-  meta.content = THEME_COLOR[mode];
-
-  if (reduceMotion) {
-    html.classList.add("reduce-motion");
-  } else {
-    html.classList.remove("reduce-motion");
-  }
-
-  if (densityValue === "comfortable" || densityValue === "compact") {
-    html.setAttribute("data-density", densityValue as string);
-  } else {
-    const isTouch =
-      typeof window !== "undefined" &&
-      ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    html.setAttribute("data-density", isTouch ? "comfortable" : "compact");
-  }
+  commit();
 }
