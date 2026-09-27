@@ -1,73 +1,97 @@
 <div align="center">
-  <img src="public/icon.svg" alt="Presense" width="96" />
+  <img src="public/icon.svg" alt="" width="80" />
   <h1>Presense</h1>
-  <p>A personal task, note, and relationship organizer with natural-language capture, realtime sync, and a calm, warm design. Self-hosted on Supabase.</p>
+  <p><b>Empty your head, pick what fits, and actually start.</b></p>
   <p>
-    <a href="https://presense-kohl.vercel.app/"><b>Live demo</b></a> ·
-    <a href="https://github.com/mzaman001/Presense/issues">Issues</a> ·
-    <a href="docs/QUEUE.md">Current state</a>
+    <a href="https://presense-kohl.vercel.app/">Try it</a> ·
+    <a href="https://github.com/mzaman001/Presense/issues">Report a bug</a> ·
+    <a href="AGENTS.md">Contribute</a>
   </p>
 </div>
 
-## What it is
+<br />
 
-Presense is a single-user web app that organizes four kinds of things in four spaces: **Do** for tasks, **Think** for threads of notes, **Remember** for people and locations, and **Explore** for a reading queue. Captures come in through one command (Ctrl+K), get parsed client-side for dates and people, and are routed to the right space automatically. Deleted items go to a global trash and are purged after 30 days. Nothing is sent to an LLM API — all parsing runs in the browser.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/home-dark.webp" />
+    <img src="docs/assets/home-light.webp" alt="Presense Home: a morning greeting, today's focus task with its first step and a Start session button, and a summary of the week" />
+  </picture>
+</p>
 
-<!-- Screenshot placeholder — add real screenshots to docs/assets/ and uncomment, e.g.: -->
-<!-- <p align="center"><img src="docs/assets/screenshot-home.png" alt="Presense home dashboard" width="900"/></p> -->
+Most task apps are good at storing things and bad at the moment that matters: starting. Presense is a calm, personal planner built around three steps — get everything out of your head, choose a day that actually fits in the hours you have, and begin the next thing without ceremony.
 
-## Key features
+## Capture
 
-- **Natural-language capture** — Type "Meet Sarah about the design at 2pm tomorrow" and the date, person, and space are extracted locally with compromise.js and chrono-node.
-- **Four spaces, one inbox** — Tasks, threads, people/locations, and reading items each get a dedicated view; unrouted captures land in an inbox you clear deliberately.
-- **Realtime across devices** — Supabase Realtime keeps every list, count, and status in sync; changes appear without a refresh.
-- **Soft-delete with 30-day recovery** — Everything deleted goes to a global trash (`/trash`) and is automatically purged by an edge-function cron job after 30 days.
-- **Three themes, six modes** — Warm (default), Navy, and Forest, each in dark and light, applied through CSS custom properties.
-- **Deep-focus mode** — A fullscreen Pomodoro timer with configurable intervals.
-- **Installable PWA** — Serwist service worker with offline fallback and update prompts.
-- **Keyboard-first** — Global search (Ctrl+K), capture from anywhere, and shortcut-driven navigation.
+Type the way you think. *"Call Sam about the lease tomorrow at 2pm"* becomes a task due tomorrow at 2 PM. Dates, repeats and where you put things are picked up as you type, in your browser, never sent to an AI service. Captures survive a dropped connection, and you can speak them or send them from any app's share sheet.
 
-## Getting started
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/capture-dark.webp" />
+    <img src="docs/assets/capture-light.webp" alt="Quick Capture turning “Call Sam about the lease tomorrow at 2pm” into a Do task due tomorrow at 2:00 PM" />
+  </picture>
+</p>
 
-Requires **Node.js 20+**, a free [Supabase](https://supabase.com) project, and npm.
+## Plan
+
+A morning and evening ritual walks you through what's on your mind, what's left over, and what to carry, reschedule, or let go. Your day is measured against the hours you actually have, unfinished work rolls over without guilt, and there are no streaks to break.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/ritual-dark.webp" />
+    <img src="docs/assets/ritual-light.webp" alt="The morning ritual asking “What’s on your mind?”, with two thoughts already sorted into Do" width="640" />
+  </picture>
+</p>
+
+## Start
+
+Start any task to see just that task and its first step, nothing else. Set a 2, 5 or 10 minute timer, or a full focus session, only if you want one. When something keeps getting put off, Presense quietly asks *"What's in the way?"* — no nagging notifications.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/focus-dark.webp" />
+    <img src="docs/assets/focus-light.webp" alt="The focus view: one task, its first step, and optional 2, 5, 10 or 25 minute timers" />
+  </picture>
+</p>
+
+## Also
+
+- **Think** — running threads of notes for ideas that aren't tasks yet.
+- **Remember** — places worth keeping track of.
+- **Everywhere** — installs as an app, works offline, and syncs live across devices.
+- **Forgiving** — everything deleted sits in the trash for 30 days.
+- **Light and dark** — a warm sunrise and a plum sunset.
+
+## Keyboard
+
+| Key | Action |
+|---|---|
+| <kbd>C</kbd> or <kbd>N</kbd> | Capture |
+| <kbd>Ctrl</kbd> <kbd>K</kbd> or <kbd>/</kbd> | Search |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> | Inbox, Do, Remember, Think |
+| <kbd>6</kbd> | Home |
+
+## Run it yourself
+
+You need Node.js 20+ and a free [Supabase](https://supabase.com) project.
 
 ```bash
 git clone https://github.com/mzaman001/Presense.git
 cd Presense
 npm install
-cp .env.example .env.local   # fill in your Supabase URL and anon key
-npx supabase link --project-id <project_id>
+cp .env.example .env.local        # add your Supabase URL and anon key
+npx supabase link --project-ref <your-project-ref>
 npx supabase db push
-npm run dev                  # http://localhost:3000
+npm run dev                       # http://localhost:3000
 ```
 
-The schema is 31 migrations pushed with `db push`. For production, deploy the two edge functions (`cron_cleanup`, `cron_recurrence`) and schedule them from the Supabase dashboard.
+For production, deploy the `cron_cleanup` and `cron_recurrence` edge functions and schedule them in the Supabase dashboard. They empty the trash and bring recurring tasks back.
 
-## Stack
+## Built with
 
-Built with [Next.js 16](https://nextjs.org) (App Router), [React 19](https://react.dev), TypeScript strict, and [Tailwind CSS 4](https://tailwindcss.com). State lives in Zustand (client) and TanStack Query (server), with Supabase for Postgres, Auth, and Realtime. Natural-language capture uses compromise and chrono-node; the PWA layer is Serwist; errors in production go to Sentry.
+[Next.js](https://nextjs.org) · [React](https://react.dev) · [Supabase](https://supabase.com) · [Tailwind CSS](https://tailwindcss.com) · [TanStack Query](https://tanstack.com/query) · [chrono-node](https://github.com/wanasit/chrono) · [Serwist](https://serwist.pages.dev)
 
-| Area | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) + React 19 |
-| Backend | Supabase (Postgres, Auth, Realtime, Edge Functions) |
-| State | Zustand 5 · TanStack Query 5 |
-| Styling | Tailwind CSS 4 + Framer Motion 12 |
-| Capture | compromise 14 + chrono-node 2 (client-side) |
-| PWA | Serwist 9 |
-| Testing | Vitest 4 (213 tests) + Playwright |
-| CI | GitHub Actions: lint, typecheck, tests, build, osv-scanner, semgrep |
-
-Architecture details, the data model, and the design system are documented under [`docs/`](docs/).
-
-## Roadmap
-
-Current state and open work are in [`docs/QUEUE.md`](docs/QUEUE.md); new issues go in [GitHub Issues](https://github.com/mzaman001/Presense/issues). The largest remaining item is moving pages from Client to Server Components.
-
-## Contributing
-
-Read [`AGENTS.md`](AGENTS.md) first — it is the entry point for both humans and AI agents, and it holds the architecture, the invariants and the quality bar. Before opening a PR, `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm test` and `npm run build` must all pass.
+Want to contribute? [`AGENTS.md`](AGENTS.md) covers the architecture, the rules, and the checks every change must pass.
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+[MIT](LICENSE)
