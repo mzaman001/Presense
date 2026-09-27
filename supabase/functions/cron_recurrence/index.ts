@@ -3,6 +3,7 @@
 // for `@supabase/supabase-js` is fragile; the `npm:` specifier is the
 // reliable pattern.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { nextOccurrence } from "./next-occurrence.ts";
 
 Deno.serve(async (req) => {
   // AUDIT-04 (Aug 19, 2026): `verify_jwt = true` alone was not enough — any
@@ -55,19 +56,21 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    // Fetch nudge_time defaults for all users we'll need
+    // Fetch nudge_time defaults and timezones for all users we'll need
     const userIds = [
       ...new Set(recurringTasks.map((t: { user_id: string }) => t.user_id)),
     ];
     const { data: settingsRows, error: settingsError } = await supabase
       .from("user_settings")
-      .select("user_id, nudge_time")
+      .select("user_id, nudge_time, timezone")
       .in("user_id", userIds);
     if (settingsError) throw settingsError;
 
     const nudgeTimeByUser: Record<string, string> = {};
+    const timezoneByUser: Record<string, string | null> = {};
     for (const row of settingsRows || []) {
       nudgeTimeByUser[row.user_id] = row.nudge_time || "09:00";
+      timezoneByUser[row.user_id] = row.timezone;
     }
 
     let createdCount = 0;
@@ -77,70 +80,23 @@ Deno.serve(async (req) => {
         const completedAt = new Date(task.completed_at);
         const rruleStr: string = task.recurrence;
 
-        // Parse user's preferred nudge time (default 09:00)
+        // The user's nudge time (default 09:00), for tasks that had no
+        // due time of their own.
         const nudgeTime = nudgeTimeByUser[task.user_id] || "09:00";
         const [nudgeHour, nudgeMin] = nudgeTime.split(":").map(Number);
 
-        let nextDate: Date | null = null;
-        const intervalMatch = rruleStr.match(/INTERVAL=(\d+)/);
-        const interval = intervalMatch ? parseInt(intervalMatch[1], 10) : 1;
-
-        if (rruleStr.includes("FREQ=DAILY")) {
-          nextDate = new Date(completedAt);
-          nextDate.setDate(nextDate.getDate() + interval);
-          nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
-        } else if (rruleStr.includes("FREQ=WEEKLY")) {
-          const bydayMatch = rruleStr.match(/BYDAY=([A-Z,]+)/);
-          if (bydayMatch) {
-            const dayMap: Record<string, number> = {
-              SU: 0,
-              MO: 1,
-              TU: 2,
-              WE: 3,
-              TH: 4,
-              FR: 5,
-              SA: 6,
-            };
-            const targetDays = bydayMatch[1]
-              .split(",")
-              .map((d: string) => dayMap[d])
-              .filter((d: number) => d !== undefined);
-            // For intervals > 1, we look further ahead (interval weeks * 7 days + buffer)
-            const lookAheadDays = interval > 1 ? interval * 7 + 7 : 14;
-            const cursor = new Date(completedAt);
-            cursor.setDate(cursor.getDate() + 1);
-            let found = false;
-            for (let i = 0; i < lookAheadDays; i++) {
-              if (targetDays.includes(cursor.getDay())) {
-                // For interval > 1, verify we've moved forward by the right number of weeks
-                const daysSinceCompletion = Math.floor(
-                  (cursor.getTime() - completedAt.getTime()) / 86400000,
-                );
-                if (interval <= 1 || daysSinceCompletion >= interval * 7) {
-                  nextDate = new Date(cursor);
-                  nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
-                  found = true;
-                  break;
-                }
-              }
-              cursor.setDate(cursor.getDate() + 1);
-            }
-            if (!found && interval > 1) {
-              // Fallback: schedule for the next matching day after interval weeks
-              nextDate = new Date(completedAt);
-              nextDate.setDate(nextDate.getDate() + interval * 7);
-              nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
-            }
-          } else {
-            nextDate = new Date(completedAt);
-            nextDate.setDate(nextDate.getDate() + 7 * interval);
-            nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
-          }
-        } else if (rruleStr.includes("FREQ=MONTHLY")) {
-          nextDate = new Date(completedAt);
-          nextDate.setMonth(nextDate.getMonth() + interval);
-          nextDate.setHours(nudgeHour, nudgeMin, 0, 0);
-        }
+        // Same calendar rules as the task parser, in the user's timezone,
+        // keeping the task's own time of day (see next-occurrence.ts).
+        const nextDate = nextOccurrence({
+          rrule: rruleStr,
+          completedAt,
+          previousDeadline: task.deadline ? new Date(task.deadline) : null,
+          timeZone: timezoneByUser[task.user_id],
+          fallbackTime: {
+            hour: Number.isFinite(nudgeHour) ? nudgeHour : 9,
+            minute: Number.isFinite(nudgeMin) ? nudgeMin : 0,
+          },
+        });
 
         if (nextDate) {
           // INFRA-23 (Aug 17, 2026): the old check-then-insert (maybeSingle
@@ -159,6 +115,7 @@ Deno.serve(async (req) => {
             first_step: task.first_step,
             ifthen_trigger: task.ifthen_trigger,
             recurrence: task.recurrence,
+            time_estimate: task.time_estimate,
             deadline: nextDate.toISOString(),
           });
           if (insertError && insertError.code !== "23505") throw insertError;

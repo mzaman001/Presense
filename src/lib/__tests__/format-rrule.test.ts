@@ -11,6 +11,8 @@ describe("formatRRule", () => {
     ["FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", "Every weekday"],
     ["FREQ=WEEKLY;BYDAY=SA,SU", "Every weekend"],
     ["FREQ=WEEKLY;BYDAY=MO,TH", "Every Mon & Thu"],
+    ["FREQ=WEEKLY;INTERVAL=2;BYDAY=TU", "Every other Tue"],
+    ["FREQ=WEEKLY;INTERVAL=3;BYDAY=MO,TH", "Every 3 weeks on Mon & Thu"],
     ["FREQ=MONTHLY", "Every month"],
     ["FREQ=MONTHLY;BYMONTHDAY=1", "Every month on the 1st"],
     ["FREQ=MONTHLY;BYMONTHDAY=22", "Every month on the 22nd"],

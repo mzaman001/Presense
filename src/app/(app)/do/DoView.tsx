@@ -37,7 +37,11 @@ import { toast } from "sonner";
 import { useHaptics } from "@/hooks/useHaptics";
 import { ContextualTip } from "@/components/ui/ContextualTip";
 import { useAppStore } from "@/store/useAppStore";
-import { COMPLETE_HOLD_MS, resolveCategoryColor } from "@/lib/constants";
+import {
+  COMPLETE_HOLD_MS,
+  DEFAULT_DO_CATEGORIES,
+  resolveCategoryColor,
+} from "@/lib/constants";
 // INFRA-19: all status writes on entity tables go through item-lifecycle.ts
 import { completeTaskPatch, uncompleteTaskPatch } from "@/lib/item-lifecycle";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -423,13 +427,7 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
 
   const { overdue, today, upcoming, someday } = bucketed;
 
-  const doCats = userSettings?.do_categories || [
-    "work",
-    "study",
-    "personal",
-    "errand",
-    "health",
-  ];
+  const doCats = userSettings?.do_categories || DEFAULT_DO_CATEGORIES;
   const CATEGORIES = ["all", ...doCats];
 
   return (
