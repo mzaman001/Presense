@@ -25,7 +25,7 @@
 | `npm ci` | not re-run since 2026-09-13 (lockfile content unchanged) |
 | `npm run lint` | ✅ 0 errors (38 warnings) |
 | `npx tsc --noEmit` | ✅ clean |
-| `npm test` | ✅ 524 passed / 56 files |
+| `npm test` | ✅ 531 passed / 57 files (2026-09-27: 12 consecutive full runs green) |
 | `npm run build` | ✅ |
 | `npx playwright test tests/onboarding.spec.ts` | ✅ 2 passed (Axe, phone + desktop) |
 | `npm audit --omit=dev` | ✅ 0 vulnerabilities |

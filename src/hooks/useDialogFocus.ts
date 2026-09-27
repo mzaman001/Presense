@@ -20,18 +20,28 @@ export function useDialogFocus(isOpen: boolean) {
 
       // Focus first focusable element inside the modal after animation
       const timer = setTimeout(() => {
-        if (!containerRef.current) return;
-        
+        const container = containerRef.current;
+        if (!container) return;
+
+        // Focus already landed inside (autoFocus, or the user clicked a
+        // field during the animation): moving it would blur that field.
+        const active = document.activeElement;
+        if (active && active !== container && container.contains(active)) {
+          return;
+        }
+
         // 1. Try to find an explicit autofocus target
-        const autoFocusTarget = containerRef.current.querySelector<HTMLElement>('[autofocus], [data-autofocus]');
+        const autoFocusTarget = container.querySelector<HTMLElement>(
+          "[autofocus], [data-autofocus]",
+        );
         if (autoFocusTarget) {
           autoFocusTarget.focus();
           return;
         }
 
         // 2. Fall back to the first focusable element
-        const focusable = containerRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        const focusable = container.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
         if (focusable.length > 0) {
           focusable[0].focus();
@@ -59,8 +69,8 @@ export function useDialogFocus(isOpen: boolean) {
 
       const focusable = Array.from(
         containerRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
       );
 
       if (focusable.length === 0) return;

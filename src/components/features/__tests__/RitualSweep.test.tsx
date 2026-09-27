@@ -1,5 +1,13 @@
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   fireEvent,
   render,
@@ -16,6 +24,7 @@ import {
   eveningSweepPrompts,
 } from "@/components/features/MindSweep";
 import { readOutbox } from "@/lib/capture-outbox";
+import { parseTaskText } from "@/lib/nlp/parse-task-text";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
@@ -57,6 +66,10 @@ vi.mock("@/lib/supabase", () => {
     },
   };
 });
+
+// Capture routing lazy-loads chrono-node on first use. Cold, under a full
+// parallel run, that load outlasts findByText's 1s wait, so pay it up front.
+beforeAll(() => parseTaskText("warm up"));
 
 beforeEach(() => {
   localStorage.clear();
