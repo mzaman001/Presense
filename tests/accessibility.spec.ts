@@ -87,12 +87,6 @@ test.describe("Accessibility Audits (Axe WCAG)", () => {
     page,
   }) => {
     await page.goto("/login");
-    // Fill the email field so the primary submit button is in its normal
-    // (enabled) state rather than its `disabled:opacity-50` state — WCAG
-    // 1.4.3 exempts inactive UI components from contrast requirements, and
-    // scanning it disabled would flag that exemption as a false positive
-    // unrelated to the tokens this test checks.
-    await page.fill("#email", "a11y-check@example.com");
 
     for (const mode of ["dark", "light"] as const) {
       const results = await scanColorContrast(page, mode);
@@ -101,7 +95,7 @@ test.describe("Accessibility Audits (Axe WCAG)", () => {
   });
 
   // TOOL-18 pattern (see tests/authed-do.spec.ts): the app's UI only offers
-  // magic-link/Google sign-in, so a UI-driven login isn't repeatable in CI.
+  // Google sign-in, so a UI-driven login isn't repeatable in CI.
   // Seed the account and inject the @supabase/ssr session cookie instead.
   test.describe("authed routes (seeded account)", () => {
     // seed-test-user.mjs mutates one shared account's password/session and

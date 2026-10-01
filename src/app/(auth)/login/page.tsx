@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { Globe2, Loader2 } from "lucide-react";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
-import { sendMagicLink, startGoogleSignIn } from "./actions";
-import { TurnstileWidget } from "@/components/features/TurnstileWidget";
+import { startGoogleSignIn } from "./actions";
 // Not ui/button: that merges classes through cn(), which would bring
 // tailwind-merge (~8 KiB gz) into the one public page. These buttons add
 // only non-conflicting classes, so plain variant classes are enough.
@@ -13,74 +12,50 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
-// SEC2-02/SEC2-03 (2026-08-16): Turnstile sitekey is OPTIONAL — when unset the
-// widget renders nothing and no captcha token is sent, matching a project where
-// backend captcha enforcement is not yet enabled. Do NOT enable the backend
-// Turnstile secret until this wiring is deployed with a sitekey set.
-//
-// PERF (2026-09-15): read directly from process.env instead of importing the
-// shared `env` object — `env.ts` builds one zod-validated object covering
-// both server and client schemas, so importing it here (a client component)
-// pulled the entire zod validation graph into this page's bundle (measured
-// ~64 KiB gz). NEXT_PUBLIC_* vars are statically inlined by Next.js at build
-// time, so no import or runtime validation is needed for this client-only read.
-const TURNSTILE_SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY || "";
-const captchaEnabled = Boolean(TURNSTILE_SITEKEY);
+const noSubscribe = () => () => {};
+const readCallbackFailed = () =>
+  new URLSearchParams(window.location.search).has("error");
 
+// Google is the only sign-in method. Email links were removed on 2026-10-02:
+// Supabase's built-in mailer only delivers to the project's own team, so they
+// never reached real users. Bringing them back needs custom SMTP first.
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
-  const [loading, setLoading] = useState<"google" | "email" | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState("");
 
-  const formDataWith = (pairs: Array<[string, string]>) => {
-    const fd = new FormData();
-    pairs.forEach(([k, v]) => fd.append(k, v));
-    // SEC2-03: attach the Turnstile challenge token (GoTrue's expected field).
-    if (captchaEnabled && captchaToken) {
-      fd.append("cf-turnstile-response", captchaToken);
-    }
-    return fd;
-  };
+  // /auth/callback sends failed sign-ins back here with ?error=auth_failed.
+  // useSyncExternalStore reads the URL in the browser only (false on the
+  // server), so hydration matches; useSearchParams would need a Suspense
+  // boundary around this whole page.
+  const callbackFailed = useSyncExternalStore(
+    noSubscribe,
+    readCallbackFailed,
+    () => false,
+  );
+  const shownError =
+    error ??
+    (callbackFailed && !loading
+      ? "Sign-in didn't complete. Please try again."
+      : null);
 
   const handleGoogle = async () => {
-    setLoading("google");
+    setLoading(true);
     setError(null);
     try {
-      const result = await startGoogleSignIn(
-        formDataWith([["origin", window.location.origin]]),
-      );
-      if (result.error) setError(result.error);
-      else if (result.url) window.location.href = result.url;
+      const fd = new FormData();
+      fd.append("origin", window.location.origin);
+      const result = await startGoogleSignIn(fd);
+      if (result.error) {
+        setError(result.error);
+        setLoading(false);
+      } else if (result.url) {
+        window.location.href = result.url;
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to start Google sign-in",
       );
-      setLoading(null);
-    }
-  };
-
-  const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setLoading("email");
-    setError(null);
-    try {
-      const result = await sendMagicLink(
-        formDataWith([
-          ["email", email],
-          ["origin", window.location.origin],
-        ]),
-      );
-      if (result.error) setError(result.error);
-      else setEmailSent(true);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to send magic link",
-      );
-    } finally {
-      setLoading(null);
+      setLoading(false);
     }
   };
 
@@ -104,196 +79,71 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {emailSent ? (
-          /* Email sent state */
-          <div className="py-4 text-center">
-            <div
-              className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full"
-              style={{
-                background: "var(--status-done-dim)",
-                border: "0.5px solid var(--accent-border)",
-              }}
-            >
-              <UiIcon
-                size={22}
-                strokeWidth={1.5}
-                className="text-[var(--status-done)]"
-                icon={Mail}
-              />
-            </div>
-            <p
-              className="text-title-md mb-2 font-semibold"
-              style={{ color: "var(--text-1)" }}
-            >
-              Check your inbox
-            </p>
-            <p className="text-body" style={{ color: "var(--text-3)" }}>
-              We sent a magic link to{" "}
-              <span style={{ color: "var(--text-2)" }}>{email}</span>
-            </p>
-            <button
-              onClick={() => setEmailSent(false)}
-              className="text-ui mt-6 underline underline-offset-2"
-              style={{ color: "var(--accent-text)" }}
-            >
-              Use a different email
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Heading */}
-            <div className="mb-7">
-              <h1 className="font-heading mb-1 text-[length:var(--text-title-2xl)] font-medium tracking-[-0.01em] text-[var(--text-1)]">
-                Sign in
-              </h1>
-              <p className="text-body" style={{ color: "var(--text-3)" }}>
-                Pick up where you left off.
-              </p>
-            </div>
+        {/* Heading */}
+        <div className="mb-7">
+          <h1 className="font-heading mb-1 text-[length:var(--text-title-2xl)] font-medium tracking-[-0.01em] text-[var(--text-1)]">
+            Sign in
+          </h1>
+          <p className="text-body" style={{ color: "var(--text-3)" }}>
+            Pick up where you left off.
+          </p>
+        </div>
 
-            {/* Email form */}
-            <form onSubmit={handleMagicLink} className="mb-4 space-y-3">
-              <label
-                htmlFor="email"
-                className="text-ui mb-1.5 block font-medium text-[var(--text-2)]"
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                id="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                inputMode="email"
-                autoCapitalize="none"
-                suppressHydrationWarning
-                aria-describedby="email-hint"
-                className="input w-full"
-              />
-              <p id="email-hint" className="text-meta text-[var(--text-3)]">
-                We&apos;ll email you a sign-in link. No password needed.
-              </p>
-              {captchaEnabled && (
-                <TurnstileWidget
-                  sitekey={TURNSTILE_SITEKEY}
-                  onTokenChange={setCaptchaToken}
-                />
-              )}
-              <ButtonPrimitive
-                data-slot="button"
-                type="submit"
-                disabled={
-                  !!loading ||
-                  !email.trim() ||
-                  (captchaEnabled && !captchaToken)
-                }
-                className={buttonVariants({
-                  variant: "primary",
-                  className: "w-full",
-                })}
-              >
-                {loading === "email" ? (
-                  <UiIcon
-                    size={16}
-                    strokeWidth={1.5}
-                    className="animate-spin"
-                    icon={Loader2}
-                  />
-                ) : (
-                  <UiIcon size={16} strokeWidth={1.5} icon={Sparkles} />
-                )}
-                Send sign-in link
-                <UiIcon
-                  size={16}
-                  strokeWidth={1.5}
-                  className="ml-auto"
-                  icon={ArrowRight}
-                />
-              </ButtonPrimitive>
-            </form>
+        <ButtonPrimitive
+          data-slot="button"
+          onClick={handleGoogle}
+          disabled={loading}
+          className={buttonVariants({
+            variant: "primary",
+            className: "w-full",
+          })}
+        >
+          {loading ? (
+            <UiIcon
+              size={16}
+              strokeWidth={1.5}
+              className="animate-spin"
+              icon={Loader2}
+            />
+          ) : (
+            <UiIcon size={16} strokeWidth={1.5} icon={Globe2} />
+          )}
+          Continue with Google
+        </ButtonPrimitive>
 
-            {/* Divider */}
-            <div className="my-5 flex items-center gap-3">
-              <div
-                className="h-px flex-1"
-                style={{ background: "var(--border-subtle)" }}
-              />
-              <span
-                className="text-caption font-semibold tracking-widest uppercase"
-                style={{ color: "var(--text-muted)" }}
-              >
-                or
-              </span>
-              <div
-                className="h-px flex-1"
-                style={{ background: "var(--border-subtle)" }}
-              />
-            </div>
+        {/* India's DPDP Act treats under-18s as children (parental consent
+            required), so Presense is 18+. Sign-in and sign-up are the same
+            flow here, so this line covers new accounts too. */}
+        <p className="text-meta mt-5 text-center text-[var(--text-3)]">
+          By continuing, you confirm you&apos;re 18 or older and agree to the{" "}
+          <a
+            href="/terms"
+            className="text-[var(--accent-text)] underline underline-offset-2"
+          >
+            Terms
+          </a>{" "}
+          and{" "}
+          <a
+            href="/privacy"
+            className="text-[var(--accent-text)] underline underline-offset-2"
+          >
+            Privacy Policy
+          </a>
+          .
+        </p>
 
-            {/* Google */}
-            <ButtonPrimitive
-              data-slot="button"
-              onClick={handleGoogle}
-              disabled={!!loading}
-              className={buttonVariants({
-                variant: "secondary",
-                className: "w-full",
-              })}
-            >
-              {loading === "google" ? (
-                <UiIcon
-                  size={16}
-                  strokeWidth={1.5}
-                  className="animate-spin"
-                  icon={Loader2}
-                />
-              ) : (
-                <UiIcon size={16} strokeWidth={1.5} icon={Globe2} />
-              )}
-              Continue with Google
-            </ButtonPrimitive>
-
-            {/* India's DPDP Act treats under-18s as children (parental consent
-                required), so Presense is 18+. Sign-in and sign-up are the same
-                flow here, so this line covers new accounts too. */}
-            <p className="text-meta mt-5 text-center text-[var(--text-3)]">
-              By continuing, you confirm you&apos;re 18 or older and agree to
-              the{" "}
-              <a
-                href="/terms"
-                className="text-[var(--accent-text)] underline underline-offset-2"
-              >
-                Terms
-              </a>{" "}
-              and{" "}
-              <a
-                href="/privacy"
-                className="text-[var(--accent-text)] underline underline-offset-2"
-              >
-                Privacy Policy
-              </a>
-              .
-            </p>
-
-            {/* Error */}
-            {error && (
-              <p
-                role="alert"
-                className="text-body mt-4 rounded-[var(--radius-md)] p-3 text-center"
-                style={{
-                  background: "var(--status-danger-dim)",
-                  border: "0.5px solid var(--status-danger-border)",
-                  color: "var(--status-danger)",
-                }}
-              >
-                {error}
-              </p>
-            )}
-          </>
+        {shownError && (
+          <p
+            role="alert"
+            className="text-body mt-4 rounded-[var(--radius-md)] p-3 text-center"
+            style={{
+              background: "var(--status-danger-dim)",
+              border: "0.5px solid var(--status-danger-border)",
+              color: "var(--status-danger)",
+            }}
+          >
+            {shownError}
+          </p>
         )}
       </div>
     </div>

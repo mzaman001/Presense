@@ -4,7 +4,7 @@
 // Upserts perf-test@presense.app (confirmed email, known password), signs in
 // with a password grant, and prints a session-cookie header that Playwright
 // and Lighthouse can inject to reach authed routes (the app's UI only exposes
-// magic-link / Google, so a UI-driven login is not reproducible in CI).
+// Google sign-in, so a UI-driven login is not reproducible in CI).
 //
 // Usage:
 //   node scripts/seed-test-user.mjs [--cookie] [--json]
