@@ -21,7 +21,7 @@
 | | |
 |---|---|
 | Live URL | **https://getpresense.vercel.app** (Vercel project `presense`, team `zamans-projects-4a7dbf2d`) |
-| Old URL | `https://presense-kohl.vercel.app`: still attached so old bookmarks and installed PWAs keep working. Don't link to it. |
+| Old URL | `https://presense-kohl.vercel.app`: 308-redirects to the live URL (path and query kept), set in Vercel → Settings → Domains. **Never delete it:** the redirect needs it attached, and a released name can be claimed by anyone, who would then receive every old link and installed PWA. Don't link to it. |
 | Not ours | `presense.vercel.app` is an unrelated app by someone else. Never link to it. |
 
 - The code never hardcodes its own domain. Auth redirects come from the browser/request origin (`src/lib/auth-redirect.ts`, `src/app/auth/callback/route.ts`), which is why a domain change needs no code change. Keep it that way: derive absolute URLs from the request, don't add a domain constant.
