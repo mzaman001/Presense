@@ -26,6 +26,10 @@ permissions:
   security-events: write
   # Read commit contents
   contents: read
+  # The v2 reusable workflows' jobs request actions: read (for the SARIF
+  # upload). A called workflow can't hold more than the caller grants, so
+  # without this GitHub rejects the run before it starts (startup_failure).
+  actions: read
 
 jobs:
   scan-scheduled:
