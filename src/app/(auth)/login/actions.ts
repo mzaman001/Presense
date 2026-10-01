@@ -2,66 +2,11 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { getAuthCallbackUrl } from "@/lib/auth-redirect";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { headers } from "next/headers";
-import * as Sentry from "@sentry/nextjs";
-
-const MAGIC_LINK_SENT_MESSAGE =
-  "If an account exists for this email, a sign-in link has been sent.";
-
-function getRequestIp(requestHeaders: Headers) {
-  return (
-    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    requestHeaders.get("x-real-ip") ||
-    "unknown"
-  );
-}
 
 // PERF-10a: run login's auth calls server-side so supabase-js + zod never
 // enter the public-route client bundle (chunk 5967, ~77.8 KiB gz).
-// PKCE verifier is written to cookies by @supabase/ssr either way, so
+// The PKCE verifier is written to cookies by @supabase/ssr either way, so
 // /auth/callback's exchangeCodeForSession keeps working unchanged.
-
-export async function sendMagicLink(formData: FormData) {
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
-  const origin = String(formData.get("origin") ?? "").trim();
-  if (!email) return { error: "Please enter your email address." };
-
-  const requestHeaders = await headers();
-  const ip = getRequestIp(requestHeaders);
-  if (!(await checkRateLimit("magic-link", `${email}|${ip}`, 3, 60_000))) {
-    return {
-      error: "Too many sign-in attempts. Please wait a minute and try again.",
-    };
-  }
-
-  // SEC2-02/SEC2-03 (2026-08-16): forward the Turnstile challenge token when the
-  // client widget supplied one. GoTrue rejects signInWithOtp with `captcha_failed`
-  // when captcha enforcement is enabled and no token is present; a missing token
-  // (sitekey not configured) is fine while the backend toggle is still off.
-  const captchaToken =
-    String(formData.get("cf-turnstile-response") ?? "").trim() || undefined;
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: getAuthCallbackUrl(origin),
-      ...(captchaToken ? { captchaToken } : {}),
-    },
-  });
-  // Supabase intentionally does not reveal whether an address has an account,
-  // so the caller always gets the same message. That is a deliberate
-  // anti-enumeration choice about what the *user* sees — it should not also
-  // hide a broken mail provider from us, which is what dropping the error
-  // entirely did. Report it, answer generically.
-  if (error) {
-    Sentry.captureException(error, { tags: { action: "sendMagicLink" } });
-  }
-  return { error: null as string | null, message: MAGIC_LINK_SENT_MESSAGE };
-}
 
 export async function startGoogleSignIn(formData: FormData) {
   const origin = String(formData.get("origin") ?? "").trim();

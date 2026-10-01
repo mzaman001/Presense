@@ -218,9 +218,9 @@ web3 = 30
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
 # SEC2-02 decision (2026-08-16): Turnstile enabled. Backend check runs once a Turnstile secret
 # (`SUPABASE_AUTH_CAPTCHA_TURNSTILE_SECRET`) is set via `supabase secrets set` — until then auth
-# falls back to rejecting requests with a captcha challenge. Client-side sitekey still has to be
-# wired into the login form (follow-up ticket candidate: SEC2-03); this key enables the backend
-# enforcement on the hosted project immediately after the secret is set.
+# falls back to rejecting requests with a captcha challenge. 2026-10-02: the login page is
+# Google-only and no longer renders a Turnstile widget. Captcha doesn't apply to OAuth; it stays
+# enabled so direct API calls to the email sign-in/sign-up endpoints still need a valid token.
 [auth.captcha]
 enabled = true
 provider = "turnstile"

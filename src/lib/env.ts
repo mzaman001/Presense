@@ -16,8 +16,8 @@ const logAndReturnEmpty = (name: string) => {
 };
 
 /**
- * Optional-and-absent: silent. Sentry and Turnstile are both designed to be
- * off when unset, so reporting them as missing "required" variables filled
+ * Optional-and-absent: silent. Sentry is designed to be off when unset, so
+ * reporting its DSN as a missing "required" variable filled
  * every production boot and every build with errors that were not errors —
  * which is how a real missing variable gets lost in the noise.
  */
@@ -44,17 +44,12 @@ export const env = createEnv({
       .catch(() => logAndReturnEmpty("NEXT_PUBLIC_SUPABASE_ANON_KEY")),
     // Optional: without a DSN the Sentry SDK simply does not report.
     NEXT_PUBLIC_SENTRY_DSN: z.string().catch(optional),
-    // SEC2-02/SEC2-03 (2026-08-16): Cloudflare Turnstile sitekey for auth captcha.
-    // OPTIONAL — when empty, no captcha widget renders and no token is sent, matching a
-    // project where backend captcha enforcement is not yet enabled. Do not make throwing.
-    NEXT_PUBLIC_TURNSTILE_SITEKEY: z.string().catch(optional),
   },
   runtimeEnv: {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    NEXT_PUBLIC_TURNSTILE_SITEKEY: process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY,
   },
   emptyStringAsUndefined: true,
 });

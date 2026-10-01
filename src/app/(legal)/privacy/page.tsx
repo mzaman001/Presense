@@ -20,18 +20,17 @@ export default function PrivacyPage() {
       <h2>What we collect</h2>
       <ul>
         <li>
-          <strong>Account details:</strong> your email address, and your name
-          and profile picture if you sign in with Google.
+          <strong>Account details:</strong> the email address, name and profile
+          picture from the Google account you sign in with.
         </li>
         <li>
           <strong>What you put in Presense:</strong> tasks, notes, settings and
           activity such as completed rituals.
         </li>
         <li>
-          <strong>Technical data:</strong> your IP address (to stop abuse and
-          limit sign-in attempts), error reports when something breaks, and
-          page-speed measurements. These include your browser type and the page
-          you were on.
+          <strong>Technical data:</strong> your IP address (to stop abuse),
+          error reports when something breaks, and page-speed measurements.
+          These include your browser type and the page you were on.
         </li>
       </ul>
       <p>
@@ -51,9 +50,8 @@ export default function PrivacyPage() {
         <li>Supabase: database and sign-in (servers in Australia)</li>
         <li>Vercel: hosting (United States)</li>
         <li>Sentry: error reports (United States)</li>
-        <li>Cloudflare: bot check on the sign-in page</li>
         <li>Upstash: rate limiting by IP address</li>
-        <li>Google: only if you choose to sign in with Google</li>
+        <li>Google: sign-in</li>
       </ul>
       <p>This means your data is stored and processed outside India.</p>
 

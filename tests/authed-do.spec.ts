@@ -5,7 +5,7 @@ import path from "node:path";
 const ROOT = process.cwd();
 
 // TOOL-18: prove the seeded test account can reach an authed route with the
-// real post-login chunk set. The app's UI only offers magic-link/Google, so a
+// real post-login chunk set. The app's UI only offers Google sign-in, so a
 // UI-driven login is not repeatable in CI; instead we seed the account and
 // inject the @supabase/ssr session cookie (see scripts/seed-test-user.mjs).
 
