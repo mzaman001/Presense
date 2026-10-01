@@ -3,7 +3,7 @@
   <h1>Presense</h1>
   <p><b>Empty your head, pick what fits, and actually start.</b></p>
   <p>
-    <a href="https://presense-kohl.vercel.app/">Try it</a> ·
+    <a href="https://getpresense.vercel.app/">Try it</a> ·
     <a href="https://github.com/mzaman001/Presense/issues">Report a bug</a> ·
     <a href="AGENTS.md">Contribute</a>
   </p>
