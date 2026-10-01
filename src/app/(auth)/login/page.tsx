@@ -257,6 +257,28 @@ export default function LoginPage() {
               Continue with Google
             </ButtonPrimitive>
 
+            {/* India's DPDP Act treats under-18s as children (parental consent
+                required), so Presense is 18+. Sign-in and sign-up are the same
+                flow here, so this line covers new accounts too. */}
+            <p className="text-meta mt-5 text-center text-[var(--text-3)]">
+              By continuing, you confirm you&apos;re 18 or older and agree to
+              the{" "}
+              <a
+                href="/terms"
+                className="text-[var(--accent-text)] underline underline-offset-2"
+              >
+                Terms
+              </a>{" "}
+              and{" "}
+              <a
+                href="/privacy"
+                className="text-[var(--accent-text)] underline underline-offset-2"
+              >
+                Privacy Policy
+              </a>
+              .
+            </p>
+
             {/* Error */}
             {error && (
               <p

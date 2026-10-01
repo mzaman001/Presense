@@ -2706,3 +2706,40 @@ p {
     transform: translateY(6px);
   }
 }
+
+/* /privacy and /terms: long-form text, readable without any client JS. */
+.legal-prose {
+  color: var(--text-2);
+  font-size: var(--text-body);
+  line-height: 1.65;
+}
+.legal-prose h1 {
+  margin: 24px 0 16px;
+  color: var(--text-1);
+}
+.legal-prose h2 {
+  margin: 28px 0 8px;
+  color: var(--text-1);
+  font-size: var(--text-title-md);
+  font-weight: 600;
+}
+.legal-prose p,
+.legal-prose ul {
+  margin-bottom: 12px;
+}
+.legal-prose ul {
+  padding-left: 20px;
+  list-style: disc;
+}
+.legal-prose li + li {
+  margin-top: 4px;
+}
+.legal-prose strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+.legal-prose a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
