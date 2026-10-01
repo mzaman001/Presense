@@ -161,6 +161,20 @@ describe("Edge Auth Middleware Routing", () => {
       expect(res.url).toContain("/login");
     });
 
+    // The privacy policy and terms are linked from /login, so they must be
+    // readable before signing in.
+    it.each(["/privacy", "/terms"])(
+      "serves %s without a session",
+      async (path) => {
+        mockGetClaims.mockResolvedValue({ data: null, error: null });
+        const res = await proxy(createMockRequest(path));
+
+        expect(mockRedirect).not.toHaveBeenCalled();
+        expect(mockNext).toHaveBeenCalled();
+        expect(res.status).toBe(200);
+      },
+    );
+
     /* AUDIT-02 (Aug 19, 2026): /api/* routes must return JSON 401 instead of
        the HTML 307 redirect, so programmatic consumers (bots, mobile) get a
        usable response. Page routes keep the 307 behavior unchanged. */
