@@ -333,7 +333,11 @@ describe("First run (straight from onboarding)", () => {
     const next = screen.getByRole("button", { name: /continue/i });
     expect(next).toBeDisabled();
 
-    const input = screen.getByRole("textbox", { name: "What's on your mind?" });
+    // The heading renders straight away, but the sweep input waits behind
+    // the loading state until the ritual's data has been read.
+    const input = await screen.findByRole("textbox", {
+      name: "What's on your mind?",
+    });
     fireEvent.change(input, { target: { value: "Buy milk" } });
     fireEvent.keyDown(input, { key: "Enter" });
     await screen.findByText("Buy milk");
