@@ -77,23 +77,26 @@ Deno.serve(async (req) => {
     // error? }` per table, with an overall status. A run is only
     // considered complete when every table succeeded.
     const tables = ["items", "threads", "locations"];
-    const tableResults = tables.map((table, i) => {
-      const res = results[i];
-      return {
-        table,
-        status: res.error ? "failed" : "ok",
-        ...(res.error ? { error: res.error.message } : {}),
-      };
-    });
+    const tableResults = tables.map((table, i) => ({
+      table,
+      status: results[i].error ? "failed" : "ok",
+    }));
 
     const overallStatus = tableResults.every((r) => r.status === "ok")
       ? "completed"
       : "partial";
 
     if (overallStatus === "partial") {
+      // Error text stays in the logs, not the response (see the catch below).
       console.error(
         "cron_cleanup partial run:",
-        JSON.stringify(tableResults.filter((r) => r.status === "failed")),
+        JSON.stringify(
+          tables.flatMap((table, i) =>
+            results[i].error
+              ? [{ table, error: results[i].error.message }]
+              : [],
+          ),
+        ),
       );
     }
 
@@ -109,10 +112,12 @@ Deno.serve(async (req) => {
       { headers: { "Content-Type": "application/json" } },
     );
   } catch (err: unknown) {
+    // Details go to the function logs only: database error text can describe
+    // schema and data, and the caller (the scheduler) only needs to know it
+    // failed. CodeQL js/stack-trace-exposure.
+    console.error("cron_cleanup failed:", err);
     return new Response(
-      JSON.stringify({
-        error: err instanceof Error ? err.message : String(err),
-      }),
+      JSON.stringify({ error: "cron_cleanup failed. See the function logs." }),
       { headers: { "Content-Type": "application/json" }, status: 500 },
     );
   }

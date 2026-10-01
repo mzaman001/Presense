@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     // Fetch nudge_time defaults and timezones for all users we'll need
     const userIds = [
-      ...new Set(recurringTasks.map((t: { user_id: string }) => t.user_id)),
+      ...new Set(recurringTasks.map((t) => t.user_id as string)),
     ];
     const { data: settingsRows, error: settingsError } = await supabase
       .from("user_settings")
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       } catch (taskErr: unknown) {
         const msg =
           taskErr instanceof Error ? taskErr.message : String(taskErr);
-        console.error(`Failed to process task ${task.id}:`, msg);
+        console.error("Failed to process task:", task.id, msg);
       }
     }
 
@@ -138,9 +138,13 @@ Deno.serve(async (req) => {
       { headers: { "Content-Type": "application/json" } },
     );
   } catch (err: unknown) {
+    // Details go to the function logs only: database error text can describe
+    // schema and data, and the caller (the scheduler) only needs to know it
+    // failed. CodeQL js/stack-trace-exposure.
+    console.error("cron_recurrence failed:", err);
     return new Response(
       JSON.stringify({
-        error: err instanceof Error ? err.message : String(err),
+        error: "cron_recurrence failed. See the function logs.",
       }),
       { headers: { "Content-Type": "application/json" }, status: 500 },
     );

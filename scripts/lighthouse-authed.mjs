@@ -19,6 +19,17 @@ const argv = process.argv.slice(2);
 const budgetIdx = argv.indexOf("--budget");
 const budgetFile = budgetIdx !== -1 && argv[budgetIdx + 1] ? argv[budgetIdx + 1] : null;
 const url = argv[0] && argv[0] !== "--budget" ? argv[0] : "http://localhost:3111/do";
+// Only plain http(s) URLs: the value is handed to Lighthouse as an argument.
+let parsedUrl;
+try {
+  parsedUrl = new URL(url);
+} catch {
+  parsedUrl = null;
+}
+if (!parsedUrl || !["http:", "https:"].includes(parsedUrl.protocol)) {
+  console.error(`Not an http(s) URL: ${url}`);
+  process.exit(1);
+}
 const root = process.cwd();
 const outPath = path.join(root, "lh-authed-report.json");
 const headersPath = path.join(root, ".lh-headers.tmp.json");
@@ -39,8 +50,21 @@ fs.writeFileSync(headersPath, JSON.stringify({ Cookie: cookie }), "utf8");
 
 // 3. Run Lighthouse (quiet, mobile perf preset like the baseline).
 const env = { ...process.env, CHROME_PATH: process.env.CHROME_PATH ?? "" };
+// Run npm's npx-cli.js with this Node binary instead of `cmd /c npx ...`:
+// no shell re-parses the URL or paths (CodeQL
+// js/shell-command-injection-from-environment). npm ships beside node.exe on
+// Windows and under ../lib on Linux/macOS.
+const nodeDir = path.dirname(process.execPath);
+const npxCli = [
+  path.join(nodeDir, "node_modules", "npm", "bin", "npx-cli.js"),
+  path.join(nodeDir, "..", "lib", "node_modules", "npm", "bin", "npx-cli.js"),
+].find((p) => fs.existsSync(p));
+if (!npxCli) {
+  console.error("Could not find npm's npx-cli.js next to", process.execPath);
+  process.exit(1);
+}
 const args = [
-  "npx",
+  npxCli,
   "-y",
   "lighthouse",
   url,
@@ -55,7 +79,7 @@ const args = [
 if (budgetFile) {
   args.push(`--budget-path=${path.resolve(budgetFile)}`);
 }
-const lh = spawnSync("cmd", ["/c", ...args], { cwd: root, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+const lh = spawnSync(process.execPath, args, { cwd: root, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 
 fs.rmSync(headersPath, { force: true });
 
