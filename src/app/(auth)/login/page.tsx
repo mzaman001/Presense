@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Globe2, Mail, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
-import { sendMagicLink, startGoogleSignIn } from "./actions";
+import { sendMagicLink, startGoogleSignIn, verifyEmailCode } from "./actions";
 import { TurnstileWidget } from "@/components/features/TurnstileWidget";
 // Not ui/button: that merges classes through cn(), which would bring
 // tailwind-merge (~8 KiB gz) into the one public page. These buttons add
@@ -30,7 +30,10 @@ const captchaEnabled = Boolean(TURNSTILE_SITEKEY);
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
-  const [loading, setLoading] = useState<"google" | "email" | null>(null);
+  const [loading, setLoading] = useState<"google" | "email" | "code" | null>(
+    null,
+  );
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState("");
 
@@ -84,6 +87,30 @@ export default function LoginPage() {
     }
   };
 
+  // The link only works in this browser; the code works from any device.
+  const handleCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setLoading("code");
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("email", email);
+      fd.append("code", code);
+      const result = await verifyEmailCode(fd);
+      if (result.error) {
+        setError(result.error);
+        setLoading(null);
+      } else {
+        // Same landing as /auth/callback; a full load picks up the new cookies.
+        window.location.assign("/onboarding");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to check the code");
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="relative flex min-h-dvh items-center justify-center bg-[var(--bg-base)] p-4">
       <AmbientBackground />
@@ -128,11 +155,72 @@ export default function LoginPage() {
               Check your inbox
             </p>
             <p className="text-body" style={{ color: "var(--text-3)" }}>
-              We sent a magic link to{" "}
+              We sent a sign-in link and code to{" "}
               <span style={{ color: "var(--text-2)" }}>{email}</span>
             </p>
+            <form onSubmit={handleCode} className="mt-6 space-y-3 text-left">
+              <label
+                htmlFor="code"
+                className="text-ui mb-1.5 block font-medium text-[var(--text-2)]"
+              >
+                Code from the email
+              </label>
+              <input
+                id="code"
+                name="code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                required
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                pattern="[0-9 ]*"
+                maxLength={12}
+                aria-describedby="code-hint"
+                className="input w-full text-center tracking-[0.3em]"
+              />
+              <p id="code-hint" className="text-meta text-[var(--text-3)]">
+                Opening the email on another device? Type the code here instead
+                of clicking the link.
+              </p>
+              <ButtonPrimitive
+                data-slot="button"
+                type="submit"
+                disabled={!!loading || !code.trim()}
+                className={buttonVariants({
+                  variant: "primary",
+                  className: "w-full",
+                })}
+              >
+                {loading === "code" && (
+                  <UiIcon
+                    size={16}
+                    strokeWidth={1.5}
+                    className="animate-spin"
+                    icon={Loader2}
+                  />
+                )}
+                Sign in with code
+              </ButtonPrimitive>
+              {error && (
+                <p
+                  role="alert"
+                  className="text-body rounded-[var(--radius-md)] p-3 text-center"
+                  style={{
+                    background: "var(--status-danger-dim)",
+                    border: "0.5px solid var(--status-danger-border)",
+                    color: "var(--status-danger)",
+                  }}
+                >
+                  {error}
+                </p>
+              )}
+            </form>
             <button
-              onClick={() => setEmailSent(false)}
+              onClick={() => {
+                setEmailSent(false);
+                setCode("");
+                setError(null);
+              }}
               className="text-ui mt-6 underline underline-offset-2"
               style={{ color: "var(--accent-text)" }}
             >

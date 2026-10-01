@@ -27,6 +27,10 @@
 - The code never hardcodes its own domain. Auth redirects come from the browser/request origin (`src/lib/auth-redirect.ts`, `src/app/auth/callback/route.ts`), which is why a domain change needs no code change. Keep it that way: derive absolute URLs from the request, don't add a domain constant.
 - Changing the domain again means updating, outside the repo: Supabase → Authentication → URL Configuration (Site URL, plus `https://<domain>/**` in Redirect URLs, otherwise sign-in fails), the README demo link, and the Google OAuth consent screen's home page / privacy links. Google's redirect URI is Supabase's own callback, so it doesn't change.
 
+## Sign-in emails
+
+Email sign-in sends a link **and** a code. The link only works in the browser that asked for it (PKCE verifier cookie), so the code, typed on the "Check your inbox" screen (`verifyEmailCode` in `src/app/(auth)/login/actions.ts`), is what makes cross-device and in-mail-app opens work. The hosted Supabase templates (Dashboard → Authentication → Emails) are not in this repo: both **Magic Link** (existing users) and **Confirm signup** (first sign-in) must contain `{{ .Token }}`, or the code never reaches anyone.
+
 `types:check` is **not** wired into `build`. It used to run as a `prebuild` hook, which meant any build without Supabase CLI access — CI included — failed before it started. Run it deliberately after a migration.
 
 ## Verified state (2026-09-25)

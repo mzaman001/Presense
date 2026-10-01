@@ -63,6 +63,40 @@ export async function sendMagicLink(formData: FormData) {
   return { error: null as string | null, message: MAGIC_LINK_SENT_MESSAGE };
 }
 
+// The sign-in email carries a code as well as the link. The link only works in
+// the browser that asked for it (its PKCE verifier lives in that browser's
+// cookies), so it fails when opened on another device or in a mail app's
+// built-in browser. Typing the code into the screen that asked works anywhere.
+export async function verifyEmailCode(formData: FormData) {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  // Supabase codes are 6 digits by default (the project can raise it to 10).
+  const code = String(formData.get("code") ?? "").replace(/\s/g, "");
+  if (!email || !/^\d{6,10}$/.test(code)) {
+    return { error: "Enter the code from the email." };
+  }
+
+  // Keyed by email alone: per-IP limits would let a botnet guess a code.
+  if (!(await checkRateLimit("email-code", email, 5, 600_000))) {
+    return { error: "Too many attempts. Request a new code in a few minutes." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token: code,
+    type: "email",
+  });
+  if (error) {
+    return {
+      error:
+        "That code is wrong or has expired. Check the latest email, or request a new one.",
+    };
+  }
+  return { error: null as string | null };
+}
+
 export async function startGoogleSignIn(formData: FormData) {
   const origin = String(formData.get("origin") ?? "").trim();
   const supabase = await createClient();
