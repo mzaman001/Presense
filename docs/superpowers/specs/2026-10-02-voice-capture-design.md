@@ -113,6 +113,12 @@ over budget), cloud speech-to-text, Firefox voice support, wake words, always-on
 reading tasks back aloud, editing by voice ("delete the last one"), storing audio, voice in
 `TaskAddPanel` or the rituals, guessing priority from tone or words like "urgent".
 
+**Brave (decided 2026-10-02).** Brave ships the recognition API with its speech service switched
+off, so the mic is hidden there, as in Firefox. A web fallback (Groq Whisper free tier, or Moonshine
+in the browser) was considered and declined. If Presense becomes a native app (Capacitor), voice
+should use the OS recogniser (iOS Speech / SpeechAnalyzer, Android on-device SpeechRecognizer),
+feeding the same `onSegments` → `joinSpokenSegments` path.
+
 ## Units and interfaces
 
 | Unit | Responsibility | Depends on |
