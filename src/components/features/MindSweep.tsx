@@ -10,6 +10,8 @@ import { createClient } from "@/lib/supabase";
 import { captureText } from "@/lib/quick-capture";
 import { destinationIdToLabel } from "@/lib/capture-router";
 import { useSpeechCapture } from "@/hooks/useSpeechCapture";
+import { joinSpokenSegments } from "@/lib/nlp/spoken";
+import { DEFAULT_DO_CATEGORIES } from "@/lib/constants";
 import { useHaptics } from "@/hooks/useHaptics";
 import { cn } from "@/lib/utils";
 
@@ -48,9 +50,13 @@ export function MindSweepPrompt({
   const [captured, setCaptured] = useState<Captured[]>([]);
   const speechBase = useRef("");
 
+  const categories = userSettings?.do_categories ?? DEFAULT_DO_CATEGORIES;
   const speech = useSpeechCapture({
-    onTranscript: (spoken) =>
-      setValue(speechBase.current ? `${speechBase.current} ${spoken}` : spoken),
+    phrases: categories,
+    onSegments: (segments) => {
+      const spoken = joinSpokenSegments(segments, categories);
+      setValue(speechBase.current ? `${speechBase.current} ${spoken}` : spoken);
+    },
     onError: (error) => {
       if (error === "denied") {
         toast.error("Microphone is blocked", {

@@ -333,5 +333,24 @@ describe("CaptureModal — one-tap capture with a live preview", () => {
       expect(recognition.stop).toHaveBeenCalled();
       expect(screen.getByRole("button", { name: "Speak" })).toBeInTheDocument();
     });
+
+    it("turns a pause before a new item into a sentence break", () => {
+      (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+        FakeRecognition;
+      render(<CaptureModal />);
+      fireEvent.click(screen.getByRole("button", { name: "Speak" }));
+      act(() =>
+        instances[0].onresult?.({
+          resultIndex: 1,
+          results: [
+            { isFinal: true, 0: { transcript: "buy milk" } },
+            { isFinal: false, 0: { transcript: "call mom at five" } },
+          ],
+        }),
+      );
+      expect(screen.getByRole("textbox", { name: "Capture" })).toHaveValue(
+        "buy milk. Call mom at 5",
+      );
+    });
   });
 });
