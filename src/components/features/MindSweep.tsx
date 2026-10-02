@@ -30,11 +30,17 @@ interface Captured {
  */
 export function MindSweepPrompt({
   prompt,
+  hideLabel,
+  hint,
   placeholder,
   autoFocus,
   onCaptured,
 }: {
   prompt: string;
+  /** Keep the prompt as the input's name but don't show it (a heading already does). */
+  hideLabel?: boolean;
+  /** A quiet line under the prompt, e.g. memory joggers. */
+  hint?: string;
   placeholder?: string;
   autoFocus?: boolean;
   onCaptured?: () => void;
@@ -99,14 +105,26 @@ export function MindSweepPrompt({
     <div className="space-y-2">
       <label
         htmlFor={inputId}
-        className="block text-[length:var(--text-body-lg)] font-medium text-[var(--text-1)]"
+        className={cn(
+          "block text-[length:var(--text-body-lg)] font-medium text-[var(--text-1)]",
+          hideLabel && "sr-only",
+        )}
       >
         {prompt}
       </label>
+      {hint && (
+        <p
+          id={`${inputId}-hint`}
+          className="text-[length:var(--text-ui)] text-[var(--text-3)]"
+        >
+          {hint}
+        </p>
+      )}
       <div className="flex items-center gap-1.5 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-card)] py-1 pr-1 pl-3.5 focus-within:ring-2 focus-within:ring-[var(--border-focus)]">
         <input
           ref={inputRef}
           id={inputId}
+          aria-describedby={hint ? `${inputId}-hint` : undefined}
           autoFocus={autoFocus}
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -173,35 +191,31 @@ export function MindSweepPrompt({
 }
 
 /**
- * The evening sweep's questions. Specific prompts pull out far more than a
- * blank "anything else?" (the GTD trigger-list idea). Two rotate daily from
- * this pool, so it never becomes a 50-question checklist, and the catch-all
- * always comes last.
+ * Memory joggers for the evening sweep. Specific cues pull out far more than a
+ * blank "anything else?" (the GTD trigger-list idea), but they're hints above
+ * one input, not separate fields: separate fields read as categories and make
+ * people decide which box a thing belongs in. Sorting comes from the wording.
+ * Three rotate daily from this pool, so it never becomes a checklist.
  */
-export const EVENING_SWEEP_POOL = [
-  "Anyone you owe a reply or a call?",
-  "Anything to buy, pay or book?",
-  "Anything someone asked you for?",
-  "Any appointment or deadline coming up?",
-  "Anything at home that needs doing?",
-  "Anything you're waiting on from someone?",
-  "Anything to read, watch or look into?",
+export const EVENING_SWEEP_HINTS = [
+  "a reply or call you owe",
+  "something to buy, pay or book",
+  "something someone asked for",
+  "an appointment or deadline",
+  "a job at home",
+  "something you're waiting on",
+  "something to read or look into",
 ] as const;
-export const EVENING_SWEEP_CATCH_ALL = "Anything else nagging you?";
 
-/** The day's prompts: two from the pool (by date), then the catch-all. */
-export function eveningSweepPrompts(date: Date = new Date()): string[] {
+/** The day's hints: three from the pool, picked by date. */
+export function eveningSweepHints(date: Date = new Date()): string[] {
   const start = new Date(date.getFullYear(), 0, 0).getTime();
   const dayOfYear = Math.floor(
     (new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() -
       start) /
       86_400_000,
   );
-  const n = EVENING_SWEEP_POOL.length;
-  const first = (dayOfYear * 2) % n;
-  return [
-    EVENING_SWEEP_POOL[first],
-    EVENING_SWEEP_POOL[(first + 1) % n],
-    EVENING_SWEEP_CATCH_ALL,
-  ];
+  const n = EVENING_SWEEP_HINTS.length;
+  const first = (dayOfYear * 3) % n;
+  return [0, 1, 2].map((i) => EVENING_SWEEP_HINTS[(first + i) % n]);
 }
