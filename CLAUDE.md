@@ -34,6 +34,14 @@ Google is the only sign-in method (`src/app/(auth)/login`). Email links were rem
 
 `types:check` is **not** wired into `build`. It used to run as a `prebuild` hook, which meant any build without Supabase CLI access — CI included — failed before it started. Run it deliberately after a migration.
 
+## Scheduled jobs
+
+`pg_cron` calls two Edge Functions: `cron_recurrence` (hourly at :05, re-creates completed recurring tasks; nothing in the app does this) and `cron_cleanup` (01:00 UTC, hard-deletes rows soft-deleted 30+ days ago). Defined in `supabase/migrations/20261002094935_cron_jobs_read_vault.sql`; the URL, the public anon key and `cron_secret` come from Vault, never inline. `cron_secret` must equal the `CRON_SECRET` Edge Function secret.
+
+- **`cron.job_run_details` saying "succeeded" proves nothing**: pg_net only queues the request. Check the answer in `net._http_response` (kept ~6 h). Until 2026-10-02 the hourly job sent a placeholder key and got 401 on every run.
+- **Edge Functions don't deploy on merge.** After changing `supabase/functions/*`, deploy (`supabase functions deploy <name>` or the Supabase MCP) and confirm a 200. Type-check first: `npx -y deno check supabase/functions/<name>/index.ts`.
+- The old `cleanup_trash` function (deployed only, not in the repo) targets the dropped `explores` table and has no schedule any more; delete it in the dashboard.
+
 ## Verified state (2026-10-02)
 
 | Gate | Result |
