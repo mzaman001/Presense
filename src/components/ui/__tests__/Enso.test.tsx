@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import { Enso } from "@/components/ui/Enso";
-import { ENSO_BRUSH, ENSO_BRUSH_SMALL } from "@/components/ui/enso-paths";
+import { ENSO_BRUSH } from "@/components/ui/enso-brush-ink";
+import { ENSO_BRUSH_SMALL } from "@/components/ui/enso-brush-small";
 
 describe("Enso", () => {
   it("is decorative: hidden from assistive tech", () => {

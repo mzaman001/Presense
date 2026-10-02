@@ -1,36 +1,41 @@
+import { ENSO_BRUSH_SMALL } from "./enso-brush-small";
+
 interface BrandMarkProps {
   size?: number;
   className?: string;
 }
 
 /**
- * The Presense mark: an ensō — the single brush-stroke circle of Zen
- * practice, a sign of presence and attention — with a point of light at
- * its centre: the present moment, and the sun inside the sky (the app's
- * sunrise/sunset idea). The stroke thickens and thins like a brush and
- * leaves the ensō's open gap at the top right.
+ * The Presense mark: an ensō, the single brush-stroke circle of Zen
+ * practice, a sign of presence and attention, with the sun at its centre:
+ * the present moment (and the app's sunrise/sunset idea). The stroke lands
+ * heavy, thins as it travels and leaves the ensō's open gap at the top
+ * right.
  *
- * One colour (currentColor; set it with a parent's text colour, like every
- * Lucide icon here), so it reads the same in sunrise and sunset.
+ * Two tones, like the sign-in screen: the ink is currentColor (set it with
+ * a parent's text colour, normally --text-1, so it is cream at sunset and
+ * dark ink at sunrise) and the sun is always --accent.
  *
- * The geometry is shared with app/icon.tsx and public/icon.svg — change it
- * in all three places (ENSO_PATH below is the source of truth).
+ * This is the one-stroke brush (ENSO_BRUSH_SMALL), which stays crisp down
+ * to a 16px favicon. The app icons (public/icon*.svg/png) use the full ink
+ * brush with dry bristles, which only reads from ~96px; regenerate them
+ * with scripts/generate-icons.mjs, which also draws the favicons
+ * (public/favicon.svg, favicon-32.png) from this shape and dot.
  */
-export const ENSO_PATH =
-  "M20.40 6.95 A9.8 9.8 0 1 1 15.99 3.05 A0.81 0.81 0 0 1 15.77 4.66 A7.3 7.3 0 1 0 19.06 7.57 A0.74 0.74 0 0 1 20.40 6.95 Z";
+export const BRAND_DOT = { cx: 51.7, cy: 50.1, r: 13 } as const;
 
 export function BrandMark({ size = 24, className }: BrandMarkProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 100 100"
       fill="currentColor"
       className={className}
       aria-hidden="true"
     >
-      <path d={ENSO_PATH} />
-      <circle cx="12" cy="12" r="3" />
+      <path d={ENSO_BRUSH_SMALL} />
+      <circle {...BRAND_DOT} style={{ fill: "var(--accent)" }} />
     </svg>
   );
 }

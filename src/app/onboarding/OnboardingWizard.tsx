@@ -205,7 +205,7 @@ export function OnboardingWizard({ initial }: OnboardingWizardProps) {
               <ArrowLeft aria-hidden="true" className="size-4" /> Back
             </button>
           ) : (
-            <span className="flex items-center gap-2 text-[var(--accent)]">
+            <span className="flex items-center gap-2 text-[var(--text-1)]">
               <BrandMark size={22} />
               <span className="font-heading text-[length:var(--text-title-sm)] font-semibold tracking-tight text-[var(--text-1)]">
                 Presense
