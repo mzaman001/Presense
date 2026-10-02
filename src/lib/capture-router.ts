@@ -208,7 +208,7 @@ const words = (list: string[]) =>
     "i",
   );
 const TASK_RE = words(TASK_KW);
-const TASK_VERB_RE = new RegExp(`^${words(TASK_VERBS).source}`, "i");
+export const TASK_VERB_RE = new RegExp(`^${words(TASK_VERBS).source}`, "i");
 const THOUGHT_RE = words(THOUGHT_KW);
 const LOCATION_RE = words(LOCATION_KW);
 // "this is in progress": a pronoun isn't a thing you put somewhere.
@@ -226,7 +226,7 @@ const SENTENCE_BREAK =
 const ALSO = /(,?\s+(?:and\s+)?also\s+)/i;
 // "I also need to…", "we should also…": the words before "also" aren't an
 // item of their own.
-const INCOMPLETE_END =
+export const INCOMPLETE_END =
   /\b(?:i|we|you|they|he|she|it|should|could|would|will|can|must|might|may|to|and|or|but)$/i;
 
 /** One capture can hold several items: "Buy milk. Call mom", "…also…". */
@@ -248,12 +248,12 @@ function splitCapture(text: string): string[] {
   });
 }
 // A thought label up front wins even when a task verb follows it.
-const THOUGHT_LEAD =
+export const THOUGHT_LEAD =
   /^(?:(?:idea|thought|shower thought|random idea)\s*[:\-–]|(?:shower thought|what if|i wonder)\b)/i;
 
 // "I left my keys in the kitchen drawer", "stashed the cash under the bed".
 // Imperative "put ..." needs the "I" ("put up shelves in the lounge").
-const PUT_AWAY =
+export const PUT_AWAY =
   /^(?:i\s+(?:just\s+)?(?:left|put|placed|stored|kept|hid|stashed)|i(?:['’]ve|\s+have)\s+(?:left|put|placed|stored|kept|hidden|stashed)|(?:left|placed|stored|hid|stashed))\s+(?:(?:my|the|our|his|her|their|a|an|your)\s+)?(.+?)\s+(in|on|at|under|behind|inside|beside|next\s+to|by)\s+(.+)$/i;
 const ARTICLE = /^(my|the|our|his|her|their|a|an|your)\s+/i;
 
