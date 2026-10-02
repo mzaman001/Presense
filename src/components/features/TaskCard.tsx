@@ -32,7 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useHaptics } from "@/hooks/useHaptics";
 import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 import { Icon as UiIcon } from "@/components/ui/Icon";
-import { CheckTick } from "@/components/ui/CheckTick";
+import { Enso } from "@/components/ui/Enso";
 import { isStuck } from "@/lib/stuck-tasks";
 
 function formatDeadline(d: string | null) {
@@ -322,9 +322,7 @@ export const TaskCard = React.memo(
                     : undefined
                 }
               >
-                {isCompleting && (
-                  <CheckTick className="h-3 w-3 text-[var(--text-on-accent)]" />
-                )}
+                {isCompleting && <Enso size={28} draw />}
               </button>
 
               <div

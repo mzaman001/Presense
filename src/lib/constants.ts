@@ -33,8 +33,9 @@ export function resolveCategoryColor(
 }
 
 /**
- * How long a completed task stays on screen so its completion moment (check
- * pop, tick draw, strike-through; see globals.css) can play before the row is
- * removed.
+ * How long a completed task stays on screen so its completion moment (the
+ * brush ensō closing, its dot landing, the brush strike-through; see
+ * globals.css) can play, and the finished mark rest for a beat, before the
+ * row is removed.
  */
-export const COMPLETE_HOLD_MS = 480;
+export const COMPLETE_HOLD_MS = 560;

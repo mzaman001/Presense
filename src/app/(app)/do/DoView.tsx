@@ -1,5 +1,6 @@
 "use client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Enso } from "@/components/ui/Enso";
 import type { TaskRecord } from "@/lib/task-cache";
 import { useUserId } from "@/components/providers/SessionProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -616,7 +617,14 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
           />
           {overdue.length === 0 && today.length === 0 && (
             <EmptyState
-              icon={Wind}
+              mark={
+                <Enso
+                  size={88}
+                  draw
+                  className="text-[var(--text-1)]"
+                  dotClassName="text-[var(--accent)]"
+                />
+              }
               title="You're all caught up"
               description="Nothing is due today. Add a task or plan tomorrow."
               pointer={

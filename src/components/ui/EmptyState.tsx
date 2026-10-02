@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 export function EmptyState({
   icon: Icon,
+  mark,
   title,
   description,
   action,
@@ -11,6 +12,9 @@ export function EmptyState({
   className,
 }: {
   icon?: React.ElementType;
+  // Artwork shown instead of the icon bubble, e.g. the drawn ensō when the
+  // day is done. Takes precedence over `icon`.
+  mark?: ReactNode;
   title: string;
   description: string;
   action?: ReactNode;
@@ -27,7 +31,9 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon && (
+      {mark ? (
+        <div className="mb-5">{mark}</div>
+      ) : Icon ? (
         <div className="mb-5 flex size-14 items-center justify-center rounded-full bg-[var(--accent-dim)]">
           <Icon
             aria-hidden="true"
@@ -35,7 +41,7 @@ export function EmptyState({
             strokeWidth={1.5}
           />
         </div>
-      )}
+      ) : null}
       <h3 className="font-heading mb-2 text-[length:var(--text-title-xl)] font-medium text-[var(--text-1)]">
         {title}
       </h3>

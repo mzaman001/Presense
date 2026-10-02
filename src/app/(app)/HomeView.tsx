@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { completeTaskPatch, uncompleteTaskPatch } from "@/lib/item-lifecycle";
 import { COMPLETE_HOLD_MS } from "@/lib/constants";
 import { useHaptics } from "@/hooks/useHaptics";
-import { CheckTick } from "@/components/ui/CheckTick";
+import { Enso } from "@/components/ui/Enso";
 import { isStuck } from "@/lib/stuck-tasks";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
@@ -962,13 +962,11 @@ function HomeDashboard({
                             aria-label={`Complete ${task.title}`}
                             aria-pressed={completing === task.id}
                             className={cn(
-                              "checkbox mt-0.5",
+                              "task-check",
                               completing === task.id && "checked",
                             )}
                           >
-                            {completing === task.id && (
-                              <CheckTick className="h-3.5 w-3.5 text-[var(--text-on-accent)]" />
-                            )}
+                            {completing === task.id && <Enso size={28} draw />}
                           </button>
                           <div
                             className={cn(
