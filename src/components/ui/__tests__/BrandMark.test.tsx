@@ -26,6 +26,18 @@ describe("BrandMark", () => {
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,6}/);
   });
 
+  test("is two-tone: the ink follows the text colour, the sun is the accent", () => {
+    const { container } = render(<BrandMark />);
+    expect(container.querySelector("path")?.getAttribute("fill")).toBeNull();
+    expect(container.querySelector("svg")).toHaveAttribute(
+      "fill",
+      "currentColor",
+    );
+    expect(container.querySelector("circle")?.getAttribute("style")).toContain(
+      "var(--accent)",
+    );
+  });
+
   test("is decorative — hidden from screen readers", () => {
     const { container } = render(<BrandMark />);
     expect(container.querySelector("svg")).toHaveAttribute(

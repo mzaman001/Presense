@@ -247,7 +247,7 @@ export function Sidebar() {
         className="sidebar fixed inset-y-0 start-0 z-40 hidden h-dvh flex-col md:flex"
       >
         <div className="sidebar-header">
-          <span className="sidebar-icon text-[var(--accent)]">
+          <span className="sidebar-icon text-[var(--text-1)]">
             <BrandMark size={26} />
           </span>
           <span className="sidebar-label text-title-lg font-semibold tracking-tight">

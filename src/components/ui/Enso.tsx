@@ -1,7 +1,9 @@
 // clsx, not cn(): cn() brings tailwind-merge (~8 KiB gz) onto /login, and
 // these classes never conflict.
 import { clsx } from "clsx";
-import { ENSO_BRUSH, ENSO_BRUSH_SMALL } from "./enso-paths";
+import { ENSO_BRUSH } from "./enso-brush-ink";
+import { ENSO_BRUSH_SMALL } from "./enso-brush-small";
+import { BRAND_DOT } from "./BrandMark";
 
 interface EnsoProps {
   /** Rendered width and height in px. */
@@ -24,16 +26,16 @@ interface EnsoProps {
 
 // The stroke is lopsided (heavy through the bottom), so the dot sits between
 // the centre of the inner hole and the centre of the outline, which is where
-// the eye reads the middle. Measured from the paths in enso-paths.ts.
+// the eye reads the middle. Measured from the paths in enso-brush-*.ts.
 const DOT = {
   ink: { cx: 51.7, cy: 50.4, r: 9.5 },
-  small: { cx: 51.7, cy: 50.1, r: 13 },
+  small: BRAND_DOT,
 } as const;
 
 /**
- * The brush ensō: Presense's motion identity. The logo (BrandMark) stays the
- * clean geometric mark; this is the hand-painted version used for the moments
- * that deserve one: signing in, finishing a task, an empty day.
+ * The brush ensō: Presense's motion identity, drawn for the moments that
+ * deserve one: signing in, finishing a task, an empty day. The logo
+ * (BrandMark) is the same brush, still.
  *
  * Drawing is pure CSS: a conic mask sweeps round from the start of the stroke
  * (`--enso-p` in globals.css), so there are no SVG ids and no JS. Colour

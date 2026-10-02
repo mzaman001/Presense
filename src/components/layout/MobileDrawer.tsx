@@ -100,7 +100,7 @@ export function MobileDrawer() {
           <Dialog.Title className="sr-only">Navigation</Dialog.Title>
           <div className="flex min-h-[var(--mobile-top-bar-h)] shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4">
             <div className="flex items-center gap-3">
-              <span className="text-[var(--accent)]">
+              <span className="text-[var(--text-1)]">
                 <BrandMark size={24} />
               </span>
               <span className="text-title-lg font-semibold tracking-tight text-[var(--text-1)]">
