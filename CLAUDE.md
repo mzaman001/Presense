@@ -58,7 +58,7 @@ Google is the only sign-in method (`src/app/(auth)/login`). Email links were rem
 
 `ci` is a required status check on `main` (ruleset "main: require ci", admin bypass), so PRs can't merge until it passes and GitHub auto-merge works.
 
-`/onboarding` initial JS: 200.1 KiB gz, 13 scripts (`next build` + `next start`, measured like check-budgets but with the seeded session; 2026-09-25). `/login` was 202.9 KiB measured the same way, before it became Google-only on 2026-10-02 (email form and Turnstile removed); re-measure before quoting it. check-budgets can't cover it: the route needs a signed-in account that hasn't finished onboarding.
+`/onboarding` initial JS: 200.1 KiB gz, 13 scripts (`next build` + `next start`, measured like check-budgets but with the seeded session; 2026-09-25). `/login` was 202.9 KiB measured the same way, before it became Google-only on 2026-10-02 (email form and Turnstile removed). On 2026-10-02 every script `/login` fetches until network idle, each gzipped, came to 235.7 KiB / 14 scripts before the brush ensō and 237.6 KiB after (+1.9 KiB; LCP unchanged). That method counts lazy chunks too, so it isn't directly comparable with the 202.9 figure. check-budgets can't cover it: the route needs a signed-in account that hasn't finished onboarding.
 
 The bundle and Web Vitals figures below predate the 2026-09 design pass; re-measure before relying on them.
 
@@ -76,4 +76,4 @@ The bundle is still large. See "Known weak points" for the current Lighthouse fi
 
 - **Total Blocking Time is still over budget.** Lighthouse (`scripts/lighthouse-authed.mjs`, mobile preset, two runs, 2026-09-25): `/do` LCP 2.3 / 2.4 s, TBT 400 / 440 ms, CLS 0, score 85 / 85. Home LCP 3.3 / 2.8 s, TBT 450 / 470 ms, CLS 0, score 74 / 80. LCP and CLS are fixed; TBT (budget 200 ms) is hydration work: every page UI is a client view (react-dom alone is ~1.2 s of scripting under 4x CPU throttling). Moving the page UIs to Server Components with client islands is the remaining fix.
 - **Anything that server-renders hidden and waits for JS to show will wreck LCP.** The (app) template used to render every page at `opacity: 0` until framer-motion loaded (6.3 s of render delay on `/do`). Page entrances are CSS now; keep them that way.
-- `/login` initial JS was 202.9 KiB gz under `next build` + `next start` before the 2026-10-02 Google-only rewrite (smaller now, not re-measured). `perf-budgets.json` measures a webpack ANALYZE build, which reads lower.
+- `/login` initial JS was 202.9 KiB gz under `next build` + `next start` before the 2026-10-02 Google-only rewrite; see the 2026-10-02 network-idle figure above (237.6 KiB, a broader measure). `perf-budgets.json` measures a webpack ANALYZE build, which reads lower.

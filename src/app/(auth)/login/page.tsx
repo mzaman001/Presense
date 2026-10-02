@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { Globe2, Loader2 } from "lucide-react";
-import { BrandMark } from "@/components/ui/BrandMark";
+import { Globe2 } from "lucide-react";
+import { Enso } from "@/components/ui/Enso";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { startGoogleSignIn } from "./actions";
 // Not ui/button: that merges classes through cn(), which would bring
@@ -71,21 +71,27 @@ export default function LoginPage() {
           boxShadow: "var(--shadow-modal)",
         }}
       >
-        {/* Mark + wordmark */}
-        <div className="mb-8 flex items-center gap-2.5 text-[var(--accent)]">
-          <BrandMark size={28} />
-          <span className="text-title-lg font-heading font-semibold tracking-tight text-[var(--text-1)]">
+        {/* The ensō is painted in one stroke when the page opens, then the
+            sun lands in it and everything rests (.enso-draw, globals.css).
+            The text is never hidden while it plays, so it doesn't delay LCP. */}
+        <div className="mb-7 flex flex-col items-center gap-3.5 text-[var(--text-1)]">
+          <Enso
+            size={96}
+            draw
+            dotClassName="text-[var(--accent)]"
+            className="[--enso-delay:150ms]"
+          />
+          <span className="text-ui pl-[0.32em] font-medium tracking-[0.32em] text-[var(--text-3)] uppercase">
             Presense
           </span>
         </div>
 
-        {/* Heading */}
-        <div className="mb-7">
+        <div className="mb-7 text-center">
           <h1 className="font-heading mb-1 text-[length:var(--text-title-2xl)] font-medium tracking-[-0.01em] text-[var(--text-1)]">
             Sign in
           </h1>
           <p className="text-body" style={{ color: "var(--text-3)" }}>
-            Pick up where you left off.
+            A quiet place for what&apos;s on your mind.
           </p>
         </div>
 
@@ -99,12 +105,7 @@ export default function LoginPage() {
           })}
         >
           {loading ? (
-            <UiIcon
-              size={16}
-              strokeWidth={1.5}
-              className="animate-spin"
-              icon={Loader2}
-            />
+            <Enso size={16} spin />
           ) : (
             <UiIcon size={16} strokeWidth={1.5} icon={Globe2} />
           )}

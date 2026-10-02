@@ -232,6 +232,11 @@
   --sky-horizon: rgba(232, 124, 84, 0.1); /* ember, the horizon */
   --sky-sun: rgba(245, 160, 105, 0.06); /* where the sun went down */
 
+  /* The brush line that crosses out a finished task (.task-title-strike),
+     painted in --text-3. A data URI can't read currentColor, hence one per
+     mode. */
+  --strike-ink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'%3E%3Cpath fill='rgba(244,237,228,0.6)' d='M2 6.4C8 4.6 30 3.9 70 3.6C110 3.3 150 3.9 184 3C192 2.8 198 3.1 199.5 3.6C200 4.4 196 4.9 190 5.2C160 6.3 120 6.9 80 6.9C50 7 25 7.6 6 8C2.5 8.1.8 7.2 2 6.4Z'/%3E%3C/svg%3E");
+
   /* Per-space identity is retired in favor of one accent (spec §4) —
      aliased, not deleted, so existing consumers keep working unchanged
      until each space gets its own redesign pass. */
@@ -301,6 +306,8 @@
   --ease-spring: cubic-bezier(0.34, 1.28, 0.64, 1);
   --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* A brush stroke: lands, moves quickly, slows as the brush lifts. */
+  --ease-brush: cubic-bezier(0.55, 0.05, 0.2, 1);
 
   /* === ELEVATION SYSTEM === */
   --elev-flat-shadow: none;
@@ -528,6 +535,7 @@
   --sky-rose: rgba(250, 196, 180, 0.1);
   --sky-horizon: rgba(255, 170, 110, 0.18);
   --sky-sun: rgba(255, 196, 120, 0.14);
+  --strike-ink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'%3E%3Cpath fill='rgba(34,28,24,0.68)' d='M2 6.4C8 4.6 30 3.9 70 3.6C110 3.3 150 3.9 184 3C192 2.8 198 3.1 199.5 3.6C200 4.4 196 4.9 190 5.2C160 6.3 120 6.9 80 6.9C50 7 25 7.6 6 8C2.5 8.1.8 7.2 2 6.4Z'/%3E%3C/svg%3E");
 
   --skeleton-base: rgba(90, 58, 40, 0.05);
   --skeleton-shine: rgba(90, 58, 40, 0.1);
@@ -808,6 +816,15 @@ h6 {
 }
 
 /* === GLASS CARD SYSTEM === */
+
+/* Drives the ensō's draw-on mask (.enso-draw). Registered so it animates
+   as an angle; the initial value leaves a non-drawing ensō fully shown. */
+@property --enso-p {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 372deg;
+}
+
 @layer components {
   .glass-card {
     background: var(--surface-card);
@@ -1031,51 +1048,6 @@ h6 {
     transform: translateX(18px);
   }
 
-  /* === CHECKBOX SYSTEM === */
-  .checkbox {
-    width: 18px;
-    height: 18px;
-    border-radius: var(--radius-xs);
-    border: 1.5px solid var(--border-strong);
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition:
-      background var(--transition-base),
-      border-color var(--transition-base),
-      box-shadow var(--transition-base);
-  }
-
-  .checkbox:hover {
-    border-color: var(--accent);
-    background: var(--accent-dim);
-  }
-
-  .checkbox.checked {
-    background: var(--accent);
-    border-color: var(--accent);
-  }
-
-  .checkbox.checked svg {
-    stroke-dasharray: 20;
-    stroke-dashoffset: 20;
-    animation: check-draw 240ms ease-out forwards;
-  }
-
-  @keyframes check-draw {
-    to {
-      stroke-dashoffset: 0;
-    }
-  }
-
-  .checkbox-sm {
-    width: 16px;
-    height: 16px;
-  }
-
   /* === TASK ROW (TaskCard) ===
      Round checkbox whose ring carries the priority (--check-ring), set
      inline for Urgent/High/Medium; Low keeps the neutral ring. */
@@ -1114,7 +1086,8 @@ h6 {
     cursor: pointer;
     transition:
       background-color var(--dur-fast) var(--ease-out),
-      border-color var(--dur-fast) var(--ease-out);
+      border-color var(--dur-fast) var(--ease-out),
+      transform 120ms var(--ease-out);
   }
   /* 44px touch target without growing the visual circle. */
   .task-check::after {
@@ -1130,83 +1103,114 @@ h6 {
       transparent
     );
   }
-  .task-check.checked {
-    border-color: var(--status-done);
-    background: var(--status-done);
-  }
 
   /* === COMPLETION MOMENT ===
-     One sequence for every task checkbox (Do rows, Home list): the check
-     pops, a ring ripples out, the tick draws itself and the title is struck
-     through left to right, then the row folds away. ~450ms end to end so it
-     reads as a reward without holding up the next tap. Reduce-motion
-     collapses every step to its end state (see :root.reduce-motion). */
-  .task-check.checked,
-  .checkbox.checked {
-    animation: check-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+     The checkbox becomes the brush ensō (<Enso size={28} draw />): the ring
+     closes as one brush stroke, the dot lands, and the title is crossed out
+     with a hand-drawn line, then the row folds away (COMPLETE_HOLD_MS).
+     ~480ms end to end so it reads as a reward without holding up the next
+     tap. Reduce motion shows the end state at once (see the ENSŌ block). */
+  .task-check:active {
+    transform: scale(0.88);
   }
-  .task-check.checked::before,
-  .checkbox.checked::before {
-    content: "";
+  .task-check.checked {
+    border-color: transparent;
+    background: transparent;
+  }
+  .task-check > .enso {
     position: absolute;
-    inset: -1.5px;
-    border-radius: inherit;
-    border: 2px solid var(--status-done);
-    pointer-events: none;
-    animation: check-ripple 560ms var(--ease-out) forwards;
+    inset: -4px;
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
+    color: var(--status-done);
+    --enso-dur: 300ms;
   }
-  .checkbox.checked {
-    position: relative;
-    background: var(--status-done);
-    border-color: var(--status-done);
-  }
-  .check-tick {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-    animation: check-tick 240ms 90ms var(--ease-out) forwards;
+  .task-check > .enso .enso-dot {
+    animation-duration: 240ms;
   }
   .task-title-strike {
-    background-image: linear-gradient(currentColor, currentColor);
+    /* --strike-ink is a tapered, slightly wavering brush line (tokens). It
+       stretches out from the left as background-size grows, so the thin
+       tail leads like a pen being dragged across. */
+    background-image: var(--strike-ink);
     background-repeat: no-repeat;
-    background-position: 0 58%;
-    background-size: 0% 1.5px;
+    background-position: 0 62%;
+    background-size: 0% 0.5em;
     transition:
-      background-size 300ms var(--ease-out),
+      background-size 320ms var(--ease-brush),
       color 300ms var(--ease-out);
   }
   .is-done .task-title-strike {
-    background-size: 100% 1.5px;
+    background-size: 100% 0.5em;
     color: var(--text-3);
-    transition-delay: 100ms;
+    transition-delay: 120ms;
   }
 
-  @keyframes check-pop {
-    0% {
+  /* === ENSŌ (components/ui/Enso.tsx) ===
+     The hand-painted ensō is Presense's one motion signature: it is drawn,
+     it settles, it never loops (except as a spinner while something
+     loads). A conic mask sweeps round from where the brush lands; the dot
+     lands once the stroke is done. */
+  .enso {
+    display: block;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+  .enso-draw,
+  .enso-spin {
+    /* from 41deg = where the brush lands (-35deg on the SVG's clock, less a
+       margin for the rounded head). The 12deg ramp softens the leading edge
+       so it reads as ink spreading, not a wiper. */
+    -webkit-mask-image: conic-gradient(
+      from 41deg,
+      #000 calc(var(--enso-p) - 12deg),
+      transparent var(--enso-p)
+    );
+    mask-image: conic-gradient(
+      from 41deg,
+      #000 calc(var(--enso-p) - 12deg),
+      transparent var(--enso-p)
+    );
+  }
+  .enso-draw {
+    --enso-p: 0deg;
+    animation: enso-draw var(--enso-dur, 1000ms) var(--ease-brush)
+      var(--enso-delay, 0ms) forwards;
+  }
+  .enso-draw .enso-dot {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scale(0);
+    animation: enso-land 320ms var(--ease-out)
+      calc(var(--enso-delay, 0ms) + var(--enso-dur, 1000ms) - 60ms) forwards;
+  }
+  .enso-spin {
+    animation:
+      enso-turn 1.4s linear infinite,
+      enso-breathe 1.4s var(--ease-brush) infinite;
+  }
+  @keyframes enso-draw {
+    to {
+      --enso-p: 372deg;
+    }
+  }
+  @keyframes enso-land {
+    to {
       transform: scale(1);
     }
-    35% {
-      transform: scale(0.82);
+  }
+  @keyframes enso-turn {
+    to {
+      transform: rotate(360deg);
     }
-    70% {
-      transform: scale(1.18);
-    }
+  }
+  @keyframes enso-breathe {
+    0%,
     100% {
-      transform: scale(1);
+      --enso-p: 60deg;
     }
-  }
-  @keyframes check-ripple {
-    from {
-      opacity: 0.75;
-      transform: scale(1);
-    }
-    to {
-      opacity: 0;
-      transform: scale(2.1);
-    }
-  }
-  @keyframes check-tick {
-    to {
-      stroke-dashoffset: 0;
+    55% {
+      --enso-p: 300deg;
     }
   }
 
@@ -2056,6 +2060,40 @@ h6 {
 :root.reduce-motion *::after {
   animation-duration: 0.01ms !important;
   transition-duration: 0.01ms !important;
+}
+
+/* The ensō shows finished at once: no draw, no dot landing, and a still
+   brush instead of a spinner. (The rule above keeps animation delays, so
+   these opt out explicitly.) */
+:root.reduce-motion .enso-draw,
+:root.reduce-motion .enso-draw .enso-dot,
+:root.reduce-motion .enso-spin {
+  animation: none;
+}
+:root.reduce-motion .enso-draw {
+  --enso-p: 372deg;
+}
+:root.reduce-motion .enso-draw .enso-dot {
+  transform: none;
+}
+:root.reduce-motion .enso-spin {
+  --enso-p: 300deg;
+}
+@media (prefers-reduced-motion: reduce) {
+  .enso-draw,
+  .enso-draw .enso-dot,
+  .enso-spin {
+    animation: none;
+  }
+  .enso-draw {
+    --enso-p: 372deg;
+  }
+  .enso-draw .enso-dot {
+    transform: none;
+  }
+  .enso-spin {
+    --enso-p: 300deg;
+  }
 }
 
 :root.reduce-motion [class*="hover:scale"]:hover,

@@ -7,7 +7,6 @@ import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import {
   ArrowRight,
-  Check,
   Maximize2,
   Minimize2,
   Pause,
@@ -23,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { Enso } from "@/components/ui/Enso";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import { completeTaskPatch } from "@/lib/item-lifecycle";
 import { playChime } from "@/lib/chime";
@@ -720,9 +720,11 @@ export function PomodoroTimer() {
 
         {stage === "done" && (
           <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-5 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-[var(--status-done-dim)] text-[var(--status-done)]">
-              <UiIcon size={22} icon={Check} />
-            </span>
+            <Enso
+              size={64}
+              draw
+              className="text-[var(--status-done)] [--enso-dur:800ms]"
+            />
             <h2 className="text-title-sm font-medium text-[var(--text-1)]">
               Nice start.
             </h2>
