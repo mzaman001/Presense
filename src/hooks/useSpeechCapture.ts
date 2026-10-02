@@ -13,9 +13,10 @@ import {
  * Safari). Speaking was about 3x faster than typing on a phone in Ruan et
  * al.; voice sits next to the keyboard, never instead of it.
  *
- * Firefox has no recognition API, and Safari's breaks inside an installed
- * iOS home-screen app, so `supported` is false there and callers hide the
- * button (the iOS keyboard's own dictation key still works). Chrome
+ * Firefox has no recognition API, Brave ships one with no service behind
+ * it, and Safari's breaks inside an installed iOS home-screen app, so
+ * `supported` is false there and callers hide the button (the iOS
+ * keyboard's own dictation key still works). Chrome
  * recognises on the device when the language pack is already installed;
  * otherwise it sends audio to Google, and Safari to Apple. Nothing is
  * recorded or stored by Presense.
@@ -75,6 +76,14 @@ function isIosStandalone(): boolean {
   );
 }
 
+/**
+ * Brave ships Chrome's recognition API but switches off the Google service
+ * behind it: start() fails at once with no microphone prompt.
+ */
+function isBrave(): boolean {
+  return (navigator as Navigator & { brave?: unknown }).brave !== undefined;
+}
+
 const recognitionLang = () => navigator.language || "en-US";
 
 /** Whether on-device recognition is installed for `lang`; asked once. */
@@ -120,7 +129,15 @@ export function readSegments(results: ArrayLike<RecognitionResult>): string[] {
 
 const noopSubscribe = () => () => {};
 
-export type SpeechError = "denied" | "no-speech" | "failed";
+/**
+ * "denied": the microphone is blocked. "unavailable": the browser has no
+ * working speech service (its own setting, a language it can't do, or
+ * offline), so asking the user to allow the microphone wouldn't help.
+ */
+export type SpeechError = "denied" | "unavailable" | "no-speech" | "failed";
+
+/** The browser has no speech service; retrying this session won't help. */
+const NO_SERVICE = new Set(["service-not-allowed", "language-not-supported"]);
 
 export function useSpeechCapture({
   onSegments,
@@ -133,11 +150,13 @@ export function useSpeechCapture({
   /** Words to listen out for, such as the user's category names. */
   phrases?: string[];
 }) {
-  const supported = useSyncExternalStore(
+  const usable = useSyncExternalStore(
     noopSubscribe,
-    () => recognitionCtor() !== undefined && !isIosStandalone(),
+    () => recognitionCtor() !== undefined && !isIosStandalone() && !isBrave(),
     () => false,
   );
+  const [noService, setNoService] = useState(false);
+  const supported = usable && !noService;
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<Recognition | null>(null);
   const localRef = useRef(false);
@@ -208,12 +227,15 @@ export function useSpeechCapture({
           retryWithoutPhrases = true;
           return;
         }
+        if (NO_SERVICE.has(e.error)) setNoService(true);
         const error: SpeechError =
-          e.error === "not-allowed" || e.error === "service-not-allowed"
+          e.error === "not-allowed"
             ? "denied"
-            : e.error === "no-speech"
-              ? "no-speech"
-              : "failed";
+            : NO_SERVICE.has(e.error) || e.error === "network"
+              ? "unavailable"
+              : e.error === "no-speech"
+                ? "no-speech"
+                : "failed";
         // "aborted" is our own stop on unmount; not worth reporting.
         if (e.error !== "aborted") callbacks.current.onError?.(error);
       };

@@ -376,6 +376,11 @@ export function CaptureModal() {
         toast.error("Microphone is blocked", {
           description: "Allow it in your browser's site settings to speak.",
         });
+      } else if (error === "unavailable") {
+        toast.error("Voice isn't available here", {
+          description:
+            "This browser can't turn speech into text right now. Type it instead.",
+        });
       } else if (error === "failed") {
         toast.error("Couldn't start voice capture. Type it instead.");
       }

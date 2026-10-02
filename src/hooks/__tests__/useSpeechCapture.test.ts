@@ -193,4 +193,39 @@ describe("useSpeechCapture", () => {
     act(() => instances[0].onerror?.({ error: "not-allowed" }));
     expect(onError).toHaveBeenCalledWith("denied");
   });
+
+  it("is unsupported in Brave, which ships the API with no speech service", () => {
+    install();
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      brave: { isBrave: () => true },
+    });
+    const { result: hook } = renderHook(() =>
+      useSpeechCapture({ onSegments: vi.fn() }),
+    );
+    expect(hook.current.supported).toBe(false);
+  });
+
+  it.each([
+    ["service-not-allowed", false],
+    ["language-not-supported", false],
+    // Chrome says "network" when briefly offline; the mic comes back.
+    ["network", true],
+  ])(
+    "reports '%s' as unavailable, not blocked (mic still shown: %s)",
+    (code, stillSupported) => {
+      install();
+      const onError = vi.fn();
+      const { result: hook } = renderHook(() =>
+        useSpeechCapture({ onSegments: vi.fn(), onError }),
+      );
+      act(() => hook.current.start());
+      act(() => {
+        instances[0].onerror?.({ error: code });
+        instances[0].onend?.();
+      });
+      expect(onError).toHaveBeenCalledWith("unavailable");
+      expect(hook.current.supported).toBe(stillSupported);
+    },
+  );
 });
