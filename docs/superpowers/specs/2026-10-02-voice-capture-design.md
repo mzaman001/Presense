@@ -1,6 +1,6 @@
 # Voice capture that understands speech: design
 
-Date: 2026-10-02 · Status: awaiting review
+Date: 2026-10-02 · Status: approved 2026-10-02; plan in `docs/superpowers/plans/2026-10-02-voice-capture.md`
 
 ## Goal
 
@@ -65,8 +65,12 @@ This is a pure module, applied only to voice input and never to typed text.
 | "priority one", "p one", "priority 1" … four | `p1` … `p4` | explicit marker only; "urgent" / "important" are **not** mapped |
 | "hashtag X", "tag X" | `#X` | only when X matches one of the user's categories (case-insensitive) |
 | "an hour and a half", "half an hour", "thirty minutes", "two hours" | `90 min`, `30 min`, `30 min`, `2h` | the estimate parser takes it from there |
-| "next task", "next item", "new task", "full stop", "period" | a segment boundary | removed from the title |
+| "next task", "next item", "new task", "full stop" | a segment boundary | removed from the title. Not "period": "the trial period ends friday" would split |
 | "new line" | a segment boundary | removed |
+| "and then" | a boundary only when the next words start an item | "wait and then decide" stays whole |
+| "three thirty", "five o'clock" after at/by/until… | `3:30`, `5` | hours 1–12 only |
+| "on the first of" | "on the 1st of" | only before "of", "every"/"each", or at the end |
+| "p.m." / "a.m." | `pm` / `am` | otherwise the router won't split after "p.m." |
 
 Dates and times stay with chrono and the existing `normaliseSpokenTimes`. Any gap the test
 set exposes ("three thirty", "a.m." variants) gets fixed in `normaliseSpokenTimes`, not
@@ -96,8 +100,9 @@ duplicated here.
 
 - Quick Capture's live preview already shows routed items. The split items appear as the user
   speaks, and the user confirms, edits or drops them before saving. Nothing saves on its own.
-- The listening state is announced through the existing button label, plus an `aria-live`
-  "Listening" / "Stopped" message. A light haptic marks start, nothing marks stop.
+- The listening state is shown by the existing button label and `aria-pressed`. No spoken
+  `aria-live` announcement is added: a screen reader saying "Listening" would be heard by the
+  mic and transcribed. A light haptic marks start, nothing marks stop.
 - Mind Sweep keeps saving on Enter. Speaking several items then pressing Enter saves them as
   separate items (via `captureText` → `routeCapture`).
 
@@ -118,12 +123,15 @@ reading tasks back aloud, editing by voice ("delete the last one"), storing audi
 
 ## Test plan
 
-- **Spoken test set**: `src/lib/nlp/__fixtures__/spoken-captures.ts`. About 100 realistic
-  transcripts as recognisers produce them (lowercase, no punctuation, already split into
-  segments), each with the expected items: title, type, deadline, repeat, priority,
-  estimate, category. A Vitest table test runs `joinSpokenSegments` → `routeCapture` and
-  reports the **split accuracy** and **field accuracy**. The target before merge is at least
-  90% of captures fully correct. The miss rate is the evidence for or against the AI fallback.
+- **Spoken regression set**: `src/lib/__tests__/fixtures/spoken-captures.ts`. Recogniser-style
+  captures (lowercase, no punctuation, one string per pause), each with the expected items,
+  run end to end through `joinSpokenSegments` → `routeCapture` with the clock pinned. Every
+  case must pass. This guards known phrasings. It does not estimate accuracy, because a
+  deterministic parser always passes cases written for it.
+- **Real-speech accuracy**: 30 real brain dumps spoken on desktop Chrome, Android Chrome and
+  iPhone Safari, at least 10 with several items. The target is at least 27 / 30 fully correct.
+  Every miss becomes a regression case. A rate below 90% after one round of fixes is the
+  evidence for the AI-fallback spec.
 - **Unit tests**: `spoken.test.ts` covers every row of the section 2 table plus negatives
   ("urgent" stays text, "#unknown" stays text, "half" in "half the budget" untouched).
 - **Hook tests** use a fake `SpeechRecognition`:
