@@ -183,16 +183,65 @@ describe("useSpeechCapture", () => {
     expect(hook.current.supported).toBe(true);
   });
 
-  it("maps a blocked microphone to 'denied'", () => {
+  it("maps a blocked microphone to 'denied'", async () => {
     install();
     const onError = vi.fn();
     const { result: hook } = renderHook(() =>
       useSpeechCapture({ onSegments: vi.fn(), onError }),
     );
     act(() => hook.current.start());
+    // No Permissions API in jsdom: assume the block is real.
     act(() => instances[0].onerror?.({ error: "not-allowed" }));
-    expect(onError).toHaveBeenCalledWith("denied");
+    await waitFor(() => expect(onError).toHaveBeenCalledWith("denied"));
   });
+
+  it("is unsupported on a page that isn't secure (http on a LAN address)", () => {
+    install();
+    vi.stubGlobal("isSecureContext", false);
+    const { result: hook } = renderHook(() =>
+      useSpeechCapture({ onSegments: vi.fn() }),
+    );
+    expect(hook.current.supported).toBe(false);
+  });
+
+  it("is unsupported in Edge on Android, which has no speech service", () => {
+    install();
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      userAgent:
+        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36 EdgA/140.0",
+    });
+    const { result: hook } = renderHook(() =>
+      useSpeechCapture({ onSegments: vi.fn() }),
+    );
+    expect(hook.current.supported).toBe(false);
+  });
+
+  it.each([
+    ["denied", "denied", true],
+    ["prompt", "unavailable", false],
+    ["granted", "unavailable", false],
+  ] as const)(
+    "on 'not-allowed' with the mic permission '%s', reports '%s'",
+    async (state, expected, stillSupported) => {
+      install();
+      vi.stubGlobal("navigator", {
+        ...navigator,
+        permissions: { query: vi.fn().mockResolvedValue({ state }) },
+      });
+      const onError = vi.fn();
+      const { result: hook } = renderHook(() =>
+        useSpeechCapture({ onSegments: vi.fn(), onError }),
+      );
+      act(() => hook.current.start());
+      await act(async () => {
+        instances[0].onerror?.({ error: "not-allowed" });
+        instances[0].onend?.();
+      });
+      await waitFor(() => expect(onError).toHaveBeenCalledWith(expected));
+      expect(hook.current.supported).toBe(stillSupported);
+    },
+  );
 
   it("is unsupported in Brave, which ships the API with no speech service", () => {
     install();
