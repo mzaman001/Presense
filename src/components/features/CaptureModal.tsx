@@ -44,6 +44,8 @@ import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSpeechCapture } from "@/hooks/useSpeechCapture";
+import { joinSpokenSegments } from "@/lib/nlp/spoken";
+import { DEFAULT_DO_CATEGORIES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
@@ -358,10 +360,14 @@ export function CaptureModal() {
     if (!value.trim()) setPreview(null);
   };
 
-  // Voice: spoken words are appended to whatever was already typed.
+  // Voice: spoken words are appended to whatever was already typed, with
+  // pauses turned into the sentence breaks the router splits on.
+  const categories = userSettings?.do_categories ?? DEFAULT_DO_CATEGORIES;
   const speechBaseRef = useRef("");
   const speech = useSpeechCapture({
-    onTranscript: (spoken) => {
+    phrases: categories,
+    onSegments: (segments) => {
+      const spoken = joinSpokenSegments(segments, categories);
       const base = speechBaseRef.current;
       handleInputChange(base ? `${base} ${spoken}` : spoken);
     },
@@ -369,6 +375,11 @@ export function CaptureModal() {
       if (error === "denied") {
         toast.error("Microphone is blocked", {
           description: "Allow it in your browser's site settings to speak.",
+        });
+      } else if (error === "unavailable") {
+        toast.error("Voice isn't available here", {
+          description:
+            "This browser can't turn speech into text right now. Type it instead.",
         });
       } else if (error === "failed") {
         toast.error("Couldn't start voice capture. Type it instead.");

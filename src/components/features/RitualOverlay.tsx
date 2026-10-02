@@ -41,7 +41,7 @@ import { flushOutbox } from "@/lib/capture-outbox";
 import { endFirstRun, isFirstRun } from "@/lib/first-run";
 import {
   MindSweepPrompt,
-  eveningSweepPrompts,
+  eveningSweepHints,
 } from "@/components/features/MindSweep";
 
 // ─── WorkloadBar ──────────────────────────────────────────────────────────────
@@ -993,8 +993,8 @@ export function RitualOverlay({
     0,
   );
   const isMorning = activeRitual === "morning";
-  // Local noon of today, so the prompts rotate on the viewer's own date.
-  const eveningPrompts = eveningSweepPrompts(new Date(`${todayString}T12:00`));
+  // Local noon of today, so the hints rotate on the viewer's own date.
+  const eveningHints = eveningSweepHints(new Date(`${todayString}T12:00`));
 
   if (!isCurrentlyOpen || !activeRitual) return null;
 
@@ -1488,13 +1488,16 @@ export function RitualOverlay({
                 )}
 
                 <RitualSection title="Anything else on your mind?">
-                  <div className="space-y-4 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
-                    {eveningPrompts.map((prompt) => (
-                      <MindSweepPrompt key={prompt} prompt={prompt} />
-                    ))}
+                  <div className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
+                    <MindSweepPrompt
+                      prompt="Anything else on your mind?"
+                      hideLabel
+                      hint={`Maybe ${eveningHints.join(", ")}…`}
+                      placeholder="Type it and press Enter after each"
+                    />
                     <p className="text-[length:var(--text-meta)] text-[var(--text-3)]">
-                      Skip any that don&apos;t apply. Whatever you add is sorted
-                      and waiting for tomorrow&apos;s plan.
+                      Nothing here is required. Whatever you add is sorted and
+                      waiting for tomorrow&apos;s plan.
                     </p>
                   </div>
                 </RitualSection>

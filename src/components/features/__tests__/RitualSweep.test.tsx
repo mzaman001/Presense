@@ -19,9 +19,8 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { RitualOverlay } from "@/components/features/RitualOverlay";
 import {
-  EVENING_SWEEP_CATCH_ALL,
-  EVENING_SWEEP_POOL,
-  eveningSweepPrompts,
+  EVENING_SWEEP_HINTS,
+  eveningSweepHints,
 } from "@/components/features/MindSweep";
 import { readOutbox } from "@/lib/capture-outbox";
 import { parseTaskText } from "@/lib/nlp/parse-task-text";
@@ -132,18 +131,19 @@ describe("Evening", () => {
     return d.toISOString();
   };
 
-  it("asks three short, skippable questions ending with the catch-all", async () => {
+  it("asks one question, with the day's memory joggers as a hint", async () => {
     render(<RitualOverlay isOpen={true} type="evening" />);
-    const section = await screen.findByRole("heading", {
+    await screen.findByRole("heading", { name: "Anything else on your mind?" });
+    // One input, not a box per category.
+    const input = screen.getByRole("textbox", {
       name: "Anything else on your mind?",
     });
-    const prompts = eveningSweepPrompts();
-    for (const prompt of prompts) {
-      expect(screen.getByRole("textbox", { name: prompt })).toBeInTheDocument();
+    expect(
+      screen.queryAllByRole("textbox", { name: /^Anything/ }),
+    ).toHaveLength(1);
+    for (const hint of eveningSweepHints()) {
+      expect(input).toHaveAccessibleDescription(expect.stringContaining(hint));
     }
-    expect(prompts).toHaveLength(3);
-    expect(prompts[2]).toBe(EVENING_SWEEP_CATCH_ALL);
-    expect(section).toBeInTheDocument();
   });
 
   it("offers Tomorrow, Pick a day or Let it go for what's still open", async () => {
@@ -293,16 +293,16 @@ describe("Morning: a realistic day", () => {
   });
 });
 
-describe("eveningSweepPrompts", () => {
-  it("rotates two questions a day from the pool, never repeating within a day", () => {
+describe("eveningSweepHints", () => {
+  it("rotates three hints a day from the pool, never repeating within a day", () => {
     const seen = new Set<string>();
-    for (let day = 0; day < EVENING_SWEEP_POOL.length; day++) {
-      const [a, b] = eveningSweepPrompts(new Date(2026, 0, 1 + day));
-      expect(a).not.toBe(b);
-      seen.add(a).add(b);
+    for (let day = 0; day < EVENING_SWEEP_HINTS.length; day++) {
+      const hints = eveningSweepHints(new Date(2026, 0, 1 + day));
+      expect(new Set(hints).size).toBe(3);
+      for (const h of hints) seen.add(h);
     }
-    // Over a week every question in the pool comes up.
-    expect(seen.size).toBe(EVENING_SWEEP_POOL.length);
+    // Over a week every hint in the pool comes up.
+    expect(seen.size).toBe(EVENING_SWEEP_HINTS.length);
   });
 });
 
