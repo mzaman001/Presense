@@ -53,6 +53,15 @@ import { withPreload } from "@/lib/preloadable";
 import { TaskAddPanel } from "@/components/features/TaskAddPanelLazy";
 import { fetchActiveTasks } from "@/lib/do-tasks";
 
+// Only after a reminder is tapped, so it stays out of Do's initial JS.
+const ReminderSheet = dynamic(
+  () =>
+    import("@/components/features/ReminderSheet").then((m) => ({
+      default: m.ReminderSheet,
+    })),
+  { ssr: false },
+);
+
 // Heavy, closed-by-default surfaces loaded on demand (same pattern as
 // DynamicModals) so /do's initial bundle and hydration exclude them. The
 // task panel's lazy wrapper is shared with Home (TaskAddPanelLazy).
@@ -213,6 +222,17 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
     initialData: serverTasks,
   });
   const loading = !hydrated || isLoading;
+
+  // A tapped task reminder opens /do?remind=<id> (push_reminders).
+  const [remindId, setRemindId] = useQueryState("remind", parseAsString);
+  const remindedTask =
+    remindId && !loading
+      ? (tasks.find((t) => t.id === remindId) ?? null)
+      : null;
+  useEffect(() => {
+    // Finished or deleted since the reminder went out: nothing to ask.
+    if (remindId && !loading && !remindedTask) void setRemindId(null);
+  }, [remindId, loading, remindedTask, setRemindId]);
 
   useEffect(() => {
     const currentIds = new Set(tasks.map((t) => t.id));
@@ -755,6 +775,13 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
         taskToEdit={taskToEdit}
         initialDeadline={initialDeadline}
       />
+
+      {remindedTask && (
+        <ReminderSheet
+          task={remindedTask}
+          onClose={() => void setRemindId(null)}
+        />
+      )}
     </div>
   );
 }

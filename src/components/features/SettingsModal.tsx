@@ -46,6 +46,7 @@ import {
   requestReminderPermission,
   type ReminderAvailability,
 } from "@/lib/reminders";
+import { disablePush, enablePush } from "@/lib/push";
 import { z } from "zod";
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -296,11 +297,11 @@ function Switch({
   );
 }
 
-const PLANNING_REMINDER_COPY: Record<ReminderAvailability, string> = {
+const REMINDER_COPY: Record<ReminderAvailability, string> = {
   default:
-    "A notification at your planning and shutdown times while Presense is open in the background.",
+    "Your planning and shutdown times, and any task you ask to be reminded about. Arrives even when Presense is closed.",
   granted:
-    "A notification at your planning and shutdown times while Presense is open in the background.",
+    "Your planning and shutdown times, and any task you ask to be reminded about. Arrives even when Presense is closed.",
   denied:
     "Notifications are blocked for Presense. Allow them in your browser's site settings, then switch this on.",
   "needs-home-screen":
@@ -310,47 +311,67 @@ const PLANNING_REMINDER_COPY: Record<ReminderAvailability, string> = {
 };
 
 /**
- * The switch reads as on only when the reminder can actually arrive, and
+ * The switch reads as on only when reminders can actually arrive here, and
  * turning it on is what asks the browser: the permission prompt has to come
- * from a tap, never from a timer.
+ * from a tap, never from a timer. On, this device subscribes to Web Push;
+ * off, it unsubscribes (other devices follow on their next open).
  */
-function PlanningRemindersRow({
+function RemindersRow({
   enabled,
   onChange,
+  supabase,
 }: {
   enabled: boolean | undefined;
   onChange: (next: boolean) => void;
+  supabase: ReturnType<typeof createClient>;
 }) {
   // The modal only ever opens on the client, so this reads the real browser.
   const [availability, setAvailability] = useState<ReminderAvailability>(
     getReminderAvailability,
   );
+  const [setupFailed, setSetupFailed] = useState(false);
 
   const canAsk = availability === "default" || availability === "granted";
+
+  const subscribe = async () => {
+    const result = await enablePush(supabase);
+    setSetupFailed(result !== "subscribed");
+  };
 
   const handleChange = (next: boolean) => {
     if (!next) {
       onChange(false);
+      setSetupFailed(false);
+      void disablePush(supabase);
       return;
     }
     if (availability === "granted") {
       onChange(true);
+      void subscribe();
       return;
     }
+    // Called synchronously inside the tap, before any await.
     void requestReminderPermission().then((answer) => {
       setAvailability(answer);
-      if (answer === "granted") onChange(true);
+      if (answer === "granted") {
+        onChange(true);
+        void subscribe();
+      }
     });
   };
 
   return (
     <SettingRow
-      label="Planning reminders"
-      description={PLANNING_REMINDER_COPY[availability]}
+      label="Reminders"
+      description={
+        setupFailed
+          ? "Couldn't set up reminders on this device. Switch it off and on to try again."
+          : REMINDER_COPY[availability]
+      }
     >
       {canAsk && (
         <Switch
-          label="Planning reminders"
+          label="Reminders"
           checked={enabled !== false && availability === "granted"}
           onChange={handleChange}
         />
@@ -961,6 +982,9 @@ function SettingsModalContent({
     localStorage.removeItem("presense_theme");
     localStorage.removeItem("presense_color_mode");
     localStorage.removeItem("presense_reduce_motion");
+    // While still signed in (RLS), so this device stops getting this
+    // account's reminders.
+    await disablePush(supabase);
     await supabase.auth.signOut();
     onClose(false);
     router.push("/login");
@@ -1065,6 +1089,7 @@ function SettingsModalContent({
       localStorage.removeItem("presense_theme");
       localStorage.removeItem("presense_color_mode");
       localStorage.removeItem("presense_reduce_motion");
+      await disablePush(supabase);
       await supabase.auth.signOut();
       toast.success("Account deleted");
       onClose(false);
@@ -1449,7 +1474,8 @@ function SettingsModalContent({
 
                       {activeTab === "notifications" && (
                         <SettingsGroup>
-                          <PlanningRemindersRow
+                          <RemindersRow
+                            supabase={supabase}
                             enabled={settings.notifications_enabled}
                             onChange={(v) =>
                               updateSetting("notifications_enabled", v)

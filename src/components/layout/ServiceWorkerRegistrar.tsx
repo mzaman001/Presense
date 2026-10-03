@@ -15,6 +15,20 @@ export function ServiceWorkerRegistrar() {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
 
+    // A tapped reminder, when the worker couldn't navigate this window
+    // itself (see notificationclick in sw.ts). Same-origin only.
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; url?: string } | null;
+      if (data?.type !== "presense:navigate" || typeof data.url !== "string") {
+        return;
+      }
+      const target = new URL(data.url, window.location.origin);
+      if (target.origin === window.location.origin) {
+        window.location.assign(target.href);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+
     const register = () => {
       navigator.serviceWorker
         .register("/serwist/sw.js", { scope: "/" })
@@ -22,12 +36,12 @@ export function ServiceWorkerRegistrar() {
           // No worker means no offline page or reminder taps; the app works.
         });
     };
-    if (document.readyState === "complete") {
-      register();
-      return;
-    }
-    window.addEventListener("load", register, { once: true });
-    return () => window.removeEventListener("load", register);
+    if (document.readyState === "complete") register();
+    else window.addEventListener("load", register, { once: true });
+    return () => {
+      window.removeEventListener("load", register);
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+    };
   }, []);
 
   return null;

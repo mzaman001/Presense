@@ -69,8 +69,35 @@ const serwist = new Serwist({
 
 serwist.addEventListeners();
 
-// Tapping a reminder brings Presense forward: an open window if there is
-// one (the ritual is already waiting in it), otherwise a fresh one.
+// A reminder from supabase/functions/push_reminders. The payload is Safari's
+// declarative format ({ web_push: 8030, notification: {...} }); other
+// browsers deliver it here and this shows it. Every push must show a
+// notification: browsers revoke push for sites that stay silent.
+self.addEventListener("push", (event) => {
+  let n: {
+    title?: string;
+    body?: string;
+    tag?: string;
+    navigate?: string;
+  } = {};
+  try {
+    n = event.data?.json()?.notification ?? {};
+  } catch {
+    // Unreadable payload: still show something rather than nothing.
+  }
+  event.waitUntil(
+    self.registration.showNotification(n.title || "Presense", {
+      body: n.body,
+      tag: n.tag,
+      icon: "/icon-192.png",
+      badge: "/icon-96.png",
+      data: { url: n.navigate || "/" },
+    }),
+  );
+});
+
+// Tapping a reminder opens what it's about (a task on Do, or the ritual on
+// Home) in an open Presense window if there is one, otherwise a new one.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const path =
@@ -92,7 +119,16 @@ self.addEventListener("notificationclick", (event) => {
         (w) => new URL(w.url).origin === self.location.origin,
       );
       if (open) {
-        await open.focus();
+        const focused = await open.focus();
+        // Same app, so take it to the reminder's page. navigate() only works
+        // on a window this worker controls; otherwise the page does it.
+        if (focused.url !== url) {
+          await focused
+            .navigate(url)
+            .catch(() =>
+              focused.postMessage({ type: "presense:navigate", url }),
+            );
+        }
         return;
       }
       await self.clients.openWindow(url);

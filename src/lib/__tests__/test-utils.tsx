@@ -62,6 +62,8 @@ export function makeTask(
     notification_sent_overdue: null,
     priority: null,
     recurrence: null,
+    remind_at: null,
+    reminder_sent_at: null,
     snoozed_until: null,
     start_date: null,
     status: "active",
