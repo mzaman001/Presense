@@ -76,11 +76,6 @@ export type Database = {
           id: string
           ifthen_trigger: string | null
           notes: string | null
-          notification_sent_1h: boolean | null
-          notification_sent_24h: boolean | null
-          notification_sent_6h: boolean | null
-          notification_sent_72h: boolean | null
-          notification_sent_overdue: boolean | null
           priority: number | null
           recurrence: string | null
           snoozed_until: string | null
@@ -106,11 +101,6 @@ export type Database = {
           id?: string
           ifthen_trigger?: string | null
           notes?: string | null
-          notification_sent_1h?: boolean | null
-          notification_sent_24h?: boolean | null
-          notification_sent_6h?: boolean | null
-          notification_sent_72h?: boolean | null
-          notification_sent_overdue?: boolean | null
           priority?: number | null
           recurrence?: string | null
           snoozed_until?: string | null
@@ -136,11 +126,6 @@ export type Database = {
           id?: string
           ifthen_trigger?: string | null
           notes?: string | null
-          notification_sent_1h?: boolean | null
-          notification_sent_24h?: boolean | null
-          notification_sent_6h?: boolean | null
-          notification_sent_72h?: boolean | null
-          notification_sent_overdue?: boolean | null
           priority?: number | null
           recurrence?: string | null
           snoozed_until?: string | null
@@ -332,7 +317,6 @@ export type Database = {
           daily_briefing: boolean | null
           daily_capacity_minutes: number | null
           default_view: string | null
-          digest_enabled: boolean | null
           display_name: string | null
           do_categories: string[] | null
           do_category_colors: Json | null
@@ -341,14 +325,6 @@ export type Database = {
           location_detection: boolean | null
           long_break_duration: number | null
           nlp_date_parsing: boolean | null
-          notif_1h: boolean | null
-          notif_24h: boolean | null
-          notif_6h: boolean | null
-          notif_72h: boolean | null
-          notif_briefing: boolean | null
-          notif_digest: boolean | null
-          notif_overdue: boolean | null
-          notif_stale_threads: boolean | null
           notifications_enabled: boolean | null
           nudge_time: string | null
           ollama_enabled: boolean | null
@@ -359,8 +335,6 @@ export type Database = {
           pomodoro_sound: boolean | null
           pomodoros_completed: number | null
           primary_struggles: string[] | null
-          quiet_end: string | null
-          quiet_start: string | null
           reduce_motion: boolean | null
           routing_confidence: string | null
           short_break_duration: number | null
@@ -381,7 +355,6 @@ export type Database = {
           daily_briefing?: boolean | null
           daily_capacity_minutes?: number | null
           default_view?: string | null
-          digest_enabled?: boolean | null
           display_name?: string | null
           do_categories?: string[] | null
           do_category_colors?: Json | null
@@ -390,14 +363,6 @@ export type Database = {
           location_detection?: boolean | null
           long_break_duration?: number | null
           nlp_date_parsing?: boolean | null
-          notif_1h?: boolean | null
-          notif_24h?: boolean | null
-          notif_6h?: boolean | null
-          notif_72h?: boolean | null
-          notif_briefing?: boolean | null
-          notif_digest?: boolean | null
-          notif_overdue?: boolean | null
-          notif_stale_threads?: boolean | null
           notifications_enabled?: boolean | null
           nudge_time?: string | null
           ollama_enabled?: boolean | null
@@ -408,8 +373,6 @@ export type Database = {
           pomodoro_sound?: boolean | null
           pomodoros_completed?: number | null
           primary_struggles?: string[] | null
-          quiet_end?: string | null
-          quiet_start?: string | null
           reduce_motion?: boolean | null
           routing_confidence?: string | null
           short_break_duration?: number | null
@@ -430,7 +393,6 @@ export type Database = {
           daily_briefing?: boolean | null
           daily_capacity_minutes?: number | null
           default_view?: string | null
-          digest_enabled?: boolean | null
           display_name?: string | null
           do_categories?: string[] | null
           do_category_colors?: Json | null
@@ -439,14 +401,6 @@ export type Database = {
           location_detection?: boolean | null
           long_break_duration?: number | null
           nlp_date_parsing?: boolean | null
-          notif_1h?: boolean | null
-          notif_24h?: boolean | null
-          notif_6h?: boolean | null
-          notif_72h?: boolean | null
-          notif_briefing?: boolean | null
-          notif_digest?: boolean | null
-          notif_overdue?: boolean | null
-          notif_stale_threads?: boolean | null
           notifications_enabled?: boolean | null
           nudge_time?: string | null
           ollama_enabled?: boolean | null
@@ -457,8 +411,6 @@ export type Database = {
           pomodoro_sound?: boolean | null
           pomodoros_completed?: number | null
           primary_struggles?: string[] | null
-          quiet_end?: string | null
-          quiet_start?: string | null
           reduce_motion?: boolean | null
           routing_confidence?: string | null
           short_break_duration?: number | null

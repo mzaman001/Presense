@@ -1,18 +1,8 @@
 import type { NextConfig } from "next";
-import { spawnSync } from "node:child_process";
-import withSerwistInit from "@serwist/next";
+// The service worker is built and served by src/app/serwist/[path]/route.ts;
+// withSerwist only keeps esbuild out of the server bundle.
+import { withSerwist } from "@serwist/turbopack";
 import { withSentryConfig } from "@sentry/nextjs";
-
-const revision =
-  spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" }).stdout ??
-  crypto.randomUUID();
-
-const withSerwist = withSerwistInit({
-  additionalPrecacheEntries: [{ url: "/~offline", revision }],
-  swSrc: "src/app/sw.ts",
-  swDest: "public/sw.js",
-  disable: process.env.NODE_ENV !== "production",
-});
 
 const sentryRelease =
   process.env.SENTRY_RELEASE ||

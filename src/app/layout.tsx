@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 
 import "./globals.css";
 import { headers } from "next/headers";
+import { SerwistProvider } from "@serwist/turbopack/react";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -155,6 +156,15 @@ export default async function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-300">
         <WebVitalsReporter />
+        {/* Registers /serwist/sw.js. Off in dev so HMR isn't served stale.
+            cacheOnNavigation would copy signed-in pages into Cache Storage,
+            and reloadOnOnline would drop half-typed captures. */}
+        <SerwistProvider
+          swUrl="/serwist/sw.js"
+          disable={process.env.NODE_ENV !== "production"}
+          cacheOnNavigation={false}
+          reloadOnOnline={false}
+        />
         {children}
         <ToastProvider />
       </body>

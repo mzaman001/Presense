@@ -554,14 +554,6 @@ export function TaskAddPanel({
         // lifecycle module — hand-write never happens.
         const insertPayload = taskToEdit ? payload : newTaskInsert(payload);
 
-        if (taskToEdit && taskToEdit.deadline !== payload.deadline) {
-          payload.notification_sent_72h = false;
-          payload.notification_sent_24h = false;
-          payload.notification_sent_6h = false;
-          payload.notification_sent_1h = false;
-          payload.notification_sent_overdue = false;
-        }
-
         // Show the result straight away and save in the background. The
         // list used to wait for the insert and then a full refetch (two
         // round trips to the database) before the task appeared.

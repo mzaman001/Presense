@@ -421,7 +421,6 @@ describe("Phase 3 - Integration Test Suite", () => {
           user_id: "user-123",
           routing_confidence: "Medium",
           nlp_date_parsing: true,
-          notif_briefing: true,
         }),
       );
 
