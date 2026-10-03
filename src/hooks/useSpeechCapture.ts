@@ -13,11 +13,12 @@ import {
  * Safari). Speaking was about 3x faster than typing on a phone in Ruan et
  * al.; voice sits next to the keyboard, never instead of it.
  *
- * Firefox has no recognition API, Brave ships one with no service behind
- * it, and Safari's breaks inside an installed iOS home-screen app, so
- * `supported` is false there and callers hide the button (the iOS
- * keyboard's own dictation key still works). Chrome
- * recognises on the device when the language pack is already installed;
+ * Firefox has no recognition API, Brave and Edge on Android ship one with
+ * no service behind it, Safari's breaks inside an installed iOS home-screen
+ * app, and the microphone needs https or localhost. `supported` is false
+ * in all of those and callers hide the button (the iOS keyboard's own
+ * dictation key still works). Chrome recognises on the device when the
+ * language pack is already installed;
  * otherwise it sends audio to Google, and Safari to Apple. Nothing is
  * recorded or stored by Presense.
  */
@@ -77,11 +78,29 @@ function isIosStandalone(): boolean {
 }
 
 /**
- * Brave ships Chrome's recognition API but switches off the Google service
- * behind it: start() fails at once with no microphone prompt.
+ * Browsers that expose the recognition API with no speech service behind
+ * it, so start() fails at once with no microphone prompt: Brave switches
+ * Google's off, and Edge on Android ships none.
  */
-function isBrave(): boolean {
-  return (navigator as Navigator & { brave?: unknown }).brave !== undefined;
+function hasNoSpeechService(): boolean {
+  const nav = navigator as Navigator & { brave?: unknown };
+  return nav.brave !== undefined || /\bEdgA\//.test(nav.userAgent);
+}
+
+/**
+ * "not-allowed" is also what a browser with no speech service says, so it
+ * only means a blocked microphone when the permission really is blocked.
+ * Without the Permissions API, assume it is.
+ */
+async function micBlocked(): Promise<boolean> {
+  try {
+    const status = await navigator.permissions?.query({
+      name: "microphone" as PermissionName,
+    });
+    return status ? status.state === "denied" : true;
+  } catch {
+    return true;
+  }
 }
 
 const recognitionLang = () => navigator.language || "en-US";
@@ -152,7 +171,12 @@ export function useSpeechCapture({
 }) {
   const usable = useSyncExternalStore(
     noopSubscribe,
-    () => recognitionCtor() !== undefined && !isIosStandalone() && !isBrave(),
+    () =>
+      recognitionCtor() !== undefined &&
+      // The microphone only works on https or localhost.
+      window.isSecureContext !== false &&
+      !isIosStandalone() &&
+      !hasNoSpeechService(),
     () => false,
   );
   const [noService, setNoService] = useState(false);
@@ -227,15 +251,20 @@ export function useSpeechCapture({
           retryWithoutPhrases = true;
           return;
         }
+        if (e.error === "not-allowed") {
+          void micBlocked().then((blocked) => {
+            if (!blocked) setNoService(true);
+            callbacks.current.onError?.(blocked ? "denied" : "unavailable");
+          });
+          return;
+        }
         if (NO_SERVICE.has(e.error)) setNoService(true);
         const error: SpeechError =
-          e.error === "not-allowed"
-            ? "denied"
-            : NO_SERVICE.has(e.error) || e.error === "network"
-              ? "unavailable"
-              : e.error === "no-speech"
-                ? "no-speech"
-                : "failed";
+          NO_SERVICE.has(e.error) || e.error === "network"
+            ? "unavailable"
+            : e.error === "no-speech"
+              ? "no-speech"
+              : "failed";
         // "aborted" is our own stop on unmount; not worth reporting.
         if (e.error !== "aborted") callbacks.current.onError?.(error);
       };
