@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 
 import "./globals.css";
 import { headers } from "next/headers";
+import { ServiceWorkerRegistrar } from "@/components/layout/ServiceWorkerRegistrar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -155,6 +156,7 @@ export default async function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-[var(--color-background)] text-[var(--color-text-2)] transition-colors duration-300">
         <WebVitalsReporter />
+        <ServiceWorkerRegistrar />
         {children}
         <ToastProvider />
       </body>

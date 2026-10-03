@@ -21,9 +21,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": [
-      "@serwist/next/typings"
-    ]
+    "types": []
   },
   "include": [
     "next-env.d.ts",
@@ -33,5 +31,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "supabase", "tests", "playwright.config.ts", "public/sw.js"]
+  "exclude": [
+    "node_modules",
+    "supabase",
+    "tests",
+    "playwright.config.ts",
+    "public/sw.js"
+  ]
 }

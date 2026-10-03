@@ -54,6 +54,9 @@ function buildCspHeader(nonce: string): string {
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
       cspSentryIngestOrigin(env.NEXT_PUBLIC_SENTRY_DSN),
+    // With 'strict-dynamic', script-src ignores 'self', and service workers
+    // fall back to it, so the worker needs its own allowance.
+    "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -151,8 +154,16 @@ export async function proxy(request: NextRequest) {
     const isPublicApi = pathname === "/api/telemetry";
     // Linked from /login, so readable before signing in (and while signed in).
     const isLegalPage = pathname === "/privacy" || pathname === "/terms";
+    // The service worker precaches it while installing, whoever is signed in.
+    const isOfflinePage = pathname === "/~offline";
 
-    if (!user && !isAuthRoute && !isPublicApi && !isLegalPage) {
+    if (
+      !user &&
+      !isAuthRoute &&
+      !isPublicApi &&
+      !isLegalPage &&
+      !isOfflinePage
+    ) {
       /* AUDIT-02 (Aug 19, 2026): programmatic consumers of /api/* routes
          (capture bot, future mobile) received an HTML 307 to /login, which
          most HTTP clients handle uselessly. API routes now get a JSON 401
@@ -212,6 +223,8 @@ export const config = {
     // scripts/generate-icons.mjs), so the image-extension exclusion keeps
     // an unauthenticated request for them (e.g. the favicon on /login)
     // from being redirected to /login.
-    "/((?!_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // The service worker script (/serwist/sw.js) is excluded too: browsers
+    // refuse a worker script that redirects, so a signed-out visitor got none.
+    "/((?!_next/static|_next/image|serwist/|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -6,13 +6,7 @@
  * and is silent before that. Desktop browsers have no haptics at all, so
  * callers should always pair a haptic with a visual cue.
  */
-function isIOS() {
-  return (
-    /iP(hone|ad|od)/.test(navigator.userAgent) ||
-    // iPadOS reports itself as a Mac.
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-}
+import { isIOS } from "@/lib/platform";
 
 /**
  * iOS 18+ Safari plays the system haptic when a native switch

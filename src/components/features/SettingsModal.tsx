@@ -41,6 +41,11 @@ import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { settingsSchema } from "@/lib/schemas";
+import {
+  getReminderAvailability,
+  requestReminderPermission,
+  type ReminderAvailability,
+} from "@/lib/reminders";
 import { z } from "zod";
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -67,8 +72,6 @@ const AUTOSAVE_FIELDS = [
   "color_mode",
   "reduce_motion",
   "notifications_enabled",
-  "notif_overdue",
-  "notif_stale_threads",
   "daily_briefing",
   "pomodoro_sound",
   "pomodoro_duration",
@@ -290,6 +293,69 @@ function Switch({
     >
       <span className="toggle-thumb" />
     </button>
+  );
+}
+
+const PLANNING_REMINDER_COPY: Record<ReminderAvailability, string> = {
+  default:
+    "A notification at your planning and shutdown times while Presense is open in the background.",
+  granted:
+    "A notification at your planning and shutdown times while Presense is open in the background.",
+  denied:
+    "Notifications are blocked for Presense. Allow them in your browser's site settings, then switch this on.",
+  "needs-home-screen":
+    "On iPhone and iPad, add Presense to your Home Screen first: tap Share, then Add to Home Screen, and open it from there.",
+  unsupported:
+    "This browser can't show notifications. The planning ritual still opens when you come back to Presense.",
+};
+
+/**
+ * The switch reads as on only when the reminder can actually arrive, and
+ * turning it on is what asks the browser: the permission prompt has to come
+ * from a tap, never from a timer.
+ */
+function PlanningRemindersRow({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean | undefined;
+  onChange: (next: boolean) => void;
+}) {
+  // The modal only ever opens on the client, so this reads the real browser.
+  const [availability, setAvailability] = useState<ReminderAvailability>(
+    getReminderAvailability,
+  );
+
+  const canAsk = availability === "default" || availability === "granted";
+
+  const handleChange = (next: boolean) => {
+    if (!next) {
+      onChange(false);
+      return;
+    }
+    if (availability === "granted") {
+      onChange(true);
+      return;
+    }
+    void requestReminderPermission().then((answer) => {
+      setAvailability(answer);
+      if (answer === "granted") onChange(true);
+    });
+  };
+
+  return (
+    <SettingRow
+      label="Planning reminders"
+      description={PLANNING_REMINDER_COPY[availability]}
+    >
+      {canAsk && (
+        <Switch
+          label="Planning reminders"
+          checked={enabled !== false && availability === "granted"}
+          onChange={handleChange}
+        />
+      )}
+    </SettingRow>
   );
 }
 
@@ -647,11 +713,6 @@ function SettingsModalContent({
   });
   const dailyBriefingValue = useWatch({ control, name: "daily_briefing" });
   const pomodoroSoundValue = useWatch({ control, name: "pomodoro_sound" });
-  const notifOverdueValue = useWatch({ control, name: "notif_overdue" });
-  const notifStaleThreadsValue = useWatch({
-    control,
-    name: "notif_stale_threads",
-  });
   const pomodoroDurationValue = useWatch({
     control,
     name: "pomodoro_duration",
@@ -701,8 +762,6 @@ function SettingsModalContent({
       notifications_enabled: notificationsEnabledValue,
       daily_briefing: dailyBriefingValue,
       pomodoro_sound: pomodoroSoundValue,
-      notif_overdue: notifOverdueValue,
-      notif_stale_threads: notifStaleThreadsValue,
       pomodoro_duration: pomodoroDurationValue,
       short_break_duration: shortBreakDurationValue,
       long_break_duration: longBreakDurationValue,
@@ -724,8 +783,6 @@ function SettingsModalContent({
       notificationsEnabledValue,
       dailyBriefingValue,
       pomodoroSoundValue,
-      notifOverdueValue,
-      notifStaleThreadsValue,
       pomodoroDurationValue,
       shortBreakDurationValue,
       longBreakDurationValue,
@@ -1392,18 +1449,12 @@ function SettingsModalContent({
 
                       {activeTab === "notifications" && (
                         <SettingsGroup>
-                          <SettingRow
-                            label="Planning reminders"
-                            description="A notification at your planning and shutdown times when Presense is in the background."
-                          >
-                            <Switch
-                              label="Planning reminders"
-                              checked={settings.notifications_enabled !== false}
-                              onChange={(v) =>
-                                updateSetting("notifications_enabled", v)
-                              }
-                            />
-                          </SettingRow>
+                          <PlanningRemindersRow
+                            enabled={settings.notifications_enabled}
+                            onChange={(v) =>
+                              updateSetting("notifications_enabled", v)
+                            }
+                          />
                           <SettingRow
                             label="Focus finish sound"
                             description="A soft chime when a focus session ends."

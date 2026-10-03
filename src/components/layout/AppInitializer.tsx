@@ -69,7 +69,7 @@ export function AppInitializer({
       });
 
       const notifyAndOpen = (type: "morning" | "evening", message: string) => {
-        notifyRitual(message, userSettings);
+        void notifyRitual(message, userSettings);
         setActiveRitual(type);
       };
 
