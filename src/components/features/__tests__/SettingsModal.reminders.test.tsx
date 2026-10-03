@@ -43,6 +43,12 @@ const mockSupabase = {
 
 vi.mock("@/lib/supabase", () => ({ createClient: () => mockSupabase }));
 
+const { enablePush, disablePush } = vi.hoisted(() => ({
+  enablePush: vi.fn(async () => "subscribed" as const),
+  disablePush: vi.fn(async () => "unsubscribed" as const),
+}));
+vi.mock("@/lib/push", () => ({ enablePush, disablePush }));
+
 function wrapper({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider user={{ id: "user-123", email: "test@example.com" }}>
@@ -56,7 +62,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 const IPHONE_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
 
-describe("SettingsModal — planning reminders", () => {
+describe("SettingsModal — reminders", () => {
   let permission: NotificationPermission;
   const requestPermission = vi.fn(async () => {
     permission = "granted";
@@ -89,7 +95,7 @@ describe("SettingsModal — planning reminders", () => {
   it("reads as off until permission is granted, and asks from the tap", async () => {
     render(<SettingsModal />, { wrapper });
     const toggle = await screen.findByRole("switch", {
-      name: "Planning reminders",
+      name: "Reminders",
     });
     // Unset counts as on, but nothing can arrive without permission.
     expect(toggle).toHaveAttribute("aria-checked", "false");
@@ -106,6 +112,8 @@ describe("SettingsModal — planning reminders", () => {
       { timeout: 3000 },
     );
     expect(toggle).toHaveAttribute("aria-checked", "true");
+    // Turning reminders on subscribes this device to Web Push.
+    await waitFor(() => expect(enablePush).toHaveBeenCalledTimes(1));
   });
 
   it("explains how to unblock instead of showing a switch that can't work", async () => {
@@ -115,7 +123,7 @@ describe("SettingsModal — planning reminders", () => {
       await screen.findByText(/Notifications are blocked for Presense/),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("switch", { name: "Planning reminders" }),
+      screen.queryByRole("switch", { name: "Reminders" }),
     ).not.toBeInTheDocument();
   });
 

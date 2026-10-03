@@ -82,6 +82,8 @@ import { Sheet } from "@/components/ui/Sheet";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import { moveItemToTrashPatch, newTaskInsert } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
+import { RemindMeChip } from "@/components/features/RemindMeChip";
+import { upcomingReminder } from "@/lib/reminder-times";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 /**
@@ -117,6 +119,7 @@ interface ManualSnapshot {
   customInterval: number;
   customFreq: string;
   startDate: string;
+  remindAt: string;
 }
 
 interface TaskAddPanelProps {
@@ -139,6 +142,8 @@ export function TaskAddPanel({
   const [parsedDeadline, setParsedDeadline] = useState<Date | null>(null);
   const [startDate, setStartDate] = useState("");
   const [parsedStartDate, setParsedStartDate] = useState<Date | null>(null);
+  // "Remind me": a datetime-local value, or "" for no reminder.
+  const [remindAt, setRemindAt] = useState("");
   const [isManualDate, setIsManualDate] = useState(false);
   const [timeEstimate, setTimeEstimate] = useState<number | null>(null);
   const [subtasks, setSubtasks] = useState<
@@ -218,6 +223,7 @@ export function TaskAddPanel({
     customInterval,
     customFreq,
     startDate,
+    remindAt,
   });
 
   const manualDirty = () =>
@@ -377,11 +383,19 @@ export function TaskAddPanel({
           setStartDate("");
         }
 
+        // Only a reminder still to come; a sent or past one is cleared on save.
+        const pendingReminder = upcomingReminder(taskToEdit);
+        const nextRemindAt = pendingReminder
+          ? format(pendingReminder, "yyyy-MM-dd'T'HH:mm")
+          : "";
+        setRemindAt(nextRemindAt);
+
         manualBaselineRef.current = {
           subtasks: withSubtaskIds(readSubtasks(taskToEdit.subtasks)),
           timeEstimate: taskToEdit.time_estimate || null,
           ...rruleToRepeatState(taskToEdit.recurrence ?? null),
           startDate: nextStartDate,
+          remindAt: nextRemindAt,
         };
       } else {
         reset({
@@ -397,6 +411,7 @@ export function TaskAddPanel({
         setParsedDeadline(initialDeadline ?? null);
         setStartDate("");
         setParsedStartDate(null);
+        setRemindAt("");
         applyRepeat(null);
         setIsManualRepeat(false);
         setIsManualDate(false);
@@ -411,6 +426,7 @@ export function TaskAddPanel({
           customInterval: 1,
           customFreq: "WEEKLY",
           startDate: "",
+          remindAt: "",
         };
       }
     }
@@ -542,6 +558,8 @@ export function TaskAddPanel({
           ifthen_trigger: null,
           deadline: parsedDeadline ? parsedDeadline.toISOString() : null,
           start_date: parsedStartDate ? parsedStartDate.toISOString() : null,
+          // Opt-in only: never derived from the due date.
+          remind_at: remindAt ? new Date(remindAt).toISOString() : null,
           recurrence: finalRecurrence,
           category: data.category || "work",
           priority: data.priority ?? 4,
@@ -930,6 +948,11 @@ export function TaskAddPanel({
                           )}
                       </div>
                     }
+                  />
+                  <RemindMeChip
+                    value={remindAt}
+                    onChange={setRemindAt}
+                    settings={userSettings}
                   />
                 </div>
               </div>

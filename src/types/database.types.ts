@@ -83,6 +83,8 @@ export type Database = {
           notification_sent_overdue: boolean | null
           priority: number | null
           recurrence: string | null
+          remind_at: string | null
+          reminder_sent_at: string | null
           snoozed_until: string | null
           start_date: string | null
           status: string | null
@@ -113,6 +115,8 @@ export type Database = {
           notification_sent_overdue?: boolean | null
           priority?: number | null
           recurrence?: string | null
+          remind_at?: string | null
+          reminder_sent_at?: string | null
           snoozed_until?: string | null
           start_date?: string | null
           status?: string | null
@@ -143,6 +147,8 @@ export type Database = {
           notification_sent_overdue?: boolean | null
           priority?: number | null
           recurrence?: string | null
+          remind_at?: string | null
+          reminder_sent_at?: string | null
           snoozed_until?: string | null
           start_date?: string | null
           status?: string | null
@@ -194,26 +200,32 @@ export type Database = {
       }
       push_subscriptions: {
         Row: {
+          app_origin: string | null
           auth_key: string
           created_at: string | null
           endpoint: string
           id: string
+          last_seen_at: string
           p256dh: string
           user_id: string
         }
         Insert: {
+          app_origin?: string | null
           auth_key: string
           created_at?: string | null
           endpoint: string
           id?: string
+          last_seen_at?: string
           p256dh: string
           user_id: string
         }
         Update: {
+          app_origin?: string | null
           auth_key?: string
           created_at?: string | null
           endpoint?: string
           id?: string
+          last_seen_at?: string
           p256dh?: string
           user_id?: string
         }
@@ -336,7 +348,9 @@ export type Database = {
           display_name: string | null
           do_categories: string[] | null
           do_category_colors: Json | null
+          last_evening_push_on: string | null
           last_evening_ritual_date: string | null
+          last_morning_push_on: string | null
           last_ritual_date: string | null
           location_detection: boolean | null
           long_break_duration: number | null
@@ -385,7 +399,9 @@ export type Database = {
           display_name?: string | null
           do_categories?: string[] | null
           do_category_colors?: Json | null
+          last_evening_push_on?: string | null
           last_evening_ritual_date?: string | null
+          last_morning_push_on?: string | null
           last_ritual_date?: string | null
           location_detection?: boolean | null
           long_break_duration?: number | null
@@ -434,7 +450,9 @@ export type Database = {
           display_name?: string | null
           do_categories?: string[] | null
           do_category_colors?: Json | null
+          last_evening_push_on?: string | null
           last_evening_ritual_date?: string | null
+          last_morning_push_on?: string | null
           last_ritual_date?: string | null
           location_detection?: boolean | null
           long_break_duration?: number | null
@@ -475,6 +493,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_push_reminders: {
+        Args: never
+        Returns: {
+          first_step: string
+          item_id: string
+          kind: string
+          title: string
+          user_id: string
+        }[]
+      }
+      register_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_origin: string
+          p_p256dh: string
+        }
+        Returns: undefined
+      }
       rename_category: {
         Args: {
           p_categories_key: string

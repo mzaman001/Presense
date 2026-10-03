@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import {
   ArrowRight,
+  Bell,
   CalendarDays,
   Check,
   Clock,
@@ -19,6 +20,7 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { cn, formatRRule } from "@/lib/utils";
 import { formatMinutes } from "@/lib/format-minutes";
+import { formatReminderTime, upcomingReminder } from "@/lib/reminder-times";
 import { resolveCategoryColor } from "@/lib/constants";
 import { toast } from "sonner";
 import {
@@ -222,6 +224,11 @@ export const TaskCard = React.memo(
       task.snoozed_until && new Date(task.snoozed_until) > new Date()
         ? new Date(task.snoozed_until)
         : null;
+    // A snooze from a reminder sets both to the same time; say it once.
+    const reminder = upcomingReminder(task);
+    const showReminder =
+      reminder &&
+      (!snoozedUntil || snoozedUntil.getTime() !== reminder.getTime());
     const timeSpent = formatMinutes(task.time_spent_minutes);
     const allSubtasksDone =
       subtasks.length > 0 && completedSubtasks === subtasks.length;
@@ -418,6 +425,13 @@ export const TaskCard = React.memo(
                       </button>
                     </span>
                   )}
+                  {showReminder && (
+                    <span>
+                      <UiIcon size={12} icon={Bell} />
+                      <span className="sr-only">Reminder </span>
+                      {formatReminderTime(reminder)}
+                    </span>
+                  )}
                   <span className="task-meta-category">
                     <span
                       aria-hidden="true"
@@ -506,6 +520,8 @@ export const TaskCard = React.memo(
       prevTask.recurrence !== nextTask.recurrence ||
       prevTask.time_spent_minutes !== nextTask.time_spent_minutes ||
       prevTask.snoozed_until !== nextTask.snoozed_until ||
+      prevTask.remind_at !== nextTask.remind_at ||
+      prevTask.reminder_sent_at !== nextTask.reminder_sent_at ||
       // Stuck-task help: the link comes and goes with these.
       prevTask.defer_count !== nextTask.defer_count ||
       prevTask.first_deferred_at !== nextTask.first_deferred_at ||

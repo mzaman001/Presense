@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { notifyRitual } from "@/lib/reminders";
+import { syncPush } from "@/lib/push";
+import { createClient } from "@/lib/supabase";
 import { useAppStore, UserSettings } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import {
@@ -68,15 +69,10 @@ export function AppInitializer({
         lastEveningDate: userSettings.last_evening_ritual_date || null,
       });
 
-      const notifyAndOpen = (type: "morning" | "evening", message: string) => {
-        void notifyRitual(message, userSettings);
-        setActiveRitual(type);
-      };
-
-      if (decision.kind === "morning") {
-        notifyAndOpen("morning", "Time for your morning planning.");
-      } else if (decision.kind === "evening") {
-        notifyAndOpen("evening", "Time to wind down.");
+      // The system notification for a ritual comes from the server
+      // (push_reminders), so it arrives with the app closed too.
+      if (decision.kind === "morning" || decision.kind === "evening") {
+        setActiveRitual(decision.kind);
       }
     };
 
@@ -87,6 +83,20 @@ export function AppInitializer({
       clearInterval(interval);
     };
   }, [userSettings, setActiveRitual]);
+
+  // Re-register this device for reminders on every open: browsers drop push
+  // subscriptions without telling anyone (iOS especially). Once per load.
+  const remindersOn =
+    Object.keys(userSettings ?? {}).length === 0
+      ? null
+      : userSettings.notifications_enabled !== false;
+  useEffect(() => {
+    if (remindersOn === null || process.env.NODE_ENV !== "production") return;
+    const timer = setTimeout(() => {
+      void syncPush(createClient(), remindersOn);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [remindersOn]);
 
   useEffect(() => {
     const isPublicRoute =
