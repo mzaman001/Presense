@@ -468,45 +468,48 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
             </Button>
           </>
         }
-      >
-        <SegmentedControl
-          options={[
-            { label: "Board", value: "board" },
-            { label: "Today", value: "today" },
-            {
-              label: "Calendar",
-              value: "calendar",
-              // PERF-20: fetch the calendar-view chunk on hover/focus so
-              // switching to the calendar is already warm
-              onMouseEnter: () => CalendarView.preload(),
-              onFocus: () => CalendarView.preload(),
-            },
-          ]}
-          value={viewMode}
-          onChange={(val) => toggleViewMode(val)}
-          label="Task view"
-          className="segmented-fill"
-        />
-        {/* Category filters: scroll sideways on phones, sit to the right
-            of the view switch on desktop. */}
-        <div
-          role="group"
-          aria-label="Filter by category"
-          className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:justify-end md:overflow-visible md:px-0"
-        >
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setCategoryFilter(cat)}
-              aria-pressed={categoryFilter === cat}
-              className="chip shrink-0 capitalize"
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </PageHeader>
+        toolbar={
+          <SegmentedControl
+            options={[
+              { label: "Board", value: "board" },
+              { label: "Today", value: "today" },
+              {
+                label: "Calendar",
+                value: "calendar",
+                // PERF-20: fetch the calendar-view chunk on hover/focus so
+                // switching to the calendar is already warm
+                onMouseEnter: () => CalendarView.preload(),
+                onFocus: () => CalendarView.preload(),
+              },
+            ]}
+            value={viewMode}
+            onChange={(val) => toggleViewMode(val)}
+            label="Task view"
+            className="segmented-fill"
+          />
+        }
+        // Category filters: scroll sideways on phones, sit to the right
+        // of the view switch on desktop.
+        toolbarEnd={
+          <div
+            role="group"
+            aria-label="Filter by category"
+            className="-mx-4 flex min-w-0 flex-1 [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:justify-end md:overflow-visible md:px-0"
+          >
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategoryFilter(cat)}
+                aria-pressed={categoryFilter === cat}
+                className="chip shrink-0 capitalize"
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {!showArchive && viewMode !== "calendar" && (
         <ContextualTip
