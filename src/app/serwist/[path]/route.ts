@@ -5,8 +5,13 @@ import { createSerwistRoute } from "@serwist/turbopack";
 // webpack, so once `next build` moved to Turbopack no worker was built or
 // served at all. This route bundles src/app/sw.ts at build time instead.
 
+// Changes every deploy so the precached offline page refreshes. Vercel builds
+// have no .git, where git prints nothing (an empty string, not null).
 const revision =
-  spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" }).stdout ??
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  spawnSync("git", ["rev-parse", "HEAD"], {
+    encoding: "utf-8",
+  }).stdout?.trim() ||
   crypto.randomUUID();
 
 export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
