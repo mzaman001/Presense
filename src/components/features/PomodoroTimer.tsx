@@ -34,26 +34,24 @@ import {
   type FocusTimerState,
   type Phase,
 } from "@/lib/focus-timer";
+import { FocusHorizon } from "./FocusHorizon";
 
 const PHASE_CONFIG: Record<
   Phase,
-  { label: string; orb: string; ring: string; text: string }
+  { label: string; ring: string; text: string }
 > = {
   work: {
     label: "Work Session",
-    orb: "rgba(251,191,36,0.18)",
     ring: "var(--color-accent)",
     text: "var(--color-accent)",
   },
   short_break: {
     label: "Short Break",
-    orb: "rgba(45,212,191,0.15)",
     ring: "var(--status-upcoming)",
     text: "var(--status-upcoming)",
   },
   long_break: {
     label: "Long Break",
-    orb: "rgba(129,140,248,0.15)",
     ring: "var(--status-someday)",
     text: "var(--status-someday)",
   },
@@ -562,6 +560,16 @@ export function PomodoroTimer() {
   const circ = 2 * Math.PI * r;
   const progress = duration > 0 ? displayTime / duration : 1;
   const dashoffset = circ * (1 - progress);
+  // The background's sun: high while you get ready, sinking as a work
+  // session runs, rising again over a break, set once it's done.
+  const sun =
+    stage === "ready"
+      ? 1
+      : stage === "done"
+        ? 0
+        : phase === "work"
+          ? progress
+          : 1 - progress;
 
   const FirstStep = firstStep ? (
     <p className="text-ui flex max-w-[300px] items-start gap-1.5 text-left text-[var(--text-2)]">
@@ -595,32 +603,13 @@ export function PomodoroTimer() {
         }}
         className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden px-6"
         style={{
-          // Theme-aware: this was a fixed near-black, while the text and
-          // buttons on it follow the theme, so light mode put dark text on
-          // a dark screen.
-          background: "color-mix(in srgb, var(--bg-base) 94%, transparent)",
-          backdropFilter: "blur(20px)",
+          // Theme-aware (light mode used to get a fixed near-black) and
+          // opaque: the horizon covers the screen, so a backdrop blur of
+          // the app behind would cost a full-screen filter for nothing.
+          background: "var(--bg-base)",
         }}
       >
-        {/* Atmospheric orb */}
-        <m.div
-          key={phase}
-          initial={{ opacity: 0, scale: 0.6 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.6 }}
-          transition={{ duration: 1.2, ease: "easeInOut" }}
-          className="pointer-events-none absolute"
-          style={{
-            width: 560,
-            height: 560,
-            borderRadius: "50%",
-            background: `radial-gradient(circle, ${cfg.orb} 0%, transparent 70%)`,
-            filter: "blur(60px)",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        />
+        <FocusHorizon sun={sun} />
 
         {/* Close button (first in the tab order) */}
         <button

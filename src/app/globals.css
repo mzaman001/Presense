@@ -1214,6 +1214,114 @@ h6 {
     }
   }
 
+  /* --- Focus horizon -------------------------------------------------
+     The focus screen's sky, ink hills and sun. The sun's height is
+     --sun (0 set, 1 high), written by the timer once a second; the
+     transform eases between ticks. The sun keeps to the right (84%, 88% on
+     phones) and phones put the horizon lower, so neither crosses the
+     timer's controls at any width.
+     Markup: features/FocusHorizon.tsx */
+  .focus-horizon {
+    --horizon: 86%;
+    --sun-x: 88%;
+    --sun-d: clamp(44px, 10vmin, 96px);
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+    background: linear-gradient(
+      to bottom,
+      var(--sky-top),
+      var(--sky-rose) var(--horizon),
+      transparent var(--horizon)
+    );
+  }
+  @media (min-width: 640px) {
+    .focus-horizon {
+      --horizon: 80%;
+      --sun-x: 84%;
+    }
+  }
+  /* The ember line where sky meets hills. */
+  .focus-horizon::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: var(--horizon);
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--sky-horizon) 25%,
+      var(--sky-horizon) 75%,
+      transparent
+    );
+  }
+  .focus-sun {
+    position: absolute;
+    left: var(--sun-x);
+    top: var(--horizon);
+    width: var(--sun-d);
+    height: var(--sun-d);
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0.9;
+    /* --sun 0: centre half a sun plus 5vh below the horizon, hidden by
+       the hills; --sun 1: well clear above it. */
+    transform: translate(
+      -50%,
+      calc(
+        -50% + var(--sun-d) * 0.5 + 5vh - var(--sun) *
+          (var(--sun-d) * 1.9 + 5vh)
+      )
+    );
+    transition: transform 1s linear;
+    will-change: transform;
+  }
+  .focus-hills {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    width: 100%;
+    height: calc(100% - var(--horizon));
+  }
+  /* Opaque mixes, so the back hill hides the sun as it sets. */
+  .focus-hill-back {
+    fill: color-mix(in srgb, var(--text-1) 3%, var(--bg-base));
+  }
+  .focus-hill-mid {
+    fill: color-mix(in srgb, var(--text-1) 5%, var(--bg-base));
+  }
+  .focus-hill-front {
+    fill: color-mix(in srgb, var(--text-1) 7.5%, var(--bg-base));
+  }
+
+  /* --- Empty-state mark --------------------------------------------
+     Every empty state's icon is inked in once on arrival, in the same
+     brush timing as the ensō: the bubble settles, then each stroke draws.
+     Lucide paths in a 24px box are all shorter than 100 units, so a 100
+     dash hides each one fully until it draws. Markup: ui/EmptyState.tsx */
+  .empty-mark {
+    animation: empty-mark-in var(--dur-slow) var(--ease-out) both;
+  }
+  .empty-mark svg :is(path, circle, ellipse, line, polyline, polygon, rect) {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: empty-mark-ink 900ms var(--ease-brush) 120ms forwards;
+  }
+  @keyframes empty-mark-in {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+  }
+  @keyframes empty-mark-ink {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
   .task-meta {
     display: flex;
     flex-wrap: wrap;
@@ -1403,11 +1511,13 @@ h6 {
   .sidebar-section::before {
     content: "";
     position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 20px;
+    /* Centred on the icon column (24px into the section, which shares the
+       rows' 12px inset), on a whole pixel so it never renders as a
+       half-lit, broken-looking line. */
+    left: 12px;
+    top: 14px;
+    width: 24px;
     height: 1px;
-    margin-left: -22px;
     background: var(--border-default);
     transition: opacity var(--dur-base) var(--ease-out);
   }
@@ -1558,7 +1668,7 @@ h6 {
   }
   .sidebar[data-expanded="true"] .sidebar-count {
     left: calc(100% - 30px);
-    top: 13px;
+    top: 14px;
   }
 
   .sidebar-shortcut {
@@ -2078,6 +2188,18 @@ h6 {
 }
 :root.reduce-motion .enso-spin {
   --enso-p: 300deg;
+}
+:root.reduce-motion .empty-mark,
+:root.reduce-motion .empty-mark svg * {
+  animation: none;
+  stroke-dashoffset: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .empty-mark,
+  .empty-mark svg * {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .enso-draw,

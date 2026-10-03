@@ -34,7 +34,9 @@ export function EmptyState({
       {mark ? (
         <div className="mb-5">{mark}</div>
       ) : Icon ? (
-        <div className="mb-5 flex size-14 items-center justify-center rounded-full bg-[var(--accent-dim)]">
+        // .empty-mark: the bubble settles in and the icon's strokes draw
+        // themselves once, in the ensō's brush timing. CSS only.
+        <div className="empty-mark mb-5 flex size-14 items-center justify-center rounded-full bg-[var(--accent-dim)]">
           <Icon
             aria-hidden="true"
             className="size-6 text-[var(--accent-text)]"

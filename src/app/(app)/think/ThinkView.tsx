@@ -9,7 +9,16 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Plus, Loader2, Sparkles, Pin, Search, Trash2 } from "lucide-react";
+import {
+  Archive,
+  Plus,
+  Loader2,
+  MessageCircleQuestion,
+  Sparkles,
+  Pin,
+  Search,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -239,38 +248,43 @@ export function ThinkView({
             </Button>
           </>
         }
-      >
-        <SegmentedControl
-          label="Thread view"
-          className="segmented-fill"
-          value={view}
-          onChange={(next) => {
-            setShowArchive(next === "archive");
-            setShowTrash(next === "trash");
-          }}
-          options={[
-            { label: "Active", value: "active" },
-            { label: "Archive", value: "archive" },
-            { label: "Trash", value: "trash" },
-          ]}
-        />
-        <div className="relative w-full md:w-64">
-          <UiIcon
-            size={16}
-            strokeWidth={1.75}
-            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
-            icon={Search}
+        toolbar={
+          <SegmentedControl
+            label="Thread view"
+            className="segmented-fill"
+            value={view}
+            onChange={(next) => {
+              setShowArchive(next === "archive");
+              setShowTrash(next === "trash");
+            }}
+            options={[
+              { label: "Active", value: "active" },
+              { label: "Archive", value: "archive" },
+              { label: "Trash", value: "trash" },
+            ]}
           />
-          <input
-            type="search"
-            aria-label="Search threads"
-            placeholder="Search threads"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="input-search !w-full"
-          />
-        </div>
-      </PageHeader>
+        }
+        // Fills the column under the actions, so the search box and the
+        // "Daily note · New thread" pair share both edges.
+        toolbarEnd={
+          <div className="relative w-full md:min-w-64">
+            <UiIcon
+              size={16}
+              strokeWidth={1.75}
+              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--text-3)]"
+              icon={Search}
+            />
+            <input
+              type="search"
+              aria-label="Search threads"
+              placeholder="Search threads"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input-search !w-full"
+            />
+          </div>
+        }
+      />
 
       <ContextualTip
         id="think_space"
@@ -352,7 +366,15 @@ export function ThinkView({
           {filteredThreads.length === 0 ? (
             <EmptyState
               className="mt-6"
-              icon={Sparkles}
+              // Its own mark per view: Sparkles already means "plan your
+              // day" on Home and "Daily note" in the header above.
+              icon={
+                showTrash
+                  ? Trash2
+                  : showArchive
+                    ? Archive
+                    : MessageCircleQuestion
+              }
               title={
                 showTrash
                   ? "Trash is empty"
