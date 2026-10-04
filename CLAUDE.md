@@ -51,19 +51,25 @@ Google is the only sign-in method (`src/app/(auth)/login`). Email links were rem
 - **Edge Functions don't deploy on merge.** After changing `supabase/functions/*`, deploy (`supabase functions deploy <name>` or the Supabase MCP) and confirm a 200. Type-check first: `npx -y deno check supabase/functions/<name>/index.ts`.
 - The old `cleanup_trash` function (deployed only, not in the repo) targets the dropped `explores` table and has no schedule any more; delete it in the dashboard.
 
-## Verified state (2026-10-02)
+## Verified state (2026-10-04)
+
+Run on `main` at `b5c9b9b` (after #68).
 
 | Gate | Result |
 |---|---|
-| `npm ci` | ✅ in CI on every PR (`.github/workflows/ci.yml`); lockfile last changed by #53 (2026-10-01) |
+| `npm ci` | ✅ in CI on every PR (`.github/workflows/ci.yml`), and clean locally with CI's npm 10.8.2 and `--legacy-peer-deps=false`; lockfile last changed by #64 (2026-10-04) |
 | `npm run lint` | ✅ 0 errors (33 warnings) |
 | `npx tsc --noEmit` | ✅ clean |
-| `npx -y deno check supabase/functions/*/index.ts` | ✅ clean (tsc excludes `supabase/`; Edge Functions run on Deno) |
-| `npm test` | ✅ 692 passed / 61 files |
+| `npx -y deno check supabase/functions/*/index.ts` | ✅ clean, all four (`cron_cleanup`, `cron_recurrence`, `push_reminders`, `push_test`); tsc excludes `supabase/`, Edge Functions run on Deno |
+| `npm test` | ✅ 830 passed / 73 files |
 | `npm run build` | ✅ |
+| Bundle budget gate (`check-budgets.mjs`, in CI) | ✅ `/login` 163.4 KiB gz vs 164.7 budget (2026-10-03) |
 | `npx playwright test tests/accessibility.spec.ts -g login` | ✅ 2 passed (Axe scan + AA contrast, dark and light) |
 | `npm audit --omit=dev` | ✅ 0 vulnerabilities |
-| GitHub code scanning / Dependabot | ✅ 0 open once the 2026-10-02 code-scanning fix merges / 0 open |
+| GitHub code scanning / Dependabot | ⚠️ 1 open / ✅ 0 open. The one is osv-scanner alert #82, `braces@3.0.3` (GHSA-vfj7-8cjw-p6xm, high), reached only through the ESLint chain (`@next/eslint-plugin-next` → `fast-glob` → `micromatch`); dev-only, nothing ships it. npm's only fix is a breaking downgrade of `eslint-config-next`, so it waits for an upstream release. |
+| Push reminders, end to end | ✅ real Microsoft Edge subscribed on the live site got a reminder from the deployed `push_reminders` within seconds (twice); Android (Brave) registered, got a test push and a task reminder. Not yet seen: iPhone, a ritual push at a real nudge/shutdown time. |
+
+The seeded test account (`scripts/seed-test-user.mjs`) can no longer sign in: email/password login is off since the Google-only change, so `tests/authed-do.spec.ts` and `scripts/lighthouse-authed.mjs` can't reach signed-in pages until that's restored.
 
 `ci` is a required status check on `main` (ruleset "main: require ci", admin bypass), so PRs can't merge until it passes and GitHub auto-merge works.
 
