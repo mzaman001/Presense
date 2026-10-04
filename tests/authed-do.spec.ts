@@ -6,8 +6,9 @@ const ROOT = process.cwd();
 
 // TOOL-18: prove the seeded test account can reach an authed route with the
 // real post-login chunk set. The app's UI only offers Google sign-in, so a
-// UI-driven login is not repeatable in CI; instead we seed the account and
-// inject the @supabase/ssr session cookie (see scripts/seed-test-user.mjs).
+// UI-driven login is not repeatable in CI; instead we seed the account, mint a
+// session for it with the service role and inject the @supabase/ssr session
+// cookie (see scripts/seed-test-user.mjs).
 
 test.describe("authed-route measurement (TOOL-18)", () => {
   test("seeded account reaches /do with the real page chunk set", async ({
@@ -15,7 +16,7 @@ test.describe("authed-route measurement (TOOL-18)", () => {
   }) => {
     test.setTimeout(120000);
 
-    // Seed + sign in via the service role (idempotent), get the session cookie.
+    // Seed + mint a session via the service role (idempotent), get the cookie.
     let out;
     try {
       out = execFileSync(
@@ -45,12 +46,14 @@ test.describe("authed-route measurement (TOOL-18)", () => {
       },
     ]);
 
-    const chunkSeen: string[] = [];
+    // Turbopack names dev chunks by content hash, so the route a chunk belongs
+    // to is read from its body, which lists module paths
+    // ("[project]/src/app/(app)/do/DoView.tsx"). Playwright runs against
+    // `next dev` (see playwright.config.ts webServer).
+    const chunkBodies: Promise<string>[] = [];
     page.on("response", (res) => {
-      const u = res.url();
-      // dev: src_app_(app)_do_page_tsx_*.js · prod: app/(app)/do/page-*.js
-      if (u.includes("do_page_tsx") || u.includes("/do/page-"))
-        chunkSeen.push(u);
+      if (/\/_next\/static\/chunks\/.+\.js$/.test(res.url()))
+        chunkBodies.push(res.text().catch(() => ""));
     });
 
     const response = await page.goto("/do", { waitUntil: "domcontentloaded" });
@@ -60,24 +63,12 @@ test.describe("authed-route measurement (TOOL-18)", () => {
     // unauthenticated behavior this whole task exists to replace.
     await expect(page).toHaveURL(/\/do$/);
 
-    // The real Do page chunk must be in the loaded script set, not the login
-    // chunk set (17 scripts incl. app/(auth)/login/page-*).
+    // The real Do page chunks must be in the loaded script set, and none of
+    // the login page's.
     await page.waitForLoadState("networkidle");
-    expect(chunkSeen.length).toBeGreaterThan(0);
-    expect(chunkSeen[0]).toMatch(/do_page_tsx|do\/page-/);
-
-    const scripts = await page.evaluate(() =>
-      [...document.querySelectorAll("script[src]")].map(
-        (s) => s.getAttribute("src") ?? "",
-      ),
-    );
-    expect(
-      scripts.some((s) => s.includes("do_page_tsx") || s.includes("do/page-")),
-    ).toBe(true);
-    expect(
-      scripts.some(
-        (s) => s.includes("login/page-") || s.includes("login_page_tsx"),
-      ),
-    ).toBe(false);
+    const bodies = await Promise.all(chunkBodies);
+    expect(bodies.length).toBeGreaterThan(0);
+    expect(bodies.some((b) => b.includes("src/app/(app)/do/"))).toBe(true);
+    expect(bodies.some((b) => b.includes("src/app/(auth)/login/"))).toBe(false);
   });
 });
