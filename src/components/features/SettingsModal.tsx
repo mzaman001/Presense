@@ -44,9 +44,11 @@ import { settingsSchema } from "@/lib/schemas";
 import {
   getReminderAvailability,
   requestReminderPermission,
+  unblockSteps,
   type ReminderAvailability,
 } from "@/lib/reminders";
-import { disablePush, enablePush } from "@/lib/push";
+import { disablePush, enablePush, sendTestPush } from "@/lib/push";
+import { isStandalone } from "@/lib/platform";
 import { z } from "zod";
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -302,19 +304,24 @@ const REMINDER_COPY: Record<ReminderAvailability, string> = {
     "Your planning and shutdown times, and any task you ask to be reminded about. Arrives even when Presense is closed.",
   granted:
     "Your planning and shutdown times, and any task you ask to be reminded about. Arrives even when Presense is closed.",
-  denied:
-    "Notifications are blocked for Presense. Allow them in your browser's site settings, then switch this on.",
+  denied: "",
   "needs-home-screen":
     "On iPhone and iPad, add Presense to your Home Screen first: tap Share, then Add to Home Screen, and open it from there.",
   unsupported:
     "This browser can't show notifications. The planning ritual still opens when you come back to Presense.",
 };
 
+type DeviceStatus = "idle" | "checking" | "ready" | "failed";
+
 /**
  * The switch reads as on only when reminders can actually arrive here, and
  * turning it on is what asks the browser: the permission prompt has to come
  * from a tap, never from a timer. On, this device subscribes to Web Push;
  * off, it unsubscribes (other devices follow on their next open).
+ *
+ * The row never hides its control. Blocked, it says how to unblock on this
+ * kind of device and offers "Check again", and it notices by itself when
+ * permission changes (e.g. after a trip to the browser's site settings).
  */
 function RemindersRow({
   enabled,
@@ -329,52 +336,144 @@ function RemindersRow({
   const [availability, setAvailability] = useState<ReminderAvailability>(
     getReminderAvailability,
   );
-  const [setupFailed, setSetupFailed] = useState(false);
+  const [device, setDevice] = useState<DeviceStatus>("idle");
+  const [test, setTest] = useState<{ sending: boolean; note: string }>({
+    sending: false,
+    note: "",
+  });
+  const on = enabled !== false && availability === "granted";
 
-  const canAsk = availability === "default" || availability === "granted";
+  // Permission can change outside the app (site settings, Android app info).
+  useEffect(() => {
+    const reread = () => setAvailability(getReminderAvailability());
+    let status: PermissionStatus | null = null;
+    navigator.permissions
+      ?.query({ name: "notifications" as PermissionName })
+      .then((s) => {
+        status = s;
+        s.onchange = reread;
+      })
+      .catch(() => {});
+    window.addEventListener("focus", reread);
+    document.addEventListener("visibilitychange", reread);
+    return () => {
+      if (status) status.onchange = null;
+      window.removeEventListener("focus", reread);
+      document.removeEventListener("visibilitychange", reread);
+    };
+  }, []);
 
-  const subscribe = async () => {
+  const register = useCallback(async () => {
+    setDevice("checking");
     const result = await enablePush(supabase);
-    setSetupFailed(result !== "subscribed");
-  };
+    setDevice(result === "subscribed" ? "ready" : "failed");
+  }, [supabase]);
 
-  const handleChange = (next: boolean) => {
-    if (!next) {
-      onChange(false);
-      setSetupFailed(false);
-      void disablePush(supabase);
-      return;
-    }
-    if (availability === "granted") {
+  // Opening Settings with reminders on confirms this device is registered.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (on && device === "idle") void register();
+  }, [on, device, register]);
+
+  const turnOn = () => {
+    const current = getReminderAvailability();
+    setAvailability(current);
+    if (current === "granted") {
       onChange(true);
-      void subscribe();
+      void register();
       return;
     }
+    if (current !== "default") return;
     // Called synchronously inside the tap, before any await.
     void requestReminderPermission().then((answer) => {
       setAvailability(answer);
       if (answer === "granted") {
         onChange(true);
-        void subscribe();
+        void register();
       }
     });
   };
 
+  const handleChange = (next: boolean) => {
+    if (next) {
+      turnOn();
+      return;
+    }
+    onChange(false);
+    setDevice("idle");
+    setTest({ sending: false, note: "" });
+    void disablePush(supabase);
+  };
+
+  const sendTest = async () => {
+    setTest({ sending: true, note: "" });
+    const result = await sendTestPush(supabase);
+    setTest({
+      sending: false,
+      note: result.ok
+        ? result.sent > 0
+          ? "Sent. It should arrive in a few seconds."
+          : "The push service didn't accept it. Switch Reminders off and on."
+        : result.message,
+    });
+  };
+
+  let description: React.ReactNode = REMINDER_COPY[availability];
+  if (availability === "denied") {
+    description = unblockSteps(navigator.userAgent, isStandalone());
+  } else if (on && device === "failed") {
+    description =
+      "Couldn't register this device for reminders. Tap Check again, or switch Reminders off and on.";
+  } else if (on) {
+    description = (
+      <>
+        {REMINDER_COPY.granted}
+        <span className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-[var(--text-2)]">
+            {device === "ready"
+              ? "On for this device."
+              : "Checking this device…"}
+          </span>
+          {device === "ready" && (
+            <button
+              type="button"
+              className="chip chip-sm"
+              disabled={test.sending}
+              onClick={() => void sendTest()}
+            >
+              {test.sending ? "Sending…" : "Send a test"}
+            </button>
+          )}
+          {test.note && (
+            <span role="status" className="text-[var(--text-2)]">
+              {test.note}
+            </span>
+          )}
+        </span>
+      </>
+    );
+  }
+
+  const canSwitch = availability === "default" || availability === "granted";
+  const showRetry = availability === "denied" || (on && device === "failed");
+
   return (
-    <SettingRow
-      label="Reminders"
-      description={
-        setupFailed
-          ? "Couldn't set up reminders on this device. Switch it off and on to try again."
-          : REMINDER_COPY[availability]
-      }
-    >
-      {canAsk && (
-        <Switch
-          label="Reminders"
-          checked={enabled !== false && availability === "granted"}
-          onChange={handleChange}
-        />
+    <SettingRow label="Reminders" description={description}>
+      {showRetry ? (
+        <button
+          type="button"
+          className="chip"
+          onClick={() => {
+            setDevice("idle");
+            turnOn();
+          }}
+        >
+          Check again
+        </button>
+      ) : (
+        canSwitch && (
+          <Switch label="Reminders" checked={on} onChange={handleChange} />
+        )
       )}
     </SettingRow>
   );

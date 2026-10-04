@@ -43,11 +43,12 @@ const mockSupabase = {
 
 vi.mock("@/lib/supabase", () => ({ createClient: () => mockSupabase }));
 
-const { enablePush, disablePush } = vi.hoisted(() => ({
+const { enablePush, disablePush, sendTestPush } = vi.hoisted(() => ({
   enablePush: vi.fn(async () => "subscribed" as const),
   disablePush: vi.fn(async () => "unsubscribed" as const),
+  sendTestPush: vi.fn(async () => ({ ok: true as const, sent: 1 })),
 }));
-vi.mock("@/lib/push", () => ({ enablePush, disablePush }));
+vi.mock("@/lib/push", () => ({ enablePush, disablePush, sendTestPush }));
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -73,6 +74,8 @@ describe("SettingsModal — reminders", () => {
     updates.length = 0;
     permission = "default";
     requestPermission.mockClear();
+    enablePush.mockClear();
+    sendTestPush.mockClear();
     window.matchMedia = vi.fn(() => ({ matches: false })) as never;
     vi.stubGlobal(
       "Notification",
@@ -116,15 +119,37 @@ describe("SettingsModal — reminders", () => {
     await waitFor(() => expect(enablePush).toHaveBeenCalledTimes(1));
   });
 
-  it("explains how to unblock instead of showing a switch that can't work", async () => {
+  it("explains how to unblock on this device, and recovers once allowed", async () => {
     permission = "denied";
     render(<SettingsModal />, { wrapper });
     expect(
-      await screen.findByText(/Notifications are blocked for Presense/),
+      await screen.findByText(/blocked notifications for Presense/),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("switch", { name: "Reminders" }),
     ).not.toBeInTheDocument();
+
+    // The user allows notifications in site settings, then taps Check again.
+    permission = "granted";
+    fireEvent.click(screen.getByRole("button", { name: "Check again" }));
+    await waitFor(() => expect(enablePush).toHaveBeenCalled());
+    expect(
+      await screen.findByRole("switch", { name: "Reminders" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("confirms this device and can send a test", async () => {
+    permission = "granted";
+    useAppStore
+      .getState()
+      .setUserSettings({ ...storedSettings, notifications_enabled: true });
+    render(<SettingsModal />, { wrapper });
+    expect(await screen.findByText("On for this device.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Send a test" }));
+    expect(
+      await screen.findByText(/Sent. It should arrive/),
+    ).toBeInTheDocument();
+    expect(sendTestPush).toHaveBeenCalledTimes(1);
   });
 
   it("tells iPhone Safari users to add Presense to the Home Screen", async () => {

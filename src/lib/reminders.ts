@@ -32,3 +32,23 @@ export function requestReminderPermission(): Promise<NotificationPermission> {
   }
   return Notification.requestPermission();
 }
+
+/**
+ * How to unblock notifications, for the device in hand. Browsers never ask
+ * again once a site is blocked, so this is the only way back; a vague
+ * "check your settings" leaves people stuck.
+ */
+export function unblockSteps(userAgent: string, standalone: boolean): string {
+  if (/Android/i.test(userAgent)) {
+    return standalone
+      ? "Notifications are blocked for the Presense app. Long-press its icon, tap App info → Notifications, allow them, then tap Check again."
+      : "Chrome has blocked notifications for Presense. Tap the icon left of the address bar → Permissions → Notifications → Allow, then tap Check again. If they're already allowed, turn on Android Settings → Apps → Chrome → Notifications.";
+  }
+  if (
+    /iP(hone|ad|od)/.test(userAgent) ||
+    (/Macintosh/.test(userAgent) && standalone)
+  ) {
+    return "Notifications are off for Presense. Open Settings → Notifications → Presense, allow notifications, then tap Check again.";
+  }
+  return "Your browser has blocked notifications for Presense. Click the icon left of the address bar, allow Notifications, then choose Check again.";
+}

@@ -5,7 +5,7 @@ import {
   pushPayload,
   pushTopic,
   reminderMessage,
-} from "../../../supabase/functions/push_reminders/payload";
+} from "../../../supabase/functions/_shared/push-payload";
 
 const TASK_ID = "3f6c1a2e-9b7d-4e21-8c3a-5d0f9e8b7a61";
 

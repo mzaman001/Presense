@@ -6,38 +6,24 @@
 // failed delivery is not retried: a reminder that arrives late is worse than
 // one that doesn't arrive, and the task is still in the app.
 //
-// Secrets: CRON_SECRET, VAPID_KEYS (the JSON from webpush's
-// generate-vapid-keys, private key included) and VAPID_SUBJECT (a mailto:
-// or https: contact for push services).
+// Secrets: CRON_SECRET, plus VAPID_KEYS / VAPID_SUBJECT (_shared/send-push.ts).
 import { createClient } from "npm:@supabase/supabase-js@2";
-import * as webpush from "jsr:@negrel/webpush@0.5.0";
 import {
   type ClaimedReminder,
-  pushPayload,
-  pushTopic,
   reminderMessage,
-} from "./payload.ts";
+} from "../_shared/push-payload.ts";
+import {
+  sendPushes,
+  SUBSCRIPTION_COLUMNS,
+  type Subscription,
+  vapidConfigured,
+} from "../_shared/send-push.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
   });
-}
-
-let appServerPromise: Promise<webpush.ApplicationServer> | null = null;
-function appServer() {
-  appServerPromise ??= (async () => {
-    const keys = await webpush.importVapidKeys(
-      JSON.parse(Deno.env.get("VAPID_KEYS") || "null"),
-      { extractable: false },
-    );
-    return webpush.ApplicationServer.new({
-      contactInformation: Deno.env.get("VAPID_SUBJECT") || "",
-      vapidKeys: keys,
-    });
-  })();
-  return appServerPromise;
 }
 
 Deno.serve(async (req) => {
@@ -52,7 +38,7 @@ Deno.serve(async (req) => {
       401,
     );
   }
-  if (!Deno.env.get("VAPID_KEYS") || !Deno.env.get("VAPID_SUBJECT")) {
+  if (!vapidConfigured()) {
     return json({ error: "VAPID_KEYS / VAPID_SUBJECT not configured" }, 500);
   }
 
@@ -69,57 +55,19 @@ Deno.serve(async (req) => {
   const userIds = [...new Set(reminders.map((r) => r.user_id))];
   const { data: subs, error: subsError } = await supabase
     .from("push_subscriptions")
-    .select("id, user_id, endpoint, p256dh, auth_key, app_origin")
+    .select(SUBSCRIPTION_COLUMNS)
     .in("user_id", userIds);
   if (subsError) return json({ error: subsError.message }, 500);
 
-  const server = await appServer();
-  const gone = new Set<string>();
-  let sent = 0;
-  let failed = 0;
-
-  await Promise.all(
-    reminders.flatMap((reminder) => {
-      const message = reminderMessage(reminder);
-      return (subs ?? [])
-        .filter((s) => s.user_id === reminder.user_id)
-        .map(async (s) => {
-          try {
-            await server
-              .subscribe({
-                endpoint: s.endpoint,
-                keys: { p256dh: s.p256dh, auth: s.auth_key },
-              })
-              .pushTextMessage(
-                JSON.stringify(pushPayload(message, s.app_origin)),
-                {
-                  urgency: webpush.Urgency.High,
-                  // Worthless after the window it was meant for.
-                  ttl: 30 * 60,
-                  topic: pushTopic(message),
-                },
-              );
-            sent++;
-          } catch (e) {
-            failed++;
-            const status =
-              e instanceof webpush.PushMessageError ? e.response.status : 0;
-            // 404/410: the browser dropped this subscription for good.
-            if (status === 404 || status === 410) gone.add(s.id);
-            else console.error("push failed", status, String(e));
-          }
-        });
-    }),
+  const result = await sendPushes(
+    supabase,
+    reminders.map((reminder) => ({
+      message: reminderMessage(reminder),
+      subscriptions: ((subs ?? []) as Subscription[]).filter(
+        (s) => s.user_id === reminder.user_id,
+      ),
+    })),
   );
 
-  if (gone.size > 0) {
-    const { error: deleteError } = await supabase
-      .from("push_subscriptions")
-      .delete()
-      .in("id", [...gone]);
-    if (deleteError)
-      console.error("pruning subscriptions", deleteError.message);
-  }
-
-  return json({ claimed: reminders.length, sent, failed, pruned: gone.size });
+  return json({ claimed: reminders.length, ...result });
 });
