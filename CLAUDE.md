@@ -73,7 +73,7 @@ Run on `main` at `b5c9b9b` (after #68).
 | GitHub code scanning / Dependabot | ⚠️ 1 open / ✅ 0 open. The one is osv-scanner alert #82, `braces@3.0.3` (GHSA-vfj7-8cjw-p6xm, high), reached only through the ESLint chain (`@next/eslint-plugin-next` → `fast-glob` → `micromatch`); dev-only, nothing ships it. npm's only fix is a breaking downgrade of `eslint-config-next`, so it waits for an upstream release. |
 | Push reminders, end to end | ✅ real Microsoft Edge subscribed on the live site got a reminder from the deployed `push_reminders` within seconds (twice); Android (Brave) registered, got a test push and a task reminder. Not yet seen: iPhone, a ritual push at a real nudge/shutdown time. |
 
-The seeded test account (`scripts/seed-test-user.mjs`) can no longer sign in: email/password login is off since the Google-only change, so `tests/authed-do.spec.ts` and `scripts/lighthouse-authed.mjs` can't reach signed-in pages until that's restored.
+The seeded test account signs in again since #69 (session minted with the service role, see *Sign-in* above), so `tests/authed-do.spec.ts` and `scripts/lighthouse-authed.mjs` reach signed-in pages. Pasting that session into a browser by hand is blocked by Claude Code's auto-mode credential check; go through Playwright, which injects the cookie itself.
 
 `ci` is a required status check on `main` (ruleset "main: require ci", admin bypass), so PRs can't merge until it passes and GitHub auto-merge works.
 
