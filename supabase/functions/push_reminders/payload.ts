@@ -2,7 +2,7 @@
  * What a reminder says and where it leads. Kept apart from index.ts so it
  * can be type-checked and tested without a server.
  *
- * Copy rules (reports/Task reminder notifications.md): name the task and
+ * Copy rules (docs/research/Task reminder notifications.md): name the task and
  * its smallest first step, forward-looking and neutral. Never count
  * overdue items or mention misses.
  */

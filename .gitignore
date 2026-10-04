@@ -70,3 +70,11 @@ docs/AGENT_PROMPT.md
 lh-authed-report.json
 .superpowers/
 .worktrees/
+
+# Local tooling (not project source)
+# start-claude.ps1 holds a personal API token: never commit it.
+start-claude.ps1
+.agents/
+skills-lock.json
+# Raw research notes; the finished reports live in docs/research/.
+research_notes/

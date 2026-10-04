@@ -1,4 +1,4 @@
--- Phase 1 of the reminders work (reports/Task reminder notifications.md):
+-- Phase 1 of the reminders work (docs/research/Task reminder notifications.md):
 -- reminders that reach a closed app, sent from the server with Web Push.
 --
 -- Two kinds, both opt-in and both at a time the user chose:
