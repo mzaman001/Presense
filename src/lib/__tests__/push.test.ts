@@ -3,6 +3,7 @@ import {
   base64UrlToBytes,
   disablePush,
   enablePush,
+  sendTestPush,
   syncPush,
   VAPID_PUBLIC_KEY,
 } from "@/lib/push";
@@ -124,5 +125,36 @@ describe("push subscription", () => {
     await syncPush(supabase, false);
     expect(eq).toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("sendTestPush", () => {
+  const client = (result: unknown) =>
+    ({ functions: { invoke: vi.fn(async () => result) } }) as never;
+
+  it("reports how many devices it reached", async () => {
+    await expect(
+      sendTestPush(client({ data: { devices: 2, sent: 2 }, error: null })),
+    ).resolves.toEqual({ ok: true, sent: 2 });
+  });
+
+  it("shows the server's own message, e.g. the cooldown", async () => {
+    const error = {
+      context: new Response(
+        JSON.stringify({ error: "Wait a few seconds before sending another." }),
+        { status: 429 },
+      ),
+    };
+    await expect(sendTestPush(client({ data: null, error }))).resolves.toEqual({
+      ok: false,
+      message: "Wait a few seconds before sending another.",
+    });
+  });
+
+  it("says when this account has no registered device", async () => {
+    const r = await sendTestPush(
+      client({ data: { devices: 0, sent: 0 }, error: null }),
+    );
+    expect(r.ok).toBe(false);
   });
 });

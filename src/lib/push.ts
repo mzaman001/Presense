@@ -127,3 +127,35 @@ export async function syncPush(
   if (!remindersOn) return disablePush(supabase);
   return enablePush(supabase);
 }
+
+/**
+ * Settings → "Send a test": asks the server (supabase/functions/push_test)
+ * to push one notification to every device registered for this account.
+ * Returns how many devices it reached, or a message to show.
+ */
+export async function sendTestPush(
+  supabase: Supabase,
+): Promise<{ ok: true; sent: number } | { ok: false; message: string }> {
+  const { data, error } = await supabase.functions.invoke<{
+    sent?: number;
+    devices?: number;
+  }>("push_test", { method: "POST" });
+  if (error) {
+    // FunctionsHttpError carries the function's own JSON message.
+    let message = "Couldn't send a test. Try again in a moment.";
+    try {
+      const body = await (error as { context?: Response }).context?.json();
+      if (typeof body?.error === "string") message = body.error;
+    } catch {
+      // Keep the generic message.
+    }
+    return { ok: false, message };
+  }
+  if (!data?.devices) {
+    return {
+      ok: false,
+      message: "This device isn't registered yet. Switch Reminders off and on.",
+    };
+  }
+  return { ok: true, sent: data.sent ?? 0 };
+}

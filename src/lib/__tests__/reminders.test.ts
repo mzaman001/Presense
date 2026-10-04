@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   getReminderAvailability,
   requestReminderPermission,
+  unblockSteps,
 } from "@/lib/reminders";
 import { playChime } from "@/lib/chime";
 
@@ -91,5 +92,32 @@ describe("playChime", () => {
   it("is a silent no-op where Web Audio is unavailable", () => {
     vi.stubGlobal("AudioContext", undefined);
     expect(() => playChime()).not.toThrow();
+  });
+});
+
+describe("unblockSteps", () => {
+  const ANDROID =
+    "Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36";
+  const DESKTOP =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36";
+
+  it("walks Android Chrome through site permissions and the Chrome app switch", () => {
+    const s = unblockSteps(ANDROID, false);
+    expect(s).toMatch(/Permissions → Notifications → Allow/);
+    expect(s).toMatch(/Apps → Chrome → Notifications/);
+  });
+
+  it("points an installed Android app at its App info", () => {
+    expect(unblockSteps(ANDROID, true)).toMatch(/App info → Notifications/);
+  });
+
+  it("points iPhone at the system Notifications settings", () => {
+    expect(unblockSteps(IPHONE_UA, true)).toMatch(
+      /Settings → Notifications → Presense/,
+    );
+  });
+
+  it("falls back to the address-bar site settings on desktop", () => {
+    expect(unblockSteps(DESKTOP, false)).toMatch(/address bar/);
   });
 });

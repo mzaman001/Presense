@@ -89,3 +89,13 @@ export function pushTopic(message: ReminderMessage) {
     .replace(/[^A-Za-z0-9_]/g, "")
     .slice(0, 32);
 }
+
+/** Settings → "Send a test": proof this device can get reminders. */
+export function testMessage(): ReminderMessage {
+  return {
+    title: "Reminders are on",
+    body: "This is how a reminder from Presense will look.",
+    path: "/",
+    tag: "presense-test",
+  };
+}
