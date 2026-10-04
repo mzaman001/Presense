@@ -32,6 +32,10 @@
 
 Google is the only sign-in method (`src/app/(auth)/login`). Email links were removed on 2026-10-02 because Supabase's built-in mailer only delivers to the project's own team members, so they never reached real users. Don't bring email sign-in back without first setting up custom SMTP (Supabase → Authentication → Emails → SMTP Settings); the closed PR #54 has a link-plus-code version ready for that day.
 
+**Test account (`perf-test@presense.app`).** `scripts/seed-test-user.mjs` upserts it and prints a session cookie for `tests/authed-do.spec.ts`, `scripts/lighthouse-authed.mjs` and manual signed-in checks (needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`; a worktree needs its own copy and its own `npm ci`, since Turbopack won't compile from the main checkout's `node_modules`). The session is minted with the service role: `auth.admin.generateLink({ type: "magiclink" })` and then `verifyOtp({ token_hash })`. Nothing is emailed, and it works with the Email provider off (checked 2026-10-04: password and self-service OTP sign-in both still answer "Email logins are disabled"). The account has no known password: each run sets a random one. Don't switch the Email provider back on for testing.
+
+**Playwright runs full Chromium (`channel: 'chromium'`), not the default headless shell.** The shell kills the renderer on `/` and `/do` ("bad Mojo message … OnDeviceSpeechRecognition") as soon as `useSpeechCapture` calls `SpeechRecognition.available()`. Real Chrome is fine. Run `npx playwright install chromium` once if the full build is missing.
+
 `types:check` is **not** wired into `build`. It used to run as a `prebuild` hook, which meant any build without Supabase CLI access — CI included — failed before it started. Run it deliberately after a migration.
 
 ## Service worker and reminders

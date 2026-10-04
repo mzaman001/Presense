@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 // TOOL-18: idempotent seed for the authed-measurement test account.
 //
-// Upserts perf-test@presense.app (confirmed email, known password), signs in
-// with a password grant, and prints a session-cookie header that Playwright
-// and Lighthouse can inject to reach authed routes (the app's UI only exposes
+// Upserts perf-test@presense.app (confirmed email), mints a session for it
+// server-side, and prints a session-cookie header that Playwright and
+// Lighthouse can inject to reach authed routes (the app's UI only exposes
 // Google sign-in, so a UI-driven login is not reproducible in CI).
+//
+// The session comes from the Admin API: generateLink (service role) returns a
+// one-time magic-link token hash, and verifyOtp exchanges it for a session.
+// Nothing is emailed, and it works with the Email provider disabled, which it
+// is (2026-10-02): password and self-service OTP sign-in both answer "Email
+// logins are disabled", so no public sign-in path is opened. The account has
+// no usable password: each run overwrites it with a random one, so a password
+// once committed here can't sign in even if email logins come back.
 //
 // Usage:
 //   node scripts/seed-test-user.mjs [--cookie] [--json]
@@ -12,19 +20,19 @@
 //   --json    print the full session object
 //
 // Env: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-//      SUPABASE_SERVICE_ROLE_KEY, TEST_ACCOUNT_EMAIL, TEST_ACCOUNT_PASSWORD
+//      SUPABASE_SERVICE_ROLE_KEY, TEST_ACCOUNT_EMAIL
 // (loaded from .env.local when unset; defaults below match the committed
 // workflow, override in .env.local for a different project).
 
 import fs from "node:fs";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const { createClient } = require("@supabase/supabase-js");
 
 const DEFAULT_EMAIL = "perf-test@presense.app";
-const DEFAULT_PASSWORD = "presense-perf-test-2026!";
 
 function loadEnvLocal() {
   const out = {};
@@ -52,7 +60,8 @@ async function main() {
   const serviceKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY || localEnv.SUPABASE_SERVICE_ROLE_KEY;
   const email = process.env.TEST_ACCOUNT_EMAIL || DEFAULT_EMAIL;
-  const password = process.env.TEST_ACCOUNT_PASSWORD || DEFAULT_PASSWORD;
+  // Never used to sign in; it only replaces any password the account had.
+  const password = randomBytes(32).toString("base64url");
 
   if (!url || !anonKey || !serviceKey) {
     console.error(
@@ -72,7 +81,7 @@ async function main() {
   let found = (existing.data?.users ?? []).find((u) => u.email === email);
 
   if (found) {
-    // Keep the known password deterministic so the seed is idempotent.
+    // Scrub any earlier known password (this script used to commit one).
     const upd = await admin.auth.admin.updateUserById(found.id, { password });
     if (upd.error) {
       console.error("updateUserById failed:", upd.error.message);
@@ -91,12 +100,21 @@ async function main() {
     }
   }
 
+  const link = await admin.auth.admin.generateLink({ type: "magiclink", email });
+  if (link.error) {
+    console.error("generateLink failed:", link.error.message);
+    process.exit(1);
+  }
+
   const anon = createClient(url, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const { data, error } = await anon.auth.signInWithPassword({ email, password });
-  if (error) {
-    console.error("signInWithPassword failed:", error.message);
+  const { data, error } = await anon.auth.verifyOtp({
+    token_hash: link.data.properties.hashed_token,
+    type: "magiclink",
+  });
+  if (error || !data.session) {
+    console.error("verifyOtp failed:", error?.message ?? "no session returned");
     process.exit(1);
   }
 
