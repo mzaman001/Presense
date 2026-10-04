@@ -126,3 +126,29 @@ describe("push_reminders scheduler gate", () => {
     expect(src).toContain("CRON_AUTH_FAILED");
   });
 });
+
+describe("claim_push_reminders", () => {
+  // The function's current definition is the newest migration that
+  // (re)creates it; task reminders must wait for a device rather than be
+  // used up when the user has nowhere to receive them.
+  it("only claims a task reminder once the user has a device", () => {
+    const dir = path.resolve(__dirname, "../../../supabase/migrations");
+    const latest = fs
+      .readdirSync(dir)
+      .filter((f) =>
+        fs
+          .readFileSync(path.join(dir, f), "utf8")
+          .includes("create or replace function public.claim_push_reminders()"),
+      )
+      .sort()
+      .at(-1)!;
+    const sql = fs.readFileSync(path.join(dir, latest), "utf8");
+    const taskBranch = sql.slice(
+      sql.indexOf("with due as"),
+      sql.indexOf("returning 'task'"),
+    );
+    expect(taskBranch).toMatch(
+      /and exists \(select 1 from public\.push_subscriptions p where p\.user_id = i\.user_id\)/,
+    );
+  });
+});
