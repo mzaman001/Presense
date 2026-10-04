@@ -352,6 +352,7 @@ export type Database = {
           last_evening_ritual_date: string | null
           last_morning_push_on: string | null
           last_ritual_date: string | null
+          last_test_push_at: string | null
           location_detection: boolean | null
           long_break_duration: number | null
           nlp_date_parsing: boolean | null
@@ -403,6 +404,7 @@ export type Database = {
           last_evening_ritual_date?: string | null
           last_morning_push_on?: string | null
           last_ritual_date?: string | null
+          last_test_push_at?: string | null
           location_detection?: boolean | null
           long_break_duration?: number | null
           nlp_date_parsing?: boolean | null
@@ -454,6 +456,7 @@ export type Database = {
           last_evening_ritual_date?: string | null
           last_morning_push_on?: string | null
           last_ritual_date?: string | null
+          last_test_push_at?: string | null
           location_detection?: boolean | null
           long_break_duration?: number | null
           nlp_date_parsing?: boolean | null
