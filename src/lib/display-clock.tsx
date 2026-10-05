@@ -62,13 +62,17 @@ export function useDisplayClock(): Clock {
 /**
  * The clock for a server-rendered list. The server and the hydrating render
  * both use `initial` (the server's timezone and request time), so the HTML
- * matches; right after hydration it moves to `timeZone` and the current
- * minute, and then follows the minute.
+ * matches. In the browser it keeps the server's time until the minute moves
+ * past it, then follows the minute; the zone becomes `timeZone` (the same
+ * as the server's unless the device has moved). Switching straight to the
+ * current minute made React re-render the whole list right after hydration
+ * (a ~90 ms "cascading update" on a phone) for a time that grouped nothing
+ * differently.
  */
 export function useLiveClock(initial: Required<Clock>, timeZone: () => string) {
   const now = useSyncExternalStore(
     subscribeMinute,
-    currentMinute,
+    () => Math.max(initial.now, currentMinute()),
     () => initial.now,
   );
   const zone = useSyncExternalStore(
