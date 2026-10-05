@@ -37,7 +37,7 @@ function minutesSinceMidnight(date: Date) {
   return date.getHours() * 60 + date.getMinutes();
 }
 
-function toDateKey(date: Date) {
+export function toDateKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -75,28 +75,63 @@ export function getRitualDecision(input: RitualDecisionInput): RitualDecision {
         nextEligibleAt: null,
       };
     }
-    return { kind: "morning", targetDate: today, reason: "manual_planning", nextEligibleAt: null };
+    return {
+      kind: "morning",
+      targetDate: today,
+      reason: "manual_planning",
+      nextEligibleAt: null,
+    };
   }
 
   if (currentMinutes >= shutdownMinutes && !eveningDone && morningDone) {
-    return { kind: "evening", targetDate: today, reason: "evening_due", nextEligibleAt: null };
+    return {
+      kind: "evening",
+      targetDate: today,
+      reason: "evening_due",
+      nextEligibleAt: null,
+    };
   }
 
   if (currentMinutes < nudgeMinutes) {
-    return { kind: "none", targetDate: null, reason: "before_morning_window", nextEligibleAt: eligibleAt(now, nudgeMinutes) };
+    return {
+      kind: "none",
+      targetDate: null,
+      reason: "before_morning_window",
+      nextEligibleAt: eligibleAt(now, nudgeMinutes),
+    };
   }
 
   if (!morningDone && currentMinutes < morningWindowEnd) {
-    return { kind: "morning", targetDate: today, reason: "morning_due", nextEligibleAt: null };
+    return {
+      kind: "morning",
+      targetDate: today,
+      reason: "morning_due",
+      nextEligibleAt: null,
+    };
   }
 
   if (!morningDone) {
-    return { kind: "none", targetDate: null, reason: "morning_window_missed", nextEligibleAt: eligibleAt(addDays(now, 1), nudgeMinutes) };
+    return {
+      kind: "none",
+      targetDate: null,
+      reason: "morning_window_missed",
+      nextEligibleAt: eligibleAt(addDays(now, 1), nudgeMinutes),
+    };
   }
 
   if (eveningDone) {
-    return { kind: "none", targetDate: null, reason: "evening_completed", nextEligibleAt: eligibleAt(addDays(now, 1), nudgeMinutes) };
+    return {
+      kind: "none",
+      targetDate: null,
+      reason: "evening_completed",
+      nextEligibleAt: eligibleAt(addDays(now, 1), nudgeMinutes),
+    };
   }
 
-  return { kind: "none", targetDate: null, reason: "before_evening_window", nextEligibleAt: eligibleAt(now, shutdownMinutes) };
+  return {
+    kind: "none",
+    targetDate: null,
+    reason: "before_evening_window",
+    nextEligibleAt: eligibleAt(now, shutdownMinutes),
+  };
 }
