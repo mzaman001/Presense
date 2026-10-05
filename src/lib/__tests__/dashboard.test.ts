@@ -36,7 +36,7 @@ describe("summarizeDashboard", () => {
           { completed_at: local(16), duration_minutes: 30 },
         ],
       }),
-      now,
+      { now: now.getTime() },
     );
 
     expect(s.doneTasks.map((t) => t.id)).toEqual(["mon", "thu"]);
@@ -66,7 +66,7 @@ describe("summarizeDashboard", () => {
           }),
         ],
       }),
-      now,
+      { now: now.getTime() },
     );
     expect(s.tasks.map((t) => t.id)).toEqual([
       "overdue",
@@ -82,7 +82,68 @@ describe("summarizeDashboard", () => {
       makeTask({ id: "b", deadline: local(28) }),
       makeTask({ id: "a", deadline: local(25) }),
     ];
-    summarizeDashboard(rows({ tasks }), now);
+    summarizeDashboard(rows({ tasks }), { now: now.getTime() });
     expect(tasks.map((t) => t.id)).toEqual(["b", "a"]);
+  });
+
+  it("cuts days and weeks in the given timezone, not the machine's", () => {
+    // Monday 2026-09-21 20:30Z: still Monday in UTC, Tuesday 02:00 in Kolkata.
+    const at = Date.parse("2026-09-21T20:30:00Z");
+    const done = (id: string, iso: string) =>
+      makeTask({ id, status: "done", completed_at: iso });
+    const data = rows({
+      recentDone: [
+        // Sunday 20 Sep 20:00Z: Sunday in UTC (last week), Monday 01:30 in
+        // Kolkata (this week).
+        done("edge", "2026-09-20T20:00:00Z"),
+        done("mon", "2026-09-21T10:00:00Z"),
+      ],
+      ritualCompletedAt: ["2026-09-20T20:00:00Z"],
+    });
+    const utc = summarizeDashboard(data, { timeZone: "UTC", now: at });
+    expect(utc.doneTasks.map((t) => t.id)).toEqual(["mon"]);
+    expect(utc.doneTasksLastWeek.map((t) => t.id)).toEqual(["edge"]);
+    expect(utc.dayCounts).toEqual([1, 0, 0, 0, 0, 0, 0]);
+
+    const kolkata = summarizeDashboard(data, {
+      timeZone: "Asia/Kolkata",
+      now: at,
+    });
+    expect(kolkata.doneTasks.map((t) => t.id)).toEqual(["edge", "mon"]);
+    expect(kolkata.dayCounts).toEqual([2, 0, 0, 0, 0, 0, 0]);
+    // The plan made at 01:30 on Monday in Kolkata is within the last 7 days
+    // there; in UTC it was Sunday, also within them.
+    expect(kolkata.plannedDays).toBe(1);
+    expect(utc.plannedDays).toBe(1);
+  });
+
+  it("treats 'today' by the zone's calendar for urgent-today ordering", () => {
+    // 2026-09-24 20:30Z = 25 Sep 02:00 in Kolkata.
+    const at = Date.parse("2026-09-24T20:30:00Z");
+    const data = rows({
+      tasks: [
+        makeTask({
+          id: "utcToday",
+          priority: 2,
+          deadline: "2026-09-24T22:00:00Z",
+        }),
+        makeTask({
+          id: "kolkataToday",
+          priority: 2,
+          deadline: "2026-09-25T12:00:00Z",
+        }),
+      ],
+    });
+    const kolkata = summarizeDashboard(data, {
+      timeZone: "Asia/Kolkata",
+      now: at,
+    });
+    // Both are due "today" in Kolkata (the 25th): deadline order.
+    expect(kolkata.tasks.map((t) => t.id)).toEqual([
+      "utcToday",
+      "kolkataToday",
+    ]);
+    const utc = summarizeDashboard(data, { timeZone: "UTC", now: at });
+    expect(utc.tasks.map((t) => t.id)).toEqual(["utcToday", "kolkataToday"]);
   });
 });

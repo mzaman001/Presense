@@ -1,3 +1,5 @@
+import { addDaysKey } from "@/lib/zoned-date";
+
 /**
  * How many of the last 7 days (today included) had a morning plan.
  *
@@ -22,6 +24,22 @@ export function daysPlannedInLastWeek(dateKeys: string[], today: Date): number {
     ].join("-");
     if (planned.has(key)) count++;
     cursor.setDate(cursor.getDate() - 1);
+  }
+  return count;
+}
+
+/**
+ * The same rolling count for a "YYYY-MM-DD" today, so it works in any
+ * timezone (Home is drawn on the server in the user's saved one).
+ */
+export function daysPlannedInWeekEnding(
+  dateKeys: string[],
+  todayKey: string,
+): number {
+  const planned = new Set(dateKeys);
+  let count = 0;
+  for (let i = 0; i < 7; i++) {
+    if (planned.has(addDaysKey(todayKey, -i))) count++;
   }
   return count;
 }

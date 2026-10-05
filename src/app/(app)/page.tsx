@@ -28,28 +28,37 @@ async function loadRows() {
 }
 
 /**
- * Home's header and tip come from the server so they paint with the HTML;
- * only the data below them waits for the browser (it needs the device's
- * timezone). The settings row is the layout's, cached for the request.
+ * Home's header and the clock it's drawn with. One clock for the whole
+ * page: the saved timezone and the request time. Home renders with it on
+ * the server and the browser's first render reuses it, so the two always
+ * agree (see display-clock). The settings row is the layout's, cached for
+ * the request.
  */
-async function loadHeader(): Promise<HomeHeader> {
+async function loadHeader(): Promise<{
+  header: HomeHeader;
+  clock: { timeZone: string; now: number };
+}> {
   const supabase = await createClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
   const settings = session ? await getUserSettings(session.user.id) : null;
+  const clock = { timeZone: settings?.timezone || "UTC", now: Date.now() };
   return {
-    greeting: greetingFor(hourIn(settings?.timezone)),
-    firstName: settings?.display_name?.trim().split(/\s+/)[0] ?? "",
-    eveningReview: formatTimeOfDay(settings?.shutdown_time),
+    header: {
+      greeting: greetingFor(hourIn(clock.timeZone, new Date(clock.now))),
+      firstName: settings?.display_name?.trim().split(/\s+/)[0] ?? "",
+      eveningReview: formatTimeOfDay(settings?.shutdown_time),
+    },
+    clock,
   };
 }
 
 export default async function HomePage() {
-  const header = await loadHeader();
+  const { header, clock } = await loadHeader();
   return (
     <Suspense fallback={<PageSkeleton count={4} type="card" />}>
-      <HomeView rowsPromise={loadRows()} header={header} />
+      <HomeView rowsPromise={loadRows()} header={header} clock={clock} />
     </Suspense>
   );
 }
