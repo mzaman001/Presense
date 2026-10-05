@@ -137,6 +137,7 @@ for (let run = 1; run <= runs; run++) {
   results.push({
     tbt: audit("total-blocking-time")?.numericValue ?? NaN,
     lcp: audit("largest-contentful-paint")?.numericValue ?? NaN,
+    si: audit("speed-index")?.numericValue ?? NaN,
   });
   console.log(
     `run ${run}: ${lhr.finalDisplayedUrl}  score ${Math.round(lhr.categories.performance.score * 100)}` +
@@ -154,5 +155,6 @@ const median = (values) => {
 if (runs > 1) {
   console.log(`median TBT: ${Math.round(median(results.map((r) => r.tbt)))} ms`);
   console.log(`median LCP: ${(median(results.map((r) => r.lcp)) / 1000).toFixed(1)} s`);
+  console.log(`median Speed Index: ${(median(results.map((r) => r.si)) / 1000).toFixed(2)} s`);
 }
 console.log(`report (last run): ${outPath}`);
