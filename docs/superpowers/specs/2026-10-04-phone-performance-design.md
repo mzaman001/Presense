@@ -1,6 +1,6 @@
 # Phone performance: cut main-thread blocking on load
 
-Date: 2026-10-04. Status: approved design, not yet implemented.
+Date: 2026-10-04. Status: implemented 2026-10-05 (see *Results*).
 
 ## Goal
 
@@ -96,3 +96,22 @@ Every commit: `npm run lint` (0 errors), `npx tsc --noEmit`, `npm test`,
 pass on the signed-in `/do` and Home checking: the morning ritual still opens
 when due and works, nav tooltips appear on hover and on keyboard focus, the
 mobile drawer opens and closes, and no new console errors.
+
+## Results (2026-10-05)
+
+Median of 5 Lighthouse runs (`lighthouse-authed.mjs --runs 5`), ordinary load
+(today's rituals marked done; the original baseline had a ritual opening
+during every measured load, see the plan):
+
+| Step | `/do` TBT | `/` TBT | Kept |
+|---|---|---|---|
+| Baseline (`main`) | 589 ms | 588 ms | |
+| 1. Ritual overlay only while open | 553 | 608 | yes (removes the "Recovered" render and the chunk on every page; AGENTS.md rule) |
+| 2. Sentry tracing stripped in the browser | 517 | 559 | yes (Sentry chunk 72.1 → 51.6 KB gz) |
+| 3. Rail tooltips removed | 514 | 479 | yes |
+| 4. Store hydrated with the server's settings | 397 | 401 | yes |
+| 5. `NavRow` memoised | 404 | 434 | no, reverted |
+| Final build | 422 | 428 | |
+
+Run-to-run noise is about ±25 ms. The remaining cost and the case for server-
+rendering the Do list are in CLAUDE.md, *Known weak points*.

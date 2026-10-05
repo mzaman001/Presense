@@ -67,7 +67,7 @@ Run on `main` at `b5c9b9b` (after #68).
 | `npx -y deno check supabase/functions/*/index.ts` | ✅ clean, all four (`cron_cleanup`, `cron_recurrence`, `push_reminders`, `push_test`); tsc excludes `supabase/`, Edge Functions run on Deno |
 | `npm test` | ✅ 830 passed / 73 files |
 | `npm run build` | ✅ |
-| Bundle budget gate (`check-budgets.mjs`, in CI) | ✅ `/login` 163.4 KiB gz vs 164.7 budget (2026-10-03) |
+| Bundle budget gate (`check-budgets.mjs`, in CI) | ✅ `/login` 162.6 KiB gz vs 164.7 budget (2026-10-05). CI measures a `--webpack` ANALYZE build; the same check against a Turbopack `next build` reads ~202 KiB on `main` too, so compare like with like |
 | `npx playwright test tests/accessibility.spec.ts -g login` | ✅ 2 passed (Axe scan + AA contrast, dark and light) |
 | `npm audit --omit=dev` | ✅ 0 vulnerabilities |
 | GitHub code scanning / Dependabot | ⚠️ 1 open / ✅ 0 open. The one is osv-scanner alert #82, `braces@3.0.3` (GHSA-vfj7-8cjw-p6xm, high), reached only through the ESLint chain (`@next/eslint-plugin-next` → `fast-glob` → `micromatch`); dev-only, nothing ships it. npm's only fix is a breaking downgrade of `eslint-config-next`, so it waits for an upstream release. |
@@ -93,6 +93,8 @@ The bundle is still large. See "Known weak points" for the current Lighthouse fi
 
 ## Known weak points
 
-- **Total Blocking Time is still over budget.** Lighthouse (`scripts/lighthouse-authed.mjs`, mobile preset, two runs, 2026-09-25): `/do` LCP 2.3 / 2.4 s, TBT 400 / 440 ms, CLS 0, score 85 / 85. Home LCP 3.3 / 2.8 s, TBT 450 / 470 ms, CLS 0, score 74 / 80. LCP and CLS are fixed; TBT (budget 200 ms) is hydration work: every page UI is a client view (react-dom alone is ~1.2 s of scripting under 4x CPU throttling). Moving the page UIs to Server Components with client islands is the remaining fix.
+- **Total Blocking Time is still over budget (200 ms), though lower.** `node scripts/lighthouse-authed.mjs <url> --runs 5` (mobile preset, real 4x CPU throttling, Edge as `CHROME_PATH`, median of 5, 2026-10-05): `/do` 589 → 422 ms, Home 588 → 428 ms after the phone-performance pass (ritual overlay mounted only while open, Sentry tracing stripped from the browser bundle, no rail tooltips, store hydrated with the server's settings). Runs vary by ±25 ms, so compare medians.
+  - **Measure the ordinary load.** The script seeds the test account with today's rituals done (`--rituals-done`); without that a ritual opened 2 s into every measured load and was counted as page cost. `--ritual-due` measures that case on purpose (442 ms on `/do`).
+  - **What's left**, from Chrome traces (React profiling build, `next build --profile`): start-up evaluation of the shell's modules (~180 ms task), style and layout before hydration (~170 ms), and on `/do` the task list's first render, which happens on the client after hydration because its dates use the device's timezone (`DoBoard`'s `hydrated` gate), plus a re-render of every `m.*` component when `LazyMotion`'s async features arrive. Rendering that list on the server is where the Server Components work would pay off; memoising the rail's rows measured no gain and was dropped.
 - **Anything that server-renders hidden and waits for JS to show will wreck LCP.** The (app) template used to render every page at `opacity: 0` until framer-motion loaded (6.3 s of render delay on `/do`). Page entrances are CSS now; keep them that way.
 - `/login` initial JS was 202.9 KiB gz under `next build` + `next start` before the 2026-10-02 Google-only rewrite; see the 2026-10-02 network-idle figure above (237.6 KiB, a broader measure). `perf-budgets.json` measures a webpack ANALYZE build, which reads lower.
