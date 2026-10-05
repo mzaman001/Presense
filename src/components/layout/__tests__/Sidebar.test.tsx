@@ -285,6 +285,27 @@ describe("Sidebar", () => {
   });
 
   it.each([
+    { hour: 7, when: "before the morning window" },
+    { hour: 16, when: "after the morning window closed" },
+  ])("never claims the day is planned $when", ({ hour }) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 17, hour));
+    useAppStore.setState({
+      userSettings: {
+        ...useAppStore.getState().userSettings,
+        last_ritual_date: "2026-09-16",
+      },
+    });
+    const sidebar = renderSidebar();
+    advanceTime(0);
+    expect(within(sidebar).queryByText(/Day planned/i)).not.toBeInTheDocument();
+    const planning = within(sidebar).getByRole("button", {
+      name: "Plan my day",
+    });
+    expect(planning).not.toHaveAttribute("data-due", "true");
+  });
+
+  it.each([
     { hour: 12, eveningDate: undefined, label: /Day planned/i },
     { hour: 18, eveningDate: "2026-09-17", label: /All done/i },
   ])(

@@ -24,7 +24,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { useInboxCount } from "@/hooks/useInboxCount";
 import { useHaptics } from "@/hooks/useHaptics";
-import { getRitualDecision } from "@/lib/rituals";
+import { getRitualDecision, toDateKey } from "@/lib/rituals";
 import { preloadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
 
 const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
@@ -153,6 +153,11 @@ function SidebarRitual() {
       ? decision.kind
       : null;
   const completed = decision?.reason === "evening_completed";
+  // "Not due" is not "done": before the nudge time or after the morning
+  // window closes, an unplanned day still reads as unplanned (Home agrees).
+  const notPlanned =
+    decision?.reason === "before_morning_window" ||
+    decision?.reason === "morning_window_missed";
   const label = !now
     ? "Daily planning"
     : kind === "evening"
@@ -161,7 +166,9 @@ function SidebarRitual() {
         ? "Plan my day"
         : completed
           ? "All done"
-          : "Day planned";
+          : notPlanned && settings.last_ritual_date !== toDateKey(now)
+            ? "Plan my day"
+            : "Day planned";
   return (
     <NavRow
       label={label}
