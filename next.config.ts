@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 // The service worker is built and served by src/app/serwist/[path]/route.ts;
 // withSerwist only keeps esbuild out of the server bundle.
@@ -51,7 +52,27 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: { exclude: ["error"] },
   },
-  turbopack: {},
+  turbopack: {
+    rules: {
+      // Strip Sentry's tracing code from the browser bundle only; the server
+      // keeps tracing. See scripts/turbopack/sentry-no-tracing-loader.cjs.
+      "*.{js,mjs}": {
+        condition: {
+          all: [
+            "browser",
+            { path: /node_modules[\\/]@sentry/ },
+            { content: /__SENTRY_TRACING__/ },
+          ],
+        },
+        loaders: [
+          path.resolve(
+            process.cwd(),
+            "scripts/turbopack/sentry-no-tracing-loader.cjs",
+          ),
+        ],
+      },
+    },
+  },
   async headers() {
     return [
       {
@@ -74,10 +95,12 @@ export default withSentryConfig(analyze(withSerwist(nextConfig)), {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   release: { name: sentryRelease },
   silent: !process.env.CI,
-  // We use Sentry for error capture only, not performance tracing (see
-  // instrumentation-client.ts — no tracesSampleRate/tracesSampler is set).
-  // Without this, @sentry/nextjs bundles browserTracingIntegration into the
-  // client build regardless, at ~115KB gzip.
+  // In the browser Sentry is for error capture only, not performance tracing
+  // (see instrumentation-client.ts — no tracesSampleRate/tracesSampler).
+  // Without stripping, @sentry/nextjs bundles browserTracingIntegration into
+  // the client build regardless. This option only reaches webpack builds
+  // (ANALYZE=true); `next build` uses Turbopack, where the turbopack.rules
+  // entry above does the same for the browser bundle.
   webpack: {
     treeshake: { removeTracing: true },
   },
