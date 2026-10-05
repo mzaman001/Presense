@@ -23,8 +23,17 @@ beforeEach(() => {
   device.zone = "Asia/Kolkata";
   updateMock.mockClear();
   eqMock.mockClear();
+  // The sync waits for an idle moment; here the browser is idle at once.
+  vi.stubGlobal("requestIdleCallback", (cb: () => void) => {
+    cb();
+    return 1;
+  });
+  vi.stubGlobal("cancelIdleCallback", () => {});
 });
-afterEach(() => useAppStore.setState(initial, true));
+afterEach(() => {
+  vi.unstubAllGlobals();
+  useAppStore.setState(initial, true);
+});
 
 describe("TimezoneSync", () => {
   it("saves the device's timezone when automatic and different", async () => {

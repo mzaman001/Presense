@@ -29,18 +29,29 @@ export function TimezoneSync() {
 
   useEffect(() => {
     if (!loaded || !automatic) return;
-    const zone = deviceTimeZone();
-    if (!zone || zone === savedZone) return;
-    updateUserSetting("timezone", zone);
-    void (async () => {
-      const { error } = await createClient()
-        .from("user_settings")
-        .update({ timezone: zone })
-        .eq("user_id", userId);
-      // Background and silent: no toast. The next open tries again.
-      if (error)
-        logger.warn("[timezone] couldn't save the device timezone", error);
-    })();
+    const sync = () => {
+      const zone = deviceTimeZone();
+      if (!zone || zone === savedZone) return;
+      updateUserSetting("timezone", zone);
+      void (async () => {
+        const { error } = await createClient()
+          .from("user_settings")
+          .update({ timezone: zone })
+          .eq("user_id", userId);
+        // Background and silent: no toast. The next open tries again.
+        if (error)
+          logger.warn("[timezone] couldn't save the device timezone", error);
+      })();
+    };
+    // When the page is idle: reading the device's zone sets up Intl's locale
+    // data, which measured ~25 ms of blocking on a phone-speed load of Home
+    // when it ran during hydration. Nothing needs it sooner.
+    if ("requestIdleCallback" in window) {
+      const id = requestIdleCallback(sync, { timeout: 5000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(sync, 2000);
+    return () => clearTimeout(id);
   }, [loaded, automatic, savedZone, updateUserSetting, userId]);
 
   return null;
