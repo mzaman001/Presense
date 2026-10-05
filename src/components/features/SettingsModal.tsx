@@ -50,6 +50,7 @@ import {
 import { disablePush, enablePush, sendTestPush } from "@/lib/push";
 import { isStandalone } from "@/lib/platform";
 import { z } from "zod";
+import { deviceTimeZone } from "@/lib/zoned-date";
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 import { useQueryClient } from "@tanstack/react-query";
@@ -70,6 +71,7 @@ const AUTOSAVE_FIELDS = [
   "display_name",
   "avatar_color",
   "timezone",
+  "timezone_auto",
   // Appearance was missing here, so a mode change only reached localStorage
   // and the next load reapplied the stale DB value ("theme keeps resetting").
   "color_mode",
@@ -158,6 +160,25 @@ const CATEGORY_COLORS = [
   "#9CA3AF",
 ];
 
+/**
+ * "India Standard Time (GMT+5:30)", for the automatic timezone row. The
+ * readable name, not the IANA id: browsers report old ids for some zones
+ * (Chromium says Asia/Calcutta for India).
+ */
+function timezoneLabel(zone: string): string {
+  try {
+    const part = (timeZoneName: "longGeneric" | "shortOffset") =>
+      new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName })
+        .formatToParts(new Date())
+        .find((p) => p.type === "timeZoneName")?.value;
+    const name = part("longGeneric");
+    const offset = part("shortOffset") ?? zone;
+    return name && !name.startsWith("GMT") ? `${name} (${offset})` : offset;
+  } catch {
+    return zone;
+  }
+}
+
 const TIMEZONE_OPTIONS: { value: string; label: string }[] =
   typeof Intl !== "undefined" && "supportedValuesOf" in Intl
     ? (Intl as unknown as { supportedValuesOf: (k: string) => string[] })
@@ -191,6 +212,7 @@ interface SettingsState {
   display_name?: string;
   avatar_color?: string;
   timezone?: string;
+  timezone_auto?: boolean;
   theme?: string;
   color_mode?: string;
   reduce_motion?: boolean;
@@ -827,6 +849,7 @@ function SettingsModalContent({
   const reduceMotionValue = useWatch({ control, name: "reduce_motion" });
   const avatarColorValue = useWatch({ control, name: "avatar_color" });
   const timezoneValue = useWatch({ control, name: "timezone" });
+  const timezoneAutoValue = useWatch({ control, name: "timezone_auto" });
   const notificationsEnabledValue = useWatch({
     control,
     name: "notifications_enabled",
@@ -879,6 +902,7 @@ function SettingsModalContent({
       reduce_motion: reduceMotionValue,
       avatar_color: avatarColorValue,
       timezone: timezoneValue,
+      timezone_auto: timezoneAutoValue,
       notifications_enabled: notificationsEnabledValue,
       daily_briefing: dailyBriefingValue,
       pomodoro_sound: pomodoroSoundValue,
@@ -900,6 +924,7 @@ function SettingsModalContent({
       reduceMotionValue,
       avatarColorValue,
       timezoneValue,
+      timezoneAutoValue,
       notificationsEnabledValue,
       dailyBriefingValue,
       pomodoroSoundValue,
@@ -1399,21 +1424,44 @@ function SettingsModalContent({
                                 })}
                               </div>
                             </SettingRow>
+                            {/* Like a phone's "Set automatically": on by
+                                default, the saved zone follows this device
+                                (TimezoneSync). Off: the user picks one. */}
                             <SettingRow
-                              label="Timezone"
-                              description="Used for due dates and your daily rhythm."
-                              stack
+                              label="Set timezone automatically"
+                              description={
+                                settings.timezone_auto === false
+                                  ? "Follows this device."
+                                  : `Follows this device. Now: ${timezoneLabel(settings.timezone || deviceTimeZone())}`
+                              }
                             >
-                              <Dropdown
-                                trackAnimatedAncestor
-                                aria-label="Timezone"
-                                value={settings.timezone || "UTC"}
-                                onChange={(val) =>
-                                  updateSetting("timezone", val)
-                                }
-                                options={TIMEZONE_OPTIONS}
+                              <Switch
+                                label="Set timezone automatically"
+                                checked={settings.timezone_auto !== false}
+                                onChange={(on) => {
+                                  updateSetting("timezone_auto", on);
+                                  if (on)
+                                    updateSetting("timezone", deviceTimeZone());
+                                }}
                               />
                             </SettingRow>
+                            {settings.timezone_auto === false && (
+                              <SettingRow
+                                label="Timezone"
+                                description="Used for due dates, reminders and your daily rhythm."
+                                stack
+                              >
+                                <Dropdown
+                                  trackAnimatedAncestor
+                                  aria-label="Timezone"
+                                  value={settings.timezone || "UTC"}
+                                  onChange={(val) =>
+                                    updateSetting("timezone", val)
+                                  }
+                                  options={TIMEZONE_OPTIONS}
+                                />
+                              </SettingRow>
+                            )}
                           </SettingsGroup>
 
                           <SettingsGroup title="Danger zone" tone="danger">

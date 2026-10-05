@@ -36,18 +36,26 @@ import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { Enso } from "@/components/ui/Enso";
 import { isStuck } from "@/lib/stuck-tasks";
+import { useDisplayClock } from "@/lib/display-clock";
+import type { Clock as ListClock } from "@/lib/do-buckets";
+import {
+  addDaysKey,
+  dateKeyIn,
+  deviceTimeZone,
+  formatClockTime,
+  formatShortDate,
+} from "@/lib/zoned-date";
 
-function formatDeadline(d: string | null) {
+/** "Overdue", "Today", "Tomorrow" or "Oct 7", in the list's timezone. */
+function formatDeadline(d: string | null, clock: ListClock) {
   if (!d) return null;
   const date = new Date(d);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  const isTomorrow =
-    new Date(now.getTime() + 86400000).toDateString() === date.toDateString();
-  if (date < now && !isToday) return "Overdue";
-  if (isToday) return "Today";
-  if (isTomorrow) return "Tomorrow";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const day = dateKeyIn(date, clock.timeZone);
+  const today = dateKeyIn(new Date(clock.now), clock.timeZone);
+  if (date.getTime() < clock.now && day !== today) return "Overdue";
+  if (day === today) return "Today";
+  if (day === addDaysKey(today, 1)) return "Tomorrow";
+  return formatShortDate(date, clock.timeZone);
 }
 
 const SWIPE_DELETE_THRESHOLD = -80;
@@ -103,7 +111,9 @@ export const TaskCard = React.memo(
     );
     const cardX = dragX;
 
-    const label = formatDeadline(task.deadline);
+    // The list's timezone and moment, so a server-rendered card matches.
+    const clock = useDisplayClock();
+    const label = formatDeadline(task.deadline, clock);
     const isOverdue = label === "Overdue";
     const subtasks = readSubtasks(task.subtasks);
     const completedSubtasks = subtasks.filter((st) => st.completed).length;
@@ -221,11 +231,11 @@ export const TaskCard = React.memo(
     };
 
     const snoozedUntil =
-      task.snoozed_until && new Date(task.snoozed_until) > new Date()
+      task.snoozed_until && Date.parse(task.snoozed_until) > clock.now
         ? new Date(task.snoozed_until)
         : null;
     // A snooze from a reminder sets both to the same time; say it once.
-    const reminder = upcomingReminder(task);
+    const reminder = upcomingReminder(task, clock.now);
     const showReminder =
       reminder &&
       (!snoozedUntil || snoozedUntil.getTime() !== reminder.getTime());
@@ -379,7 +389,7 @@ export const TaskCard = React.memo(
                     >
                       <UiIcon size={12} icon={CalendarDays} />
                       {isOverdue && task.deadline
-                        ? `From ${new Date(task.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        ? `From ${formatShortDate(new Date(task.deadline), clock.timeZone)}`
                         : label}
                     </span>
                   )}
@@ -411,10 +421,7 @@ export const TaskCard = React.memo(
                     <span>
                       <UiIcon size={12} icon={Clock} />
                       Snoozed until{" "}
-                      {snoozedUntil.toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
+                      {formatClockTime(snoozedUntil, clock.timeZone)}
                       <button
                         type="button"
                         onClick={cancelSnooze}
@@ -429,7 +436,11 @@ export const TaskCard = React.memo(
                     <span>
                       <UiIcon size={12} icon={Bell} />
                       <span className="sr-only">Reminder </span>
-                      {formatReminderTime(reminder)}
+                      {formatReminderTime(
+                        reminder,
+                        new Date(clock.now),
+                        clock.timeZone ?? deviceTimeZone(),
+                      )}
                     </span>
                   )}
                   <span className="task-meta-category">
