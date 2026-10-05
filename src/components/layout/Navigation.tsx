@@ -30,6 +30,7 @@ import {
 import { useInboxCount } from "@/hooks/useInboxCount";
 import { useHaptics } from "@/hooks/useHaptics";
 import { getRitualDecision } from "@/lib/rituals";
+import { preloadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
 
 const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
   dark: "#e3875f",
@@ -53,8 +54,11 @@ function NavRow({
   reducedMotion,
   accessibleLabel,
   due,
+  onIntent,
 }: {
   accessibleLabel?: string;
+  /** Hover or focus on a button row: warm whatever its click will open. */
+  onIntent?: () => void;
   /** Something is waiting on this row (e.g. today's plan): dot + brighter. */
   due?: boolean;
   label: string;
@@ -112,6 +116,8 @@ function NavRow({
       data-due={due ? "true" : undefined}
       disabled={disabled}
       onClick={onClick}
+      onPointerEnter={onIntent}
+      onFocus={onIntent}
       className={className}
     >
       {content}
@@ -178,6 +184,7 @@ function SidebarRitual({ expanded }: { expanded: boolean }) {
         kind === "evening" ? Moon : kind === "morning" ? Sunrise : CheckCircle2
       }
       expanded={expanded}
+      onIntent={preloadRitualOverlay}
       onClick={() => {
         if (useAppStore.getState().activeRitual) return;
         if (kind) {

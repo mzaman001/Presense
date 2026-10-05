@@ -11,6 +11,7 @@ import {
   normalizeThemeId,
 } from "@/lib/theme";
 import { getRitualDecision } from "@/lib/rituals";
+import { loadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
 import { isFirstRun } from "@/lib/first-run";
 import { usePathname } from "next/navigation";
 
@@ -43,13 +44,23 @@ export function AppInitializer({
     if (!userSettings || Object.keys(userSettings).length === 0) return;
     if (window.location.pathname.startsWith("/onboarding")) return;
 
+    // Fetch the ritual's code first so it opens fully drawn, not blank.
+    const open = (kind: "morning" | "evening") => {
+      void loadRitualOverlay()
+        .catch(() => undefined)
+        .then(() => {
+          if (useAppStore.getState().activeRitual === null)
+            setActiveRitual(kind);
+        });
+    };
+
     const checkRituals = () => {
       if (useAppStore.getState().activeRitual !== null) return;
 
       // Straight from onboarding: the first Plan my day opens now, whatever
       // the time, and isn't held back by an earlier close.
       if (isFirstRun()) {
-        setActiveRitual("morning");
+        open("morning");
         return;
       }
 
@@ -72,7 +83,7 @@ export function AppInitializer({
       // The system notification for a ritual comes from the server
       // (push_reminders), so it arrives with the app closed too.
       if (decision.kind === "morning" || decision.kind === "evening") {
-        setActiveRitual(decision.kind);
+        open(decision.kind);
       }
     };
 
