@@ -1,3 +1,8 @@
+import {
+  dateKeyIn,
+  formatClockTime,
+  formatWeekdayDate,
+} from "@/lib/zoned-date";
 /**
  * The times offered for "Remind me" and for "Later" on a reminder. They
  * follow the day's routine rather than fixed offsets: a year-long study of
@@ -57,8 +62,29 @@ export function reminderPresets(
   return presets;
 }
 
-/** "3:00 PM", "Tomorrow 10:00 AM", "Mon 12 Oct, 9:00 AM". */
-export function formatReminderTime(at: Date, now: Date = new Date()): string {
+/**
+ * "3:00 PM", "Tomorrow 10:00 AM", "Mon 12 Oct, 9:00 AM".
+ *
+ * With `timeZone`, formats in that zone with a fixed en-US locale, so a
+ * server-rendered task card reads the same in the browser ("Thu, Oct 8,
+ * 9:00 AM"). Without it: the device's zone and locale, for browser-only UI.
+ */
+export function formatReminderTime(
+  at: Date,
+  now: Date = new Date(),
+  timeZone?: string,
+): string {
+  if (timeZone) {
+    const time = formatClockTime(at, timeZone);
+    const dayMs = (key: string) => Date.parse(`${key}T00:00:00Z`);
+    const days = Math.round(
+      (dayMs(dateKeyIn(at, timeZone)) - dayMs(dateKeyIn(now, timeZone))) /
+        86_400_000,
+    );
+    if (days === 0) return time;
+    if (days === 1) return `Tomorrow ${time}`;
+    return `${formatWeekdayDate(at, timeZone)}, ${time}`;
+  }
   const time = at.toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",

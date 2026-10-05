@@ -50,6 +50,19 @@ describe("formatReminderTime", () => {
     expect(formatReminderTime(at(10, 0, 1), now)).toMatch(/^Tomorrow /);
     expect(formatReminderTime(at(10, 0, 3), now)).toMatch(/, /);
   });
+
+  it("formats in a given timezone, the same on any machine", () => {
+    // 2026-10-05 20:30Z is 02:00 on the 6th in Kolkata.
+    const now = new Date("2026-10-05T12:00:00Z"); // 17:30 on the 5th there
+    const at = new Date("2026-10-05T20:30:00Z");
+    expect(formatReminderTime(at, now, "Asia/Kolkata")).toBe(
+      "Tomorrow 2:00 AM",
+    );
+    expect(formatReminderTime(at, now, "UTC")).toBe("8:30 PM");
+    expect(
+      formatReminderTime(new Date("2026-10-08T09:00:00Z"), now, "UTC"),
+    ).toBe("Thu, Oct 8, 9:00 AM");
+  });
 });
 
 describe("upcomingReminder", () => {

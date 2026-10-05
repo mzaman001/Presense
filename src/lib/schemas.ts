@@ -62,6 +62,7 @@ export const settingsSchema = z.object({
   display_name: z.string().optional(),
   avatar_color: z.string().optional(),
   timezone: z.string().optional(),
+  timezone_auto: z.boolean().optional(),
   theme: z.string().optional(),
   color_mode: z.string().optional(),
   reduce_motion: z.boolean().optional(),

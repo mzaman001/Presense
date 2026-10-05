@@ -383,6 +383,7 @@ export type Database = {
           smart_routing_enabled: boolean | null
           theme: string | null
           timezone: string | null
+          timezone_auto: boolean
           user_id: string
         }
         Insert: {
@@ -435,6 +436,7 @@ export type Database = {
           smart_routing_enabled?: boolean | null
           theme?: string | null
           timezone?: string | null
+          timezone_auto?: boolean
           user_id: string
         }
         Update: {
@@ -487,6 +489,7 @@ export type Database = {
           smart_routing_enabled?: boolean | null
           theme?: string | null
           timezone?: string | null
+          timezone_auto?: boolean
           user_id?: string
         }
         Relationships: []

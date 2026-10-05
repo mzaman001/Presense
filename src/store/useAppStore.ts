@@ -7,6 +7,8 @@ export interface UserSettings {
   display_name?: string;
   avatar_color?: string;
   timezone?: string;
+  /** The saved timezone follows the device (Settings → Set automatically). */
+  timezone_auto?: boolean;
   theme?: string;
   color_mode?: string;
   reduce_motion?: boolean;

@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 
 import React, {
   use,
-  useSyncExternalStore,
   useEffect,
   useState,
   useCallback,
@@ -52,6 +51,10 @@ import dynamic from "next/dynamic";
 import { withPreload } from "@/lib/preloadable";
 import { TaskAddPanel } from "@/components/features/TaskAddPanelLazy";
 import { fetchActiveTasks } from "@/lib/do-tasks";
+import { bucketTasks, type Clock as ListClock } from "@/lib/do-buckets";
+import { useShallow } from "zustand/shallow";
+import { DisplayClockProvider, useLiveClock } from "@/lib/display-clock";
+import { deviceTimeZone } from "@/lib/zoned-date";
 
 // Only after a reminder is tapped, so it stays out of Do's initial JS.
 const ReminderSheet = dynamic(
@@ -158,8 +161,6 @@ const Column = React.memo(
 );
 Column.displayName = "Column";
 
-const subscribeNoop = () => () => {};
-
 /**
  * Resolves the server's streamed tasks, then renders the view with plain
  * data. Kept separate on purpose: when a component suspends on use() during
@@ -171,9 +172,12 @@ const subscribeNoop = () => () => {};
  */
 export function DoView({
   tasksPromise,
+  clock: serverClock,
 }: {
   /** Started by the server page and streamed; null when that fetch failed. */
   tasksPromise: Promise<Task[] | null>;
+  /** The saved timezone and the request time the server drew the list for. */
+  clock: Required<ListClock>;
 }) {
   const queryClient = useQueryClient();
   // Returning to Do renders from the cache at once; only a cold load waits
@@ -181,22 +185,37 @@ export function DoView({
   const serverTasks = queryClient.getQueryData<Task[]>(["tasks"])
     ? undefined
     : (use(tasksPromise) ?? undefined);
-  return <DoBoard serverTasks={serverTasks} />;
+  // The list is drawn on the server in the saved timezone. The first
+  // browser render uses the same clock so hydration matches, then it moves
+  // to the device's zone (or the user's chosen one when automatic is off).
+  const { savedZone, automatic } = useAppStore(
+    useShallow((s) => ({
+      savedZone: s.userSettings.timezone,
+      automatic: s.userSettings.timezone_auto !== false,
+    })),
+  );
+  const clock = useLiveClock(serverClock, () =>
+    automatic || !savedZone ? deviceTimeZone() : savedZone,
+  );
+  return (
+    <DisplayClockProvider clock={clock}>
+      <DoBoard serverTasks={serverTasks} clock={clock} />
+    </DisplayClockProvider>
+  );
 }
 
-function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
+function DoBoard({
+  serverTasks,
+  clock,
+}: {
+  serverTasks: Task[] | undefined;
+  clock: ListClock;
+}) {
   const userId = useUserId();
   const supabase = useMemo(() => createClient(), []);
   const initialFilter = "all";
 
   const queryClient = useQueryClient();
-  // Grouping (Overdue/Today) and TaskCard dates use the device's timezone, so
-  // the list is first rendered after hydration, never on the server.
-  const hydrated = useSyncExternalStore(
-    subscribeNoop,
-    () => true,
-    () => false,
-  );
   const [categoryFilter, setCategoryFilter] = useQueryState(
     "filter",
     parseAsString.withDefault(initialFilter),
@@ -221,7 +240,7 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
     queryFn: () => fetchActiveTasks(supabase, userId),
     initialData: serverTasks,
   });
-  const loading = !hydrated || isLoading;
+  const loading = isLoading;
 
   // A tapped task reminder opens /do?remind=<id> (push_reminders).
   const [remindId, setRemindId] = useQueryState("remind", parseAsString);
@@ -395,56 +414,12 @@ function DoBoard({ serverTasks }: { serverTasks: Task[] | undefined }) {
     }, 300);
   };
 
-  // PERF-15: single-pass bucketing. The previous implementation ran four
-  // consecutive filter passes over `filtered` — each constructing a new
-  // Date(t.deadline) and calling toDateString() per task per pass, and
-  // producing fresh array identities every render (defeating the memoized
-  // Column/TaskCard tree). Now one derivation loop builds all four buckets
-  // with exactly one date parse per task, and the result is memoized by
-  // input identity so the buckets keep referential identity across renders
-  // where `tasks` and `categoryFilter` are unchanged.
-  const bucketed = useMemo(() => {
-    const now = new Date();
-    const started: Task[] = [];
-
-    // Exclude tasks whose start_date is in the future
-    for (const t of tasks) {
-      if (!t.start_date || new Date(t.start_date) <= now) started.push(t);
-    }
-
-    const buckets = {
-      overdue: [] as Task[],
-      today: [] as Task[],
-      upcoming: [] as Task[],
-      someday: [] as Task[],
-    };
-
-    for (const t of started) {
-      const isActiveOrOverdue = t.status === "active" || t.status === "overdue";
-      if (categoryFilter === "all") {
-        if (!isActiveOrOverdue) continue;
-      } else if (categoryFilter === "inbox") {
-        if (t.status !== "inbox") continue;
-      } else if (categoryFilter === "today") {
-        if (!t.deadline || !isActiveOrOverdue) continue;
-        const d = new Date(t.deadline);
-        if (!(d <= now || d.toDateString() === now.toDateString())) continue;
-      } else if (t.category !== categoryFilter || !isActiveOrOverdue) {
-        continue;
-      }
-
-      if (!t.deadline) {
-        buckets.someday.push(t);
-      } else {
-        const d = new Date(t.deadline);
-        if (d < now) buckets.overdue.push(t);
-        else if (d.toDateString() === now.toDateString()) buckets.today.push(t);
-        else buckets.upcoming.push(t);
-      }
-    }
-
-    return buckets;
-  }, [tasks, categoryFilter]);
+  // One pass, memoised by input (PERF-15), for the clock's timezone and
+  // moment so the server and the browser group the list the same way.
+  const bucketed = useMemo(
+    () => bucketTasks(tasks, categoryFilter, clock),
+    [tasks, categoryFilter, clock],
+  );
 
   const { overdue, today, upcoming, someday } = bucketed;
 
