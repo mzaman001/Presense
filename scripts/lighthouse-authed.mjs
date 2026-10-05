@@ -9,6 +9,9 @@
 // Usage: node scripts/lighthouse-authed.mjs [url] [--runs N] [--budget <file>]
 //   default url: http://localhost:3111/do
 //   --runs: run N times and print the median TBT and LCP (single runs vary)
+//   --ritual-due: leave today's rituals undone, so the morning or evening
+//     ritual opens during the load (by default they're marked done and the
+//     run measures an ordinary page load)
 //   --budget: fail the run when a metric/resource exceeds perf-lh-budget.json
 // Output: <repo>/lh-authed-report.json (last run) + printed key metrics
 
@@ -43,7 +46,9 @@ const outPath = path.join(root, "lh-authed-report.json");
 const headersPath = path.join(root, ".lh-headers.tmp.json");
 
 // 1. Seed + sign in, get the raw Cookie header value.
-const seed = spawnSync(process.execPath, [path.join(root, "scripts", "seed-test-user.mjs"), "--cookie"], {
+const seedArgs = [path.join(root, "scripts", "seed-test-user.mjs"), "--cookie"];
+if (!argv.includes("--ritual-due")) seedArgs.push("--rituals-done");
+const seed = spawnSync(process.execPath, seedArgs, {
   cwd: root,
   encoding: "utf8",
 });
