@@ -92,10 +92,32 @@ const args = [
 if (budgetFile) {
   args.push(`--budget-path=${path.resolve(budgetFile)}`);
 }
+// The same EPERM also stops chrome-launcher killing the browser it started,
+// so on Windows every run left a headless Chrome/Edge (and its temp profile)
+// behind: 942 processes and 2.5 GB after two days, which skewed later
+// measurements and then broke Lighthouse. Stop them and delete the profiles.
+// Fixed command text, nothing interpolated.
+function cleanUpWindowsLeftovers() {
+  if (process.platform !== "win32") return;
+  spawnSync(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      "Get-CimInstance Win32_Process | Where-Object { $_.Name -in 'msedge.exe','chrome.exe' -and $_.CommandLine -match '\\\\Temp\\\\lighthouse\\.' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; " +
+        "Start-Sleep -Milliseconds 500; " +
+        "Get-ChildItem $env:TEMP -Directory -Filter 'lighthouse.*' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue",
+    ],
+    { encoding: "utf8" },
+  );
+}
+
 const results = [];
 for (let run = 1; run <= runs; run++) {
   const startedAt = Date.now();
   const lh = spawnSync(process.execPath, args, { cwd: root, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  cleanUpWindowsLeftovers();
   const output = `${lh.stderr ?? ""}${lh.stdout ?? ""}`;
   const fresh = fs.existsSync(outPath) && fs.statSync(outPath).mtimeMs >= startedAt;
   // On Windows chrome-launcher can't delete its temp profile once the run is
