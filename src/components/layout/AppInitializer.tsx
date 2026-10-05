@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { syncPush } from "@/lib/push";
 import { createClient } from "@/lib/supabase";
-import { useAppStore, UserSettings } from "@/store/useAppStore";
+import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import {
   applyDocumentTheme,
@@ -17,28 +17,16 @@ import { usePathname } from "next/navigation";
 
 const RITUAL_SNOOZE_MS = 3 * 60 * 60 * 1000; // 3 hours
 
-export function AppInitializer({
-  initialSettings,
-}: {
-  initialSettings?: UserSettings;
-}) {
-  const { userSettings, setUserSettings, setActiveRitual } = useAppStore(
+// The store already holds the server's settings when this first renders
+// (AppStoreSeed in the (app) layout).
+export function AppInitializer() {
+  const { userSettings, setActiveRitual } = useAppStore(
     useShallow((s) => ({
       userSettings: s.userSettings,
-      setUserSettings: s.setUserSettings,
       setActiveRitual: s.setActiveRitual,
     })),
   );
   const pathname = usePathname() || "";
-
-  useEffect(() => {
-    if (
-      initialSettings &&
-      (!userSettings || Object.keys(userSettings).length === 0)
-    ) {
-      setUserSettings(initialSettings);
-    }
-  }, [initialSettings, userSettings, setUserSettings]);
 
   useEffect(() => {
     if (!userSettings || Object.keys(userSettings).length === 0) return;

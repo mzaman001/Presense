@@ -1,4 +1,5 @@
-import { create } from "zustand";
+import { createContext, useContext, useSyncExternalStore } from "react";
+import { createStore } from "zustand/vanilla";
 import type { TaskRecord } from "@/lib/task-cache";
 import { markMutation as markProviderMutation } from "@/components/providers/RealtimeProvider";
 
@@ -76,7 +77,7 @@ interface AppState {
   setPrefetchedThread: (id: string, thread: unknown) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+const store = createStore<AppState>()((set) => ({
   isCaptureModalOpen: false,
   setCaptureModalOpen: (open) => set({ isCaptureModalOpen: open }),
   captureModalPrefill: null,
@@ -111,3 +112,48 @@ export const useAppStore = create<AppState>((set) => ({
       prefetchedThreads: { ...state.prefetchedThreads, [id]: thread },
     })),
 }));
+
+/**
+ * The settings the server rendered the app shell with (AppStoreSeed).
+ * Null outside the (app) layout: onboarding, login, tests without a seed.
+ */
+export const SettingsSeedContext = createContext<UserSettings | null>(null);
+
+// The server's view of the store: its state plus the request's settings.
+// The shared store itself is never written on the server, where one module
+// instance serves every request. Cached per seed object: React needs
+// getServerSnapshot to return the same value for the same state.
+const seededStates = new WeakMap<UserSettings, AppState>();
+function serverState(seed: UserSettings | null): AppState {
+  const state = store.getState();
+  if (!seed || Object.keys(state.userSettings).length > 0) return state;
+  let withSeed = seededStates.get(seed);
+  if (!withSeed) {
+    withSeed = { ...state, userSettings: seed };
+    seededStates.set(seed, withSeed);
+  }
+  return withSeed;
+}
+
+const selectAll = (state: AppState) => state;
+
+/**
+ * zustand's own hook hydrates from getInitialState(), i.e. without the
+ * user's settings, and then re-renders every settings reader once they're
+ * copied in. This one hydrates from the same settings the server used, so
+ * nothing renders twice and the HTML already shows the real name and theme.
+ */
+function useBoundAppStore(): AppState;
+function useBoundAppStore<T>(selector: (state: AppState) => T): T;
+function useBoundAppStore<T>(
+  selector: (state: AppState) => T = selectAll as (state: AppState) => T,
+): T {
+  const seed = useContext(SettingsSeedContext);
+  return useSyncExternalStore(
+    store.subscribe,
+    () => selector(store.getState()),
+    () => selector(serverState(seed)),
+  );
+}
+
+export const useAppStore = Object.assign(useBoundAppStore, store);

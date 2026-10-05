@@ -9,6 +9,7 @@ import { RitualOverlayDynamic } from "@/components/layout/RitualOverlayDynamic";
 import QueryProvider from "@/components/layout/QueryProvider";
 import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { AppStoreSeed } from "@/components/providers/AppStoreSeed";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -92,16 +93,16 @@ export default async function AppLayout({
   }
 
   return (
-    <>
+    // The store hydrates with these settings instead of filling them in
+    // after the first paint (see AppStoreSeed).
+    <AppStoreSeed settings={(settings as UserSettings) ?? null}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:rounded-lg focus:bg-[var(--bg-base)] focus:px-4 focus:py-2.5 focus:text-sm focus:text-[var(--text-1)] focus:no-underline focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--accent)]"
       >
         Skip to content
       </a>
-      <AppInitializer
-        initialSettings={(settings as UserSettings) || undefined}
-      />
+      <AppInitializer />
       <SessionProvider
         user={{ ...sessionUser, timeZone: settings?.timezone ?? undefined }}
       >
@@ -134,6 +135,6 @@ export default async function AppLayout({
           </QueryProvider>
         </MotionProvider>
       </SessionProvider>
-    </>
+    </AppStoreSeed>
   );
 }
