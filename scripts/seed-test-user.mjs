@@ -144,7 +144,10 @@ async function main() {
         onboarding_complete: true,
         default_view: "do",
         theme: "warm",
-        timezone: "UTC",
+        // This machine's zone, as automatic timezone would save it, so a
+        // measured load doesn't include the app correcting it.
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone_auto: true,
         last_ritual_date: ritualsDone ? today : null,
         last_evening_ritual_date: ritualsDone ? today : null,
         created_at: new Date().toISOString(),

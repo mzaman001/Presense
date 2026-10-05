@@ -23,6 +23,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Suspense } from "react";
 import { getUserSettings } from "@/lib/user-settings-server";
 import { CaptureSync } from "@/components/layout/CaptureSync";
+import { TimezoneSync } from "@/components/layout/TimezoneSync";
 import { CaptureShortcut } from "@/components/layout/CaptureShortcut";
 
 // App layout — shown for all protected (app) pages
@@ -112,6 +113,8 @@ export default async function AppLayout({
               <ConnectionStatus />
               {/* Zero-loss capture: sends captures saved on this device. */}
               <CaptureSync />
+              {/* Automatic timezone: the saved zone follows this device. */}
+              <TimezoneSync />
               {/* Home-screen shortcut and share sheet open capture on any route. */}
               <Suspense fallback={null}>
                 <CaptureShortcut />

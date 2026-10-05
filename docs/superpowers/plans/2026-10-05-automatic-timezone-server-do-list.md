@@ -16,7 +16,7 @@
 - Lint 0 errors, tsc, `npm test`, build, budget gate (webpack build), Playwright.
 
 ### Task 1: Schema
-- [ ] `supabase/migrations/20261005120000_user_settings_timezone_auto.sql`: `alter table public.user_settings add column if not exists timezone_auto boolean not null default true;` with a column comment.
+- [ ] `supabase/migrations/20261005140203_user_settings_timezone_auto.sql`: `alter table public.user_settings add column if not exists timezone_auto boolean not null default true;` with a column comment.
 - [ ] `src/types/database.types.ts`: add `timezone_auto` to `user_settings` Row (`boolean`), Insert/Update (`boolean?`).
 - [ ] `UserSettings` (store) and `settingsSchema` (`timezone_auto: z.boolean().optional()`).
 - [ ] Apply to the live project after the user confirms (additive; app code treats a missing value as `true`).
