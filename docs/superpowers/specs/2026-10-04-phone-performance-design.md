@@ -52,15 +52,20 @@ Lighthouse runs on `/do` and `/`. A fix that does not measurably reduce TBT
    `RitualOverlay`'s effects only matter while it is open (checked). Preload
    the chunk when `AppInitializer` decides a ritual is due, so opening it is not
    delayed by the download.
-2. **Strip Sentry tracing under Turbopack.** Replace the webpack-only option
-   with build-time defines Turbopack honours (`__SENTRY_TRACING__` false and
-   the related debug/replay flags; mechanism confirmed against the installed
-   Next and Sentry docs before the change). Verify by grepping the built chunk.
+2. **Strip Sentry tracing under Turbopack, in the browser only.** The server
+   uses tracing (`tracesSampleRate` 0.1), so `compiler.define` (which applies
+   to every bundle) is out. A `turbopack.rules` entry with the built-in
+   `browser` condition runs a small loader on browser-bound `@sentry` files
+   that replaces `__SENTRY_TRACING__` with `false`, which is what the webpack
+   option's DefinePlugin does. Verify by grepping the built chunk.
    Error capture, buffering and the idle load stay as they are.
-3. **Tooltips mounted on demand; closed drawer renders nothing.** Nav rows
-   render the plain link and mount the tooltip on first pointer-enter or focus,
-   so hover and keyboard focus behave exactly as now. The mobile drawer renders
-   its contents only while open.
+3. **Remove the rail's tooltips.** Checked on the live rail (2026-10-05): a
+   row's tooltip appears on hover, the rail expands 100 ms later showing the
+   same label, and the tooltip is then disabled; on keyboard focus it never
+   appears. Eleven full tooltips are mounted for a sub-second flash of text the
+   rail already shows, so they go (the flash is the one visible difference;
+   called out in the PR). The closed mobile drawer already renders no content
+   (Radix portal), so its cost is re-renders, handled in fix 5.
 4. **Settings in the store before the first client render.** Seed the store
    so the hydrating render already has the server's settings, removing the
    post-hydration re-render. It must not cause a server/client markup mismatch
