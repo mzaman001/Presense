@@ -28,6 +28,11 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: "top-right",
   },
+  // Memoises components and hooks at build time, so a parent re-render
+  // doesn't re-render children whose props haven't changed. The Babel
+  // plugin, not the experimental Rust port: CI's budget build is webpack,
+  // which the Rust port doesn't support.
+  reactCompiler: true,
   experimental: {
     // Turbopack's on-disk caches are on by default in Next 16.3 and reused a
     // stale compile of globals.css: production (Vercel restores .next/cache
