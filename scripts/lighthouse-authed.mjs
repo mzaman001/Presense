@@ -6,10 +6,14 @@
 // the same way the /login baseline was. Requires the prod server to be
 // running (next start) and CHROME_PATH set to a Chrome/Edge binary.
 //
-// Usage: node scripts/lighthouse-authed.mjs [url] [--budget <file>]
+// Usage: node scripts/lighthouse-authed.mjs [url] [--runs N] [--budget <file>]
 //   default url: http://localhost:3111/do
+//   --runs: run N times and print the median TBT and LCP (single runs vary)
+//   --ritual-due: leave today's rituals undone, so the morning or evening
+//     ritual opens during the load (by default they're marked done and the
+//     run measures an ordinary page load)
 //   --budget: fail the run when a metric/resource exceeds perf-lh-budget.json
-// Output: <repo>/lh-authed-report.json + printed perf score / key metrics
+// Output: <repo>/lh-authed-report.json (last run) + printed key metrics
 
 import fs from "node:fs";
 import path from "node:path";
@@ -18,7 +22,14 @@ import { spawnSync } from "node:child_process";
 const argv = process.argv.slice(2);
 const budgetIdx = argv.indexOf("--budget");
 const budgetFile = budgetIdx !== -1 && argv[budgetIdx + 1] ? argv[budgetIdx + 1] : null;
-const url = argv[0] && argv[0] !== "--budget" ? argv[0] : "http://localhost:3111/do";
+const runsIdx = argv.indexOf("--runs");
+const runs = runsIdx !== -1 ? Math.max(1, Number(argv[runsIdx + 1]) || 1) : 1;
+const flagValues = new Set(
+  [budgetIdx, runsIdx].filter((i) => i !== -1).map((i) => argv[i + 1]),
+);
+const url =
+  argv.find((arg) => !arg.startsWith("--") && !flagValues.has(arg)) ??
+  "http://localhost:3111/do";
 // Only plain http(s) URLs: the value is handed to Lighthouse as an argument.
 let parsedUrl;
 try {
@@ -35,7 +46,9 @@ const outPath = path.join(root, "lh-authed-report.json");
 const headersPath = path.join(root, ".lh-headers.tmp.json");
 
 // 1. Seed + sign in, get the raw Cookie header value.
-const seed = spawnSync(process.execPath, [path.join(root, "scripts", "seed-test-user.mjs"), "--cookie"], {
+const seedArgs = [path.join(root, "scripts", "seed-test-user.mjs"), "--cookie"];
+if (!argv.includes("--ritual-due")) seedArgs.push("--rituals-done");
+const seed = spawnSync(process.execPath, seedArgs, {
   cwd: root,
   encoding: "utf8",
 });
@@ -48,7 +61,7 @@ const cookie = seed.stdout.trim();
 // 2. Write the extra-headers JSON (npx CLI chokes on inline JSON on Windows).
 fs.writeFileSync(headersPath, JSON.stringify({ Cookie: cookie }), "utf8");
 
-// 3. Run Lighthouse (quiet, mobile perf preset like the baseline).
+// 3. Run Lighthouse (quiet, mobile perf preset like the baseline), `runs` times.
 const env = { ...process.env, CHROME_PATH: process.env.CHROME_PATH ?? "" };
 // Run npm's npx-cli.js with this Node binary instead of `cmd /c npx ...`:
 // no shell re-parses the URL or paths (CodeQL
@@ -79,20 +92,45 @@ const args = [
 if (budgetFile) {
   args.push(`--budget-path=${path.resolve(budgetFile)}`);
 }
-const lh = spawnSync(process.execPath, args, { cwd: root, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+const results = [];
+for (let run = 1; run <= runs; run++) {
+  const startedAt = Date.now();
+  const lh = spawnSync(process.execPath, args, { cwd: root, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const output = `${lh.stderr ?? ""}${lh.stdout ?? ""}`;
+  const fresh = fs.existsSync(outPath) && fs.statSync(outPath).mtimeMs >= startedAt;
+  // On Windows chrome-launcher can't delete its temp profile once the run is
+  // over (EPERM in destroyTmp), so Lighthouse exits 1 with the report already
+  // written. That report is valid; any other failure is not.
+  const cleanupOnly = lh.status !== 0 && fresh && /EPERM/.test(output) && /destroyTmp/.test(output);
+  if (lh.status !== 0 && !cleanupOnly) {
+    fs.rmSync(headersPath, { force: true });
+    console.error("lighthouse failed:", output);
+    process.exit(1);
+  }
 
+  // 4. Summarize this run.
+  const lhr = JSON.parse(fs.readFileSync(outPath, "utf8"));
+  const audit = (name) => lhr.audits[name];
+  const shown = (name) => audit(name)?.displayValue ?? "n/a";
+  results.push({
+    tbt: audit("total-blocking-time")?.numericValue ?? NaN,
+    lcp: audit("largest-contentful-paint")?.numericValue ?? NaN,
+  });
+  console.log(
+    `run ${run}: ${lhr.finalDisplayedUrl}  score ${Math.round(lhr.categories.performance.score * 100)}` +
+      `  LCP ${shown("largest-contentful-paint")}  TBT ${shown("total-blocking-time")}` +
+      `  FCP ${shown("first-contentful-paint")}  TTFB ${shown("server-response-time")}`,
+  );
+}
 fs.rmSync(headersPath, { force: true });
 
-if (lh.status !== 0) {
-  console.error("lighthouse failed:", lh.stderr || lh.stdout);
-  process.exit(1);
+const median = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+if (runs > 1) {
+  console.log(`median TBT: ${Math.round(median(results.map((r) => r.tbt)))} ms`);
+  console.log(`median LCP: ${(median(results.map((r) => r.lcp)) / 1000).toFixed(1)} s`);
 }
-
-// 4. Summarize.
-const lhr = JSON.parse(fs.readFileSync(outPath, "utf8"));
-const id = (name) => lhr.audits[name]?.displayValue ?? "n/a";
-console.log(`finalURL: ${lhr.finalDisplayedUrl}`);
-console.log(`perf score: ${Math.round(lhr.categories.performance.score * 100)}`);
-console.log(`LCP: ${id("largest-contentful-paint")}  TBT: ${id("total-blocking-time")}`);
-console.log(`FCP: ${id("first-contentful-paint")}  TTFB: ${id("server-response-time")}`);
-console.log(`report: ${outPath}`);
+console.log(`report (last run): ${outPath}`);

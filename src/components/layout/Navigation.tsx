@@ -22,14 +22,10 @@ import { useAppStore } from "@/store/useAppStore";
 import { navItems, isNavActive } from "@/lib/nav-config";
 import { Avatar } from "@/components/ui/Avatar";
 import { BrandMark } from "@/components/ui/BrandMark";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useInboxCount } from "@/hooks/useInboxCount";
 import { useHaptics } from "@/hooks/useHaptics";
 import { getRitualDecision } from "@/lib/rituals";
+import { preloadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
 
 const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
   dark: "#e3875f",
@@ -45,7 +41,6 @@ function NavRow({
   icon: Icon,
   href,
   onClick,
-  expanded,
   active,
   capture,
   disabled,
@@ -53,15 +48,17 @@ function NavRow({
   reducedMotion,
   accessibleLabel,
   due,
+  onIntent,
 }: {
   accessibleLabel?: string;
+  /** Hover or focus on a button row: warm whatever its click will open. */
+  onIntent?: () => void;
   /** Something is waiting on this row (e.g. today's plan): dot + brighter. */
   due?: boolean;
   label: string;
   icon: LucideIcon;
   href?: string;
   onClick?: () => void;
-  expanded: boolean;
   active?: boolean;
   capture?: boolean;
   disabled?: boolean;
@@ -112,22 +109,18 @@ function NavRow({
       data-due={due ? "true" : undefined}
       disabled={disabled}
       onClick={onClick}
+      onPointerEnter={onIntent}
+      onFocus={onIntent}
       className={className}
     >
       {content}
     </button>
   );
-  return (
-    <Tooltip disabled={expanded || disabled}>
-      <TooltipTrigger render={element} />
-      <TooltipContent side="right" sideOffset={16}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
+  // No tooltip: the rail expands on hover and focus and shows every label.
+  return element;
 }
 
-function SidebarRitual({ expanded }: { expanded: boolean }) {
+function SidebarRitual() {
   const settings = useAppStore((s) => s.userSettings);
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -177,7 +170,7 @@ function SidebarRitual({ expanded }: { expanded: boolean }) {
       icon={
         kind === "evening" ? Moon : kind === "morning" ? Sunrise : CheckCircle2
       }
-      expanded={expanded}
+      onIntent={preloadRitualOverlay}
       onClick={() => {
         if (useAppStore.getState().activeRitual) return;
         if (kind) {
@@ -212,7 +205,7 @@ export function Sidebar() {
   const expanded = hovered || focused;
   const email = typeof settings.email === "string" ? settings.email : "";
   const displayName = settings.display_name || email || "Presense User";
-  const shared = { expanded, reducedMotion };
+  const shared = { reducedMotion };
 
   return (
     <LayoutGroup id="desktop-navigation">
@@ -269,7 +262,7 @@ export function Sidebar() {
           />
           {/* Daily planning is an action, not a place: it sits with Quick
               Capture, above the Spaces list. */}
-          <SidebarRitual expanded={expanded} />
+          <SidebarRitual />
           <nav aria-label="Destinations" id="sidebar-content">
             <div className="sidebar-section">
               <span className="sidebar-label">Spaces</span>

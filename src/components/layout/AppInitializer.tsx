@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { syncPush } from "@/lib/push";
 import { createClient } from "@/lib/supabase";
-import { useAppStore, UserSettings } from "@/store/useAppStore";
+import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import {
   applyDocumentTheme,
@@ -11,37 +11,36 @@ import {
   normalizeThemeId,
 } from "@/lib/theme";
 import { getRitualDecision } from "@/lib/rituals";
+import { loadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
 import { isFirstRun } from "@/lib/first-run";
 import { usePathname } from "next/navigation";
 
 const RITUAL_SNOOZE_MS = 3 * 60 * 60 * 1000; // 3 hours
 
-export function AppInitializer({
-  initialSettings,
-}: {
-  initialSettings?: UserSettings;
-}) {
-  const { userSettings, setUserSettings, setActiveRitual } = useAppStore(
+// The store already holds the server's settings when this first renders
+// (AppStoreSeed in the (app) layout).
+export function AppInitializer() {
+  const { userSettings, setActiveRitual } = useAppStore(
     useShallow((s) => ({
       userSettings: s.userSettings,
-      setUserSettings: s.setUserSettings,
       setActiveRitual: s.setActiveRitual,
     })),
   );
   const pathname = usePathname() || "";
 
   useEffect(() => {
-    if (
-      initialSettings &&
-      (!userSettings || Object.keys(userSettings).length === 0)
-    ) {
-      setUserSettings(initialSettings);
-    }
-  }, [initialSettings, userSettings, setUserSettings]);
-
-  useEffect(() => {
     if (!userSettings || Object.keys(userSettings).length === 0) return;
     if (window.location.pathname.startsWith("/onboarding")) return;
+
+    // Fetch the ritual's code first so it opens fully drawn, not blank.
+    const open = (kind: "morning" | "evening") => {
+      void loadRitualOverlay()
+        .catch(() => undefined)
+        .then(() => {
+          if (useAppStore.getState().activeRitual === null)
+            setActiveRitual(kind);
+        });
+    };
 
     const checkRituals = () => {
       if (useAppStore.getState().activeRitual !== null) return;
@@ -49,7 +48,7 @@ export function AppInitializer({
       // Straight from onboarding: the first Plan my day opens now, whatever
       // the time, and isn't held back by an earlier close.
       if (isFirstRun()) {
-        setActiveRitual("morning");
+        open("morning");
         return;
       }
 
@@ -72,7 +71,7 @@ export function AppInitializer({
       // The system notification for a ritual comes from the server
       // (push_reminders), so it arrives with the app closed too.
       if (decision.kind === "morning" || decision.kind === "evening") {
-        setActiveRitual(decision.kind);
+        open(decision.kind);
       }
     };
 

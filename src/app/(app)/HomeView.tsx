@@ -45,6 +45,7 @@ import {
 } from "@/lib/dashboard";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { greetingFor } from "@/lib/greeting";
+import { preloadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
 
 /** Shared with Do and TaskCard — one generated shape, not a local copy. */
 type TaskItem = TaskRecord;
@@ -106,6 +107,8 @@ function RitualStatusBadge({
   return (
     <button
       onClick={() => setActiveRitual("morning")}
+      onPointerEnter={preloadRitualOverlay}
+      onFocus={preloadRitualOverlay}
       className="text-ui group inline-flex min-h-9 items-center gap-1.5 text-left font-medium text-[var(--accent-text)] transition-colors hover:text-[var(--accent-hot)]"
     >
       <UiIcon className="h-3.5 w-3.5" icon={Sparkles} /> You haven&apos;t

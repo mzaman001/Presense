@@ -15,9 +15,13 @@
 // once committed here can't sign in even if email logins come back.
 //
 // Usage:
-//   node scripts/seed-test-user.mjs [--cookie] [--json]
-//   --cookie  print "sb-<ref>-auth-token=<value>" (for Lighthouse --extra-headers)
-//   --json    print the full session object
+//   node scripts/seed-test-user.mjs [--cookie] [--json] [--rituals-done]
+//   --cookie        print "sb-<ref>-auth-token=<value>" (for Lighthouse --extra-headers)
+//   --json          print the full session object
+//   --rituals-done  mark today's morning and evening rituals done (this
+//                   machine's date), so no ritual opens over the page being
+//                   measured. Without it both are cleared: a ritual is due
+//                   whenever the time of day allows one.
 //
 // Env: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
 //      SUPABASE_SERVICE_ROLE_KEY, TEST_ACCOUNT_EMAIL
@@ -120,6 +124,16 @@ async function main() {
 
   const session = data.session;
 
+  const ritualsDone = process.argv.includes("--rituals-done");
+  // The app compares these with the browser's local date (lib/rituals.ts);
+  // the measuring browser runs on this machine.
+  const now = new Date();
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+
   // Mark onboarding complete so authed routes render instead of redirecting
   // to /onboarding (app/(app)/layout.tsx gates on user_settings).
   const upsert = await admin
@@ -131,6 +145,8 @@ async function main() {
         default_view: "do",
         theme: "warm",
         timezone: "UTC",
+        last_ritual_date: ritualsDone ? today : null,
+        last_evening_ritual_date: ritualsDone ? today : null,
         created_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },
@@ -142,7 +158,7 @@ async function main() {
 
   const cookieValue = `base64-${base64url(JSON.stringify(session))}`;
 
-  const flag = process.argv[2];
+  const flag = process.argv.find((arg) => arg === "--json" || arg === "--cookie");
   if (flag === "--json") {
     process.stdout.write(JSON.stringify({ cookieName, cookieValue, session }, null, 2) + "\n");
   } else if (flag === "--cookie") {

@@ -9,6 +9,7 @@ import { RitualOverlayDynamic } from "@/components/layout/RitualOverlayDynamic";
 import QueryProvider from "@/components/layout/QueryProvider";
 import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { AppStoreSeed } from "@/components/providers/AppStoreSeed";
 
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -16,7 +17,6 @@ import { after } from "next/server";
 
 import { MotionProvider } from "@/components/layout/MotionProvider";
 import type { UserSettings } from "@/store/useAppStore";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -93,50 +93,48 @@ export default async function AppLayout({
   }
 
   return (
-    <>
+    // The store hydrates with these settings instead of filling them in
+    // after the first paint (see AppStoreSeed).
+    <AppStoreSeed settings={(settings as UserSettings) ?? null}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:rounded-lg focus:bg-[var(--bg-base)] focus:px-4 focus:py-2.5 focus:text-sm focus:text-[var(--text-1)] focus:no-underline focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--accent)]"
       >
         Skip to content
       </a>
-      <AppInitializer
-        initialSettings={(settings as UserSettings) || undefined}
-      />
+      <AppInitializer />
       <SessionProvider
         user={{ ...sessionUser, timeZone: settings?.timezone ?? undefined }}
       >
         <MotionProvider>
           <QueryProvider>
-            <TooltipProvider>
-              <RealtimeProvider>
-                <ConnectionStatus />
-                {/* Zero-loss capture: sends captures saved on this device. */}
-                <CaptureSync />
-                {/* Home-screen shortcut and share sheet open capture on any route. */}
-                <Suspense fallback={null}>
-                  <CaptureShortcut />
-                </Suspense>
-                <UpdatePrompt />
-                <AmbientBackground />
-                <MobileTopBar />
-                <Sidebar />
-                <MobileDrawer />
-                {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
-                <DynamicModals />
-                {/* RitualOverlay is conditionally visible (ritual triage prompt)
+            <RealtimeProvider>
+              <ConnectionStatus />
+              {/* Zero-loss capture: sends captures saved on this device. */}
+              <CaptureSync />
+              {/* Home-screen shortcut and share sheet open capture on any route. */}
+              <Suspense fallback={null}>
+                <CaptureShortcut />
+              </Suspense>
+              <UpdatePrompt />
+              <AmbientBackground />
+              <MobileTopBar />
+              <Sidebar />
+              <MobileDrawer />
+              {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
+              <DynamicModals />
+              {/* RitualOverlay is conditionally visible (ritual triage prompt)
               — lazy-loaded via RitualOverlayDynamic so it never ships in
               the shell bundle (PERF-19) */}
-                <RitualOverlayDynamic />
-                <AppContentWrapper>
-                  <NuqsAdapter>{children}</NuqsAdapter>
-                </AppContentWrapper>
-                <BottomNav />
-              </RealtimeProvider>
-            </TooltipProvider>
+              <RitualOverlayDynamic />
+              <AppContentWrapper>
+                <NuqsAdapter>{children}</NuqsAdapter>
+              </AppContentWrapper>
+              <BottomNav />
+            </RealtimeProvider>
           </QueryProvider>
         </MotionProvider>
       </SessionProvider>
-    </>
+    </AppStoreSeed>
   );
 }

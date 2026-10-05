@@ -29,6 +29,7 @@ const noServerItems = Object.assign(Promise.resolve(undefined), {
 });
 const InboxPage = () => <InboxView itemsPromise={noServerItems} />;
 import { AppInitializer } from "@/components/layout/AppInitializer";
+import { AppStoreSeed } from "@/components/providers/AppStoreSeed";
 
 // Mock Next.js router
 vi.mock("next/navigation", () => ({
@@ -925,7 +926,11 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
-        render(<AppInitializer initialSettings={initialSettings} />);
+        render(
+          <AppStoreSeed settings={initialSettings}>
+            <AppInitializer />
+          </AppStoreSeed>,
+        );
 
         // Clean up date mock
         global.Date = originalDate;
@@ -953,7 +958,11 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
-        render(<AppInitializer initialSettings={initialSettings} />);
+        render(
+          <AppStoreSeed settings={initialSettings}>
+            <AppInitializer />
+          </AppStoreSeed>,
+        );
 
         global.Date = originalDate;
       });
@@ -1364,11 +1373,8 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
 
-      render(
-        <AppInitializer
-          initialSettings={useAppStore.getState().userSettings}
-        />,
-      );
+      // The store already holds the settings, as AppStoreSeed leaves it.
+      render(<AppInitializer />);
       render(<RitualOverlay isOpen={true} type="morning" />, { wrapper });
 
       // Clean up date mock
