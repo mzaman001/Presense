@@ -9,7 +9,6 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "../Navigation";
 import { MotionProvider } from "../MotionProvider";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAppStore } from "@/store/useAppStore";
 
 const navigation = vi.hoisted(() => ({ pathname: "/" }));
@@ -75,10 +74,8 @@ afterEach(() => {
 function renderSidebar() {
   render(
     <MotionProvider>
-      <TooltipProvider>
-        <Sidebar />
-        <button>Outside navigation</button>
-      </TooltipProvider>
+      <Sidebar />
+      <button>Outside navigation</button>
     </MotionProvider>,
   );
   return screen.getByRole("complementary", { name: "Main navigation" });
@@ -89,6 +86,14 @@ function advanceTime(milliseconds: number) {
 }
 
 describe("Sidebar", () => {
+  it("renders nav rows as plain links and buttons, without tooltips", () => {
+    // The rail expands and shows every label on hover and focus; a tooltip
+    // per row only flashed the same text before it did.
+    renderSidebar();
+    expect(document.querySelector('[data-slot="tooltip-trigger"]')).toBeNull();
+    expect(screen.getByRole("link", { name: /inbox/i })).toBeInTheDocument();
+  });
+
   it("renders a named aside with a collapsed string state", () => {
     const sidebar = renderSidebar();
     expect(sidebar.tagName).toBe("ASIDE");

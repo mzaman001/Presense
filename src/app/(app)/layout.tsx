@@ -16,7 +16,6 @@ import { after } from "next/server";
 
 import { MotionProvider } from "@/components/layout/MotionProvider";
 import type { UserSettings } from "@/store/useAppStore";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -108,32 +107,30 @@ export default async function AppLayout({
       >
         <MotionProvider>
           <QueryProvider>
-            <TooltipProvider>
-              <RealtimeProvider>
-                <ConnectionStatus />
-                {/* Zero-loss capture: sends captures saved on this device. */}
-                <CaptureSync />
-                {/* Home-screen shortcut and share sheet open capture on any route. */}
-                <Suspense fallback={null}>
-                  <CaptureShortcut />
-                </Suspense>
-                <UpdatePrompt />
-                <AmbientBackground />
-                <MobileTopBar />
-                <Sidebar />
-                <MobileDrawer />
-                {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
-                <DynamicModals />
-                {/* RitualOverlay is conditionally visible (ritual triage prompt)
+            <RealtimeProvider>
+              <ConnectionStatus />
+              {/* Zero-loss capture: sends captures saved on this device. */}
+              <CaptureSync />
+              {/* Home-screen shortcut and share sheet open capture on any route. */}
+              <Suspense fallback={null}>
+                <CaptureShortcut />
+              </Suspense>
+              <UpdatePrompt />
+              <AmbientBackground />
+              <MobileTopBar />
+              <Sidebar />
+              <MobileDrawer />
+              {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
+              <DynamicModals />
+              {/* RitualOverlay is conditionally visible (ritual triage prompt)
               — lazy-loaded via RitualOverlayDynamic so it never ships in
               the shell bundle (PERF-19) */}
-                <RitualOverlayDynamic />
-                <AppContentWrapper>
-                  <NuqsAdapter>{children}</NuqsAdapter>
-                </AppContentWrapper>
-                <BottomNav />
-              </RealtimeProvider>
-            </TooltipProvider>
+              <RitualOverlayDynamic />
+              <AppContentWrapper>
+                <NuqsAdapter>{children}</NuqsAdapter>
+              </AppContentWrapper>
+              <BottomNav />
+            </RealtimeProvider>
           </QueryProvider>
         </MotionProvider>
       </SessionProvider>

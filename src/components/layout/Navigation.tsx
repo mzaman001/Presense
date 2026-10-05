@@ -22,11 +22,6 @@ import { useAppStore } from "@/store/useAppStore";
 import { navItems, isNavActive } from "@/lib/nav-config";
 import { Avatar } from "@/components/ui/Avatar";
 import { BrandMark } from "@/components/ui/BrandMark";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useInboxCount } from "@/hooks/useInboxCount";
 import { useHaptics } from "@/hooks/useHaptics";
 import { getRitualDecision } from "@/lib/rituals";
@@ -46,7 +41,6 @@ function NavRow({
   icon: Icon,
   href,
   onClick,
-  expanded,
   active,
   capture,
   disabled,
@@ -65,7 +59,6 @@ function NavRow({
   icon: LucideIcon;
   href?: string;
   onClick?: () => void;
-  expanded: boolean;
   active?: boolean;
   capture?: boolean;
   disabled?: boolean;
@@ -123,17 +116,11 @@ function NavRow({
       {content}
     </button>
   );
-  return (
-    <Tooltip disabled={expanded || disabled}>
-      <TooltipTrigger render={element} />
-      <TooltipContent side="right" sideOffset={16}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
+  // No tooltip: the rail expands on hover and focus and shows every label.
+  return element;
 }
 
-function SidebarRitual({ expanded }: { expanded: boolean }) {
+function SidebarRitual() {
   const settings = useAppStore((s) => s.userSettings);
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -183,7 +170,6 @@ function SidebarRitual({ expanded }: { expanded: boolean }) {
       icon={
         kind === "evening" ? Moon : kind === "morning" ? Sunrise : CheckCircle2
       }
-      expanded={expanded}
       onIntent={preloadRitualOverlay}
       onClick={() => {
         if (useAppStore.getState().activeRitual) return;
@@ -219,7 +205,7 @@ export function Sidebar() {
   const expanded = hovered || focused;
   const email = typeof settings.email === "string" ? settings.email : "";
   const displayName = settings.display_name || email || "Presense User";
-  const shared = { expanded, reducedMotion };
+  const shared = { reducedMotion };
 
   return (
     <LayoutGroup id="desktop-navigation">
@@ -276,7 +262,7 @@ export function Sidebar() {
           />
           {/* Daily planning is an action, not a place: it sits with Quick
               Capture, above the Spaces list. */}
-          <SidebarRitual expanded={expanded} />
+          <SidebarRitual />
           <nav aria-label="Destinations" id="sidebar-content">
             <div className="sidebar-section">
               <span className="sidebar-label">Spaces</span>
