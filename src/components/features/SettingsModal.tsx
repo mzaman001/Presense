@@ -160,11 +160,23 @@ const CATEGORY_COLORS = [
   "#9CA3AF",
 ];
 
-/** "Asia/Kolkata" -> "Kolkata (Asia)", for the automatic timezone row. */
+/**
+ * "India Standard Time (GMT+5:30)", for the automatic timezone row. The
+ * readable name, not the IANA id: browsers report old ids for some zones
+ * (Chromium says Asia/Calcutta for India).
+ */
 function timezoneLabel(zone: string): string {
-  const parts = zone.split("/");
-  const city = parts.at(-1)?.replace(/_/g, " ") ?? zone;
-  return parts.length > 1 ? `${city} (${parts[0]})` : city;
+  try {
+    const part = (timeZoneName: "longGeneric" | "shortOffset") =>
+      new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName })
+        .formatToParts(new Date())
+        .find((p) => p.type === "timeZoneName")?.value;
+    const name = part("longGeneric");
+    const offset = part("shortOffset") ?? zone;
+    return name && !name.startsWith("GMT") ? `${name} (${offset})` : offset;
+  } catch {
+    return zone;
+  }
 }
 
 const TIMEZONE_OPTIONS: { value: string; label: string }[] =
