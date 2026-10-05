@@ -113,5 +113,7 @@ during every measured load, see the plan):
 | 5. `NavRow` memoised | 404 | 434 | no, reverted |
 | Final build | 422 | 428 | |
 
-Run-to-run noise is about ±25 ms. The remaining cost and the case for server-
+Run-to-run noise is about ±25 ms. **Correction (2026-10-05, later):** these were measured while headless Edge processes left behind by every earlier Lighthouse run kept accumulating (942 by the end), so later rows ran on a busier machine. Re-measured back to back on a clean machine: before 611 / 557 ms, after ~476 / ~476 ms (−22% / −15%). The per-step order of magnitude stands; Task 4 was the largest step.
+
+The remaining cost and the case for server-
 rendering the Do list are in CLAUDE.md, *Known weak points*.
