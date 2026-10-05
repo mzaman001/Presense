@@ -3,6 +3,7 @@ import { render, act, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { RealtimeProvider, useRealtimeContext } from "../RealtimeProvider";
 import { useRealtimeConnectionStatus } from "../realtime-status";
+import { useRealtime } from "@/hooks/useRealtime";
 
 // Mock Supabase Client Infrastructure
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -225,6 +226,134 @@ describe("RealtimeProvider", () => {
 
     act(() => statusCallbacks["todos"]("SUBSCRIBED"));
     expect(status()).toBe("connected");
+  });
+
+  it("keeps the channel when a consumer re-subscribes within the grace period", () => {
+    const { rerender } = render(
+      <RealtimeProvider>
+        <TestConsumer tableName="todos" onUpdate={vi.fn()} />
+      </RealtimeProvider>,
+    );
+
+    // Navigate away and back before the 5 s teardown fires.
+    rerender(<RealtimeProvider>{null}</RealtimeProvider>);
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+    const onUpdate = vi.fn();
+    rerender(
+      <RealtimeProvider>
+        <TestConsumer tableName="todos" onUpdate={onUpdate} />
+      </RealtimeProvider>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(mockSupabase.channel).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.removeChannel).not.toHaveBeenCalled();
+    act(() => postgresChangesCallbacks["todos"]({ new: { id: 1 } }));
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  describe("while the tab is hidden", () => {
+    // The browser fires visibilitychange at document with bubbles: true; the
+    // provider listens on window, so the event must bubble to reach it.
+    const setVisibility = (state: DocumentVisibilityState) =>
+      act(() => {
+        Object.defineProperty(document, "visibilityState", {
+          value: state,
+          configurable: true,
+        });
+        document.dispatchEvent(
+          new Event("visibilitychange", { bubbles: true }),
+        );
+      });
+
+    afterEach(() => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+      });
+    });
+
+    it("buffers changes and flushes them once to every listener when visible again", () => {
+      const onUpdate1 = vi.fn();
+      const onUpdate2 = vi.fn();
+      render(
+        <RealtimeProvider>
+          <TestConsumer tableName="todos" onUpdate={onUpdate1} />
+          <TestConsumer tableName="todos" onUpdate={onUpdate2} />
+        </RealtimeProvider>,
+      );
+
+      setVisibility("hidden");
+      act(() => {
+        postgresChangesCallbacks["todos"]({ new: { id: 1 } });
+        postgresChangesCallbacks["todos"]({ new: { id: 2 } });
+      });
+      expect(onUpdate1).not.toHaveBeenCalled();
+      expect(onUpdate2).not.toHaveBeenCalled();
+
+      // Hiding the tab keeps the channel open: no leave, and no rejoin later.
+      expect(mockSupabase.removeChannel).not.toHaveBeenCalled();
+
+      setVisibility("visible");
+      expect(onUpdate1).toHaveBeenCalledTimes(1);
+      expect(onUpdate2).toHaveBeenCalledTimes(1);
+      expect(mockSupabase.channel).toHaveBeenCalledTimes(1);
+
+      // The buffer is spent: another visibility flip dispatches nothing.
+      setVisibility("hidden");
+      setVisibility("visible");
+      expect(onUpdate1).toHaveBeenCalledTimes(1);
+    });
+
+    it("drops the buffer when the channel is torn down while hidden", () => {
+      const onUpdate = vi.fn();
+      const { rerender } = render(
+        <RealtimeProvider>
+          <TestConsumer tableName="todos" onUpdate={onUpdate} />
+        </RealtimeProvider>,
+      );
+
+      setVisibility("hidden");
+      act(() => postgresChangesCallbacks["todos"]({ new: { id: 1 } }));
+      rerender(<RealtimeProvider>{null}</RealtimeProvider>);
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      // A consumer that subscribes afresh loads current data itself; it must
+      // not also be handed a change buffered for the old channel.
+      const onUpdateAfter = vi.fn();
+      rerender(
+        <RealtimeProvider>
+          <TestConsumer tableName="todos" onUpdate={onUpdateAfter} />
+        </RealtimeProvider>,
+      );
+      setVisibility("visible");
+
+      expect(onUpdate).not.toHaveBeenCalled();
+      expect(onUpdateAfter).not.toHaveBeenCalled();
+    });
+  });
+
+  it("multiplexes every useRealtime consumer of a table onto one channel", () => {
+    function ItemsConsumer() {
+      useRealtime("items");
+      return null;
+    }
+    render(
+      <RealtimeProvider>
+        <ItemsConsumer />
+        <ItemsConsumer />
+        <ItemsConsumer />
+      </RealtimeProvider>,
+    );
+
+    expect(mockSupabase.channel).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.channel).toHaveBeenCalledWith("realtime_items");
   });
 
   it("should throw error if useRealtimeContext is used outside provider", () => {
