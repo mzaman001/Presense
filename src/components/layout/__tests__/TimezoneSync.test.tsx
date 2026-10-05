@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
 import { render, waitFor } from "@/lib/__tests__/test-utils";
 import { useAppStore } from "@/store/useAppStore";
 import { TimezoneSync } from "@/components/layout/TimezoneSync";
@@ -31,6 +32,9 @@ beforeEach(() => {
   vi.stubGlobal("cancelIdleCallback", () => {});
 });
 afterEach(() => {
+  // Unmount first: the component's cleanup calls cancelIdleCallback, which
+  // must still be stubbed then.
+  cleanup();
   vi.unstubAllGlobals();
   useAppStore.setState(initial, true);
 });
