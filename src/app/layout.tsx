@@ -11,10 +11,15 @@ const inter = Inter({
   display: "swap",
 });
 
+// Not preloaded: only the focus timer, search's key hints, Kbd and the
+// error screen use it, never a page's first screen, and preloading made
+// every page fetch it (40 KB) alongside its own CSS and JS. The browser
+// fetches it when such text first renders.
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
   display: "swap",
+  preload: false,
 });
 
 const newsreader = Newsreader({

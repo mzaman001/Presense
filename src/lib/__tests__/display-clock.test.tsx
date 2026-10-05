@@ -17,6 +17,27 @@ function Today({ zone }: { zone: () => string }) {
 }
 
 describe("useLiveClock", () => {
+  it("doesn't re-render after hydration when nothing has changed", async () => {
+    // Same zone on both sides and still the same minute as the server.
+    vi.useFakeTimers({ now: serverClock.now + 5_000, toFake: ["Date"] });
+    let renders = 0;
+    function Count() {
+      renders++;
+      const clock = useLiveClock(serverClock, () => "UTC");
+      return <span>{clock.now}</span>;
+    }
+    const html = renderToString(<Count />);
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    renders = 0;
+    await act(async () => {
+      hydrateRoot(container, <Count />);
+    });
+    expect(renders).toBe(1);
+    expect(container.textContent).toBe(String(serverClock.now));
+    vi.useRealTimers();
+  });
+
   it("hydrates with the server's clock, then moves to the device's zone", async () => {
     vi.useFakeTimers({ now: serverClock.now, toFake: ["Date"] });
     const tree = <Today zone={() => "Asia/Kolkata"} />;
