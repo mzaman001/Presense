@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { m, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, useIsPresent } from "framer-motion";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { useDebounce } from "use-debounce";
@@ -782,8 +782,10 @@ function CategoryManager({
 export function SettingsModal() {
   const isSettingsModalOpen = useAppStore((s) => s.isSettingsModalOpen);
   const setSettingsModalOpen = useAppStore((s) => s.setSettingsModalOpen);
+  // Still rendered while DynamicModals' AnimatePresence plays its exit.
+  const isPresent = useIsPresent();
 
-  if (!isSettingsModalOpen) return null; // BUG-45: inert when closed
+  if (!isSettingsModalOpen && isPresent) return null; // BUG-45: inert when closed
   return <SettingsModalContent onClose={setSettingsModalOpen} />;
 }
 
@@ -1238,7 +1240,9 @@ function SettingsModalContent({
       modalName="Settings Modal"
       onClose={() => onClose(false)}
     >
-      <AnimatePresence>
+      {/* No AnimatePresence of its own: these exits play under DynamicModals'
+          one, which keeps Settings mounted until they've finished. */}
+      <>
         <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1874,7 +1878,7 @@ function SettingsModalContent({
             />
           </m.div>
         </m.div>
-      </AnimatePresence>
+      </>
     </ModalErrorBoundary>
   );
 }

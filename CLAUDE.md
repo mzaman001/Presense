@@ -13,6 +13,7 @@
 | Build | `npm run build` |
 | E2E / a11y | `npx playwright test` |
 | Bundle budgets | `npm run check:budgets` (needs a prod server on :3000) |
+| Interaction smoothness | `node scripts/interaction-perf.mjs --cpu 4` (needs a prod server on :3000 and the seeded account; run before and after any perf change, since load-time numbers don't cover hovers, opens and closes) |
 | Regenerate DB types | `npm run types:generate` |
 | Check DB type drift | `npm run types:check` (needs Supabase CLI auth + network) |
 
