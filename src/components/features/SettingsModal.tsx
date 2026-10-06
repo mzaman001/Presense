@@ -7,7 +7,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, type UserSettings } from "@/store/useAppStore";
 import { useSessionUser } from "@/components/providers/SessionProvider";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
@@ -159,6 +159,15 @@ const CATEGORY_COLORS = [
   "#F472B6",
   "#9CA3AF",
 ];
+
+/** Same keys with the same values (a settings row is flat JSON). */
+function sameSettings(a: UserSettings, b: UserSettings): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (JSON.stringify(a[key]) !== JSON.stringify(b[key])) return false;
+  }
+  return true;
+}
 
 /**
  * "India Standard Time (GMT+5:30)", for the automatic timezone row. The
@@ -812,7 +821,14 @@ function SettingsModalContent({
   const activeTab = TABS.some((t) => t.id === settingsActiveTab)
     ? (settingsActiveTab as string)
     : "account";
-  const [loading, setLoading] = useState(true);
+  // The store already holds this user's settings row (seeded from the
+  // server, kept current by the app's own writes), so Settings opens with
+  // it and refreshes in the background instead of behind a spinner.
+  const [cachedSettings] = useState(() => {
+    const s = useAppStore.getState().userSettings;
+    return s.user_id === userId ? s : null;
+  });
+  const [loading, setLoading] = useState(cachedSettings === null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
@@ -821,7 +837,10 @@ function SettingsModalContent({
   const { control, register, watch, setValue, reset, getValues } =
     useForm<SettingsFormValues>({
       resolver: zodResolver(settingsSchema),
-      defaultValues: {},
+      // Filled from the first frame when the store has the settings.
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      defaultValues: (cachedSettings ?? {}) as any,
     });
 
   /* BUG-45 — selective subscriptions: the save debounce only needs the
@@ -957,42 +976,71 @@ function SettingsModalContent({
   useEffect(() => {
     /* BUG-45 — this component only mounts when the modal is open, but keep
        the guard so the effect's deps stay honest if wiring changes. */
-    async function loadSettings() {
-      setLoading(true);
-      try {
-        setUserEmail(userAccountEmail);
+    let cancelled = false;
+    // What the form was last filled with, to tell whether the user has
+    // edited anything since.
+    let filledWith: string | null = null;
+    function fill(settings: UserSettings) {
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      reset(settings as any);
+      filledWith = JSON.stringify(getValues());
+      // Baseline for autosave = exactly what the form was filled with, in
+      // the same shape the debounced watcher produces. Taking it later (from
+      // the first debounced value) captured pre-load defaults, so every open
+      // "saved" the loaded values straight back to the database.
+      lastSavedSettingsRef.current = JSON.stringify(
+        Object.fromEntries(
+          AUTOSAVE_FIELDS.map((name) => [name, getValues(name)]),
+        ),
+      );
+    }
 
+    async function loadSettings() {
+      setUserEmail(userAccountEmail);
+      if (cachedSettings) {
+        fill(cachedSettings);
+        setTimeout(() => {
+          if (!cancelled) setInitialLoaded(true);
+        }, 100);
+      }
+      try {
         const { data, error } = await supabase
           .from("user_settings")
           .select("*")
           .eq("user_id", userId)
           .single();
         if (error) throw error;
-        if (data) {
-          /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          reset(data as any);
-          // Baseline for autosave = exactly what was just loaded, in the same
-          // shape the debounced watcher produces. Taking it later (from the
-          // first debounced value) captured pre-load defaults, so every open
-          // "saved" the loaded values straight back to the database.
-          lastSavedSettingsRef.current = JSON.stringify(
-            Object.fromEntries(
-              AUTOSAVE_FIELDS.map((name) => [name, getValues(name)]),
-            ),
-          );
-          /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setUserSettings(data as any);
-        }
+        if (cancelled || !data) return;
+        const fresh = data as UserSettings;
+        // Changed on another device since the store was filled: show it,
+        // unless the user has already started editing.
+        if (!cachedSettings || JSON.stringify(getValues()) === filledWith)
+          fill(fresh);
+        // Only touch the store when something differs: every settings
+        // reader in the shell re-renders on a new object.
+        if (!sameSettings(useAppStore.getState().userSettings, fresh))
+          setUserSettings(fresh);
       } catch {
-        toast.error("Couldn't load settings. Please try again.");
+        // With the stored copy on screen, a failed refresh changes nothing.
+        if (!cachedSettings && !cancelled)
+          toast.error("Couldn't load settings. Please try again.");
       } finally {
-        setLoading(false);
-        setTimeout(() => setInitialLoaded(true), 100);
+        if (!cachedSettings && !cancelled) {
+          setLoading(false);
+          setTimeout(() => {
+            if (!cancelled) setInitialLoaded(true);
+          }, 100);
+        }
       }
     }
     loadSettings();
+    return () => {
+      cancelled = true;
+    };
+    // userId, userAccountEmail and cachedSettings are fixed for the life of
+    // the modal; listing them would only re-run the load if that changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, setUserSettings, reset, getValues]);
 
   useEffect(() => {
