@@ -2352,14 +2352,12 @@ h6 {
 
 /* Particles removed */
 
-/* T4-3: content-visibility for desktop lists */
-@media (min-width: 768px) {
-  .task-card-wrapper,
-  .thread-row-wrapper {
-    content-visibility: auto;
-    contain-intrinsic-size: 0 88px;
-  }
-}
+/* No content-visibility on list rows (T4-3 had `auto` with an 88px
+   placeholder): rows are laid out at the placeholder before they're
+   rendered, so every task card opened at 88px and snapped to its real
+   height (68px, more with details) a frame later, and the list jumped.
+   No fixed placeholder fits rows of varying height, and these lists are
+   short enough that skipping their rendering saved nothing noticeable. */
 
 /* T5-3: iOS input zoom fix — force 16px floor on mobile */
 @media (max-width: 767px) {
