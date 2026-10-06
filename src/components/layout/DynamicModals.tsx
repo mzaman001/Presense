@@ -7,6 +7,7 @@ import { withPreload } from "@/lib/preloadable";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow";
 import { useEffect } from "react";
+import { AnimatePresence } from "framer-motion";
 import { loadFocusTimer } from "@/lib/focus-timer";
 
 export const CaptureModal = withPreload(
@@ -102,10 +103,14 @@ export function DynamicModals() {
 
   return (
     <>
-      {isCaptureModalOpen && <CaptureModal />}
-      {isSearchModalOpen && <SearchModal />}
+      {/* Mounted only while open, but kept on screen until the exit each
+          one declares has played; without this they vanished on close. */}
+      <AnimatePresence>
+        {isCaptureModalOpen && <CaptureModal key="capture" />}
+        {isSearchModalOpen && <SearchModal key="search" />}
+        {isSettingsModalOpen && <SettingsModal key="settings" />}
+      </AnimatePresence>
       {hasStuckHelp && <StuckTaskHelp />}
-      {isSettingsModalOpen && <SettingsModal />}
       {hasTimer && <PomodoroTimer />}
     </>
   );

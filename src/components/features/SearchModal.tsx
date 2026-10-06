@@ -17,6 +17,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
+import { useIsPresent } from "framer-motion";
 import { cn, ilikeContains } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
@@ -40,6 +41,8 @@ export function SearchModal() {
       setSearchModalOpen: s.setSearchModalOpen,
     })),
   );
+  // Still rendered while DynamicModals' AnimatePresence plays its exit.
+  const isPresent = useIsPresent();
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 300);
   const hasQuery = query.trim().length > 0;
@@ -130,7 +133,7 @@ export function SearchModal() {
   const results = canSearch && search.isSuccess ? search.data : [];
   const activeIndex = Math.max(0, Math.min(selectedIndex, results.length - 1));
 
-  if (!isSearchModalOpen) return null;
+  if (!isSearchModalOpen && isPresent) return null;
 
   return (
     <ModalErrorBoundary
