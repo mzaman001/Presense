@@ -51,6 +51,19 @@ describe("TimezoneSync", () => {
     expect(useAppStore.getState().userSettings.timezone).toBe("Asia/Kolkata");
   });
 
+  it("never saves a zone the runtime doesn't know", async () => {
+    // Chromium reports Etc/Unknown when the OS timezone is misconfigured;
+    // saved, it made the server render of /do throw on every visit.
+    device.zone = "Etc/Unknown";
+    useAppStore.setState({
+      userSettings: { timezone: "UTC", timezone_auto: true },
+    });
+    render(<TimezoneSync />);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(useAppStore.getState().userSettings.timezone).toBe("UTC");
+  });
+
   it("treats a missing switch as automatic (existing rows)", async () => {
     useAppStore.setState({ userSettings: { timezone: "UTC" } });
     render(<TimezoneSync />);

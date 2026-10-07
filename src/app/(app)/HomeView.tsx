@@ -198,7 +198,8 @@ function HomeDashboard({
   const {
     tasks = [],
     inboxItems = [],
-    threads = [],
+    threadsCount = 0,
+    activeTasksCount = 0,
     doneTasks = [],
     pomodorosThisWeek = 0,
     doneTasksLastWeek = [],
@@ -814,7 +815,7 @@ function HomeDashboard({
                 {
                   href: "/do",
                   icon: CheckCircle2,
-                  value: tasks.length,
+                  value: activeTasksCount,
                   label: "Active Tasks",
                 },
                 {
@@ -826,7 +827,7 @@ function HomeDashboard({
                 {
                   href: "/think",
                   icon: MessageSquare,
-                  value: threads.length,
+                  value: threadsCount,
                   label: "Open Threads",
                 },
                 {

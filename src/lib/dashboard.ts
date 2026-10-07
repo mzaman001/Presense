@@ -17,6 +17,9 @@ const DAY_MS = 86_400_000;
  * timezone, so it never does the cutting itself.
  */
 const HISTORY_DAYS = 15;
+/** Home loads at most this many active tasks; beyond it, counts come from the server. */
+const ACTIVE_TASK_LIMIT = 100;
+
 /** Morning plans; the rolling week count needs only 7 days. */
 const RITUAL_DAYS = 8; // 7 days, plus one for the widest UTC offset
 
@@ -28,7 +31,9 @@ const RITUAL_DAYS = 8; // 7 days, plus one for the widest UTC offset
 export interface DashboardRows {
   tasks: TaskRecord[];
   inboxItems: TaskRecord[];
-  threads: Row<"threads">[];
+  /** Exact counts: the lists below are capped, so their lengths aren't. */
+  threadsCount: number;
+  activeTasksTotal: number;
   recentDone: TaskRecord[];
   recentSessions: Pick<
     Row<"session_logs">,
@@ -48,60 +53,87 @@ export async function fetchDashboardRows(
 
   // INFRA-18: explicit user_id filters so the planner can use the
   // per-user indexes rather than relying on the RLS predicate alone.
-  const [tasks, inbox, threads, done, sessions, rituals, locations] =
-    await Promise.all([
-      supabase
-        .from("items")
-        .select("*")
-        .eq("user_id", userId)
-        .in("status", ["active", "overdue"])
-        .range(0, 99),
-      supabase
-        .from("items")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "inbox")
-        .range(0, 99),
-      supabase.from("threads").select("*").eq("user_id", userId).range(0, 99),
-      supabase
-        .from("items")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "done")
-        .gte("completed_at", historyStart.toISOString())
-        .order("completed_at", { ascending: false })
-        .range(0, 299),
-      supabase
-        .from("session_logs")
-        .select("completed_at, duration_minutes")
-        .eq("user_id", userId)
-        .eq("type", "work")
-        .gte("completed_at", historyStart.toISOString())
-        .range(0, 299),
-      supabase
-        .from("ritual_logs")
-        .select("completed_at")
-        .eq("user_id", userId)
-        .eq("ritual_type", "morning")
-        .gte("completed_at", ritualStart.toISOString())
-        .range(0, 199),
-      // Count only: the tile needs a number, not the rows.
-      supabase
-        .from("locations")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .is("deleted_at", null),
-    ]);
+  const [
+    tasks,
+    inbox,
+    threads,
+    done,
+    sessions,
+    rituals,
+    locations,
+    activeTasks,
+  ] = await Promise.all([
+    supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", userId)
+      .in("status", ["active", "overdue"])
+      .range(0, ACTIVE_TASK_LIMIT - 1),
+    supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "inbox")
+      .range(0, 99),
+    // Count only, and only open threads: this read every thread (trashed
+    // and archived too) and the tile counted the rows, up to 100.
+    supabase
+      .from("threads")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "active"),
+    supabase
+      .from("items")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "done")
+      .gte("completed_at", historyStart.toISOString())
+      .order("completed_at", { ascending: false })
+      .range(0, 299),
+    supabase
+      .from("session_logs")
+      .select("completed_at, duration_minutes")
+      .eq("user_id", userId)
+      .eq("type", "work")
+      .gte("completed_at", historyStart.toISOString())
+      .range(0, 299),
+    supabase
+      .from("ritual_logs")
+      .select("completed_at")
+      .eq("user_id", userId)
+      .eq("ritual_type", "morning")
+      .gte("completed_at", ritualStart.toISOString())
+      .range(0, 199),
+    // Count only: the tile needs a number, not the rows.
+    supabase
+      .from("locations")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .is("deleted_at", null),
+    // The task list above stops at 100; this is the real number.
+    supabase
+      .from("items")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("status", ["active", "overdue"]),
+  ]);
 
-  const firstError = [tasks, inbox, threads, done, sessions, rituals].find(
-    (res) => res.error,
-  )?.error;
+  const firstError = [
+    tasks,
+    inbox,
+    threads,
+    done,
+    sessions,
+    rituals,
+    activeTasks,
+  ].find((res) => res.error)?.error;
   if (firstError) throw firstError;
 
   return {
     tasks: tasks.data ?? [],
     inboxItems: inbox.data ?? [],
-    threads: threads.data ?? [],
+    threadsCount: threads.count ?? 0,
+    activeTasksTotal: activeTasks.count ?? 0,
     recentDone: done.data ?? [],
     recentSessions: sessions.data ?? [],
     ritualCompletedAt: (rituals.data ?? []).map((r) => r.completed_at),
@@ -176,8 +208,14 @@ export function summarizeDashboard(rows: DashboardRows, now: Date) {
 
   return {
     tasks: upNext,
+    // The list's length (snoozed tasks left out, updated optimistically as
+    // tasks are completed), unless the list was cut off at its limit.
+    activeTasksCount:
+      rows.tasks.length >= ACTIVE_TASK_LIMIT
+        ? rows.activeTasksTotal
+        : upNext.length,
     inboxItems: rows.inboxItems,
-    threads: rows.threads,
+    threadsCount: rows.threadsCount,
     doneTasks,
     pomodorosThisWeek: sessionsThisWeek.length,
     doneTasksLastWeek,
