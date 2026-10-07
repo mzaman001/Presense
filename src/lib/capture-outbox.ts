@@ -153,10 +153,24 @@ export function enqueueCapture(
   items: RoutedItem[],
   now: Date = new Date(),
 ): PendingCapture {
+  return enqueueRows(userId, text, rowsForCapture(userId, items, now), now);
+}
+
+/**
+ * Queues rows that are already built (e.g. a task from the Add task panel),
+ * with the same zero-loss handling as a capture: on this device first,
+ * synced by flushOutbox, retried by CaptureSync.
+ */
+export function enqueueRows(
+  userId: string,
+  text: string,
+  rows: OutboxRow[],
+  now: Date = new Date(),
+): PendingCapture {
   const entry: PendingCapture = {
     id: crypto.randomUUID(),
     text,
-    rows: rowsForCapture(userId, items, now),
+    rows,
     createdAt: now.toISOString(),
     attempts: 0,
   };

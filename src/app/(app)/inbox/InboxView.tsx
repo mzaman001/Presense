@@ -1,9 +1,13 @@
 "use client";
 
+import {
+  routeInboxItem as sendInboxItem,
+  type InboxSpace,
+} from "@/lib/inbox-route";
 import { createPortal } from "react-dom";
 import { useUserId } from "@/components/providers/SessionProvider";
 import React, { use, useState, useMemo, useEffect, useRef } from "react";
-import { createClient, safeMutate } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase";
 import {
   Loader2,
   FolderInput,
@@ -21,11 +25,7 @@ import { toast } from "sonner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { m, useMotionValue, useTransform, animate } from "framer-motion";
 // INFRA-19: all status writes on entity tables go through item-lifecycle.ts
-import {
-  moveItemToTrashPatch,
-  activateItemPatch,
-  restoreItemPatch,
-} from "@/lib/item-lifecycle";
+import { moveItemToTrashPatch, restoreItemPatch } from "@/lib/item-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
@@ -250,89 +250,9 @@ export function InboxView({
       );
 
       try {
-        let routedId: string | null = null;
-
-        if (space === "do") {
-          // BUG-38: check error — was fire-and-forget before
-          const { success } = await safeMutate(
-            () =>
-              supabase.from("items").update(activateItemPatch()).eq("id", id),
-            "Failed to route to Do",
-          );
-          if (!success) throw new Error("Route to Do failed");
-        } else if (space === "remember") {
-          // PERF-17: item.user_id is already in hand from the inbox query
-          // — drop the redundant supabase.auth.getUser() round trip.
-          if (item.user_id) {
-            // BUG-38: insert FIRST, trash original only on success
-            const { data: inserted, error: insertError } = await supabase
-              .from("locations")
-              .insert({
-                user_id: item.user_id,
-                item_name: item.title,
-                location_text: item.title,
-              })
-              .select("id")
-              .single();
-
-            if (insertError) throw insertError;
-            if (inserted) {
-              routedId = inserted.id;
-              const { success: trashed } = await safeMutate(
-                () =>
-                  supabase
-                    .from("items")
-                    .update(moveItemToTrashPatch())
-                    .eq("id", id),
-                "Routed, but failed to remove from Inbox",
-              );
-              if (!trashed) {
-                const destId = routedId;
-                if (destId) {
-                  await safeMutate(
-                    () => supabase.from("locations").delete().eq("id", destId),
-                    "Failed to undo route",
-                  );
-                }
-                throw new Error("Failed to remove from Inbox");
-              }
-            }
-          }
-        } else if (space === "think") {
-          // BUG-38: insert FIRST, trash original only on success
-          const { data: inserted, error: insertError } = await supabase
-            .from("threads")
-            .insert({
-              user_id: item.user_id,
-              title: item.title,
-              color_accent: "#e3875f",
-            })
-            .select("id")
-            .single();
-
-          if (insertError) throw insertError;
-          if (inserted) {
-            routedId = inserted.id;
-            const { success: trashed } = await safeMutate(
-              () =>
-                supabase
-                  .from("items")
-                  .update(moveItemToTrashPatch())
-                  .eq("id", id),
-              "Routed, but failed to remove from Inbox",
-            );
-            if (!trashed) {
-              const destId = routedId;
-              if (destId) {
-                await safeMutate(
-                  () => supabase.from("threads").delete().eq("id", destId),
-                  "Failed to undo route",
-                );
-              }
-              throw new Error("Failed to remove from Inbox");
-            }
-          }
-        }
+        // Do: the item becomes a task. Think / Remember: a thread or
+        // location is made from it and the inbox row removed (inbox-route).
+        const undo = await sendInboxItem(supabase, item, space as InboxSpace);
 
         toast.success(`Routed to ${space}`, {
           duration: 5000,
@@ -340,55 +260,14 @@ export function InboxView({
             label: "Undo",
             onClick: async () => {
               try {
-                if (space === "do") {
-                  await safeMutate(
-                    () =>
-                      supabase
-                        .from("items")
-                        .update(restoreItemPatch("inbox"))
-                        .eq("id", id),
-                    "Failed to restore to inbox",
-                  );
-                } else if (space === "remember") {
-                  if (routedId) {
-                    await safeMutate(
-                      () =>
-                        supabase.from("locations").delete().eq("id", routedId),
-                      "Failed to undo route",
-                    );
-                  }
-                  await safeMutate(
-                    () =>
-                      supabase
-                        .from("items")
-                        .update(restoreItemPatch("inbox"))
-                        .eq("id", id),
-                    "Failed to restore to inbox",
-                  );
-                } else if (space === "think") {
-                  if (routedId) {
-                    await safeMutate(
-                      () =>
-                        supabase.from("threads").delete().eq("id", routedId),
-                      "Failed to undo route",
-                    );
-                  }
-                  await safeMutate(
-                    () =>
-                      supabase
-                        .from("items")
-                        .update(restoreItemPatch("inbox"))
-                        .eq("id", id),
-                    "Failed to restore to inbox",
-                  );
-                }
+                await undo();
                 queryClient.setQueryData<InboxItem[]>(
                   ["inbox-tasks"],
                   (old) => [item, ...(old ?? [])],
                 );
                 toast.success("Restored to inbox");
               } catch {
-                toast.error("Failed to undo");
+                toast.error("Couldn't undo that");
                 refetch();
               }
             },
