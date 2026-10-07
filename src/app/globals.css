@@ -2936,3 +2936,24 @@ p {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* Thumb-sized hit areas on touch screens, without changing what's drawn:
+   chips (36px), the view switcher (30px) and small icon buttons (32px) get
+   an invisible target of at least 44 × 44px around them (Apple and Material
+   guidance; WCAG 2.5.5). Desktop pointers keep the drawn size. */
+@media (pointer: coarse) {
+  .chip,
+  .tap-target {
+    position: relative;
+  }
+  .chip::after,
+  .tap-target::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}

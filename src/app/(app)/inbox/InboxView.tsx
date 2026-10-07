@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 
 import { fetchInboxItems, type InboxItem } from "@/lib/inbox-items";
+import { friendlyError } from "@/lib/friendly-error";
 
 const InboxItemCard = ({
   item,
@@ -304,7 +305,9 @@ export function InboxView({
           item,
           ...(old ?? []),
         ]);
-        toast.error("Could not dismiss", { description: error.message });
+        toast.error("Couldn't dismiss it", {
+          description: friendlyError(error),
+        });
         return;
       }
       toast.success("Dismissed", {
