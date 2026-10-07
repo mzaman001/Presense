@@ -583,7 +583,7 @@ function CategoryItem({
         toast.success(`Renamed category to ${trimmed}`);
       } catch (err: unknown) {
         toast.error("Failed to rename category", {
-          description: err instanceof Error ? err.message : "Unknown error",
+          description: friendlyError(err),
         });
         setEditName(cat);
       }
@@ -1209,9 +1209,9 @@ function SettingsModalContent({
       toast.success("Completed tasks cleared");
       setClearTasksConfirm(false);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to clear tasks";
-      toast.error("Failed", { description: message });
+      toast.error("Couldn't clear completed tasks", {
+        description: friendlyError(err),
+      });
     }
   };
 
@@ -1228,9 +1228,9 @@ function SettingsModalContent({
       toast.success("Stale locations cleared");
       setClearLocationsConfirm(false);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to clear locations";
-      toast.error("Failed", { description: message });
+      toast.error("Couldn't clear places", {
+        description: friendlyError(err),
+      });
     }
   };
   const handleDeleteAccount = async () => {
@@ -1913,7 +1913,7 @@ function SettingsModalContent({
               onClose={() => setClearLocationsConfirm(false)}
               onConfirm={handleClearStaleLocations}
               title="Clear stale places"
-              description="Remove places not updated in 30+ days?"
+              description="Permanently delete places not updated in 30+ days? They won't go to Trash, so this can't be undone."
               confirmLabel="Clear places"
               confirmDestructive
             />

@@ -127,7 +127,7 @@ export default function ThreadDetailPage({
       toast.success(newPinStatus ? "Thread pinned" : "Thread unpinned");
     } catch (error: unknown) {
       toast.error("Failed to pin thread", {
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: friendlyError(error),
       });
     }
   };
@@ -145,7 +145,7 @@ export default function ThreadDetailPage({
       toast.success("Color updated");
     } catch (error: unknown) {
       toast.error("Failed to update color", {
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: friendlyError(error),
       });
     }
   };
@@ -172,7 +172,7 @@ export default function ThreadDetailPage({
       router.push("/think");
     } catch (error: unknown) {
       toast.error("Failed to update thread status", {
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: friendlyError(error),
       });
     }
   };
@@ -189,7 +189,7 @@ export default function ThreadDetailPage({
       router.push("/think");
     } catch (err: unknown) {
       toast.error("Failed to delete", {
-        description: err instanceof Error ? err.message : "Unknown error",
+        description: friendlyError(err),
       });
     } finally {
       setDeleteThreadOpen(false);
