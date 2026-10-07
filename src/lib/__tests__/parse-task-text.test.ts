@@ -483,3 +483,32 @@ describe("parseTaskText: regressions from the adversarial review", () => {
     expect((await parse(text)).title).toBe(title);
   });
 });
+
+describe("parseTaskText: dates that can't be meant (audit slice 2)", () => {
+  // Wednesday 7 Oct 2026, 23:50 local: late in the evening.
+  const now = new Date(2026, 9, 7, 23, 50);
+  const parse = (text: string) =>
+    parseTaskText(text, { now, dateOrder: "DMY" });
+
+  it("reads 'tonight' after its usual hour as later tonight, not the past", async () => {
+    const { deadline } = await parse("call mum tonight");
+    expect(deadline!.getTime()).toBeGreaterThanOrEqual(now.getTime());
+    expect(deadline!.getDate()).toBe(7);
+  });
+
+  it("doesn't turn a negative offset into a date in the past", async () => {
+    const r = await parse("pay rent in -5 days");
+    expect(r.deadline).toBeNull();
+    expect(r.title).toBe("Pay rent in -5 days");
+  });
+
+  it("ignores dates more than ten years out", async () => {
+    const r = await parse("call mum in 999999 weeks");
+    expect(r.deadline).toBeNull();
+  });
+
+  it("still takes an ordinary future date", async () => {
+    const r = await parse("call mum in 3 days");
+    expect(r.deadline!.getDate()).toBe(10);
+  });
+});

@@ -15,10 +15,19 @@
 const lastMutations: Record<string, number> = {};
 const rowMutations: Record<string, Map<string, number>> = {};
 
-export function markMutation(table?: string, rowIds?: readonly string[]) {
-  const now = Date.now();
+/** Row writes older than this can't be echoing any more; forget them. */
+const ROW_MEMORY_MS = 60_000;
+
+export function markMutation(
+  table?: string,
+  rowIds?: readonly string[],
+  now: number = Date.now(),
+) {
   if (table && rowIds && rowIds.length > 0) {
     const rows = (rowMutations[table] ??= new Map());
+    // Entries were only removed when an event for that row came back, so
+    // the map grew with every row written in a session.
+    for (const [id, at] of rows) if (now - at > ROW_MEMORY_MS) rows.delete(id);
     for (const id of rowIds) rows.set(id, now);
     return;
   }
@@ -47,6 +56,11 @@ export function isRecentLocalWrite(
   if (now - at < windowMs) return true;
   rowMutations[table]?.delete(rowId);
   return false;
+}
+
+/** How many row writes are remembered for a table. Only needed by tests. */
+export function trackedRowCount(table: string): number {
+  return rowMutations[table]?.size ?? 0;
 }
 
 /**

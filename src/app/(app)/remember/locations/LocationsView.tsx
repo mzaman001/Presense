@@ -35,6 +35,7 @@ import {
   Package,
 } from "lucide-react";
 import { toast } from "sonner";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { useRealtime } from "@/hooks/useRealtime";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { StaleResurfaceBadge } from "@/components/ui/StaleResurfaceBadge";
@@ -176,7 +177,7 @@ export function LocationsView({
       patchLocations((prev) => prev.filter((i) => i.id !== item.id));
       const { error } = await supabase
         .from("locations")
-        .update({ status: "deleted", deleted_at: new Date().toISOString() })
+        .update(moveItemToTrashPatch())
         .eq("id", item.id)
         .eq("user_id", userId ?? "");
       if (error) throw error;
