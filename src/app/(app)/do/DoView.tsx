@@ -50,7 +50,11 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 import dynamic from "next/dynamic";
 import { withPreload } from "@/lib/preloadable";
 import { TaskAddPanel } from "@/components/features/TaskAddPanelLazy";
-import { fetchActiveTasks } from "@/lib/do-tasks";
+import {
+  fetchActiveTasks,
+  ARCHIVE_PAGE,
+  fetchArchivedPage,
+} from "@/lib/do-tasks";
 import { bucketTasks, type Clock as ListClock } from "@/lib/do-buckets";
 import { useShallow } from "zustand/shallow";
 import { DisplayClockProvider, useLiveClock } from "@/lib/display-clock";
@@ -303,17 +307,19 @@ function DoBoard({
 
   const [showArchive, setShowArchive] = useState(false);
   const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
+  // A page at a time: it used to load every task ever completed.
+  const [archiveLimit, setArchiveLimit] = useState(ARCHIVE_PAGE);
+  const [archiveHasMore, setArchiveHasMore] = useState(false);
 
   const fetchArchived = useCallback(async () => {
-    // INFRA-18: explicit user_id filter for planner index usage.
-    const { data } = await supabase
-      .from("items")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("status", "done")
-      .order("completed_at", { ascending: false });
-    setArchivedTasks((data as Task[]) ?? []);
-  }, [supabase]);
+    try {
+      const page = await fetchArchivedPage(supabase, userId, archiveLimit);
+      setArchivedTasks(page.tasks as Task[]);
+      setArchiveHasMore(page.hasMore);
+    } catch {
+      toast.error("Couldn't load completed tasks");
+    }
+  }, [supabase, userId, archiveLimit]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -571,6 +577,17 @@ function DoBoard({
                   </Button>
                 </GlassCard>
               ))
+          )}
+          {archiveHasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setArchiveLimit((n) => n + ARCHIVE_PAGE)}
+              >
+                Show more
+              </Button>
+            </div>
           )}
         </div>
       ) : viewMode === "calendar" ? (
