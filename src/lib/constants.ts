@@ -39,3 +39,11 @@ export function resolveCategoryColor(
  * row is removed.
  */
 export const COMPLETE_HOLD_MS = 560;
+
+/**
+ * Ritual times for a user who hasn't set them: the same as user_settings'
+ * column defaults and the server's reminder job, so the app and the
+ * notifications agree.
+ */
+export const DEFAULT_NUDGE_TIME = "10:00";
+export const DEFAULT_SHUTDOWN_TIME = "18:00";

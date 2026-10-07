@@ -43,10 +43,26 @@ export function saveFocusTimer(state: FocusTimerState | null) {
   }
 }
 
+const PHASES: readonly Phase[] = ["work", "short_break", "long_break"];
+
+/** A saved state from an older version, or corrupted, isn't a timer. */
+function isFocusTimerState(value: unknown): value is FocusTimerState {
+  if (!value || typeof value !== "object") return false;
+  const s = value as Record<string, unknown>;
+  return (
+    PHASES.includes(s.phase as Phase) &&
+    Number.isFinite(s.startedAt) &&
+    Number.isFinite(s.duration) &&
+    (s.duration as number) > 0
+  );
+}
+
 export function loadFocusTimer(): FocusTimerState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as FocusTimerState) : null;
+    if (!raw) return null;
+    const state: unknown = JSON.parse(raw);
+    return isFocusTimerState(state) ? state : null;
   } catch {
     return null;
   }

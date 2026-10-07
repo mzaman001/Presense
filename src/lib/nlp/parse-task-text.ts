@@ -453,6 +453,20 @@ type Time = { hour: number; minute: number };
  * `partOfDay` is a "morning"/"evening" said anywhere in the text, which
  * settles am/pm for a bare hour ("every morning at 7").
  */
+/**
+ * A date nobody means: before today ("in -5 days") or more than ten years
+ * out ("in 999999 weeks"). Read as plain words instead, so they stay in the
+ * title rather than becoming a deadline.
+ */
+function isPlausible(date: Date, now: Date): boolean {
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  return date >= startOfToday && date.getFullYear() <= now.getFullYear() + 10;
+}
+
 function readResult(r: ChronoResult, now: Date, partOfDay: string | null) {
   const date = r.start.date();
   const dayIsExplicit =
@@ -475,7 +489,17 @@ function readResult(r: ChronoResult, now: Date, partOfDay: string | null) {
     }
   } else {
     const part = r.text.match(/\b(morning|afternoon|evening|tonight|night)\b/i);
-    if (part) time = { hour: PART_OF_DAY[part[1].toLowerCase()], minute: 0 };
+    if (part) {
+      time = { hour: PART_OF_DAY[part[1].toLowerCase()], minute: 0 };
+      // "tonight" said after 21:00 means later tonight, not earlier today.
+      const sameDay =
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate();
+      const at = new Date(now);
+      at.setHours(time.hour, time.minute, 0, 0);
+      if (sameDay && at < now) time = { ...DATE_ONLY_TIME };
+    }
   }
 
   const day = new Date(date);
@@ -620,7 +644,7 @@ export async function parseTaskText(
     const plain = rest.replaceAll(MARK, " ");
     const results = chrono
       .parse(plain, now, { forwardDate: true })
-      .filter((r) => isRealDate(plain, r));
+      .filter((r) => isRealDate(plain, r) && isPlausible(r.start.date(), now));
     if (results.length > 0) {
       // "tomorrow" + "at 9pm" can come back as two results; re-parse the
       // joined text so date and time merge into one.

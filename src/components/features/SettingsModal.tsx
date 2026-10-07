@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from "react";
 import { useAppStore, type UserSettings } from "@/store/useAppStore";
+import { DEFAULT_NUDGE_TIME, DEFAULT_SHUTDOWN_TIME } from "@/lib/constants";
 import { useSessionUser } from "@/components/providers/SessionProvider";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
@@ -1612,7 +1613,10 @@ function SettingsModalContent({
                               <Dropdown
                                 trackAnimatedAncestor
                                 aria-label="Morning planning time"
-                                value={toHHMM(settings.nudge_time, "10:00")}
+                                value={toHHMM(
+                                  settings.nudge_time,
+                                  DEFAULT_NUDGE_TIME,
+                                )}
                                 onChange={(val) =>
                                   updateSetting("nudge_time", val)
                                 }
@@ -1628,7 +1632,10 @@ function SettingsModalContent({
                               <Dropdown
                                 trackAnimatedAncestor
                                 aria-label="Evening shutdown time"
-                                value={toHHMM(settings.shutdown_time, "17:00")}
+                                value={toHHMM(
+                                  settings.shutdown_time,
+                                  DEFAULT_SHUTDOWN_TIME,
+                                )}
                                 onChange={(val) =>
                                   updateSetting("shutdown_time", val)
                                 }

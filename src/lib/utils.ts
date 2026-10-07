@@ -23,11 +23,9 @@ export function formatRRule(rrule: string | null | undefined): string {
         ? `Every ${interval} days`
         : "Every day";
   if (rrule.includes("FREQ=MONTHLY")) {
-    if (interval > 1) return `Every ${interval} months`;
+    const every = interval > 1 ? `Every ${interval} months` : "Every month";
     const day = rrule.match(/BYMONTHDAY=(\d+)/);
-    return day
-      ? `Every month on the ${ordinal(Number(day[1]))}`
-      : "Every month";
+    return day ? `${every} on the ${ordinal(Number(day[1]))}` : every;
   }
   if (rrule.includes("FREQ=YEARLY"))
     return interval > 1 ? `Every ${interval} years` : "Every year";
