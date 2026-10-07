@@ -32,6 +32,8 @@ import {
   restoreItemPatch,
 } from "@/lib/item-lifecycle";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { appendThreadEntry, removeThreadEntry } from "@/lib/think-threads";
+import { friendlyError } from "@/lib/friendly-error";
 
 interface ThreadEntry {
   text: string;
@@ -204,29 +206,23 @@ export default function ThreadDetailPage({
         text: newEntry.trim(),
         created_at: new Date().toISOString(),
       };
-      const updatedEntries = [...(thread.entries || []), entry];
+      // Appended on the server: rebuilding the array from this page's copy
+      // overwrote anything added meanwhile.
+      const stored = await appendThreadEntry(supabase, thread.id, entry);
+      if (thread.stale_prompt) {
+        // Clear the stale prompt now they've revisited.
+        await supabase
+          .from("threads")
+          .update({ stale_prompt: null })
+          .eq("id", thread.id);
+      }
 
-      const { error } = await supabase
-        .from("threads")
-        .update({
-          /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          entries: updatedEntries as any,
-          last_updated: new Date().toISOString(),
-          stale_prompt: null, // Clear stale prompt if they revisit
-        })
-        .eq("id", thread.id);
-
-      if (error) throw error;
-
-      setThread({ ...thread, entries: updatedEntries, stale_prompt: null });
+      setThread({ ...thread, entries: stored, stale_prompt: null });
       setNewEntry("");
       toast.success("Added to thread");
     } catch (error: unknown) {
       logger.error("Think error:", error);
-      toast.error("Failed to save thought", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
+      toast.error("Couldn't save that", { description: friendlyError(error) });
     } finally {
       setSaving(false);
     }
@@ -259,23 +255,20 @@ export default function ThreadDetailPage({
   const handleDeleteEntry = async () => {
     if (!thread || deleteEntryIndex === null) return;
     try {
-      const updatedEntries = thread.entries.filter(
-        (_, i) => i !== deleteEntryIndex,
+      // By the entry's own timestamp, not its position: after the list
+      // changed, the index pointed at a different entry.
+      const target = thread.entries[deleteEntryIndex];
+      if (!target) return;
+      const stored = await removeThreadEntry(
+        supabase,
+        thread.id,
+        target.created_at,
       );
-      const { error } = await supabase
-        .from("threads")
-        .update({
-          /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          entries: updatedEntries as any,
-        })
-        .eq("id", thread.id);
-      if (error) throw error;
-      setThread({ ...thread, entries: updatedEntries });
+      setThread({ ...thread, entries: stored });
       toast.success("Entry deleted");
     } catch (err: unknown) {
-      toast.error("Failed to delete entry", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      toast.error("Couldn't delete that entry", {
+        description: friendlyError(err),
       });
     } finally {
       setDeleteEntryIndex(null);

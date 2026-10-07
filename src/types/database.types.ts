@@ -502,6 +502,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_thread_entry: {
+        Args: { p_entry: Json; p_thread_id: string }
+        Returns: Json[]
+      }
       claim_push_reminders: {
         Args: never
         Returns: {
@@ -511,6 +515,10 @@ export type Database = {
           title: string
           user_id: string
         }[]
+      }
+      remove_thread_entry: {
+        Args: { p_created_at: string; p_thread_id: string }
+        Returns: Json[]
       }
       register_push_subscription: {
         Args: {

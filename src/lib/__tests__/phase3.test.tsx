@@ -95,6 +95,7 @@ describe("Phase 3 - Integration Test Suite", () => {
       select: vi.fn().mockImplementation(() => query),
       eq: vi.fn().mockImplementation(() => query),
       in: vi.fn().mockImplementation(() => query),
+      is: vi.fn().mockImplementation(() => query),
       order: vi.fn().mockImplementation(() => query),
       limit: vi.fn().mockImplementation(() => query),
       or: vi.fn().mockImplementation(() => query),
@@ -143,6 +144,42 @@ describe("Phase 3 - Integration Test Suite", () => {
         expect(screen.queryByText("No results")).not.toBeInTheDocument();
       },
     );
+
+    // Results used to include trashed and completed rows, and every task
+    // result went to /do without opening the task.
+    it("searches live rows only and opens the task itself", async () => {
+      useAppStore.setState({ isSearchModalOpen: true });
+      const queries: Record<string, MockQuery> = {};
+      mockSupabase.from.mockImplementation((table) => {
+        queries[table] = mockSupabaseQuery(
+          table === "items"
+            ? [
+                { id: "t-active", title: "Pay rent", status: "active" },
+                { id: "t-inbox", title: "Pay the plumber", status: "inbox" },
+              ]
+            : [],
+        );
+        return queries[table];
+      });
+      render(<SearchModal />, { wrapper });
+      fireEvent.change(screen.getByPlaceholderText(/search everything/i), {
+        target: { value: "pay" },
+      });
+
+      fireEvent.click(await screen.findByText("Pay rent"));
+      expect(push).toHaveBeenCalledWith("/do?task=t-active");
+
+      expect(queries.items.in).toHaveBeenCalledWith("status", [
+        "active",
+        "overdue",
+        "inbox",
+      ]);
+      expect(queries.threads.in).toHaveBeenCalledWith("status", [
+        "active",
+        "archived",
+      ]);
+      expect(queries.locations.is).toHaveBeenCalledWith("deleted_at", null);
+    });
 
     it("retries a failed search and renders the recovered results", async () => {
       useAppStore.setState({ isSearchModalOpen: true });

@@ -119,22 +119,31 @@ describe("Phase 5 Challenger - Think Thread Entry Persistence", () => {
   });
 
   describe("Think Space Entry Add/Delete", () => {
-    it("persists an entries array with both the original and new entry when adding, and with the deleted entry filtered out when deleting", async () => {
+    // Entries used to be rebuilt from the page's copy and written whole
+    // (overwriting anything added meanwhile), and deleted by position. They
+    // now go through append_thread_entry / remove_thread_entry, which change
+    // only the one entry.
+    it("adds one entry on the server and deletes by the entry's own timestamp", async () => {
+      const FIRST = "2026-10-08T09:00:00.000Z";
+      const SECOND = "2026-10-08T09:05:00.000Z";
       const initialThread = {
         id: "thread-123",
         title: "Project Brainstorm",
         color_accent: "#FBBF24",
-        entries: [
-          {
-            text: "First thought",
-            created_at: new Date().toISOString(),
-          },
-        ],
+        entries: [{ text: "First thought", created_at: FIRST }],
         stale_prompt: null,
         status: "active",
         is_pinned: false,
       };
 
+      const rpc = vi.fn(async (fn: string, args: Record<string, unknown>) => ({
+        data:
+          fn === "append_thread_entry"
+            ? [...initialThread.entries, args.p_entry]
+            : [],
+        error: null,
+      }));
+      (mockSupabase as unknown as { rpc: typeof rpc }).rpc = rpc;
       const mockUpdate = vi
         .fn()
         .mockReturnValue(mockSupabaseQuery({ success: true }));
@@ -157,7 +166,6 @@ describe("Phase 5 Challenger - Think Thread Entry Persistence", () => {
       });
 
       let unmount: () => void;
-      // Render ThreadDetailPage
       await act(async () => {
         const res = render(
           <ThreadDetailPage params={Promise.resolve({ id: "thread-123" })} />,
@@ -165,54 +173,36 @@ describe("Phase 5 Challenger - Think Thread Entry Persistence", () => {
         );
         unmount = res.unmount;
       });
+      await screen.findByDisplayValue("Project Brainstorm");
 
-      // Wait for thread to load
-      const titleInput = await screen.findByDisplayValue("Project Brainstorm");
-      expect(titleInput).toBeInTheDocument();
-
-      // Add a new entry
       const textarea = screen.getByPlaceholderText(/continue the thought/i);
-      fireEvent.change(textarea, {
-        target: { value: "Second thought" },
-      });
-
+      fireEvent.change(textarea, { target: { value: "Second thought" } });
       const submitBtn = textarea
         .closest("form")!
         .querySelector('button[type="submit"]') as HTMLButtonElement;
       fireEvent.click(submitBtn);
 
-      await waitFor(() => {
-        expect(mockUpdate).toHaveBeenCalledWith(
-          expect.objectContaining({
-            entries: expect.arrayContaining([
-              expect.objectContaining({ text: "First thought" }),
-              expect.objectContaining({ text: "Second thought" }),
-            ]),
-          }),
-        );
-        expect(mockUpdate.mock.calls[0][0].entries.length).toBe(2);
-      });
-
-      mockUpdate.mockClear();
+      await waitFor(() =>
+        expect(rpc).toHaveBeenCalledWith("append_thread_entry", {
+          p_thread_id: "thread-123",
+          p_entry: expect.objectContaining({ text: "Second thought" }),
+        }),
+      );
+      // Never the whole array from this page's copy.
+      expect(mockUpdate).not.toHaveBeenCalledWith(
+        expect.objectContaining({ entries: expect.anything() }),
+      );
 
       const threadWithTwoEntries = {
         ...initialThread,
         entries: [
-          {
-            text: "First thought",
-            created_at: new Date().toISOString(),
-          },
-          {
-            text: "Second thought",
-            created_at: new Date().toISOString(),
-          },
+          { text: "First thought", created_at: FIRST },
+          { text: "Second thought", created_at: SECOND },
         ],
       };
-
       useAppStore.setState({
         prefetchedThreads: { "thread-123": threadWithTwoEntries },
       });
-
       mockSupabase.from.mockImplementation((table) => {
         if (table === "threads") {
           const query = mockSupabaseQuery(threadWithTwoEntries);
@@ -231,26 +221,19 @@ describe("Phase 5 Challenger - Think Thread Entry Persistence", () => {
       });
       await screen.findByDisplayValue("Project Brainstorm");
 
-      // Exactly one delete button per entry
       const deleteButtons = screen.getAllByRole("button", {
         name: "Delete entry",
       });
       expect(deleteButtons.length).toBe(2);
-
       fireEvent.click(deleteButtons[0]);
+      fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
 
-      const confirmDeleteBtn = await screen.findByRole("button", {
-        name: "Delete",
-      });
-      fireEvent.click(confirmDeleteBtn);
-
-      await waitFor(() => {
-        expect(mockUpdate).toHaveBeenCalledWith(
-          expect.objectContaining({
-            entries: [expect.objectContaining({ text: "Second thought" })],
-          }),
-        );
-      });
+      await waitFor(() =>
+        expect(rpc).toHaveBeenCalledWith("remove_thread_entry", {
+          p_thread_id: "thread-123",
+          p_created_at: FIRST,
+        }),
+      );
     });
   });
 });

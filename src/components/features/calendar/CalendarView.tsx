@@ -37,6 +37,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Task } from "@/types/calendar";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { useQueryState, parseAsStringEnum } from "nuqs";
+import { dateOnlyDeadline } from "@/lib/date-only";
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -201,7 +202,8 @@ export function CalendarView({
       if (dropId.startsWith("slot-")) {
         newDeadline = parseSlotId(dropId);
       } else if (dropId.startsWith("allday-")) {
-        newDeadline = parseAllDayId(dropId);
+        const day = parseAllDayId(dropId);
+        newDeadline = day ? dateOnlyDeadline(day) : null;
       } else if (dropId.startsWith("date-")) {
         // Month view drop: preserve time if task had a time, else midnight
         const targetDay = parseDateId(dropId);
@@ -216,8 +218,9 @@ export function CalendarView({
             0,
             0,
           );
-        } else {
-          newDeadline = targetDay;
+        } else if (targetDay) {
+          // No time of its own: due at the end of that day, not 00:00.
+          newDeadline = dateOnlyDeadline(targetDay);
         }
       }
 

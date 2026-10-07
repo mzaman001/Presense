@@ -63,6 +63,9 @@ import {
 } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { buildExport } from "@/lib/export-data";
+import { friendlyError } from "@/lib/friendly-error";
+import { clearLocalAccountData } from "@/lib/local-account-data";
 
 /* BUG-45 — the fields the autosave debounce watches. `watch(AUTOSAVE_FIELDS)`
    returns an array of values in this same order (react-hook-form's array-arg
@@ -1154,9 +1157,7 @@ function SettingsModalContent({
   );
 
   const handleSignOut = async () => {
-    localStorage.removeItem("presense_theme");
-    localStorage.removeItem("presense_color_mode");
-    localStorage.removeItem("presense_reduce_motion");
+    clearLocalAccountData(userId, { keepUnsyncedCaptures: true });
     // While still signed in (RLS), so this device stops getting this
     // account's reminders.
     await disablePush(supabase);
@@ -1169,25 +1170,8 @@ function SettingsModalContent({
     try {
       toast.info("Preparing export...");
 
-      const [items, threads, locations, settings] = await Promise.all([
-        supabase.from("items").select("*").eq("user_id", userId),
-        supabase.from("threads").select("*").eq("user_id", userId),
-        supabase.from("locations").select("*").eq("user_id", userId),
-        supabase
-          .from("user_settings")
-          .select("*")
-          .eq("user_id", userId)
-          .single(),
-      ]);
-
-      const exportData = {
-        exported_at: new Date().toISOString(),
-        user_id: userId,
-        items: items.data ?? [],
-        threads: threads.data ?? [],
-        locations: locations.data ?? [],
-        settings: settings.data ?? {},
-      };
+      // Every table, every row; throws rather than leave anything out.
+      const exportData = await buildExport(supabase, userId);
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
         type: "application/json",
@@ -1198,10 +1182,14 @@ function SettingsModalContent({
       a.download = `presense-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export downloaded");
+      const { items, threads, locations } = exportData.counts;
+      toast.success("Export downloaded", {
+        description: `${items} tasks, ${threads} threads, ${locations} places, plus focus and ritual history.`,
+      });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Export failed";
-      toast.error("Export failed", { description: message });
+      toast.error("Couldn't export your data", {
+        description: friendlyError(err),
+      });
     }
   };
 
@@ -1260,10 +1248,8 @@ function SettingsModalContent({
         const { error } = await res.json();
         throw new Error(error || "Failed to delete auth account");
       }
-      // Sign out after successful deletion
-      localStorage.removeItem("presense_theme");
-      localStorage.removeItem("presense_color_mode");
-      localStorage.removeItem("presense_reduce_motion");
+      // Nothing of the deleted account stays on this device.
+      clearLocalAccountData(userId, { keepUnsyncedCaptures: false });
       await disablePush(supabase);
       await supabase.auth.signOut();
       toast.success("Account deleted");
