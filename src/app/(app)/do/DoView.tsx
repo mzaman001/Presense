@@ -59,6 +59,7 @@ import { bucketTasks, type Clock as ListClock } from "@/lib/do-buckets";
 import { useShallow } from "zustand/shallow";
 import { DisplayClockProvider, useLiveClock } from "@/lib/display-clock";
 import { deviceTimeZone } from "@/lib/zoned-date";
+import { friendlyError } from "@/lib/friendly-error";
 
 // Only after a reminder is tapped, so it stays out of Do's initial JS.
 const ReminderSheet = dynamic(
@@ -329,9 +330,14 @@ function DoBoard({
   // ["tasks"] is invalidated by useRealtime("items") itself.
   useRealtime("items");
 
+  // A double-click used to send two completes and show two toasts.
+  const completingIds = useRef(new Set<string>());
   const completeTask = useCallback(
     async (e: React.MouseEvent, id: string) => {
       e.stopPropagation();
+      if (completingIds.current.has(id)) return;
+      completingIds.current.add(id);
+      setTimeout(() => completingIds.current.delete(id), COMPLETE_HOLD_MS);
 
       // Set completing state — TaskCard shows the checkmark animation
       setCompleting(id);
@@ -377,7 +383,7 @@ function DoBoard({
         setCompleting(null);
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
         toast.error("Failed to complete task", {
-          description: err instanceof Error ? err.message : "Unknown error",
+          description: friendlyError(err),
         });
       }
     },

@@ -86,6 +86,7 @@ import { RemindMeChip } from "@/components/features/RemindMeChip";
 import { upcomingReminder } from "@/lib/reminder-times";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { enqueueRows, flushOutbox } from "@/lib/capture-outbox";
+import { friendlyError } from "@/lib/friendly-error";
 
 /**
  * The panel edits an `items` row. Callers pass the row straight through, so
@@ -331,9 +332,9 @@ export function TaskAddPanel({
       queryClient.setQueryData(["tasks"], previousTasks);
       queryClient.setQueryData(["dashboard"], previousDashboard);
 
-      const message =
-        err instanceof Error ? err.message : "Failed to move task to trash";
-      toast.error("Failed to move task to trash", { description: message });
+      toast.error("Couldn't move it to the trash", {
+        description: friendlyError(err),
+      });
     } finally {
       setDeleteTaskConfirm(false);
     }
@@ -623,7 +624,7 @@ export function TaskAddPanel({
             logger.error("Save error:", error);
             // The panel is already closed, so the toast carries the retry.
             toast.error(`Couldn't save changes to “${payload.title}”`, {
-              description: error.message,
+              description: friendlyError(error),
               action: { label: "Retry", onClick: () => void save() },
             });
             return;
@@ -641,9 +642,9 @@ export function TaskAddPanel({
         await pending;
       }
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Could not save task";
-      toast.error("Unexpected error", { description: message });
+      toast.error("Couldn't save the task", {
+        description: friendlyError(err),
+      });
     } finally {
       setSaving(false);
     }
