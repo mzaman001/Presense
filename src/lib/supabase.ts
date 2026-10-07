@@ -3,6 +3,7 @@ import { publicEnv as env } from "@/lib/public-env";
 import { Database } from "@/types/database.types";
 import { toast } from "sonner";
 import { trackWrites } from "@/lib/mutation-tracking";
+import { friendlyError } from "@/lib/friendly-error";
 
 // Resolved per call so a later-installed fetch (tests, instrumentation) is used.
 const clientOptions = {
@@ -61,13 +62,13 @@ export async function safeMutate<T>(
   try {
     const { data, error } = await mutationFn();
     if (error) {
-      toast.error(errorLabel, { description: error.message });
+      toast.error(errorLabel, { description: friendlyError(error) });
       return { success: false, data: null, error };
     }
     return { success: true, data, error: null };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    toast.error(errorLabel, { description: message });
+    toast.error(errorLabel, { description: friendlyError(e) });
     return { success: false, data: null, error: { message } };
   }
 }

@@ -46,7 +46,7 @@ function mockSupabase(opts: { deleteFails?: boolean } = {}) {
   return { supabase: { from } as never, calls, original };
 }
 
-const item = { id: "i1", title: "keys are in the drawer", user_id: "u1" };
+const item = { id: "i1", title: "my keys are in the drawer", user_id: "u1" };
 
 describe("routeInboxItem", () => {
   it("removes the inbox row instead of trashing it, and undo restores it whole", async () => {
@@ -82,5 +82,29 @@ describe("routeInboxItem", () => {
     expect(calls).toEqual([
       { table: "items", op: "update", arg: { status: "active" } },
     ]);
+  });
+
+  it("splits a location into what and where, like capture", async () => {
+    const { supabase, calls } = mockSupabase();
+    await routeInboxItem(supabase, item, "remember");
+    expect(calls[1].arg).toMatchObject({
+      item_name: "Keys",
+      location_text: "drawer",
+    });
+  });
+
+  it("starts a routed thread with the text as its first entry", async () => {
+    const { supabase, calls } = mockSupabase();
+    await routeInboxItem(
+      supabase,
+      { ...item, title: "what if inbox had a weekly review" },
+      "think",
+    );
+    expect(calls[1].arg).toMatchObject({
+      title: "what if inbox had a weekly review",
+      entries: [
+        expect.objectContaining({ text: "what if inbox had a weekly review" }),
+      ],
+    });
   });
 });

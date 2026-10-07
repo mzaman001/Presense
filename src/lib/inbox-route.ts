@@ -1,6 +1,27 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { activateItemPatch, restoreItemPatch } from "@/lib/item-lifecycle";
+import { routeCapture, type RoutedItem } from "@/lib/capture-router";
+import { rowsForCapture } from "@/lib/capture-outbox";
+
+/** The router's reading of a location, or the whole text as both parts. */
+async function asLocation(text: string): Promise<RoutedItem> {
+  try {
+    const [first] = await routeCapture(text, {});
+    if (first?.destinationId === "locations" && first.item_name) return first;
+  } catch {
+    // Parsing unavailable: keep the text whole.
+  }
+  return {
+    type: "location",
+    title: text,
+    destination: "Remember → Locations",
+    destinationId: "locations",
+    item_name: text,
+    confidence: 1,
+    reason: "inbox_route",
+  };
+}
 
 export type InboxSpace = "do" | "remember" | "think";
 
@@ -46,27 +67,28 @@ export async function routeInboxItem(
     .single();
   if (readError || !original) throw new Error("Couldn't read the item");
 
-  const table = space === "remember" ? "locations" : "threads";
-  const { data: created, error: insertError } =
+  // The same rows a capture would make: a thread with the text as its first
+  // entry; a location split into what and where when the text says so
+  // ("my keys are in the drawer"). Routing used to put the whole text in
+  // both location fields, and start the thread empty.
+  const userId = item.user_id ?? original.user_id;
+  const routed: RoutedItem =
     space === "remember"
-      ? await supabase
-          .from("locations")
-          .insert({
-            user_id: item.user_id ?? original.user_id,
-            item_name: item.title,
-            location_text: item.title,
-          })
-          .select("id")
-          .single()
-      : await supabase
-          .from("threads")
-          .insert({
-            user_id: item.user_id ?? original.user_id,
-            title: item.title,
-            color_accent: "#e3875f",
-          })
-          .select("id")
-          .single();
+      ? await asLocation(item.title)
+      : {
+          type: "thought",
+          title: item.title,
+          destination: "Think",
+          destinationId: "think",
+          confidence: 1,
+          reason: "inbox_route",
+        };
+  const [{ table, row }] = rowsForCapture(userId, [routed]);
+  const { data: created, error: insertError } = await supabase
+    .from(table)
+    .insert(row as never)
+    .select("id")
+    .single();
   if (insertError || !created) throw new Error("Route failed");
 
   // Insert first, remove the inbox row only once that worked.

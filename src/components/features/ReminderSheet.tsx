@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase";
 import { formatReminderTime, reminderPresets } from "@/lib/reminder-times";
 import { updateTaskInCaches, type TaskRecord } from "@/lib/task-cache";
 import { useAppStore } from "@/store/useAppStore";
+import { friendlyError } from "@/lib/friendly-error";
 
 /**
  * Where a tapped task reminder lands: the task and its first step, a way to
@@ -62,7 +63,9 @@ export function ReminderSheet({
       .eq("id", task.id);
     if (error) {
       rollback();
-      toast.error("Couldn't move the reminder", { description: error.message });
+      toast.error("Couldn't move the reminder", {
+        description: friendlyError(error),
+      });
       return;
     }
     toast.success(`Reminder moved to ${formatReminderTime(at)}`);

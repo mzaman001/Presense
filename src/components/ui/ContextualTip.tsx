@@ -89,7 +89,7 @@ export function ContextualTip({ id, title, description }: ContextualTipProps) {
             type="button"
             onClick={handleDismiss}
             aria-label="Dismiss tip"
-            className="-my-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
+            className="tap-target -my-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-1)]"
           >
             <X aria-hidden="true" className="size-4" />
           </button>

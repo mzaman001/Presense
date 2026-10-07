@@ -102,7 +102,7 @@ export function SegmentedControl<T extends string>({
             onFocus={option.onFocus}
             onClick={() => onChange(option.value)}
             className={cn(
-              "relative rounded-full px-3.5 text-[length:var(--text-ui)] font-medium whitespace-nowrap transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)]",
+              "tap-target relative rounded-full px-3.5 text-[length:var(--text-ui)] font-medium whitespace-nowrap transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)]",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]",
               selected
                 ? "text-[var(--text-1)]"
