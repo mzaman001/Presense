@@ -22,6 +22,9 @@ function sendTelemetry(payload: Record<string, unknown>) {
 
 export function WebVitalsReporter() {
   useReportWebVitals((metric) => {
+    // Only the ones worth acting on. Sending all of them meant ~5 serverless
+    // calls and ~5 Sentry events per page view that nobody read.
+    if (metric.rating !== "poor") return;
     sendTelemetry({
       kind: "web-vital",
       name: metric.name,
@@ -33,4 +36,3 @@ export function WebVitalsReporter() {
 
   return null;
 }
-

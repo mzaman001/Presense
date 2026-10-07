@@ -30,14 +30,8 @@ describe("telemetry route", () => {
 
     expect(response.status).toBe(204);
     expect(await response.text()).toBe("");
-    expect(consoleWarn).toHaveBeenCalledWith(
-      "[telemetry]",
-      expect.objectContaining({
-        kind: "client-error",
-        message: "boom",
-        path: "/login",
-      }),
-    );
+    // Sentry has it; a log line per report only added noise.
+    expect(consoleWarn).not.toHaveBeenCalled();
   });
 
   it("forwards client-error payloads to Sentry at error level with context", async () => {
