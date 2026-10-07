@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useShallow } from "zustand/shallow";
 import { createClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
-import { deviceTimeZone } from "@/lib/zoned-date";
+import { deviceTimeZone, isValidTimeZone } from "@/lib/zoned-date";
 import { useUserId } from "@/components/providers/SessionProvider";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -31,7 +31,9 @@ export function TimezoneSync() {
     if (!loaded || !automatic) return;
     const sync = () => {
       const zone = deviceTimeZone();
-      if (!zone || zone === savedZone) return;
+      // Never save a zone Intl rejects ("Etc/Unknown" on a misconfigured
+      // device): the server renders the Do list in the saved zone.
+      if (!zone || zone === savedZone || !isValidTimeZone(zone)) return;
       updateUserSetting("timezone", zone);
       void (async () => {
         const { error } = await createClient()

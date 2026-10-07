@@ -83,7 +83,9 @@ export function getRitualDecision(input: RitualDecisionInput): RitualDecision {
     };
   }
 
-  if (currentMinutes >= shutdownMinutes && !eveningDone && morningDone) {
+  // The evening stands on its own: closing the day doesn't need a morning
+  // plan (and the server's "Wind down" push is sent either way).
+  if (currentMinutes >= shutdownMinutes && !eveningDone) {
     return {
       kind: "evening",
       targetDate: today,
