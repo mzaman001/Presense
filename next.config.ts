@@ -15,8 +15,10 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
+    // The app's own pages need the microphone for voice capture;
+    // an empty microphone allowlist denied it even after the user allowed it.
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value: "camera=(), microphone=(self), geolocation=()",
   },
   {
     key: "Strict-Transport-Security",

@@ -83,6 +83,7 @@ export type Database = {
           notification_sent_overdue: boolean | null
           priority: number | null
           recurrence: string | null
+          recurrence_renewed_at: string | null
           remind_at: string | null
           reminder_sent_at: string | null
           snoozed_until: string | null
@@ -115,6 +116,7 @@ export type Database = {
           notification_sent_overdue?: boolean | null
           priority?: number | null
           recurrence?: string | null
+          recurrence_renewed_at?: string | null
           remind_at?: string | null
           reminder_sent_at?: string | null
           snoozed_until?: string | null
@@ -147,6 +149,7 @@ export type Database = {
           notification_sent_overdue?: boolean | null
           priority?: number | null
           recurrence?: string | null
+          recurrence_renewed_at?: string | null
           remind_at?: string | null
           reminder_sent_at?: string | null
           snoozed_until?: string | null
