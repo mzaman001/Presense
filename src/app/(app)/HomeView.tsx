@@ -46,6 +46,7 @@ import {
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { greetingFor } from "@/lib/greeting";
 import { preloadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
+import { appendThreadEntry } from "@/lib/think-threads";
 
 /** Shared with Do and TaskCard — one generated shape, not a local copy. */
 type TaskItem = TaskRecord;
@@ -301,14 +302,10 @@ function HomeDashboard({
         setWeeklyReflection("");
         return;
       }
-      const { error } = await supabase
-        .from("threads")
-        .update({
-          entries: [...prev, entry],
-          last_updated: new Date().toISOString(),
-        })
-        .eq("id", threadId);
-      if (error) {
+      try {
+        // Appended on the server, not rebuilt from this copy of the list.
+        await appendThreadEntry(supabase, threadId, entry);
+      } catch {
         toast.error("Failed to save reflection");
         return;
       }

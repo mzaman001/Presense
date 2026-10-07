@@ -72,22 +72,27 @@ export function SearchModal() {
     queryFn: async (): Promise<SearchResult[]> => {
       const q = ilikeContains(debouncedQuery);
       const [tasks, threads, locations] = await Promise.all([
+        // Live rows only: trashed and completed ones used to fill the
+        // results and lead nowhere.
         supabase
           .from("items")
-          .select("id, title")
+          .select("id, title, status")
           .eq("user_id", userId)
+          .in("status", ["active", "overdue", "inbox"])
           .or(`title.ilike.${q},category.ilike.${q}`)
           .limit(5),
         supabase
           .from("threads")
           .select("id, title")
           .eq("user_id", userId)
+          .in("status", ["active", "archived"])
           .or(`title.ilike.${q}`)
           .limit(5),
         supabase
           .from("locations")
           .select("id, item_name, location_text")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .or(`item_name.ilike.${q},location_text.ilike.${q}`)
           .limit(5),
       ]);
@@ -103,7 +108,8 @@ export function SearchModal() {
           title: t.title,
           type: "task" as const,
           icon: CheckSquare,
-          path: "/do",
+          // The task itself, not just its page.
+          path: t.status === "inbox" ? "/inbox" : `/do?task=${t.id}`,
         })),
         ...(threads.data ?? []).map((t) => ({
           id: t.id,

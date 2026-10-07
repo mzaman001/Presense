@@ -89,7 +89,12 @@ export function escapeFilterValue(term: string): string {
   return `"${term.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-/** Builds a quoted `%term%` value for an `ilike` condition inside `or()`. */
+/**
+ * Builds a quoted `%term%` value for an `ilike` condition inside `or()`.
+ * `%` and `_` typed by the user are matched literally: unescaped, "100%"
+ * matched nearly everything.
+ */
 export function ilikeContains(term: string): string {
-  return escapeFilterValue(`%${term}%`);
+  const literal = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+  return escapeFilterValue(`%${literal}%`);
 }

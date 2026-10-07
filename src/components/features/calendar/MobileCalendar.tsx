@@ -20,6 +20,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { resolveCategoryColor } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types/calendar";
+import { isDateOnly } from "@/lib/date-only";
 
 type SubView = "day" | "week" | "month";
 
@@ -34,7 +35,7 @@ interface MobileCalendarProps {
 
 const WEEK_OPTS = { weekStartsOn: 1 as const };
 
-const isAllDay = (d: Date) => d.getHours() === 0 && d.getMinutes() === 0;
+const isAllDay = isDateOnly;
 
 /**
  * The phone calendar. The desktop week/month grids need 700–800px, so on a

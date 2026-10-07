@@ -16,6 +16,7 @@ import { Plus } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { useAppStore } from "@/store/useAppStore";
 import { Icon as UiIcon } from "@/components/ui/Icon";
+import { dateOnlyDeadline, isDateOnly } from "@/lib/date-only";
 
 const HOUR_HEIGHT = 48; // px per hour
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -30,8 +31,7 @@ interface WeekViewProps {
 }
 
 function isAllDayTask(deadline: string): boolean {
-  const d = new Date(deadline);
-  return d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0;
+  return isDateOnly(new Date(deadline));
 }
 
 function getTopOffset(deadline: string): number {
@@ -259,9 +259,8 @@ export function WeekView({
   }
 
   function handleAllDayClick(day: Date) {
-    const deadline = new Date(day);
-    deadline.setHours(0, 0, 0, 0);
-    onCreateTaskAt?.(deadline);
+    // An all-day task is due at the end of the day, not as it starts.
+    onCreateTaskAt?.(dateOnlyDeadline(day));
   }
 
   // CSS Grid approach:

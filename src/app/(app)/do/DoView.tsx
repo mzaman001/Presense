@@ -249,6 +249,8 @@ function DoBoard({
 
   // A tapped task reminder opens /do?remind=<id> (push_reminders).
   const [remindId, setRemindId] = useQueryState("remind", parseAsString);
+  // A search result opens /do?task=<id>: that task, in the editor.
+  const [openTaskId, setOpenTaskId] = useQueryState("task", parseAsString);
   const remindedTask =
     remindId && !loading
       ? (tasks.find((t) => t.id === remindId) ?? null)
@@ -411,6 +413,14 @@ function DoBoard({
     setInitialDeadline(null);
     setIsPanelOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (!openTaskId || loading) return;
+    const task = tasks.find((t) => t.id === openTaskId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (task) openEditPanel(task);
+    void setOpenTaskId(null);
+  }, [openTaskId, loading, tasks, openEditPanel, setOpenTaskId]);
 
   const openCreatePanelAt = (deadline: Date) => {
     setTaskToEdit(null);
