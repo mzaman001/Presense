@@ -60,7 +60,6 @@ Google is the only sign-in method (`src/app/(auth)/login`). Email links were rem
 
 - **`cron.job_run_details` saying "succeeded" proves nothing**: pg_net only queues the request. Check the answer in `net._http_response` (kept ~6 h). Until 2026-10-02 the hourly job sent a placeholder key and got 401 on every run.
 - **Edge Functions don't deploy on merge.** After changing `supabase/functions/*`, deploy (`supabase functions deploy <name>` or the Supabase MCP) and confirm a 200. Type-check first: `npx -y deno check supabase/functions/<name>/index.ts`.
-- The old `cleanup_trash` function (deployed only, not in the repo) targets the dropped `explores` table and has no schedule any more; delete it in the dashboard.
 
 ## Verified state (2026-10-04)
 
@@ -69,10 +68,10 @@ Run on `main` at `b5c9b9b` (after #68).
 | Gate | Result |
 |---|---|
 | `npm ci` | ✅ in CI on every PR (`.github/workflows/ci.yml`, Node 22 since 2026-10-08, matching Vercel and `engines`); write lockfiles with npm 10 and `--legacy-peer-deps=false` |
-| `npm run lint` | ✅ 0 errors (33 warnings) |
+| `npm run lint` | ✅ 0 errors (32 warnings, 2026-10-08) |
 | `npx tsc --noEmit` | ✅ clean |
 | `npx -y deno check supabase/functions/*/index.ts` | ✅ clean, all four (`cron_cleanup`, `cron_recurrence`, `push_reminders`, `push_test`); tsc excludes `supabase/`, Edge Functions run on Deno; CI's `edge-functions` job runs this on every PR |
-| `npm test` | ✅ 853 passed / 81 files (2026-10-05) |
+| `npm test` | ✅ 942 passed / 102 files (2026-10-08) |
 | `npm run build` | ✅ |
 | Bundle budget gate (`check-budgets.mjs`, in CI) | ✅ `/login` 164.4 KiB gz vs 164.7 budget (2026-10-05, with the React Compiler, which added 1.8 KiB: only 0.3 KiB headroom left). CI measures a `--webpack` ANALYZE build; the same check against a Turbopack `next build` reads ~202 KiB on `main` too, so compare like with like |
 | `npx playwright test` | ✅ 8 passed against `next start` with the seed (2026-10-08); CI's `e2e` job runs the 3 public ones (login Axe + contrast, sanity) on every PR |
