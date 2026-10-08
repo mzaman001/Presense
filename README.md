@@ -115,7 +115,7 @@ npx supabase db push
 npm run dev                       # http://localhost:3000
 ```
 
-Reminders, repeating tasks and emptying the trash run as Supabase Edge Functions on a schedule, which needs a few secrets in Supabase and Vault. [Deploying your own](docs/project/ARCHITECTURE.md#deploying-your-own) lists them, along with one known caveat about the oldest migrations.
+Reminders, repeating tasks and emptying the trash run as Supabase Edge Functions on a schedule, which needs a few secrets in Supabase and Vault. [Deploying your own](docs/project/ARCHITECTURE.md#deploying-your-own) lists them.
 
 ## Built with
 

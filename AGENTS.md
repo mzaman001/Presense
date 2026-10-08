@@ -62,7 +62,7 @@ Modals in `DynamicModals.tsx` are rendered **conditionally on their open state**
 2. There is one theme (light/dark only, per the 2026-09-13 design overhaul spec) — `normalizeThemeId()` always returns `"warm"` regardless of input. The `ThemeId` type still lists `"navy" | "forest"` for now because a handful of call sites key lookup tables by it; don't add new code that treats them as selectable themes.
 3. `Dropdown.tsx` and `Popover.tsx` render through a portal. No z-index hacks.
 4. `MotionProvider` uses `LazyMotion domMax strict`.
-5. Never drop a DB column and never delete a file in `supabase/migrations/`. (Deleting a genuinely unreferenced UI component *is* allowed — prove it is unreferenced first.)
+5. Never drop a DB column, and never edit or delete a migration once production has run it: a change is always a new migration. History starts at `supabase/migrations/20261009000000_baseline.sql`, a verified copy of production's schema; the migrations before it are kept, unrun, in `supabase/migrations_archive/`. Never squash again without proving the result rebuilds production (fresh `supabase db reset`, then diff `supabase db dump --schema public` against production's). (Deleting a genuinely unreferenced UI component *is* allowed — prove it is unreferenced first.)
 6. Every Supabase mutation checks `error` before reporting success.
 7. Every React error boundary reports to Sentry. Boundaries swallow the error, so the browser SDK never sees it otherwise. Client code uses `captureException` from `@/lib/sentry-client` (the lazy client); importing `@sentry/nextjs` statically in client code adds ~36 KiB gz to every page (PERF-09). Server code (route handlers, server pages) may import `@sentry/nextjs`.
 
