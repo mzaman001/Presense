@@ -23,7 +23,7 @@
     "@floating-ui/react": "^0.27.19",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-dialog": "^1.1.23",
-    "@sentry/nextjs": "^10.70.0",
+    "@sentry/nextjs": "^11.1.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
     "@t3-oss/env-nextjs": "^0.13.11",
