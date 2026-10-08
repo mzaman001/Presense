@@ -47,14 +47,14 @@ Presense is a personal productivity "second brain" built with Next.js 16, Supaba
 
 ```
 Presense-main/
-├── .github/workflows/          # 8 CI workflows (ci, eslint, osv-scanner, semgrep, sonarcloud, sonarqube, trivy) — all .yml
+├── .github/workflows/          # ci (lint, types, tests, build, budgets, e2e, Edge Function check), osv-scanner, semgrep
 ├── .husky/pre-commit           # Husky pre-commit hook (eslint --fix + prettier --write + tsc --noEmit on staged files)
 ├── docs/
 │   ├── agents/EXECUTION_RULES.md
 │   ├── plans/EXECUTION_SPEC.md  # 1684 lines, 23 sections, only active backlog
 │   └── project/{ARCHITECTURE, COMPONENT_MANIFEST, CONTEXT, DESIGN_SYSTEM, DOCS_NEEDS_CODE}.md
 ├── public/                      # icons (icon.svg, icon-192.png, icon-512.png), manifest.json, vercel/next/file/globe/window.svg
-├── scripts/                     # 6 ad-hoc scripts (2 referenced: clean-threads.js, check_snooze.js; 4 dead: read_data.py, refactor.js/.ps1, run_migrations.ps1)
+├── scripts/                     # measurement (check-budgets, interaction-perf, lighthouse-authed, trace-longtasks), seed-test-user, icon/ensō generators
 ├── src/
 │   ├── app/                     # Next 16 app router — 21 routes (see below)
 │   │   ├── (app)/               # Authenticated spaces (11 routes)

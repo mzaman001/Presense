@@ -6,12 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src scripts",
+    "lint": "eslint src scripts tests playwright.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "script:clean": "node scripts/clean-threads.js",
-    "script:snooze": "node scripts/check_snooze.js",
     "types:generate": "npx supabase gen types typescript --project-id mhfzmgrrtruxuiscvbhm > src/types/database.types.ts",
     "types:check": "npm run types:generate && git diff --exit-code src/types/database.types.ts",
     "check:budgets": "node scripts/check-budgets.mjs",
@@ -40,7 +38,7 @@
     "date-fns": "^4.4.0",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
-    "next": "16.3.6",
+    "next": "16.3.8",
     "nuqs": "^2.9.0",
     "pino": "^10.3.1",
     "react": "19.2.4",
@@ -57,7 +55,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@next/bundle-analyzer": "^16.2.10",
+    "@next/bundle-analyzer": "^16.3.8",
     "@playwright/test": "^1.61.1",
     "@serwist/turbopack": "^9.5.12",
     "@tailwindcss/postcss": "^4",
@@ -67,11 +65,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.11",
     "babel-plugin-react-compiler": "^1.0.0",
     "cross-env": "^10.1.0",
     "esbuild": "^0.28.2",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.3.8",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "lint-staged": "^16.4.0",
@@ -87,5 +86,8 @@
   "overrides": {
     "postcss": "^8.5.10",
     "browserslist": "^4.28.9"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
