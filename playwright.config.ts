@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  globalSetup: "./tests/global-setup.ts",
   timeout: 30000,
   expect: {
     timeout: 5000,
@@ -10,7 +11,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "html",
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
@@ -26,10 +27,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], channel: "chromium" },
     },
   ],
+  // CI tests the production build it just made. Locally, whatever already
+  // runs on :3000 is reused: check which build that is before trusting a run.
   webServer: {
-    command: "npm run dev",
+    command: process.env.CI ? "npm run start" : "npm run dev",
     url: "http://localhost:3000/login",
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
 });

@@ -15,7 +15,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '20'
+          # Matches Vercel's Node.js version (Project → Settings) and
+          # package.json engines. Node 20 reached end of life in April 2026.
+          node-version: '22'
           cache: 'npm'
       - run: npm ci
       - name: Lint
@@ -50,3 +52,41 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-key
+
+  # The Axe and contrast checks on public pages. Tests that need the seeded
+  # account skip here: CI has no service-role key (tests/global-setup.ts).
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-key
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Playwright
+        run: npx playwright test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # Edge Functions run on Deno and tsc excludes supabase/, so nothing else
+  # type-checks them before they're deployed (by hand, after merge).
+  edge-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+      # The repo's package.json would make Deno resolve npm: imports from a
+      # node_modules this job doesn't install; use Deno's own cache instead.
+      - run: deno check --node-modules-dir=none supabase/functions/*/index.ts

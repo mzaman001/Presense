@@ -31,11 +31,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": [
-    "node_modules",
-    "supabase",
-    "tests",
-    "playwright.config.ts",
-    "public/sw.js"
-  ]
+  "exclude": ["node_modules", "supabase", "public/sw.js"]
 }

@@ -47,6 +47,7 @@ public/swe-worker*
 
 # Test artifacts
 playwright-report/
+playwright/.cache/
 test-results/
 
 # IDE
@@ -58,6 +59,7 @@ scratch/
 # Temp/Output files
 output.txt
 supabase/.temp/
+supabase/.branches/
 
 # Agent persona scaffolding (not project source)
 HEARTBEAT.md

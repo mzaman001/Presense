@@ -11,7 +11,7 @@
 | Typecheck | `npx tsc --noEmit` |
 | Unit tests | `npm test` |
 | Build | `npm run build` |
-| E2E / a11y | `npx playwright test` |
+| E2E / a11y | `npx playwright test` (seeds the test account once in `tests/global-setup.ts` when `SUPABASE_SERVICE_ROLE_KEY` is available; without it, as in CI, the signed-in tests skip) |
 | Bundle budgets | `npm run check:budgets` (needs a prod server on :3000) |
 | Interaction smoothness | `node scripts/interaction-perf.mjs --cpu 4` (needs a prod server on :3000 and the seeded account; run before and after any perf change, since load-time numbers don't cover hovers, opens and closes) |
 | Regenerate DB types | `npm run types:generate` |
@@ -46,7 +46,7 @@ Google is the only sign-in method (`src/app/(auth)/login`). Email links were rem
 - **Reminders are Web Push from the server** (Phase 1, 2026-10-04). Two kinds, both opt-in at a time the user chose: a task's "Remind me" (`items.remind_at`, never derived from `deadline`) and the morning/evening ritual at `nudge_time`/`shutdown_time` in `user_settings.timezone`, skipped if that ritual is already done today. `notifications_enabled = false` silences both. The app never shows a notification itself any more.
 - Flow: `push_reminders` cron (every minute) → Edge Function `push_reminders` → `claim_push_reminders()` (marks rows sent as it returns them, `SKIP LOCKED`, drops anything >15 min late) → sends to every row in `push_subscriptions` for the user, deleting 404/410s. Devices register through `register_push_subscription()` (`src/lib/push.ts`) when the Settings switch is turned on, and again on every app open (`AppInitializer`), because browsers drop subscriptions silently. Sign-out unsubscribes.
 - Payload is Safari's declarative format (`{ web_push: 8030, notification }`, built in `supabase/functions/_shared/push-payload.ts`); the worker's `push` handler shows it elsewhere. A task reminder opens `/do?remind=<id>` (`ReminderSheet`: Start, or Later at routine times). Later sets `snoozed_until` too, so repeated snoozes feed the stuck-task help; nothing ever pushes about a stuck or overdue task.
-- Secrets: `VAPID_KEYS` (private JWK pair) and `VAPID_SUBJECT` are Edge Function secrets; the public key is `VAPID_PUBLIC_KEY` in `src/lib/push.ts`. Rotating means changing both; devices re-subscribe on next open. Lockfile changes: see the legacy-peer-deps note in the PR #64 history (`npm install --legacy-peer-deps=false` with npm 10.8.2).
+- Secrets: `VAPID_KEYS` (private JWK pair) and `VAPID_SUBJECT` are Edge Function secrets; the public key is `VAPID_PUBLIC_KEY` in `src/lib/push.ts`. Rotating means changing both; devices re-subscribe on next open. Lockfile changes: see the legacy-peer-deps note in the PR #64 history (`npx -y npm@10 install --legacy-peer-deps=false`, the npm 10 that CI's Node 22 ships).
 
 ## Timezone
 
@@ -68,14 +68,14 @@ Run on `main` at `b5c9b9b` (after #68).
 
 | Gate | Result |
 |---|---|
-| `npm ci` | ✅ in CI on every PR (`.github/workflows/ci.yml`), and clean locally with CI's npm 10.8.2 and `--legacy-peer-deps=false`; lockfile last changed by #64 (2026-10-04) |
+| `npm ci` | ✅ in CI on every PR (`.github/workflows/ci.yml`, Node 22 since 2026-10-08, matching Vercel and `engines`); write lockfiles with npm 10 and `--legacy-peer-deps=false` |
 | `npm run lint` | ✅ 0 errors (33 warnings) |
 | `npx tsc --noEmit` | ✅ clean |
-| `npx -y deno check supabase/functions/*/index.ts` | ✅ clean, all four (`cron_cleanup`, `cron_recurrence`, `push_reminders`, `push_test`); tsc excludes `supabase/`, Edge Functions run on Deno |
+| `npx -y deno check supabase/functions/*/index.ts` | ✅ clean, all four (`cron_cleanup`, `cron_recurrence`, `push_reminders`, `push_test`); tsc excludes `supabase/`, Edge Functions run on Deno; CI's `edge-functions` job runs this on every PR |
 | `npm test` | ✅ 853 passed / 81 files (2026-10-05) |
 | `npm run build` | ✅ |
 | Bundle budget gate (`check-budgets.mjs`, in CI) | ✅ `/login` 164.4 KiB gz vs 164.7 budget (2026-10-05, with the React Compiler, which added 1.8 KiB: only 0.3 KiB headroom left). CI measures a `--webpack` ANALYZE build; the same check against a Turbopack `next build` reads ~202 KiB on `main` too, so compare like with like |
-| `npx playwright test tests/accessibility.spec.ts -g login` | ✅ 2 passed (Axe scan + AA contrast, dark and light) |
+| `npx playwright test` | ✅ 8 passed against `next start` with the seed (2026-10-08); CI's `e2e` job runs the 3 public ones (login Axe + contrast, sanity) on every PR |
 | `npm audit --omit=dev` | ✅ 0 vulnerabilities |
 | GitHub code scanning / Dependabot | ⚠️ 1 open / ✅ 0 open. The one is osv-scanner alert #82, `braces@3.0.3` (GHSA-vfj7-8cjw-p6xm, high), reached only through the ESLint chain (`@next/eslint-plugin-next` → `fast-glob` → `micromatch`); dev-only, nothing ships it. npm's only fix is a breaking downgrade of `eslint-config-next`, so it waits for an upstream release. |
 | Push reminders, end to end | ✅ real Microsoft Edge subscribed on the live site got a reminder from the deployed `push_reminders` within seconds (twice); Android (Brave) registered, got a test push and a task reminder. Not yet seen: iPhone, a ritual push at a real nudge/shutdown time. |

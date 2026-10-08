@@ -1,31 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { execFileSync } from "node:child_process";
-import path from "node:path";
-import fs from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-
-const ROOT = process.cwd();
+import { loadEnv, NO_SEED, readSeed, seedCookie } from "./seed";
 
 // Walks the onboarding wizard on the seeded test account (see
 // scripts/seed-test-user.mjs) with an Axe scan on every screen, at phone
 // and desktop sizes. The account's settings are snapshotted first and
 // restored afterwards; it finishes with "Skip for now", so no tasks are
 // created.
-
-function loadEnv(): Record<string, string> {
-  const out: Record<string, string> = { ...process.env } as Record<
-    string,
-    string
-  >;
-  const file = path.join(ROOT, ".env.local");
-  if (!fs.existsSync(file)) return out;
-  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m && !out[m[1]]) out[m[1]] = m[2].replace(/^"(.*)"$/, "$1");
-  }
-  return out;
-}
 
 async function axe(page: Page) {
   // Let the step's entrance animation settle before measuring contrast.
@@ -52,33 +34,15 @@ for (const viewport of [
     page,
   }) => {
     test.setTimeout(180000);
-    let seed: {
-      cookieName: string;
-      cookieValue: string;
-      session: { user: { id: string } };
-    };
-    try {
-      seed = JSON.parse(
-        execFileSync(
-          process.execPath,
-          [path.join(ROOT, "scripts", "seed-test-user.mjs"), "--json"],
-          { cwd: ROOT, encoding: "utf8", timeout: 60000 },
-        ),
-      );
-    } catch (e) {
-      test.skip(
-        !process.env.CI,
-        `seed unavailable: ${String(e).slice(0, 200)}`,
-      );
-      throw e;
-    }
+    const seed = readSeed();
+    test.skip(!seed, NO_SEED);
     const env = loadEnv();
     const admin: SupabaseClient = createClient(
       env.NEXT_PUBLIC_SUPABASE_URL,
       env.SUPABASE_SERVICE_ROLE_KEY,
       { auth: { persistSession: false } },
     );
-    const uid = seed.session.user.id;
+    const uid = seed!.session.user.id;
     const { data: snapshot } = await admin
       .from("user_settings")
       .select("*")
@@ -92,15 +56,7 @@ for (const viewport of [
         .eq("user_id", uid);
 
       await page.setViewportSize(viewport);
-      await page.context().addCookies([
-        {
-          name: seed.cookieName,
-          value: seed.cookieValue,
-          domain: "localhost",
-          sameSite: "Lax",
-          path: "/",
-        },
-      ]);
+      await page.context().addCookies([seedCookie(seed!)]);
 
       await page.goto("/onboarding");
       await expect(
