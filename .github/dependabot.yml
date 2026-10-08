@@ -19,8 +19,22 @@ updates:
       default-days: 7
     open-pull-requests-limit: 5
     groups:
+      # Vitest and its plugins must share a major version: coverage-v8 5
+      # alone failed npm ci against vitest 4 (#103).
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # Types for the Node we run (22, package.json engines), not the newest.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # typescript-eslint doesn't support TypeScript 7 yet (#102).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # 1.17 -> 1.49 added 1.3 KiB gz to /login's initial JS, over the
+      # perf-budgets.json budget. Held until someone checks what grew.
+      - dependency-name: "lucide-react"
 
   - package-ecosystem: github-actions
     directory: /
