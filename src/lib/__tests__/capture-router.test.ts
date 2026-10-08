@@ -294,6 +294,15 @@ describe("routeCapture", () => {
       expect(result[0].item_name).toBe("Purse");
     });
 
+    it("keeps the original case and splits at the keyword whatever its case", async () => {
+      const result = await routeCapture(
+        "Passport IS IN the Blue Folder",
+        defaults,
+      );
+      expect(result[0].item_name).toBe("Passport");
+      expect(result[0].title).toBe("Blue Folder");
+    });
+
     it("handles 'put it'", async () => {
       const result = await routeCapture("put it on the shelf", defaults);
       expect(result[0].type).toBe("location");

@@ -206,6 +206,12 @@ const escapeRegExp = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** Whole words only: "must" shouldn't match "mustard", nor "book" "notebook". */
 const words = (list: string[]) =>
   new RegExp(`\\b(?:${list.map(escapeRegExp).join("|")})(?![\\w'’-])`, "i");
+// One split pattern per location keyword, built here from the fixed list:
+// splitting case-insensitively keeps the original case of what's around it,
+// and no pattern is ever built from what the user typed.
+const LOCATION_SPLIT = new Map(
+  LOCATION_KW.map((kw) => [kw, new RegExp(`\\b${escapeRegExp(kw)}\\b`, "i")]),
+);
 const TASK_RE = words(TASK_KW);
 export const TASK_VERB_RE = new RegExp(`^${words(TASK_VERBS).source}`, "i");
 const THOUGHT_RE = words(THOUGHT_KW);
@@ -379,14 +385,12 @@ export async function routeCapture(
   });
 
   const matchedLocKw = lower.match(LOCATION_RE)?.[0];
-  // Splitting with a case-insensitive regex keeps the original case. The
-  // keyword comes from LOCATION_KW, escaped all the same.
   const splitRegex = matchedLocKw
-    ? new RegExp(`\\b${escapeRegExp(matchedLocKw)}\\b`, "i")
-    : null;
+    ? LOCATION_SPLIT.get(matchedLocKw)
+    : undefined;
   const locationItem = splitRegex ? text.split(splitRegex)[0].trim() : "";
   if (
-    matchedLocKw &&
+    splitRegex &&
     !parsed.deadline &&
     !parsed.recurrence &&
     !NOT_AN_ITEM.test(locationItem.replace(ARTICLE, ""))
@@ -394,7 +398,7 @@ export async function routeCapture(
     let itemName = "Item";
     let locationText = text;
 
-    const parts = text.split(splitRegex!);
+    const parts = text.split(splitRegex);
 
     if (parts.length > 1 && parts[0].trim().length > 0) {
       let rawItem = parts[0].trim();
