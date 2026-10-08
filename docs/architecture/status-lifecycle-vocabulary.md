@@ -2,21 +2,21 @@
 
 > The settled vocabulary for entity status transitions across Presense. This is the human-readable companion to `src/lib/item-lifecycle.ts`, which is the **only** place where a `status` value may be written to an entity table. Zero hand-written `status` literals anywhere in `src/` or `supabase/functions/`.
 
-**Status:** closed, Aug 17 2026 (INFRA-19). Supersedes the partial status sweep recorded in `docs/plans/EXECUTION_SPEC.md` (the pre-INFRA-19 "status sweep" block).
+**Status:** closed, Aug 17 2026 (INFRA-19).
 
 ---
 
 ## 1. The vocabulary at a glance
 
-Presense is a single-user capture-and-organize tool. Its data model has one governing invariant: **trash is always reversible for 30 days, and `deleted_at` — never `status` alone — is what makes a row trash.** Anything else is a scheduling or archival decision and must not touch `deleted_at`.
+Presense is a single-user capture-and-organize tool. Its data model has one governing invariant: **trash is reversible for 30 days, and `deleted_at` — never `status` alone — is what makes a row trash.** (Routing an inbox item to Think or Remember removes the original row outright: it wasn't deleted, it became a thread or location, and its Undo puts it back.) Anything else is a scheduling or archival decision and must not touch `deleted_at`.
 
 | Status | Meaning | Lifecycle family | Notes |
 |---|---|---|---|
-| `active` | Live on Do (has deadline context) or in the active Explore list | Living states | The only status a brand-new row ever receives |
+| `active` | Live on Do (has deadline context), or a live thread or location | Living states | The only status a brand-new row ever receives |
 | `inbox` | Captured, not yet routed | Living state (items only) | Triage routes it; a *route* is activation, not restoration |
 | `done` | Completed task | Terminal-ish (reversible) | `completed_at` **must** be set alongside `status` |
 | `overdue` | Derived, not written | — | Never inserted or updated; computed from `active` + `deadline` |
-| `archived` | Put aside (threads, explores, items) | Archival | Explicitly *not* deleted — `deleted_at` stays null |
+| `archived` | Put aside (threads, items) | Archival | Explicitly *not* deleted — `deleted_at` stays null |
 | `deleted` | In the 30-day trash | Trashed | `deleted_at` **must** be set alongside `status` |
 
 Two pairs are deliberately easy to confuse and are the whole reason this document exists:
@@ -24,7 +24,7 @@ Two pairs are deliberately easy to confuse and are the whole reason this documen
 - **`archived` vs `deleted`.** Archive means "put aside, still mine." Trash means "removed, recoverable for 30 days, then gone forever." A trashed row keeps its prior history (`completed_at`, deadlines); an archived row is just hidden from default views.
 - **`activate` vs `restore`.** Routing `inbox → Do` is *activation* (the item was never dead). Restoring from trash or archive is a *restore* because it must also clear `deleted_at` or undo `archived`. They are different patches.
 
-`overdue` is a **derived view-state**, not a lifecycle state. Nothing writes it; queries and UI derive it from `deadline < today` for `active` items. The cron that nudges overdues reads `active`/`inbox` + deadline math — it does not mutate status.
+`overdue` is a **derived view-state**, not a lifecycle state. Nothing writes it; queries and UI derive it from `deadline < today` for `active` items. Nothing pushes or nudges about an overdue task; reminders fire only at a time the user chose (`remind_at`).
 
 ## 2. The transition table
 
@@ -37,11 +37,12 @@ Every allowed transition, the patch that implements it, and where it is consumed
 | `inbox` → `active` | `activateItemPatch()` | Inbox "Route to Do", Home route |
 | `inbox`/`overdue` → `active` + deadline | `activateItemWithDeadlinePatch(deadline)` | RitualOverlay triage (today / backlog / snooze) |
 | triage undo | `revertItemPatch(capturedStatus, capturedDeadline)` | RitualOverlay undo |
-| items/threads/explores → `archived` | `archiveItemPatch()` / `archiveThreadPatch()` | Do archive, Think archive, Explore archive, ExploreDrawer |
+| items/threads → `archived` | `archiveItemPatch()` / `archiveThreadPatch()` | Do archive, Think archive |
 | `archived` → `active` | `restoreItemPatch("active")` | archive-toggle un-archive paths |
 | any → `deleted` + `deleted_at` | `moveItemToTrashPatch(now)` | Every trash/dismiss/delete UI action, Settings "clear completed" |
-| `deleted` → prior status | `restoreItemPatch()` (defaults `active`) | Trash restore, inbox undo, ExploreDrawer restore, Drawer undo |
+| `deleted` → prior status | `restoreItemPatch()` (defaults `active`) | Trash restore, undo toasts |
 | brand-new row | `newTaskInsert(payload)` | TaskAddPanel create, cron recurrence re-create (no status field) |
+| brand-new inbox capture | `newInboxItemInsert(payload)` | the capture outbox (`capture-outbox.ts`): Quick Capture, voice, share sheet |
 
 Mutations that already carried `user_id` by construction (`.insert()` of form data, `.delete()` on the trashed-30-days cron) were never status writes and required no change. Single-row lookups, status *reads* for filtering views, and compensating undo deletes on form rollback are also out of scope — the invariant targets **writes that set a status**.
 
@@ -68,4 +69,4 @@ Mutations that already carried `user_id` by construction (`.insert()` of form da
 
 ---
 
-*Part of the INFRA-* series. Predecessor: `docs/plans/EXECUTION_SPEC.md` status sweep. Source of truth: `src/lib/item-lifecycle.ts`.*
+*Source of truth: `src/lib/item-lifecycle.ts`. Updated 2026-10-08 (audit slice 7): Explore and People were removed.*

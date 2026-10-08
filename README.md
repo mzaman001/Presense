@@ -103,19 +103,19 @@ It installs as an app, works offline and syncs live across your devices. Anythin
 
 ## Run it yourself
 
-You need Node.js 20+ and a free [Supabase](https://supabase.com) project.
+You need Node.js 22+ and a free [Supabase](https://supabase.com) project with Google sign-in enabled.
 
 ```bash
 git clone https://github.com/mzaman001/Presense.git
 cd Presense
 npm install
-cp .env.example .env.local        # add your Supabase URL and anon key
+cp .env.example .env.local        # add your Supabase URL and keys
 npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 npm run dev                       # http://localhost:3000
 ```
 
-For production, deploy the `cron_cleanup` and `cron_recurrence` edge functions and schedule them in the Supabase dashboard. They empty the trash and bring recurring tasks back.
+Reminders, repeating tasks and emptying the trash run as Supabase Edge Functions on a schedule, which needs a few secrets in Supabase and Vault. [Deploying your own](docs/project/ARCHITECTURE.md#deploying-your-own) lists them, along with one known caveat about the oldest migrations.
 
 ## Built with
 
