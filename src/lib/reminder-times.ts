@@ -19,6 +19,8 @@ export interface ReminderPreset {
 }
 
 const FIVE_MIN = 5 * 60_000;
+/** Before this hour, the night is still "tonight" and the morning ahead. */
+const SMALL_HOURS_END = 5;
 
 /** "18:00" / "18:00:00" → [18, 0]; anything else → fallback. */
 function parseClock(
@@ -55,7 +57,12 @@ export function reminderPresets(
   // Tomorrow at the planning time.
   const [mh, mm] = parseClock(settings.nudge_time, [10, 0]);
   const morning = new Date(now);
-  morning.setDate(morning.getDate() + 1);
+  // In the small hours "tomorrow morning" is the coming one: at 00:30 it
+  // means in nine hours, not the day after.
+  const smallHours =
+    now.getHours() < SMALL_HOURS_END &&
+    now.getHours() * 60 + now.getMinutes() < mh * 60 + mm;
+  if (!smallHours) morning.setDate(morning.getDate() + 1);
   morning.setHours(mh, mm, 0, 0);
   presets.push({ id: "morning", label: "Tomorrow morning", at: morning });
 

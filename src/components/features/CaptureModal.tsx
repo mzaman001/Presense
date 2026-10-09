@@ -1,4 +1,9 @@
 "use client";
+import {
+  clearCaptureDraft,
+  loadCaptureDraft,
+  saveCaptureDraft,
+} from "@/lib/capture-draft";
 import { useUserId } from "@/components/providers/SessionProvider";
 import { logger } from "@/lib/logger";
 
@@ -301,7 +306,10 @@ export function CaptureModal() {
   );
   // Seeded from the store so a prefilled open (PWA shortcut, calendar slot)
   // renders with its text already in place rather than setting it in an effect.
-  const [input, setInput] = useState(() => captureModalPrefill ?? "");
+  // Otherwise whatever was left unsaved last time comes back.
+  const [input, setInput] = useState(
+    () => captureModalPrefill ?? loadCaptureDraft(userId),
+  );
   // The live parse of `input`. The router is local (keywords + chrono), so it
   // re-runs as the user types; `forText` says which text it describes.
   const [preview, setPreview] = useState<{
@@ -357,6 +365,7 @@ export function CaptureModal() {
 
   const handleInputChange = (value: string) => {
     setInput(value);
+    saveCaptureDraft(userId, value);
     if (!value.trim()) setPreview(null);
   };
 
@@ -485,10 +494,12 @@ export function CaptureModal() {
         ];
       }
       persistItems(items, text);
+      // Saved (on this device at least): no longer a draft.
+      clearCaptureDraft(userId);
       setIsSaving(false);
       finishSaved(items);
     },
-    [input, persistItems, finishSaved],
+    [input, persistItems, finishSaved, userId],
   );
 
   const stopSpeech = speech.stop;

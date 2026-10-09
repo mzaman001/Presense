@@ -4,6 +4,7 @@
 // reliable pattern.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { nextOccurrence } from "./next-occurrence.ts";
+import { planRenewals } from "./renewals.ts";
 
 Deno.serve(async (req) => {
   // AUDIT-04 (Aug 19, 2026): `verify_jwt = true` alone was not enough — any
@@ -46,12 +47,15 @@ Deno.serve(async (req) => {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
+    // Completions not yet renewed. Each is renewed once (see renewals.ts),
+    // so a copy the user deleted, or whose rule they cleared, stays gone.
     const { data: recurringTasks, error } = await supabase
       .from("items")
       .select("*")
       .eq("status", "done")
       .not("recurrence", "is", null)
       .not("completed_at", "is", null)
+      .is("recurrence_renewed_at", null)
       .gte("completed_at", ninetyDaysAgo.toISOString());
 
     if (error) throw error;
@@ -75,7 +79,8 @@ Deno.serve(async (req) => {
 
     let createdCount = 0;
 
-    for (const task of recurringTasks) {
+    // One seed per series: its latest completion.
+    for (const { seed: task, instanceIds } of planRenewals(recurringTasks)) {
       try {
         const completedAt = new Date(task.completed_at);
         const rruleStr: string = task.recurrence;
@@ -121,6 +126,14 @@ Deno.serve(async (req) => {
           if (insertError && insertError.code !== "23505") throw insertError;
           if (!insertError) createdCount++;
         }
+
+        // Renewed (or the rule has run out): never seed from these again.
+        // Left unmarked if anything above failed, so the next run retries.
+        const { error: markError } = await supabase
+          .from("items")
+          .update({ recurrence_renewed_at: new Date().toISOString() })
+          .in("id", instanceIds);
+        if (markError) throw markError;
       } catch (taskErr: unknown) {
         const msg =
           taskErr instanceof Error ? taskErr.message : String(taskErr);

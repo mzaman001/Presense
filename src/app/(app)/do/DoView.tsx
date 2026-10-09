@@ -50,11 +50,16 @@ import { Icon as UiIcon } from "@/components/ui/Icon";
 import dynamic from "next/dynamic";
 import { withPreload } from "@/lib/preloadable";
 import { TaskAddPanel } from "@/components/features/TaskAddPanelLazy";
-import { fetchActiveTasks } from "@/lib/do-tasks";
+import {
+  fetchActiveTasks,
+  ARCHIVE_PAGE,
+  fetchArchivedPage,
+} from "@/lib/do-tasks";
 import { bucketTasks, type Clock as ListClock } from "@/lib/do-buckets";
 import { useShallow } from "zustand/shallow";
 import { DisplayClockProvider, useLiveClock } from "@/lib/display-clock";
 import { deviceTimeZone } from "@/lib/zoned-date";
+import { friendlyError } from "@/lib/friendly-error";
 
 // Only after a reminder is tapped, so it stays out of Do's initial JS.
 const ReminderSheet = dynamic(
@@ -244,6 +249,8 @@ function DoBoard({
 
   // A tapped task reminder opens /do?remind=<id> (push_reminders).
   const [remindId, setRemindId] = useQueryState("remind", parseAsString);
+  // A search result opens /do?task=<id>: that task, in the editor.
+  const [openTaskId, setOpenTaskId] = useQueryState("task", parseAsString);
   const remindedTask =
     remindId && !loading
       ? (tasks.find((t) => t.id === remindId) ?? null)
@@ -303,17 +310,19 @@ function DoBoard({
 
   const [showArchive, setShowArchive] = useState(false);
   const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
+  // A page at a time: it used to load every task ever completed.
+  const [archiveLimit, setArchiveLimit] = useState(ARCHIVE_PAGE);
+  const [archiveHasMore, setArchiveHasMore] = useState(false);
 
   const fetchArchived = useCallback(async () => {
-    // INFRA-18: explicit user_id filter for planner index usage.
-    const { data } = await supabase
-      .from("items")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("status", "done")
-      .order("completed_at", { ascending: false });
-    setArchivedTasks((data as Task[]) ?? []);
-  }, [supabase]);
+    try {
+      const page = await fetchArchivedPage(supabase, userId, archiveLimit);
+      setArchivedTasks(page.tasks as Task[]);
+      setArchiveHasMore(page.hasMore);
+    } catch {
+      toast.error("Couldn't load completed tasks");
+    }
+  }, [supabase, userId, archiveLimit]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -323,9 +332,14 @@ function DoBoard({
   // ["tasks"] is invalidated by useRealtime("items") itself.
   useRealtime("items");
 
+  // A double-click used to send two completes and show two toasts.
+  const completingIds = useRef(new Set<string>());
   const completeTask = useCallback(
     async (e: React.MouseEvent, id: string) => {
       e.stopPropagation();
+      if (completingIds.current.has(id)) return;
+      completingIds.current.add(id);
+      setTimeout(() => completingIds.current.delete(id), COMPLETE_HOLD_MS);
 
       // Set completing state — TaskCard shows the checkmark animation
       setCompleting(id);
@@ -371,7 +385,7 @@ function DoBoard({
         setCompleting(null);
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
         toast.error("Failed to complete task", {
-          description: err instanceof Error ? err.message : "Unknown error",
+          description: friendlyError(err),
         });
       }
     },
@@ -399,6 +413,14 @@ function DoBoard({
     setInitialDeadline(null);
     setIsPanelOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (!openTaskId || loading) return;
+    const task = tasks.find((t) => t.id === openTaskId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (task) openEditPanel(task);
+    void setOpenTaskId(null);
+  }, [openTaskId, loading, tasks, openEditPanel, setOpenTaskId]);
 
   const openCreatePanelAt = (deadline: Date) => {
     setTaskToEdit(null);
@@ -571,6 +593,17 @@ function DoBoard({
                   </Button>
                 </GlassCard>
               ))
+          )}
+          {archiveHasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setArchiveLimit((n) => n + ARCHIVE_PAGE)}
+              >
+                Show more
+              </Button>
+            </div>
           )}
         </div>
       ) : viewMode === "calendar" ? (

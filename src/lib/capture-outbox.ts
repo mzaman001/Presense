@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { RoutedItem } from "@/lib/capture-router";
+import { newInboxItemInsert, newTaskInsert } from "@/lib/item-lifecycle";
 
 /**
  * Zero-loss capture. A capture is written to this device first and synced
@@ -125,22 +126,23 @@ export function rowsForCapture(
         },
       };
     }
+    const fields = {
+      id,
+      user_id: userId,
+      title: item.title,
+      deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
+      recurrence: item.recurrence ?? null,
+      ...(item.priority ? { priority: item.priority } : {}),
+      ...(item.category ? { category: item.category } : {}),
+      ...(item.estimateMinutes ? { time_estimate: item.estimateMinutes } : {}),
+      created_at: createdAt,
+    };
     return {
       table: "items",
-      row: {
-        id,
-        user_id: userId,
-        title: item.title,
-        deadline: item.deadline ? new Date(item.deadline).toISOString() : null,
-        recurrence: item.recurrence ?? null,
-        ...(item.priority ? { priority: item.priority } : {}),
-        ...(item.category ? { category: item.category } : {}),
-        ...(item.estimateMinutes
-          ? { time_estimate: item.estimateMinutes }
-          : {}),
-        status: item.destinationId === "inbox" ? "inbox" : "active",
-        created_at: createdAt,
-      },
+      row:
+        item.destinationId === "inbox"
+          ? newInboxItemInsert(fields)
+          : newTaskInsert(fields),
     };
   });
 }
@@ -151,10 +153,24 @@ export function enqueueCapture(
   items: RoutedItem[],
   now: Date = new Date(),
 ): PendingCapture {
+  return enqueueRows(userId, text, rowsForCapture(userId, items, now), now);
+}
+
+/**
+ * Queues rows that are already built (e.g. a task from the Add task panel),
+ * with the same zero-loss handling as a capture: on this device first,
+ * synced by flushOutbox, retried by CaptureSync.
+ */
+export function enqueueRows(
+  userId: string,
+  text: string,
+  rows: OutboxRow[],
+  now: Date = new Date(),
+): PendingCapture {
   const entry: PendingCapture = {
     id: crypto.randomUUID(),
     text,
-    rows: rowsForCapture(userId, items, now),
+    rows,
     createdAt: now.toISOString(),
     attempts: 0,
   };

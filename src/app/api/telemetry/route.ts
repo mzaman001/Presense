@@ -90,6 +90,5 @@ export async function POST(request: Request) {
     });
   }
 
-  console.warn("[telemetry]", parsed.data);
   return new NextResponse(null, { status: 204 });
 }

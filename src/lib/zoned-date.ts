@@ -20,13 +20,29 @@ function formatter(
   const key = `${kind}|${timeZone ?? ""}`;
   let f = formatters.get(key);
   if (!f) {
-    f = new Intl.DateTimeFormat(kind === "key" ? "en-CA" : "en-US", {
-      ...options,
-      timeZone,
-    });
+    const locale = kind === "key" ? "en-CA" : "en-US";
+    try {
+      f = new Intl.DateTimeFormat(locale, { ...options, timeZone });
+    } catch {
+      // An unknown zone (a bad saved value, or "Etc/Unknown" from a
+      // misconfigured device) throws RangeError; read it as UTC rather than
+      // break the page.
+      f = new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
+    }
     formatters.set(key, f);
   }
   return f;
+}
+
+/** Whether this runtime knows `timeZone` as an IANA zone. */
+export function isValidTimeZone(timeZone: string | null | undefined): boolean {
+  if (!timeZone) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** The device's IANA timezone, e.g. "Asia/Kolkata". */

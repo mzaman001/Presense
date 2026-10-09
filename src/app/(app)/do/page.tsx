@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { fetchActiveTasks } from "@/lib/do-tasks";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { getUserSettings } from "@/lib/user-settings-server";
+import { isValidTimeZone } from "@/lib/zoned-date";
 import { DoView } from "./DoView";
 
 /**
@@ -37,7 +38,11 @@ async function loadClock() {
     data: { session },
   } = await supabase.auth.getSession();
   const settings = session ? await getUserSettings(session.user.id) : null;
-  return { timeZone: settings?.timezone || "UTC", now: Date.now() };
+  const zone = settings?.timezone;
+  return {
+    timeZone: zone && isValidTimeZone(zone) ? zone : "UTC",
+    now: Date.now(),
+  };
 }
 
 export default async function DoPage() {

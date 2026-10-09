@@ -46,12 +46,24 @@ describe("ritual decisions", () => {
     expect(decision.targetDate).toBe("2026-07-03");
   });
 
-  test("does not auto-show evening at shutdown time when morning is not done", () => {
+  // The evening wind-down stands on its own: closing the day and setting up
+  // tomorrow doesn't need a morning plan. It used to require one, so the
+  // server's "Wind down" notification opened the app to nothing on days
+  // without a plan.
+  test("auto-shows evening at shutdown time even when morning was skipped", () => {
     const decision = getRitualDecision({
       ...base,
       now: new Date("2026-07-03T17:05:00"),
     });
-    expect(decision.kind).toBe("none");
+    expect(decision.kind).toBe("evening");
+    expect(decision.reason).toBe("evening_due");
+  });
+
+  test("a skipped morning still reads missed before shutdown time", () => {
+    const decision = getRitualDecision({
+      ...base,
+      now: new Date("2026-07-03T16:30:00"),
+    });
     expect(decision.reason).toBe("morning_window_missed");
   });
 

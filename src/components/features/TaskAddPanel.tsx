@@ -85,6 +85,8 @@ import { Button } from "@/components/ui/button";
 import { RemindMeChip } from "@/components/features/RemindMeChip";
 import { upcomingReminder } from "@/lib/reminder-times";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
+import { enqueueRows, flushOutbox } from "@/lib/capture-outbox";
+import { friendlyError } from "@/lib/friendly-error";
 
 /**
  * The panel edits an `items` row. Callers pass the row straight through, so
@@ -330,9 +332,9 @@ export function TaskAddPanel({
       queryClient.setQueryData(["tasks"], previousTasks);
       queryClient.setQueryData(["dashboard"], previousDashboard);
 
-      const message =
-        err instanceof Error ? err.message : "Failed to move task to trash";
-      toast.error("Failed to move task to trash", { description: message });
+      toast.error("Couldn't move it to the trash", {
+        description: friendlyError(err),
+      });
     } finally {
       setDeleteTaskConfirm(false);
     }
@@ -579,41 +581,56 @@ export function TaskAddPanel({
         const isEdit = Boolean(taskToEdit);
         const save = async () => {
           const nowIso = new Date().toISOString();
-          const rollback = isEdit
-            ? updateTaskInCaches(
-                queryClient,
-                id,
-                payload as Partial<TaskRecord>,
-              )
-            : insertNewTaskIntoCaches(queryClient, {
-                ...insertPayload,
-                id,
-                created_at: nowIso,
-                updated_at: nowIso,
-              } as unknown as TaskRecord);
+          if (!isEdit) {
+            // A new task is saved like a capture: on this device first, then
+            // synced. A failed insert used to take it back off the screen,
+            // with only a toast's Retry holding it; offline, it was gone.
+            insertNewTaskIntoCaches(queryClient, {
+              ...insertPayload,
+              id,
+              created_at: nowIso,
+              updated_at: nowIso,
+            } as unknown as TaskRecord);
+            const entry = enqueueRows(userId, payload.title, [
+              { table: "items", row: { ...insertPayload, id } },
+            ]);
+            const { synced } = await flushOutbox(supabase, userId);
+            if (synced.some((e) => e.id === entry.id)) {
+              toast.success("Task added");
+              if (onTaskAdded) onTaskAdded();
+            } else {
+              toast.success("Task added", {
+                description:
+                  "Saved on this device. It syncs when you're online.",
+              });
+            }
+            return;
+          }
+          // An edit: shown at once, rolled back with a Retry if it fails.
+          const rollback = updateTaskInCaches(
+            queryClient,
+            id,
+            payload as Partial<TaskRecord>,
+          );
 
           useAppStore.getState().markMutation();
-          const { error } = isEdit
-            ? await supabase.from("items").update(payload).eq("id", id)
-            : await supabase.from("items").insert({ ...insertPayload, id });
+          const { error } = await supabase
+            .from("items")
+            .update(payload)
+            .eq("id", id);
 
           if (error) {
             rollback();
             logger.error("Save error:", error);
             // The panel is already closed, so the toast carries the retry.
-            toast.error(
-              isEdit
-                ? `Couldn't save changes to “${payload.title}”`
-                : `Couldn't add “${payload.title}”`,
-              {
-                description: error.message,
-                action: { label: "Retry", onClick: () => void save() },
-              },
-            );
+            toast.error(`Couldn't save changes to “${payload.title}”`, {
+              description: friendlyError(error),
+              action: { label: "Retry", onClick: () => void save() },
+            });
             return;
           }
 
-          toast.success(isEdit ? "Task updated" : "Task added");
+          toast.success("Task updated");
           // Reconcile with the server's copy (defaults, triggers, ordering).
           if (onTaskAdded) onTaskAdded();
         };
@@ -625,9 +642,9 @@ export function TaskAddPanel({
         await pending;
       }
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Could not save task";
-      toast.error("Unexpected error", { description: message });
+      toast.error("Couldn't save the task", {
+        description: friendlyError(err),
+      });
     } finally {
       setSaving(false);
     }

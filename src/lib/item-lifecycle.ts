@@ -74,6 +74,13 @@ export function newTaskInsert<T extends Record<string, unknown>>(payload: T) {
   return { ...payload, status: "active" as const };
 }
 
+// A capture routed to the inbox starts there instead of on Do.
+export function newInboxItemInsert<T extends Record<string, unknown>>(
+  payload: T,
+) {
+  return { ...payload, status: "inbox" as const };
+}
+
 export function permanentlyDeleteFilter(id: string) {
   return { id };
 }

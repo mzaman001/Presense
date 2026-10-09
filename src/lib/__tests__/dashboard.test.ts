@@ -9,7 +9,8 @@ const local = (d: number, h = 12) => new Date(2026, 8, d, h).toISOString();
 const rows = (over: Partial<DashboardRows> = {}): DashboardRows => ({
   tasks: [],
   inboxItems: [],
-  threads: [],
+  threadsCount: 0,
+  activeTasksTotal: 0,
   recentDone: [],
   recentSessions: [],
   ritualCompletedAt: [],
@@ -18,6 +19,35 @@ const rows = (over: Partial<DashboardRows> = {}): DashboardRows => ({
 });
 
 describe("summarizeDashboard", () => {
+  // Home's tiles used to count rows of capped lists: "Open Threads" counted
+  // every thread (trashed and archived too, up to 100) and "Active Tasks"
+  // stopped at 100.
+  it("counts active tasks from the list, or the exact total once the list is capped", () => {
+    const two = [makeTask({ id: "a" }), makeTask({ id: "b" })];
+    // A just-completed task has left the cached list but not yet the
+    // server's total: the list (optimistic) wins.
+    expect(
+      summarizeDashboard(rows({ tasks: two, activeTasksTotal: 3 }), {
+        now: now.getTime(),
+      }).activeTasksCount,
+    ).toBe(2);
+    const capped = Array.from({ length: 100 }, (_, i) =>
+      makeTask({ id: `t${i}` }),
+    );
+    expect(
+      summarizeDashboard(rows({ tasks: capped, activeTasksTotal: 150 }), {
+        now: now.getTime(),
+      }).activeTasksCount,
+    ).toBe(150);
+  });
+
+  it("passes the open thread count through", () => {
+    expect(
+      summarizeDashboard(rows({ threadsCount: 6 }), { now: now.getTime() })
+        .threadsCount,
+    ).toBe(6);
+  });
+
   it("cuts this week and last week from the fetched history in local time", () => {
     const done = (id: string, day: number, hour = 12) =>
       makeTask({ id, status: "done", completed_at: local(day, hour) });

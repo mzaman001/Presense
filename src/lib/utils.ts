@@ -23,11 +23,9 @@ export function formatRRule(rrule: string | null | undefined): string {
         ? `Every ${interval} days`
         : "Every day";
   if (rrule.includes("FREQ=MONTHLY")) {
-    if (interval > 1) return `Every ${interval} months`;
+    const every = interval > 1 ? `Every ${interval} months` : "Every month";
     const day = rrule.match(/BYMONTHDAY=(\d+)/);
-    return day
-      ? `Every month on the ${ordinal(Number(day[1]))}`
-      : "Every month";
+    return day ? `${every} on the ${ordinal(Number(day[1]))}` : every;
   }
   if (rrule.includes("FREQ=YEARLY"))
     return interval > 1 ? `Every ${interval} years` : "Every year";
@@ -91,7 +89,12 @@ export function escapeFilterValue(term: string): string {
   return `"${term.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-/** Builds a quoted `%term%` value for an `ilike` condition inside `or()`. */
+/**
+ * Builds a quoted `%term%` value for an `ilike` condition inside `or()`.
+ * `%` and `_` typed by the user are matched literally: unescaped, "100%"
+ * matched nearly everything.
+ */
 export function ilikeContains(term: string): string {
-  return escapeFilterValue(`%${term}%`);
+  const literal = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+  return escapeFilterValue(`%${literal}%`);
 }

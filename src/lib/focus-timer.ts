@@ -43,10 +43,26 @@ export function saveFocusTimer(state: FocusTimerState | null) {
   }
 }
 
+const PHASES: readonly Phase[] = ["work", "short_break", "long_break"];
+
+/** A saved state from an older version, or corrupted, isn't a timer. */
+function isFocusTimerState(value: unknown): value is FocusTimerState {
+  if (!value || typeof value !== "object") return false;
+  const s = value as Record<string, unknown>;
+  return (
+    PHASES.includes(s.phase as Phase) &&
+    Number.isFinite(s.startedAt) &&
+    Number.isFinite(s.duration) &&
+    (s.duration as number) > 0
+  );
+}
+
 export function loadFocusTimer(): FocusTimerState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as FocusTimerState) : null;
+    if (!raw) return null;
+    const state: unknown = JSON.parse(raw);
+    return isFocusTimerState(state) ? state : null;
   } catch {
     return null;
   }
@@ -71,4 +87,34 @@ export function startLengths(sessionMinutes: number): number[] {
   return [...new Set([2, 5, 10, sessionMinutes])]
     .filter((m) => m > 0)
     .sort((a, b) => a - b);
+}
+
+const LOGGED_KEY = "pomodoro_logged";
+/** Tabs finish the same phase within moments of each other. */
+const SAME_SESSION_MS = 30_000;
+
+/**
+ * Claims the right to log a finished phase. Every open tab restores the same
+ * saved timer and finishes it, and each used to log it, doubling the time
+ * spent. The first tab to finish records the phase and its end; a tab that
+ * finds the same phase ending within moments of that skips logging.
+ */
+export function claimSessionLog(phase: Phase, endedAt: number): boolean {
+  try {
+    const raw = localStorage.getItem(LOGGED_KEY);
+    const last = raw
+      ? (JSON.parse(raw) as { phase?: string; endedAt?: number })
+      : null;
+    if (
+      last?.phase === phase &&
+      typeof last.endedAt === "number" &&
+      Math.abs(last.endedAt - endedAt) < SAME_SESSION_MS
+    ) {
+      return false;
+    }
+    localStorage.setItem(LOGGED_KEY, JSON.stringify({ phase, endedAt }));
+  } catch {
+    // Storage unavailable: one tab only, so log as before.
+  }
+  return true;
 }

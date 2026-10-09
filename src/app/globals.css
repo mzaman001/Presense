@@ -2352,14 +2352,12 @@ h6 {
 
 /* Particles removed */
 
-/* T4-3: content-visibility for desktop lists */
-@media (min-width: 768px) {
-  .task-card-wrapper,
-  .thread-row-wrapper {
-    content-visibility: auto;
-    contain-intrinsic-size: 0 88px;
-  }
-}
+/* No content-visibility on list rows (T4-3 had `auto` with an 88px
+   placeholder): rows are laid out at the placeholder before they're
+   rendered, so every task card opened at 88px and snapped to its real
+   height (68px, more with details) a frame later, and the list jumped.
+   No fixed placeholder fits rows of varying height, and these lists are
+   short enough that skipping their rendering saved nothing noticeable. */
 
 /* T5-3: iOS input zoom fix — force 16px floor on mobile */
 @media (max-width: 767px) {
@@ -2937,4 +2935,25 @@ p {
   color: var(--accent-text);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* Thumb-sized hit areas on touch screens, without changing what's drawn:
+   chips (36px), the view switcher (30px) and small icon buttons (32px) get
+   an invisible target of at least 44 × 44px around them (Apple and Material
+   guidance; WCAG 2.5.5). Desktop pointers keep the drawn size. */
+@media (pointer: coarse) {
+  .chip,
+  .tap-target {
+    position: relative;
+  }
+  .chip::after,
+  .tap-target::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
 }

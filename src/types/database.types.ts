@@ -83,6 +83,7 @@ export type Database = {
           notification_sent_overdue: boolean | null
           priority: number | null
           recurrence: string | null
+          recurrence_renewed_at: string | null
           remind_at: string | null
           reminder_sent_at: string | null
           snoozed_until: string | null
@@ -115,6 +116,7 @@ export type Database = {
           notification_sent_overdue?: boolean | null
           priority?: number | null
           recurrence?: string | null
+          recurrence_renewed_at?: string | null
           remind_at?: string | null
           reminder_sent_at?: string | null
           snoozed_until?: string | null
@@ -147,6 +149,7 @@ export type Database = {
           notification_sent_overdue?: boolean | null
           priority?: number | null
           recurrence?: string | null
+          recurrence_renewed_at?: string | null
           remind_at?: string | null
           reminder_sent_at?: string | null
           snoozed_until?: string | null
@@ -499,6 +502,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_thread_entry: {
+        Args: { p_entry: Json; p_thread_id: string }
+        Returns: Json[]
+      }
       claim_push_reminders: {
         Args: never
         Returns: {
@@ -508,6 +515,10 @@ export type Database = {
           title: string
           user_id: string
         }[]
+      }
+      remove_thread_entry: {
+        Args: { p_created_at: string; p_thread_id: string }
+        Returns: Json[]
       }
       register_push_subscription: {
         Args: {

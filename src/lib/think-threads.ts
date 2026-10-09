@@ -46,3 +46,40 @@ export async function fetchThreads(
   if (error) throw error;
   return (data as unknown as Thread[]) ?? [];
 }
+
+export type ThreadEntry = Thread["entries"][number];
+
+/**
+ * Adds an entry on the server (append_thread_entry), so an entry added
+ * meanwhile on another device isn't overwritten: the array used to be
+ * rebuilt from this page's copy and written whole. Returns what's stored.
+ */
+export async function appendThreadEntry(
+  supabase: SupabaseClient<Database>,
+  threadId: string,
+  entry: ThreadEntry,
+): Promise<ThreadEntry[]> {
+  const { data, error } = await supabase.rpc("append_thread_entry", {
+    p_thread_id: threadId,
+    p_entry: entry,
+  });
+  if (error) throw error;
+  return (data as unknown as ThreadEntry[]) ?? [];
+}
+
+/**
+ * Removes the entry with this created_at (remove_thread_entry). Deleting by
+ * position removed a different entry once the list had changed.
+ */
+export async function removeThreadEntry(
+  supabase: SupabaseClient<Database>,
+  threadId: string,
+  createdAt: string,
+): Promise<ThreadEntry[]> {
+  const { data, error } = await supabase.rpc("remove_thread_entry", {
+    p_thread_id: threadId,
+    p_created_at: createdAt,
+  });
+  if (error) throw error;
+  return (data as unknown as ThreadEntry[]) ?? [];
+}

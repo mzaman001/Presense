@@ -43,6 +43,7 @@ import {
   MindSweepPrompt,
   eveningSweepHints,
 } from "@/components/features/MindSweep";
+import { appendThreadEntry } from "@/lib/think-threads";
 
 // ─── WorkloadBar ──────────────────────────────────────────────────────────────
 // Planned minutes against the daily capacity from Settings. One calm bar;
@@ -880,12 +881,9 @@ export function RitualOverlay({
           .limit(1);
         /* @todo: Untyped usage justified per TOOL-01 */
 
-        let threadId = "",
-          entries: Database["public"]["Tables"]["threads"]["Row"]["entries"] =
-            [];
+        let threadId = "";
         if (existing && existing.length > 0) {
           threadId = existing[0].id;
-          entries = existing[0].entries || [];
         } else {
           const { data: ins, error: insError } = await supabase
             .from("threads")
@@ -904,21 +902,12 @@ export function RitualOverlay({
           }
         }
         if (threadId) {
-          // BUG-38: check error before showing the success toast
-          const { error: updError } = await supabase
-            .from("threads")
-            .update({
-              entries: [
-                ...entries,
-                {
-                  text: reflection.trim(),
-                  created_at: new Date().toISOString(),
-                },
-              ],
-              last_updated: new Date().toISOString(),
-            })
-            .eq("id", threadId);
-          if (updError) throw updError;
+          // Appended on the server, so a note added elsewhere today isn't
+          // overwritten by this copy of the list.
+          await appendThreadEntry(supabase, threadId, {
+            text: reflection.trim(),
+            created_at: new Date().toISOString(),
+          });
           markMutation("threads");
         }
       }

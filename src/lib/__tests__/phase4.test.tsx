@@ -1,3 +1,4 @@
+import { readOutbox } from "@/lib/capture-outbox";
 import React from "react";
 import { render, screen, fireEvent, waitFor, act, within } from "./test-utils";
 import { Input } from "@/components/ui/Input";
@@ -425,7 +426,11 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
       await act(async () => finishInsert({ error: null }));
     });
 
-    it("takes a new task back out and offers a retry if the save fails", async () => {
+    // A failed insert used to take the task back off the screen, with only a
+    // toast's Retry holding it: offline, the task was gone once the toast
+    // went. New tasks now go through the capture outbox, like capture does.
+    it("keeps a new task on this device when the save fails, to sync later", async () => {
+      localStorage.clear();
       const query = mockSupabaseQuery();
       query.insert = vi.fn(async () => ({ error: { message: "offline" } }));
       mockSupabase.from.mockReturnValue(query);
@@ -441,9 +446,20 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
         fireEvent.click(save);
       });
 
-      await waitFor(() =>
-        expect(queryClient.getQueryData(["tasks"])).toEqual([]),
-      );
+      await waitFor(() => expect(query.insert).toHaveBeenCalled());
+      const cached = queryClient.getQueryData<{ id: string; title: string }[]>([
+        "tasks",
+      ]);
+      expect(cached).toEqual([
+        expect.objectContaining({ title: "Water plants" }),
+      ]);
+      const pending = readOutbox(TEST_USER.id);
+      expect(pending).toHaveLength(1);
+      expect(pending[0].rows[0]).toMatchObject({
+        table: "items",
+        row: { id: cached?.[0].id, title: "Water plants", status: "active" },
+      });
+      localStorage.clear();
     });
 
     // Focus-timer minutes add up on the task (session_logs trigger); the

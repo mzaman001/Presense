@@ -2,7 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { m, AnimatePresence, useDragControls } from "framer-motion";
+import {
+  m,
+  AnimatePresence,
+  useDragControls,
+  useIsPresent,
+} from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -45,6 +50,9 @@ export function Sheet({
   const vp = useVisualViewport();
   const dragControls = useDragControls();
   const [mounted, setMounted] = useState(false);
+  // False while a parent AnimatePresence is removing the component that
+  // renders this sheet; the sheet then closes like it does for isOpen=false.
+  const isPresent = useIsPresent();
   useBodyScrollLock(isOpen);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -72,9 +80,12 @@ export function Sheet({
 
   if (!mounted) return null;
 
+  // `propagate`: when a parent AnimatePresence removes the component that
+  // renders this sheet (DynamicModals does on close), the sheet still plays
+  // its exit instead of vanishing with its parent.
   return createPortal(
-    <AnimatePresence>
-      {isOpen && (
+    <AnimatePresence propagate>
+      {isOpen && isPresent && (
         <>
           <m.div
             initial={{ opacity: 0 }}

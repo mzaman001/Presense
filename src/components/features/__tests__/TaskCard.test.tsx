@@ -1,7 +1,13 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, TEST_USER, makeTask } from "@/lib/__tests__/test-utils";
+import {
+  render,
+  screen,
+  fireEvent,
+  TEST_USER,
+  makeTask,
+} from "@/lib/__tests__/test-utils";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { TaskCard } from "@/components/features/TaskCard";
 
@@ -121,5 +127,28 @@ describe("TaskCard", () => {
     expect(getByText(/^From Sep 1$/)).toBeInTheDocument();
     expect(queryByText(/Overdue/)).not.toBeInTheDocument();
     expect(container.innerHTML).not.toContain("--status-overdue");
+  });
+
+  // The card opened the editor from a click on a plain div: no tab stop, no
+  // role, so keyboard and screen-reader users couldn't edit a task.
+  it("opens the editor from a real button keyboard users can reach", () => {
+    const task = makeTask({ id: "task-k", title: "Renew passport" });
+    const openEditPanel = vi.fn();
+    render(
+      <TaskCard
+        task={task}
+        completing={null}
+        completeTask={vi.fn()}
+        openEditPanel={openEditPanel}
+        fetchTasks={vi.fn()}
+      />,
+      { wrapper },
+    );
+    const edit = screen.getByRole("button", { name: "Edit Renew passport" });
+    edit.focus();
+    expect(document.activeElement).toBe(edit);
+    fireEvent.click(edit);
+    expect(openEditPanel).toHaveBeenCalledTimes(1);
+    expect(openEditPanel).toHaveBeenCalledWith(task);
   });
 });

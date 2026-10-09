@@ -22,3 +22,28 @@ export async function fetchActiveTasks(
   if (error) throw error;
   return data as TaskRecord[];
 }
+
+/** Completed tasks shown per page in Do's archive. */
+export const ARCHIVE_PAGE = 100;
+
+/**
+ * The newest `limit` completed tasks, and whether there are more. The archive
+ * used to load every task ever completed in one request.
+ */
+export async function fetchArchivedPage(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  limit: number = ARCHIVE_PAGE,
+): Promise<{ tasks: TaskRecord[]; hasMore: boolean }> {
+  // One row past the page says whether another page exists.
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "done")
+    .order("completed_at", { ascending: false })
+    .range(0, limit);
+  if (error) throw error;
+  const rows = (data ?? []) as TaskRecord[];
+  return { tasks: rows.slice(0, limit), hasMore: rows.length > limit };
+}

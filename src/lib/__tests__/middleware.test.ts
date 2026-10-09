@@ -181,7 +181,7 @@ describe("Edge Auth Middleware Routing", () => {
 
     it("returns JSON 401 for unauthenticated requests to /api/* routes", async () => {
       mockGetClaims.mockResolvedValue({ data: null, error: null });
-      const req = createMockRequest("/api/capture");
+      const req = createMockRequest("/api/account");
       const res = await proxy(req);
 
       expect(mockJson).toHaveBeenCalledWith(

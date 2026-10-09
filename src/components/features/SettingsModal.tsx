@@ -7,7 +7,8 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, type UserSettings } from "@/store/useAppStore";
+import { DEFAULT_NUDGE_TIME, DEFAULT_SHUTDOWN_TIME } from "@/lib/constants";
 import { useSessionUser } from "@/components/providers/SessionProvider";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
 import { createClient } from "@/lib/supabase";
@@ -31,7 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { m, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, useIsPresent } from "framer-motion";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { useDebounce } from "use-debounce";
@@ -62,6 +63,9 @@ import {
 } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { buildExport } from "@/lib/export-data";
+import { friendlyError } from "@/lib/friendly-error";
+import { clearLocalAccountData } from "@/lib/local-account-data";
 
 /* BUG-45 — the fields the autosave debounce watches. `watch(AUTOSAVE_FIELDS)`
    returns an array of values in this same order (react-hook-form's array-arg
@@ -159,6 +163,15 @@ const CATEGORY_COLORS = [
   "#F472B6",
   "#9CA3AF",
 ];
+
+/** Same keys with the same values (a settings row is flat JSON). */
+function sameSettings(a: UserSettings, b: UserSettings): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (JSON.stringify(a[key]) !== JSON.stringify(b[key])) return false;
+  }
+  return true;
+}
 
 /**
  * "India Standard Time (GMT+5:30)", for the automatic timezone row. The
@@ -570,7 +583,7 @@ function CategoryItem({
         toast.success(`Renamed category to ${trimmed}`);
       } catch (err: unknown) {
         toast.error("Failed to rename category", {
-          description: err instanceof Error ? err.message : "Unknown error",
+          description: friendlyError(err),
         });
         setEditName(cat);
       }
@@ -782,8 +795,10 @@ function CategoryManager({
 export function SettingsModal() {
   const isSettingsModalOpen = useAppStore((s) => s.isSettingsModalOpen);
   const setSettingsModalOpen = useAppStore((s) => s.setSettingsModalOpen);
+  // Still rendered while DynamicModals' AnimatePresence plays its exit.
+  const isPresent = useIsPresent();
 
-  if (!isSettingsModalOpen) return null; // BUG-45: inert when closed
+  if (!isSettingsModalOpen && isPresent) return null; // BUG-45: inert when closed
   return <SettingsModalContent onClose={setSettingsModalOpen} />;
 }
 
@@ -810,7 +825,14 @@ function SettingsModalContent({
   const activeTab = TABS.some((t) => t.id === settingsActiveTab)
     ? (settingsActiveTab as string)
     : "account";
-  const [loading, setLoading] = useState(true);
+  // The store already holds this user's settings row (seeded from the
+  // server, kept current by the app's own writes), so Settings opens with
+  // it and refreshes in the background instead of behind a spinner.
+  const [cachedSettings] = useState(() => {
+    const s = useAppStore.getState().userSettings;
+    return s.user_id === userId ? s : null;
+  });
+  const [loading, setLoading] = useState(cachedSettings === null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
@@ -819,7 +841,10 @@ function SettingsModalContent({
   const { control, register, watch, setValue, reset, getValues } =
     useForm<SettingsFormValues>({
       resolver: zodResolver(settingsSchema),
-      defaultValues: {},
+      // Filled from the first frame when the store has the settings.
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      defaultValues: (cachedSettings ?? {}) as any,
     });
 
   /* BUG-45 — selective subscriptions: the save debounce only needs the
@@ -955,42 +980,71 @@ function SettingsModalContent({
   useEffect(() => {
     /* BUG-45 — this component only mounts when the modal is open, but keep
        the guard so the effect's deps stay honest if wiring changes. */
-    async function loadSettings() {
-      setLoading(true);
-      try {
-        setUserEmail(userAccountEmail);
+    let cancelled = false;
+    // What the form was last filled with, to tell whether the user has
+    // edited anything since.
+    let filledWith: string | null = null;
+    function fill(settings: UserSettings) {
+      /* @todo: Untyped usage justified per TOOL-01 */
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      reset(settings as any);
+      filledWith = JSON.stringify(getValues());
+      // Baseline for autosave = exactly what the form was filled with, in
+      // the same shape the debounced watcher produces. Taking it later (from
+      // the first debounced value) captured pre-load defaults, so every open
+      // "saved" the loaded values straight back to the database.
+      lastSavedSettingsRef.current = JSON.stringify(
+        Object.fromEntries(
+          AUTOSAVE_FIELDS.map((name) => [name, getValues(name)]),
+        ),
+      );
+    }
 
+    async function loadSettings() {
+      setUserEmail(userAccountEmail);
+      if (cachedSettings) {
+        fill(cachedSettings);
+        setTimeout(() => {
+          if (!cancelled) setInitialLoaded(true);
+        }, 100);
+      }
+      try {
         const { data, error } = await supabase
           .from("user_settings")
           .select("*")
           .eq("user_id", userId)
           .single();
         if (error) throw error;
-        if (data) {
-          /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          reset(data as any);
-          // Baseline for autosave = exactly what was just loaded, in the same
-          // shape the debounced watcher produces. Taking it later (from the
-          // first debounced value) captured pre-load defaults, so every open
-          // "saved" the loaded values straight back to the database.
-          lastSavedSettingsRef.current = JSON.stringify(
-            Object.fromEntries(
-              AUTOSAVE_FIELDS.map((name) => [name, getValues(name)]),
-            ),
-          );
-          /* @todo: Untyped usage justified per TOOL-01 */
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setUserSettings(data as any);
-        }
+        if (cancelled || !data) return;
+        const fresh = data as UserSettings;
+        // Changed on another device since the store was filled: show it,
+        // unless the user has already started editing.
+        if (!cachedSettings || JSON.stringify(getValues()) === filledWith)
+          fill(fresh);
+        // Only touch the store when something differs: every settings
+        // reader in the shell re-renders on a new object.
+        if (!sameSettings(useAppStore.getState().userSettings, fresh))
+          setUserSettings(fresh);
       } catch {
-        toast.error("Couldn't load settings. Please try again.");
+        // With the stored copy on screen, a failed refresh changes nothing.
+        if (!cachedSettings && !cancelled)
+          toast.error("Couldn't load settings. Please try again.");
       } finally {
-        setLoading(false);
-        setTimeout(() => setInitialLoaded(true), 100);
+        if (!cachedSettings && !cancelled) {
+          setLoading(false);
+          setTimeout(() => {
+            if (!cancelled) setInitialLoaded(true);
+          }, 100);
+        }
       }
     }
     loadSettings();
+    return () => {
+      cancelled = true;
+    };
+    // userId, userAccountEmail and cachedSettings are fixed for the life of
+    // the modal; listing them would only re-run the load if that changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, setUserSettings, reset, getValues]);
 
   useEffect(() => {
@@ -1103,9 +1157,7 @@ function SettingsModalContent({
   );
 
   const handleSignOut = async () => {
-    localStorage.removeItem("presense_theme");
-    localStorage.removeItem("presense_color_mode");
-    localStorage.removeItem("presense_reduce_motion");
+    clearLocalAccountData(userId, { keepUnsyncedCaptures: true });
     // While still signed in (RLS), so this device stops getting this
     // account's reminders.
     await disablePush(supabase);
@@ -1118,25 +1170,8 @@ function SettingsModalContent({
     try {
       toast.info("Preparing export...");
 
-      const [items, threads, locations, settings] = await Promise.all([
-        supabase.from("items").select("*").eq("user_id", userId),
-        supabase.from("threads").select("*").eq("user_id", userId),
-        supabase.from("locations").select("*").eq("user_id", userId),
-        supabase
-          .from("user_settings")
-          .select("*")
-          .eq("user_id", userId)
-          .single(),
-      ]);
-
-      const exportData = {
-        exported_at: new Date().toISOString(),
-        user_id: userId,
-        items: items.data ?? [],
-        threads: threads.data ?? [],
-        locations: locations.data ?? [],
-        settings: settings.data ?? {},
-      };
+      // Every table, every row; throws rather than leave anything out.
+      const exportData = await buildExport(supabase, userId);
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
         type: "application/json",
@@ -1147,10 +1182,14 @@ function SettingsModalContent({
       a.download = `presense-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export downloaded");
+      const { items, threads, locations } = exportData.counts;
+      toast.success("Export downloaded", {
+        description: `${items} tasks, ${threads} threads, ${locations} places, plus focus and ritual history.`,
+      });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Export failed";
-      toast.error("Export failed", { description: message });
+      toast.error("Couldn't export your data", {
+        description: friendlyError(err),
+      });
     }
   };
 
@@ -1170,9 +1209,9 @@ function SettingsModalContent({
       toast.success("Completed tasks cleared");
       setClearTasksConfirm(false);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to clear tasks";
-      toast.error("Failed", { description: message });
+      toast.error("Couldn't clear completed tasks", {
+        description: friendlyError(err),
+      });
     }
   };
 
@@ -1189,9 +1228,9 @@ function SettingsModalContent({
       toast.success("Stale locations cleared");
       setClearLocationsConfirm(false);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to clear locations";
-      toast.error("Failed", { description: message });
+      toast.error("Couldn't clear places", {
+        description: friendlyError(err),
+      });
     }
   };
   const handleDeleteAccount = async () => {
@@ -1209,10 +1248,8 @@ function SettingsModalContent({
         const { error } = await res.json();
         throw new Error(error || "Failed to delete auth account");
       }
-      // Sign out after successful deletion
-      localStorage.removeItem("presense_theme");
-      localStorage.removeItem("presense_color_mode");
-      localStorage.removeItem("presense_reduce_motion");
+      // Nothing of the deleted account stays on this device.
+      clearLocalAccountData(userId, { keepUnsyncedCaptures: false });
       await disablePush(supabase);
       await supabase.auth.signOut();
       toast.success("Account deleted");
@@ -1238,7 +1275,9 @@ function SettingsModalContent({
       modalName="Settings Modal"
       onClose={() => onClose(false)}
     >
-      <AnimatePresence>
+      {/* No AnimatePresence of its own: these exits play under DynamicModals'
+          one, which keeps Settings mounted until they've finished. */}
+      <>
         <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1560,7 +1599,10 @@ function SettingsModalContent({
                               <Dropdown
                                 trackAnimatedAncestor
                                 aria-label="Morning planning time"
-                                value={toHHMM(settings.nudge_time, "10:00")}
+                                value={toHHMM(
+                                  settings.nudge_time,
+                                  DEFAULT_NUDGE_TIME,
+                                )}
                                 onChange={(val) =>
                                   updateSetting("nudge_time", val)
                                 }
@@ -1576,7 +1618,10 @@ function SettingsModalContent({
                               <Dropdown
                                 trackAnimatedAncestor
                                 aria-label="Evening shutdown time"
-                                value={toHHMM(settings.shutdown_time, "17:00")}
+                                value={toHHMM(
+                                  settings.shutdown_time,
+                                  DEFAULT_SHUTDOWN_TIME,
+                                )}
                                 onChange={(val) =>
                                   updateSetting("shutdown_time", val)
                                 }
@@ -1868,13 +1913,13 @@ function SettingsModalContent({
               onClose={() => setClearLocationsConfirm(false)}
               onConfirm={handleClearStaleLocations}
               title="Clear stale places"
-              description="Remove places not updated in 30+ days?"
+              description="Permanently delete places not updated in 30+ days? They won't go to Trash, so this can't be undone."
               confirmLabel="Clear places"
               confirmDestructive
             />
           </m.div>
         </m.div>
-      </AnimatePresence>
+      </>
     </ModalErrorBoundary>
   );
 }

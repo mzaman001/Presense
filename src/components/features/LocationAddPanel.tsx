@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { locationSchema } from "@/lib/schemas";
 import { z } from "zod";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
+import { friendlyError } from "@/lib/friendly-error";
 
 interface LocationAddPanelProps {
   isOpen: boolean;
@@ -126,10 +127,10 @@ export function LocationAddPanel({
       }
     } catch (err: unknown) {
       logger.error("Save error:", err);
-      setErrorMsg(err instanceof Error ? err.message : "Unknown error");
+      setErrorMsg(friendlyError(err));
       toast.error(
         itemToEdit ? "Failed to update location" : "Failed to log location",
-        { description: err instanceof Error ? err.message : "Unknown error" },
+        { description: friendlyError(err) },
       );
     }
   };
@@ -148,7 +149,7 @@ export function LocationAddPanel({
       onClose();
     } catch (err: unknown) {
       toast.error("Failed to delete location", {
-        description: err instanceof Error ? err.message : "Unknown error",
+        description: friendlyError(err),
       });
     } finally {
       setDeleteConfirm(false);

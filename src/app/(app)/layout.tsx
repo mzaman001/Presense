@@ -14,6 +14,8 @@ import { AppStoreSeed } from "@/components/providers/AppStoreSeed";
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
+import { headers } from "next/headers";
+import { savedAppearanceScript } from "@/lib/theme-boot";
 
 import { MotionProvider } from "@/components/layout/MotionProvider";
 import type { UserSettings } from "@/store/useAppStore";
@@ -93,10 +95,24 @@ export default async function AppLayout({
     }
   }
 
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     // The store hydrates with these settings instead of filling them in
     // after the first paint (see AppStoreSeed).
     <AppStoreSeed settings={(settings as UserSettings) ?? null}>
+      {/* Before any content paints: the account's colour mode, which the
+          root boot script can't know on a new device or after sign-out. */}
+      <script
+        nonce={nonce}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{
+          __html: savedAppearanceScript(
+            settings?.color_mode,
+            Boolean(settings?.reduce_motion),
+          ),
+        }}
+      />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:rounded-lg focus:bg-[var(--bg-base)] focus:px-4 focus:py-2.5 focus:text-sm focus:text-[var(--text-1)] focus:no-underline focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--accent)]"

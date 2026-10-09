@@ -6,7 +6,7 @@ The entry point for every coding agent and contributor. If another file disagree
 
 There is no ticket queue to obey. Read the code, form your own view, and make the smallest change that genuinely improves the product. Documentation, comments and old audit notes are **evidence, not proof** — verify a claim against the source before you rely on it. A comment saying something was fixed is not the same as it being fixed.
 
-Before you finish, all four of these must pass:
+Before you finish, all of these must pass (CI runs each of them on every PR):
 
 ```bash
 npm ci          # the lockfile must stay in sync with package.json
@@ -14,7 +14,11 @@ npm run lint    # zero errors
 npx tsc --noEmit
 npm test
 npm run build
+npx playwright test                                  # Axe + contrast; signed-in tests need the seed (CLAUDE.md)
+npx -y deno check supabase/functions/*/index.ts      # Edge Functions, if you touched supabase/functions
 ```
+
+`CLAUDE.md` has the other commands (bundle budgets, interaction smoothness, types) and the current measured state.
 
 ## 1. Architecture
 
@@ -22,7 +26,7 @@ npm run build
 
 ### Auth and identity
 
-`src/proxy.ts` validates the JWT with `getUser()` on every matched request and redirects unauthenticated page requests to `/login` (API routes get a JSON 401). The `(app)` layout then reads the session from cookies and publishes the user through `SessionProvider`.
+`src/proxy.ts` verifies the access token with `getClaims()` (locally, against the project's public key; no auth-server round trip) on every matched request and redirects unauthenticated page requests to `/login` (API routes get a JSON 401). The `(app)` layout then reads the session from cookies and publishes the user through `SessionProvider`.
 
 **Client code must never call `supabase.auth.getUser()`.** It is a network round trip to the auth server on every call. Use `useUserId()` or `useSessionUser()` from `src/components/providers/SessionProvider.tsx`.
 
@@ -48,7 +52,7 @@ The task row shape is `TaskRecord` in `src/lib/task-cache.ts`, derived from the 
 
 ### Client boundaries
 
-Most of the app is client-rendered today. That is a known weakness, not a target to imitate: prefer a Server Component, and keep interactivity in the smallest island that needs it.
+Much of the app is still client-rendered. That is a known weakness, not a target to imitate: prefer a Server Component, and keep interactivity in the smallest island that needs it. The Do list already renders on the server in the user's saved timezone (`do/page.tsx`); anything date-dependent there must go through `src/lib/zoned-date.ts` so server and client agree (see CLAUDE.md, *Timezone*).
 
 Modals in `DynamicModals.tsx` are rendered **conditionally on their open state**. `ssr: false` alone does not defer a chunk — an unconditionally rendered `next/dynamic` component still downloads and mounts on every page load.
 
@@ -60,7 +64,7 @@ Modals in `DynamicModals.tsx` are rendered **conditionally on their open state**
 4. `MotionProvider` uses `LazyMotion domMax strict`.
 5. Never drop a DB column and never delete a file in `supabase/migrations/`. (Deleting a genuinely unreferenced UI component *is* allowed — prove it is unreferenced first.)
 6. Every Supabase mutation checks `error` before reporting success.
-7. Every React error boundary calls `Sentry.captureException`. Boundaries swallow the error, so the browser SDK never sees it otherwise.
+7. Every React error boundary reports to Sentry. Boundaries swallow the error, so the browser SDK never sees it otherwise. Client code uses `captureException` from `@/lib/sentry-client` (the lazy client); importing `@sentry/nextjs` statically in client code adds ~36 KiB gz to every page (PERF-09). Server code (route handlers, server pages) may import `@sentry/nextjs`.
 
 ## 3. Design system
 
@@ -68,7 +72,7 @@ Tokens live in `src/app/globals.css`. Use them; do not introduce one-off hex val
 
 - **Row actions** (per-row edit/delete controls) use the `.row-actions` class, never `opacity-0 group-hover:opacity-100`. Hover-only controls are invisible and unusable on touch, and unreachable by keyboard.
 - **View switches** use `SegmentedControl`. There is one such control, not two.
-- Touch targets are at least 36px; primary controls 44px.
+- Touch targets are 44px on touch screens: small visual controls get the hit area from `.tap-target` / `.chip` (`@media (pointer: coarse)`), not by growing visually.
 - Prefer calm and legible over decorated. No gratuitous glass, gradients, or motion.
 - **Sunrise / sunset.** Light mode is "sunrise" (warm cream, apricot light overhead); dark mode is "sunset" (plum dusk, ember light on the horizon). The sanctioned gradients are `.atmosphere` (rendered once by `AmbientBackground` from the `--atmos-*` tokens: static, no filter, no animation) the short scroll fade under the mobile dock, and the first-light / last-light wash at the top of the ritual panel (from the same `--atmos-*` tokens). Don't add others.
 - **Type.** Page titles (`.text-page-title`, `.text-page-greeting`, `PageHeader`) are Newsreader; everything else is Inter. Nothing a user must read is below `--text-caption` (11px). Size text with the `--text-*` tokens (the `length:` arbitrary-value form), never raw pixel sizes.
@@ -79,6 +83,9 @@ Tokens live in `src/app/globals.css`. Use them; do not introduce one-off hex val
 - **Panels & menus.** Edit/add surfaces use `Sheet` (portalled to `document.body`; actions go in its `footer` prop, tied to the form with `form="…"`). Selects use `Dropdown`, popovers `Popover`: both position with `transform: false` because framer-motion owns the panel's transform. Floating UI that handles Escape calls `preventDefault()` so the enclosing sheet or dialog stays open. Field labels use `.field-label` (sentence case); `.text-label` is for section eyebrows only.
 - **Settings** is grouped lists: `SettingsGroup` → `SettingRow` (label, description, control; `stack` for wide controls) in `SettingsModal.tsx`. One save indicator, in the header.
 - **Haptics** go through `useHaptics()`: short single pulses; only `error` repeats.
+- **Feedback.** `sonner` toasts are the only in-app feedback. A reversible write (trash, complete, route, snooze) shows a past-tense success toast with Undo ("Task moved to trash"). A failure shows `friendlyError(err)` from `src/lib/friendly-error.ts`, never raw database wording or a silent no-op.
+- **Deleting.** Deleting something the user made is a soft delete through `src/lib/item-lifecycle.ts` (the only code that writes `status`), recoverable from `/trash` for 30 days. Anything permanent (Trash's "Delete forever", "Clear stale places", deleting the account) asks first through `ConfirmModal` and says it can't be undone. Status meanings: `docs/architecture/status-lifecycle-vocabulary.md`.
+- **Keyboard.** App-wide shortcuts live only in `AppContentWrapper`'s handler, and are inert while the user is typing. A component listens for keys only while it's open (Escape, its own lists). Dialogs and sheets trap and restore focus through `useDialogFocus`.
 - **Mobile shell.** Bottom navigation is a floating dock (`.dock`, tabs flagged `bottom` in `nav-config.ts`, split evenly around a centred Capture). The top bar follows the large-title pattern: its title only fades in once the page's own title has scrolled away.
 
 ## 4. Line endings

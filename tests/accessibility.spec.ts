@@ -1,11 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { execFileSync } from "node:child_process";
-import path from "node:path";
-import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-
-const ROOT = process.cwd();
+import { loadEnv, NO_SEED, readSeed, seedCookie } from "./seed";
 
 // design-foundation Task 6: confirm the flat/single-accent tokens from Task 1
 // (src/app/globals.css `:root` / `:root[data-mode="light"]`) didn't regress
@@ -58,17 +54,6 @@ async function scanColorContrast(
 // actually verifying; flagged separately (see task-6-report.md).
 const AVATAR_SELECTOR = '[role="img"][aria-label$="avatar"]';
 
-function loadEnvLocal(): Record<string, string> {
-  const out: Record<string, string> = {};
-  const file = path.join(ROOT, ".env.local");
-  if (!fs.existsSync(file)) return out;
-  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m) out[m[1]] = m[2].replace(/^"(.*)"$/, "$1");
-  }
-  return out;
-}
-
 test.describe("Accessibility Audits (Axe WCAG)", () => {
   test("login page passes WCAG 2.1/2.2 AA accessibility scan", async ({
     page,
@@ -106,42 +91,11 @@ test.describe("Accessibility Audits (Axe WCAG)", () => {
     // this describe block's tests on one worker, one after another.
     test.describe.configure({ mode: "serial" });
 
-    let cookieName: string;
-    let cookieValue: string;
-    let userId: string;
-    let seedSkipped = false;
-
-    test.beforeAll(() => {
-      try {
-        const out = execFileSync(
-          process.execPath,
-          [path.join(ROOT, "scripts", "seed-test-user.mjs"), "--json"],
-          { cwd: ROOT, encoding: "utf8", timeout: 60000 },
-        );
-        const parsed = JSON.parse(out);
-        cookieName = parsed.cookieName;
-        cookieValue = parsed.cookieValue;
-        userId = parsed.session.user.id;
-      } catch (e) {
-        // Skip (not fail) when Supabase env is absent — e.g. a contributor
-        // without the project's .env.local — matching authed-do.spec.ts.
-        seedSkipped = true;
-        if (process.env.CI) throw e;
-      }
-    });
+    const seed = readSeed();
 
     test.beforeEach(async ({ page }) => {
-      test.skip(seedSkipped, "seed unavailable (no Supabase env)");
-      await page.context().addCookies([
-        {
-          name: cookieName,
-          value: cookieValue,
-          domain: "localhost",
-          httpOnly: false,
-          sameSite: "Lax",
-          path: "/",
-        },
-      ]);
+      test.skip(!seed, NO_SEED);
+      await page.context().addCookies([seedCookie(seed!)]);
     });
 
     test("/do tokens meet AA contrast in dark and light mode", async ({
@@ -201,20 +155,20 @@ test.describe("Accessibility Audits (Axe WCAG)", () => {
 
       // /trash loaded successfully — now, and only now, seed a trashed item
       // into the shared Supabase test account via the service-role client.
-      const env = loadEnvLocal();
-      const url =
-        process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
-      const serviceKey =
-        process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
-      const admin = createClient(url, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
+      const env = loadEnv();
+      const admin = createClient(
+        env.NEXT_PUBLIC_SUPABASE_URL,
+        env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: { autoRefreshToken: false, persistSession: false },
+        },
+      );
 
       const seededItemId = "00000000-0000-4000-8000-0000000a11ce";
       const { error: upsertError } = await admin.from("items").upsert(
         {
           id: seededItemId,
-          user_id: userId,
+          user_id: seed!.session.user.id,
           title: "a11y-test-trash-item",
           status: "deleted",
           deleted_at: new Date().toISOString(),

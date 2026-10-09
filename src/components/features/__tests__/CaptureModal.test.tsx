@@ -354,3 +354,58 @@ describe("CaptureModal — one-tap capture with a live preview", () => {
     });
   });
 });
+
+// Closing the panel (Escape, a tap outside, a swipe) used to discard what was
+// typed: the text lived only in the unmounted component. It's kept as a
+// draft now, and cleared once saved.
+describe("CaptureModal — unsaved text survives closing", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    insertMock.mockImplementation(async () => ({ error: null }));
+    useAppStore.setState({
+      isCaptureModalOpen: true,
+      captureModalPrefill: null,
+      userSettings: {},
+    });
+  });
+
+  it("brings back typed text when the panel opens again", () => {
+    const first = render(<CaptureModal />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Capture" }), {
+      target: { value: "renew passport next month" },
+    });
+    first.unmount();
+
+    render(<CaptureModal />);
+    expect(
+      (screen.getByRole("textbox", { name: "Capture" }) as HTMLInputElement)
+        .value,
+    ).toBe("renew passport next month");
+  });
+
+  it("starts empty again after the text was saved", async () => {
+    const first = render(<CaptureModal />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Capture" }), {
+      target: { value: "Buy milk" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Save/ }));
+    await waitFor(() => expect(insertMock).toHaveBeenCalled());
+    first.unmount();
+
+    render(<CaptureModal />);
+    expect(
+      (screen.getByRole("textbox", { name: "Capture" }) as HTMLInputElement)
+        .value,
+    ).toBe("");
+  });
+
+  it("keeps drafts per account", () => {
+    localStorage.setItem("presense_capture_draft_v1:someone-else", "not yours");
+    render(<CaptureModal />);
+    expect(
+      (screen.getByRole("textbox", { name: "Capture" }) as HTMLInputElement)
+        .value,
+    ).toBe("");
+    expect(TEST_USER.id).not.toBe("someone-else");
+  });
+});

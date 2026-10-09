@@ -355,7 +355,20 @@ export const TaskCard = React.memo(
                   {...{ elementtiming: "task-title" }}
                   className="text-body-lg line-clamp-2 leading-snug font-medium text-[var(--text-1)]"
                 >
-                  <span className="task-title-strike">{task.title}</span>
+                  {/* A real button, so keyboard and screen-reader users can
+                      open the task too; the card-wide click (pointer only)
+                      used to be the sole way in. */}
+                  <button
+                    type="button"
+                    aria-label={`Edit ${shortTitle}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditPanel(task);
+                    }}
+                    className="rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                  >
+                    <span className="task-title-strike">{task.title}</span>
+                  </button>
                 </p>
 
                 {task.first_step && (

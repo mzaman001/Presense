@@ -1,3 +1,5 @@
+import { DEFAULT_NUDGE_TIME, DEFAULT_SHUTDOWN_TIME } from "@/lib/constants";
+
 export type RitualKind = "morning" | "evening" | "none";
 
 export interface RitualDecisionInput {
@@ -28,7 +30,7 @@ export interface RitualDecision {
 const MORNING_WINDOW_HOURS = 6;
 const EVENING_PLANNING_CUTOFF_HOUR = 15;
 
-function parseTimeToMinutes(value = "09:00") {
+function parseTimeToMinutes(value = DEFAULT_NUDGE_TIME) {
   const [hours = "0", minutes = "0"] = value.split(":");
   return Number(hours) * 60 + Number(minutes);
 }
@@ -59,8 +61,12 @@ function eligibleAt(now: Date, minutes: number) {
 export function getRitualDecision(input: RitualDecisionInput): RitualDecision {
   const now = input.now;
   const today = toDateKey(now);
-  const nudgeMinutes = parseTimeToMinutes(input.nudgeTime || "09:00");
-  const shutdownMinutes = parseTimeToMinutes(input.shutdownTime || "17:00");
+  const nudgeMinutes = parseTimeToMinutes(
+    input.nudgeTime || DEFAULT_NUDGE_TIME,
+  );
+  const shutdownMinutes = parseTimeToMinutes(
+    input.shutdownTime || DEFAULT_SHUTDOWN_TIME,
+  );
   const currentMinutes = minutesSinceMidnight(now);
   const morningWindowEnd = nudgeMinutes + MORNING_WINDOW_HOURS * 60;
   const morningDone = input.lastMorningDate === today;
@@ -83,7 +89,9 @@ export function getRitualDecision(input: RitualDecisionInput): RitualDecision {
     };
   }
 
-  if (currentMinutes >= shutdownMinutes && !eveningDone && morningDone) {
+  // The evening stands on its own: closing the day doesn't need a morning
+  // plan (and the server's "Wind down" push is sent either way).
+  if (currentMinutes >= shutdownMinutes && !eveningDone) {
     return {
       kind: "evening",
       targetDate: today,

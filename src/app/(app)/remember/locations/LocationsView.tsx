@@ -35,6 +35,7 @@ import {
   Package,
 } from "lucide-react";
 import { toast } from "sonner";
+import { moveItemToTrashPatch } from "@/lib/item-lifecycle";
 import { useRealtime } from "@/hooks/useRealtime";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { StaleResurfaceBadge } from "@/components/ui/StaleResurfaceBadge";
@@ -176,7 +177,7 @@ export function LocationsView({
       patchLocations((prev) => prev.filter((i) => i.id !== item.id));
       const { error } = await supabase
         .from("locations")
-        .update({ status: "deleted", deleted_at: new Date().toISOString() })
+        .update(moveItemToTrashPatch())
         .eq("id", item.id)
         .eq("user_id", userId ?? "");
       if (error) throw error;
@@ -325,7 +326,20 @@ export function LocationsView({
                             isVeryStale && "line-through opacity-60",
                           )}
                         >
-                          {item.item_name}
+                          {/* A real button so keyboard and screen-reader users
+                              can open the place too; the card-wide click is
+                              pointer-only. */}
+                          <button
+                            type="button"
+                            aria-label={`Edit ${item.item_name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingItem(item);
+                            }}
+                            className="rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                          >
+                            {item.item_name}
+                          </button>
                         </p>
                         <p className="truncate text-xs text-[var(--color-text-3)]">
                           {item.location_text}

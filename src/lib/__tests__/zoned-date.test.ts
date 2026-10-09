@@ -5,6 +5,7 @@ import {
   formatClockTime,
   formatShortDate,
   formatWeekdayDate,
+  isValidTimeZone,
 } from "@/lib/zoned-date";
 
 describe("dateKeyIn", () => {
@@ -43,5 +44,22 @@ describe("formatters", () => {
     expect(formatClockTime(instant, "Asia/Kolkata")).toBe("2:00 AM");
     expect(formatClockTime(instant, "UTC")).toBe("8:30 PM");
     expect(formatWeekdayDate(instant, "UTC")).toBe("Mon, Oct 5");
+  });
+});
+
+describe("an unknown timezone", () => {
+  // A bad saved zone used to throw RangeError from Intl and break the
+  // server-rendered Do list. It now reads as UTC.
+  it("is reported invalid", () => {
+    expect(isValidTimeZone("Asia/Kolkata")).toBe(true);
+    expect(isValidTimeZone("Etc/Unknown")).toBe(false);
+    expect(isValidTimeZone("")).toBe(false);
+    expect(isValidTimeZone(null)).toBe(false);
+  });
+
+  it("formats as UTC instead of throwing", () => {
+    const at = new Date("2026-10-07T23:30:00Z");
+    expect(dateKeyIn(at, "Not/AZone")).toBe(dateKeyIn(at, "UTC"));
+    expect(formatClockTime(at, "Etc/Unknown")).toBe(formatClockTime(at, "UTC"));
   });
 });

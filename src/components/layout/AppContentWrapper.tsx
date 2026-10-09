@@ -83,8 +83,11 @@ export function AppContentWrapper({ children }: { children: React.ReactNode }) {
   return (
     <main
       id="main-content"
+      // Focusable from script only, so "Skip to content" moves focus here
+      // (and screen readers with it) instead of leaving it on the link.
+      tabIndex={-1}
       className={cn(
-        "relative z-10 flex min-w-0 flex-1 flex-col pb-[calc(var(--mobile-bottom-nav-h)+env(safe-area-inset-bottom,0px)+var(--space-4))] md:pb-0",
+        "relative z-10 flex min-w-0 flex-1 flex-col pb-[calc(var(--mobile-bottom-nav-h)+env(safe-area-inset-bottom,0px)+var(--space-4))] outline-none md:pb-0",
         "pt-[calc(env(safe-area-inset-top,0px)+var(--mobile-top-bar-h)+var(--space-2))] md:pt-8",
         "md:ml-[var(--sidebar-w-collapsed)]",
       )}

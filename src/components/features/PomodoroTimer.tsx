@@ -33,6 +33,7 @@ import {
   startLengths,
   type FocusTimerState,
   type Phase,
+  claimSessionLog,
 } from "@/lib/focus-timer";
 import { FocusHorizon } from "./FocusHorizon";
 
@@ -248,7 +249,9 @@ export function PomodoroTimer() {
     // Time's up needs attention: bring the full view back if minimised.
     setMinimized(false);
     if (userSettings?.pomodoro_sound !== false) playChime();
-    logSession(phase, Math.round(duration / 60));
+    // Once across tabs: each open tab finishes the same saved session.
+    if (claimSessionLog(phase, startedAtRef.current + duration * 1000))
+      logSession(phase, Math.round(duration / 60));
 
     if (phase === "work" && shortStart) {
       // A short start ends on a choice, not a break.

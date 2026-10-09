@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { logger } from "@/lib/logger";
+import { captureException } from "@/lib/sentry-client";
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,12 @@ export class ModalErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     logger.error(`Error in modal ${this.props.modalName}:`, error, errorInfo);
+    // logger.error is the browser console on the client, so without this a
+    // crash in Capture, Search or Settings was never seen.
+    captureException(error, {
+      tags: { modal: this.props.modalName },
+      extra: { componentStack: errorInfo.componentStack },
+    });
   }
 
   public render() {

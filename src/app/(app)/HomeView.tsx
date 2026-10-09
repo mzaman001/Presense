@@ -60,6 +60,7 @@ import {
   formatShortDateWithYear,
   weekdayIndexIn,
 } from "@/lib/zoned-date";
+import { appendThreadEntry } from "@/lib/think-threads";
 
 /** Shared with Do and TaskCard — one generated shape, not a local copy. */
 type TaskItem = TaskRecord;
@@ -227,7 +228,8 @@ function HomeDashboard({
   const {
     tasks = [],
     inboxItems = [],
-    threads = [],
+    threadsCount = 0,
+    activeTasksCount = 0,
     doneTasks = [],
     pomodorosThisWeek = 0,
     doneTasksLastWeek = [],
@@ -328,14 +330,10 @@ function HomeDashboard({
         setWeeklyReflection("");
         return;
       }
-      const { error } = await supabase
-        .from("threads")
-        .update({
-          entries: [...prev, entry],
-          last_updated: new Date().toISOString(),
-        })
-        .eq("id", threadId);
-      if (error) {
+      try {
+        // Appended on the server, not rebuilt from this copy of the list.
+        await appendThreadEntry(supabase, threadId, entry);
+      } catch {
         toast.error("Failed to save reflection");
         return;
       }
@@ -836,7 +834,7 @@ function HomeDashboard({
                 {
                   href: "/do",
                   icon: CheckCircle2,
-                  value: tasks.length,
+                  value: activeTasksCount,
                   label: "Active Tasks",
                 },
                 {
@@ -848,7 +846,7 @@ function HomeDashboard({
                 {
                   href: "/think",
                   icon: MessageSquare,
-                  value: threads.length,
+                  value: threadsCount,
                   label: "Open Threads",
                 },
                 {

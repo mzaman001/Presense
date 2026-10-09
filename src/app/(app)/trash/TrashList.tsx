@@ -23,6 +23,9 @@ import {
   type TrashType,
 } from "@/lib/trash";
 
+/** Postgres unique_violation: a copy of a repeating task is already active. */
+const UNIQUE_VIOLATION = "23505";
+
 export function TrashLoading() {
   return (
     <div
@@ -82,8 +85,13 @@ export function TrashList({
       await queryClient.invalidateQueries({ queryKey: ["trash"] });
       toast.success(`${entry.typeLabel} restored`);
     } catch (err: unknown) {
-      toast.error("Failed to restore", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      // Plain words, not database text (Supabase errors aren't Error objects,
+      // so this used to read "Unknown error" or a constraint name).
+      toast.error("Couldn't restore it", {
+        description:
+          (err as { code?: string } | null)?.code === UNIQUE_VIOLATION
+            ? "This repeating task is already on your list."
+            : "Please try again.",
       });
     }
   };
@@ -98,10 +106,8 @@ export function TrashList({
       if (deleteError) throw deleteError;
       await queryClient.invalidateQueries({ queryKey: ["trash"] });
       toast.success("Permanently deleted");
-    } catch (err: unknown) {
-      toast.error("Failed to delete", {
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+    } catch {
+      toast.error("Couldn't delete it", { description: "Please try again." });
     } finally {
       setItemToPermanentDelete(null);
     }
