@@ -91,3 +91,21 @@ export function formatWeekdayDate(date: Date, timeZone?: string): string {
     day: "numeric",
   }).format(date);
 }
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** 0 = Monday … 6 = Sunday, for `date` in `timeZone`. */
+export function weekdayIndexIn(date: Date, timeZone?: string): number {
+  return WEEKDAYS.indexOf(
+    formatter("weekdayIndex", timeZone, { weekday: "short" }).format(date),
+  );
+}
+
+/** "Oct 7, 2026" */
+export function formatShortDateWithYear(date: Date, timeZone?: string): string {
+  return formatter("shortYear", timeZone, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}

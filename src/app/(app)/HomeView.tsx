@@ -2,7 +2,7 @@
 
 import { removeTaskFromCaches, type TaskRecord } from "@/lib/task-cache";
 import { useUserId } from "@/components/providers/SessionProvider";
-import { use, useState, useMemo, useSyncExternalStore } from "react";
+import { use, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -44,8 +44,22 @@ import {
   type DashboardRows,
 } from "@/lib/dashboard";
 import { PageSkeleton } from "@/components/ui/Skeleton";
-import { greetingFor } from "@/lib/greeting";
+import { greetingFor, hourIn } from "@/lib/greeting";
 import { preloadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
+import type { Clock as ListClock } from "@/lib/do-buckets";
+import {
+  DisplayClockProvider,
+  useDisplayClock,
+  useLiveClock,
+} from "@/lib/display-clock";
+import {
+  addDaysKey,
+  dateKeyIn,
+  deviceTimeZone,
+  formatShortDate,
+  formatShortDateWithYear,
+  weekdayIndexIn,
+} from "@/lib/zoned-date";
 import { appendThreadEntry } from "@/lib/think-threads";
 
 /** Shared with Do and TaskCard — one generated shape, not a local copy. */
@@ -62,8 +76,9 @@ function RitualStatusBadge({
   plannedDays: number;
 }) {
   const setActiveRitual = useAppStore((s) => s.setActiveRitual);
-  const now = new Date();
-  const todayStr = now.toLocaleDateString("en-CA");
+  // Today in the page's timezone, so the server and browser agree.
+  const clock = useDisplayClock();
+  const todayStr = dateKeyIn(new Date(clock.now), clock.timeZone);
   const morningDone = userSettings?.last_ritual_date === todayStr;
   const eveningDone = userSettings?.last_evening_ritual_date === todayStr;
   const shutdownTime = userSettings?.shutdown_time || "17:00:00";
@@ -122,8 +137,6 @@ function RitualStatusBadge({
   );
 }
 
-const subscribeNoop = () => () => {};
-
 /** Rendered on the server so Home's first paint has real text. */
 export interface HomeHeader {
   greeting: string;
@@ -140,23 +153,44 @@ export interface HomeHeader {
 export function HomeView({
   rowsPromise,
   header,
+  clock: serverClock,
 }: {
   rowsPromise: Promise<DashboardRows | null>;
   header: HomeHeader;
+  /** The saved timezone and request time the server drew Home with. */
+  clock: Required<ListClock>;
 }) {
   const queryClient = useQueryClient();
   const serverRows = queryClient.getQueryData<DashboardRows>(["dashboard"])
     ? undefined
     : (use(rowsPromise) ?? undefined);
-  return <HomeDashboard serverRows={serverRows} header={header} />;
+  // Home is drawn on the server in the saved timezone; the browser's first
+  // render reuses that clock so hydration matches, then follows the device
+  // (or the user's chosen zone when automatic timezone is off).
+  const { savedZone, automatic } = useAppStore(
+    useShallow((s) => ({
+      savedZone: s.userSettings.timezone,
+      automatic: s.userSettings.timezone_auto !== false,
+    })),
+  );
+  const clock = useLiveClock(serverClock, () =>
+    automatic || !savedZone ? deviceTimeZone() : savedZone,
+  );
+  return (
+    <DisplayClockProvider clock={clock}>
+      <HomeDashboard serverRows={serverRows} header={header} clock={clock} />
+    </DisplayClockProvider>
+  );
 }
 
 function HomeDashboard({
   serverRows,
   header,
+  clock,
 }: {
   serverRows: DashboardRows | undefined;
   header: HomeHeader;
+  clock: ListClock;
 }) {
   const userId = useUserId();
   const supabase = useMemo(() => createClient(), []);
@@ -178,23 +212,18 @@ function HomeDashboard({
   const [completing, setCompleting] = useState<string | null>(null);
   const haptics = useHaptics();
 
-  // Week, day and planned-day boundaries use the device's timezone, so Home is
-  // first rendered with data after hydration, never on the server.
-  const hydrated = useSyncExternalStore(
-    subscribeNoop,
-    () => true,
-    () => false,
-  );
   const { data: rows, isLoading: rowsLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => fetchDashboardRows(supabase, userId),
     initialData: serverRows,
   });
+  // Week, day and planned-day boundaries in the clock's timezone, so the
+  // server can draw Home with its data (it used to wait for hydration).
   const dashboardData = useMemo(
-    () => (rows ? summarizeDashboard(rows, new Date()) : undefined),
-    [rows],
+    () => (rows ? summarizeDashboard(rows, clock) : undefined),
+    [rows, clock],
   );
-  const loading = !hydrated || rowsLoading;
+  const loading = rowsLoading;
 
   const {
     tasks = [],
@@ -267,11 +296,10 @@ function HomeDashboard({
   const saveWeeklyReflection = async () => {
     const text = weeklyReflection.trim();
     if (!text) return;
-    // Monday-start week label, e.g. "Aug 10 – Aug 16".
-    const mon = new Date(mondayStartForLabel());
-    const sun = new Date(mon);
-    sun.setDate(sun.getDate() + 6);
-    const label = `${mon.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${sun.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+    // Monday-start week label, e.g. "Aug 10 – Aug 16" (existing notes are
+    // found by this exact title).
+    const { mon, sun } = weekEnds();
+    const label = `${formatShortDate(mon, "UTC")} – ${formatShortDate(sun, "UTC")}`;
     const title = `Weekly Note: ${label}`;
     const { data: existing, error: selError } = await supabase
       .from("threads")
@@ -332,21 +360,17 @@ function HomeDashboard({
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   };
 
-  // FEAT-01: the Monday start used by the reflection week label. Kept as a
-  // pure helper that recomputes on every call so the label is always fresh.
-  const mondayStartForLabel = () => {
-    const now = new Date();
-    const currentDay = now.getDay() || 7;
-    const monday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() - currentDay + 1,
-      0,
-      0,
-      0,
-      0,
+  // FEAT-01: this week's Monday and Sunday in the clock's timezone, for the
+  // reflection's week label. Calendar dates at UTC noon, formatted in UTC,
+  // so they read as those dates on the server and in any browser.
+  const weekEnds = () => {
+    const today = dateKeyIn(new Date(clock.now), clock.timeZone);
+    const monday = addDaysKey(
+      today,
+      -weekdayIndexIn(new Date(clock.now), clock.timeZone),
     );
-    return monday.getTime();
+    const day = (key: string) => new Date(`${key}T12:00:00Z`);
+    return { mon: day(monday), sun: day(addDaysKey(monday, 6)) };
   };
 
   const refreshData = () =>
@@ -358,11 +382,9 @@ function HomeDashboard({
 
   const primaryTask = tasks.length > 0 ? tasks[0] : null;
 
-  // The server's greeting (in the saved timezone) until hydrated, so the
-  // first render matches the HTML; the device clock after.
-  const greeting = hydrated
-    ? greetingFor(new Date().getHours())
-    : header.greeting;
+  // From the page's clock: the server's (the same as header.greeting) on the
+  // first render, so it matches the HTML, then the device's.
+  const greeting = greetingFor(hourIn(clock.timeZone, new Date(clock.now)));
   const firstName =
     userSettings?.display_name?.split(" ")[0] || header.firstName;
   // Follows the greeting text (not the clock) so the server HTML and the
@@ -376,21 +398,20 @@ function HomeDashboard({
 
   let heroReason = "Earliest deadline";
   if (primaryTask) {
-    if (
-      primaryTask.deadline &&
-      new Date(primaryTask.deadline).getTime() < new Date().getTime()
-    ) {
-      heroReason = `Carried over from ${new Date(primaryTask.deadline).toLocaleDateString()}`;
+    // Dates as "Oct 3" in the page's timezone: the browser's own locale
+    // (e.g. 3/10/2026 vs 10/3/2026) would differ from the server's.
+    const deadline = primaryTask.deadline
+      ? new Date(primaryTask.deadline)
+      : null;
+    if (deadline && deadline.getTime() < clock.now) {
+      heroReason = `Carried over from ${formatShortDate(deadline, clock.timeZone)}`;
     } else if (primaryTask.priority === 1) {
       heroReason = "Highest priority";
-    } else if (primaryTask.deadline) {
-      const hours =
-        (new Date(primaryTask.deadline).getTime() - new Date().getTime()) /
-        3600000;
+    } else if (deadline) {
+      const hours = (deadline.getTime() - clock.now) / 3600000;
       if (hours < 3 && hours > 0)
         heroReason = `Due in ${Math.round(hours)} hours`;
-      else
-        heroReason = `Due ${new Date(primaryTask.deadline).toLocaleDateString()}`;
+      else heroReason = `Due ${formatShortDate(deadline, clock.timeZone)}`;
     }
   }
   return (
@@ -451,10 +472,8 @@ function HomeDashboard({
               />
               <div className="text-sm font-medium text-[var(--color-text-1)]">
                 {(() => {
-                  const mon = new Date(mondayStartForLabel());
-                  const sun = new Date(mon);
-                  sun.setDate(sun.getDate() + 6);
-                  return `${mon.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${sun.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+                  const { mon, sun } = weekEnds();
+                  return `${formatShortDate(mon, "UTC")} – ${formatShortDateWithYear(sun, "UTC")}`;
                 })()}
                 <span className="ml-2 font-normal text-[var(--color-text-3)]">
                   Week in Review
@@ -591,7 +610,10 @@ function HomeDashboard({
                     <p className="mt-0.5 text-xs text-[var(--color-text-3)]">
                       Completed{" "}
                       {task.completed_at
-                        ? new Date(task.completed_at).toLocaleDateString()
+                        ? formatShortDate(
+                            new Date(task.completed_at),
+                            clock.timeZone,
+                          )
                         : ""}
                     </p>
                   </div>

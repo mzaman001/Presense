@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { TaskRecord } from "@/lib/task-cache";
-import { daysPlannedInLastWeek } from "@/lib/planned-days";
+import { daysPlannedInWeekEnding } from "@/lib/planned-days";
+import type { Clock } from "@/lib/do-buckets";
+import { addDaysKey, dateKeyIn, weekdayIndexIn } from "@/lib/zoned-date";
 
 type Row<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Row"];
@@ -141,34 +143,30 @@ export async function fetchDashboardRows(
   };
 }
 
-/** Monday 00:00 of the week containing `now`, in the device's timezone. */
-function mondayStart(now: Date): Date {
-  const day = now.getDay() || 7;
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
-}
-
 /**
- * What Home shows, cut from the raw rows in the device's timezone. Runs in
- * the browser only (Home renders its data after hydration), so week and day
- * boundaries are the viewer's, not the server's.
+ * What Home shows, cut from the raw rows for a timezone and moment: the
+ * user's saved timezone and the request time on the server, the same on the
+ * hydrating render, then the device's (see display-clock). Days and weeks
+ * are calendar dates in that zone ("YYYY-MM-DD"), weeks starting Monday.
  */
-export function summarizeDashboard(rows: DashboardRows, now: Date) {
-  const weekStart = mondayStart(now).getTime();
-  const lastWeekStart = weekStart - 7 * DAY_MS;
-  const todayStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  ).getTime();
+export function summarizeDashboard(rows: DashboardRows, clock: Clock) {
+  const now = clock.now;
+  const zone = clock.timeZone;
+  const keyOf = (iso: string) => dateKeyIn(new Date(iso), zone);
+  const todayKey = dateKeyIn(new Date(now), zone);
+  const weekStartKey = addDaysKey(
+    todayKey,
+    -weekdayIndexIn(new Date(now), zone),
+  );
+  const lastWeekStartKey = addDaysKey(weekStartKey, -7);
   const at = (iso: string | null) => (iso ? Date.parse(iso) : NaN);
-  const isToday = (iso: string | null) =>
-    at(iso) >= todayStart && at(iso) < todayStart + DAY_MS;
-  const isOverdue = (iso: string | null) => at(iso) < now.getTime();
+  const isToday = (iso: string | null) => !!iso && keyOf(iso) === todayKey;
+  const isOverdue = (iso: string | null) => at(iso) < now;
 
   // Overdue first, then urgent, then high-priority tasks due today, then by
   // deadline, then by priority.
   const upNext = rows.tasks
-    .filter((t) => !t.snoozed_until || at(t.snoozed_until) <= now.getTime())
+    .filter((t) => !t.snoozed_until || at(t.snoozed_until) <= now)
     .toSorted((a, b) => {
       const aPrio = a.priority ?? 4;
       const bPrio = b.priority ?? 4;
@@ -185,17 +183,20 @@ export function summarizeDashboard(rows: DashboardRows, now: Date) {
       return aPrio - bPrio;
     });
 
-  const inWeek = (iso: string | null, start: number) =>
-    at(iso) >= start && at(iso) < start + 7 * DAY_MS;
+  const inWeek = (iso: string | null, startKey: string) => {
+    if (!iso) return false;
+    const key = keyOf(iso);
+    return key >= startKey && key < addDaysKey(startKey, 7);
+  };
 
   const doneTasks = rows.recentDone.filter((t) =>
-    inWeek(t.completed_at, weekStart),
+    inWeek(t.completed_at, weekStartKey),
   );
   const doneTasksLastWeek = rows.recentDone.filter((t) =>
-    inWeek(t.completed_at, lastWeekStart),
+    inWeek(t.completed_at, lastWeekStartKey),
   );
   const sessionsThisWeek = rows.recentSessions.filter((s) =>
-    inWeek(s.completed_at, weekStart),
+    inWeek(s.completed_at, weekStartKey),
   );
   const minutes = (list: DashboardRows["recentSessions"]) =>
     list.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0);
@@ -203,7 +204,7 @@ export function summarizeDashboard(rows: DashboardRows, now: Date) {
   // Monday-indexed (0 = Mon … 6 = Sun), matching the week above.
   const dayCounts = new Array(7).fill(0) as number[];
   for (const task of doneTasks) {
-    dayCounts[(new Date(task.completed_at!).getDay() + 6) % 7]++;
+    dayCounts[weekdayIndexIn(new Date(task.completed_at!), zone)]++;
   }
 
   return {
@@ -221,14 +222,14 @@ export function summarizeDashboard(rows: DashboardRows, now: Date) {
     doneTasksLastWeek,
     focusMinutesThisWeek: minutes(sessionsThisWeek),
     focusMinutesLastWeek: minutes(
-      rows.recentSessions.filter((s) => inWeek(s.completed_at, lastWeekStart)),
+      rows.recentSessions.filter((s) =>
+        inWeek(s.completed_at, lastWeekStartKey),
+      ),
     ),
     dayCounts,
-    plannedDays: daysPlannedInLastWeek(
-      rows.ritualCompletedAt.map((iso) =>
-        new Date(iso).toLocaleDateString("en-CA"),
-      ),
-      now,
+    plannedDays: daysPlannedInWeekEnding(
+      rows.ritualCompletedAt.map(keyOf),
+      todayKey,
     ),
     locationsCount: rows.locationsCount,
   };
