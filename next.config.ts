@@ -59,7 +59,22 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: { exclude: ["error"] },
   },
+  // In the browser, "pino" is a small stand-in with the same API
+  // (src/lib/pino-browser.ts); the server keeps real pino. The webpack hook
+  // below does the same for the ANALYZE build CI's budget measures.
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        pino: path.resolve(process.cwd(), "src/lib/pino-browser.ts"),
+      };
+    }
+    return config;
+  },
   turbopack: {
+    resolveAlias: {
+      pino: { browser: "./src/lib/pino-browser.ts" },
+    },
     rules: {
       // Strip Sentry's tracing code from the browser bundle only; the server
       // keeps tracing. See scripts/turbopack/sentry-no-tracing-loader.cjs.
