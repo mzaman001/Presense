@@ -55,6 +55,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@eslint/compat": "^2.1.1",
     "@next/bundle-analyzer": "^16.3.8",
     "@playwright/test": "^1.63.0",
     "@serwist/turbopack": "^9.5.12",
@@ -69,7 +70,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "cross-env": "^10.1.0",
     "esbuild": "^0.28.2",
-    "eslint": "^9",
+    "eslint": "^10.12.0",
     "eslint-config-next": "16.3.8",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
