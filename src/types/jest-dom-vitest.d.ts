@@ -12,9 +12,11 @@ import "vitest";
 import type { TestingLibraryMatchers } from "@testing-library/jest-dom/matchers";
 
 declare module "vitest" {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unused-vars
+  // Must repeat Vitest's own type parameters, T included, to merge.
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface Matchers<
     R extends void | Promise<void> = void | Promise<void>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     T = unknown,
   > extends TestingLibraryMatchers<unknown, R> {}
 }
