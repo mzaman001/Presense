@@ -538,6 +538,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      search_threads: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          id: string
+          snippet: string
+          title: string
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

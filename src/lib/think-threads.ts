@@ -49,6 +49,51 @@ export async function fetchThreads(
 
 export type ThreadEntry = Thread["entries"][number];
 
+export interface ThreadSearchHit {
+  id: string;
+  title: string;
+  /** The newest entry that matched, or null when only the title did. */
+  snippet: string | null;
+}
+
+/**
+ * Threads whose title or any entry matches (search_threads). Entries are a
+ * jsonb[], which a PostgREST filter can't search, so global search used to
+ * match titles only.
+ */
+export async function searchThreads(
+  supabase: SupabaseClient<Database>,
+  query: string,
+  limit = 5,
+): Promise<ThreadSearchHit[]> {
+  const { data, error } = await supabase.rpc("search_threads", {
+    p_query: query,
+    p_limit: limit,
+  });
+  if (error) throw error;
+  return ((data ?? []) as ThreadSearchHit[]).map((hit) => ({
+    id: hit.id,
+    title: hit.title,
+    snippet: hit.snippet ?? null,
+  }));
+}
+
+/**
+ * The part of `text` around the first match of `query`, at most about
+ * `max` characters, with an ellipsis where it was cut.
+ */
+export function snippetAround(text: string, query: string, max = 80): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  const at = flat.toLowerCase().indexOf(query.trim().toLowerCase());
+  const start = Math.max(
+    0,
+    Math.min(at < 0 ? 0 : at - Math.floor(max / 3), flat.length - max),
+  );
+  const end = Math.min(flat.length, start + max);
+  return `${start > 0 ? "…" : ""}${flat.slice(start, end).trim()}${end < flat.length ? "…" : ""}`;
+}
+
 /**
  * Adds an entry on the server (append_thread_entry), so an entry added
  * meanwhile on another device isn't overwritten: the array used to be
