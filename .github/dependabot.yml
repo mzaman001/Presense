@@ -32,9 +32,6 @@ updates:
       # typescript-eslint doesn't support TypeScript 7 yet (#102).
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
-      # 1.17 -> 1.49 added 1.3 KiB gz to /login's initial JS, over the
-      # perf-budgets.json budget. Held until someone checks what grew.
-      - dependency-name: "lucide-react"
 
   - package-ecosystem: github-actions
     directory: /
