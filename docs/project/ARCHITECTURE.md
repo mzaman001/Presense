@@ -48,7 +48,7 @@ How a capture travels:
 | `cron_cleanup` | 01:00 UTC | Hard-deletes rows trashed 30+ days ago |
 | `push_test` | not scheduled | Sends a test push to the caller's own devices (authenticated with the user's token; for manual checks, the app doesn't call it) |
 
-The schedules are in migrations (`20261002094935_cron_jobs_read_vault.sql`, `20261004090000_push_reminders.sql`) and read their URL and keys from Vault.
+The schedules are at the end of the baseline migration (`supabase/migrations/20261009000000_baseline.sql`) and read their URL and keys from Vault.
 
 ## Client
 
@@ -68,7 +68,7 @@ The schedules are in migrations (`20261002094935_cron_jobs_read_vault.sql`, `202
 
 1. A Supabase project. `npx supabase link`, then `npx supabase db push`.
 
-   **Caveat:** migrations `001`–`009` predate the timestamped ones and don't exactly match what production ran. Squashing them into one baseline is an open task, so check the result against `src/types/database.types.ts`.
+   The migrations start from one baseline (`20261009000000_baseline.sql`), a copy of production's schema that was rebuilt from scratch and diffed against production. Older migrations are kept for history in `supabase/migrations_archive/`; the CLI never runs them.
 2. Enable Google as the Auth provider. Add `https://<your-domain>/auth/callback` (and `http://localhost:3000/auth/callback` for development) to Redirect URLs.
 3. Deploy the four Edge Functions (`npx supabase functions deploy <name>`), and set these function secrets:
    - `CRON_SECRET`;

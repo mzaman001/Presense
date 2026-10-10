@@ -1,5 +1,5 @@
 // Sends due reminders with Web Push. Called by pg_cron every minute
-// (supabase/migrations/20261004090000_push_reminders.sql), gated by
+// (the push_reminders job in supabase/migrations/20261009000000_baseline.sql), gated by
 // x-cron-secret like the other scheduled functions.
 //
 // claim_push_reminders() marks each reminder sent as it returns it, so a

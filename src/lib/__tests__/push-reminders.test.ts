@@ -130,16 +130,15 @@ describe("push_reminders scheduler gate", () => {
 describe("claim_push_reminders", () => {
   // The function's current definition is the newest migration that
   // (re)creates it; task reminders must wait for a device rather than be
-  // used up when the user has nowhere to receive them.
+  // used up when the user has nowhere to receive them. The baseline is a
+  // pg_dump, which writes the name quoted and in capitals.
   it("only claims a task reminder once the user has a device", () => {
     const dir = path.resolve(__dirname, "../../../supabase/migrations");
+    const defines =
+      /create or replace function "?public"?\."?claim_push_reminders"?\(\)/i;
     const latest = fs
       .readdirSync(dir)
-      .filter((f) =>
-        fs
-          .readFileSync(path.join(dir, f), "utf8")
-          .includes("create or replace function public.claim_push_reminders()"),
-      )
+      .filter((f) => defines.test(fs.readFileSync(path.join(dir, f), "utf8")))
       .sort()
       .at(-1)!;
     const sql = fs.readFileSync(path.join(dir, latest), "utf8");
