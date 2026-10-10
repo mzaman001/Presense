@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 import { useIsPresent } from "framer-motion";
 import { cn, ilikeContains } from "@/lib/utils";
+import { searchThreads, snippetAround } from "@/lib/think-threads";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
@@ -31,6 +32,8 @@ interface SearchResult {
   type: "task" | "thread" | "location";
   icon: React.ElementType;
   path: string;
+  /** The matching text when the match wasn't the title (a Think entry). */
+  detail?: string;
 }
 
 export function SearchModal() {
@@ -81,13 +84,11 @@ export function SearchModal() {
           .in("status", ["active", "overdue", "inbox"])
           .or(`title.ilike.${q},category.ilike.${q}`)
           .limit(5),
-        supabase
-          .from("threads")
-          .select("id, title")
-          .eq("user_id", userId)
-          .in("status", ["active", "archived"])
-          .or(`title.ilike.${q}`)
-          .limit(5),
+        // Titles and entry text; entries are a jsonb[] a filter can't reach.
+        searchThreads(supabase, debouncedQuery).then(
+          (data) => ({ data, error: null }),
+          (error: unknown) => ({ data: null, error }),
+        ),
         supabase
           .from("locations")
           .select("id, item_name, location_text")
@@ -117,6 +118,9 @@ export function SearchModal() {
           type: "thread" as const,
           icon: MessageSquare,
           path: `/think/${t.id}`,
+          detail: t.snippet
+            ? snippetAround(t.snippet, debouncedQuery)
+            : undefined,
         })),
         ...(locations.data ?? []).map((l) => ({
           id: l.id,
@@ -305,8 +309,9 @@ export function SearchModal() {
                   <div className="truncate font-medium text-[var(--color-text-1)]">
                     {result.title}
                   </div>
-                  <div className="text-xs text-[var(--color-text-3)] capitalize">
-                    {result.type}
+                  <div className="truncate text-xs text-[var(--color-text-3)]">
+                    <span className="capitalize">{result.type}</span>
+                    {result.detail && <span> · {result.detail}</span>}
                   </div>
                 </div>
               </button>

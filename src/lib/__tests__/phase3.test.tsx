@@ -21,13 +21,19 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/think",
 }));
 
-// Mock Supabase client
+// Mock Supabase client. Search reads threads through the search_threads
+// RPC (titles and entry text); it answers with whatever a test set up for
+// the threads table, so tests mock one place for thread results.
+const mockFrom = vi.fn<(table: string) => unknown>();
 const mockSupabase = {
   auth: {
     getUser: vi.fn(),
     signOut: vi.fn(),
   },
-  from: vi.fn(),
+  from: mockFrom,
+  rpc: vi.fn<(name: string) => unknown>((name) =>
+    name === "search_threads" ? mockFrom("threads") : undefined,
+  ),
 };
 
 vi.mock("@/lib/supabase", () => ({
@@ -174,11 +180,32 @@ describe("Phase 3 - Integration Test Suite", () => {
         "overdue",
         "inbox",
       ]);
-      expect(queries.threads.in).toHaveBeenCalledWith("status", [
-        "active",
-        "archived",
-      ]);
+      expect(mockSupabase.rpc).toHaveBeenCalledWith("search_threads", {
+        p_query: "pay",
+        p_limit: 5,
+      });
       expect(queries.locations.is).toHaveBeenCalledWith("deleted_at", null);
+    });
+
+    // Search used to match thread titles only.
+    it("finds a thread by the text of an entry and shows the matching line", async () => {
+      useAppStore.setState({ isSearchModalOpen: true });
+      mockSupabase.from.mockImplementation((table) =>
+        mockSupabaseQuery(
+          table === "threads"
+            ? [{ id: "g1", title: "Garden plans", snippet: "tomato cages" }]
+            : [],
+        ),
+      );
+      render(<SearchModal />, { wrapper });
+      fireEvent.change(screen.getByPlaceholderText(/search everything/i), {
+        target: { value: "tomato" },
+      });
+
+      expect(await screen.findByText("Garden plans")).toBeInTheDocument();
+      expect(screen.getByText(/· tomato cages/)).toBeInTheDocument();
+      fireEvent.click(screen.getByText("Garden plans"));
+      expect(push).toHaveBeenCalledWith("/think/g1");
     });
 
     it("retries a failed search and renders the recovered results", async () => {
