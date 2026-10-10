@@ -12,6 +12,8 @@
 //
 // DSN-gated: without NEXT_PUBLIC_SENTRY_DSN every export is a no-op and the
 // SDK chunk is never requested (AGENTS.md invariant 1).
+import { sentrySharedOptions } from "./sentry-options";
+
 type SentrySdk = typeof import("./sentry-sdk");
 type CaptureArgs = Parameters<SentrySdk["captureException"]>;
 
@@ -57,6 +59,7 @@ export function loadSentry(): Promise<SentrySdk | null> {
   loading ??= import("./sentry-sdk").then(
     (Sentry) => {
       Sentry.init({
+        ...sentrySharedOptions,
         dsn,
         environment: process.env.NODE_ENV,
       });
