@@ -45,6 +45,24 @@ describe("sentry-client", () => {
     );
   });
 
+  // Sentry 11 collects cookies (the Supabase session), bodies and user info
+  // unless told not to.
+  it("sends no cookies, bodies or user info", async () => {
+    const mod = await freshModule("https://key@o0.ingest.sentry.io/1");
+    await mod.loadSentry();
+    expect(init).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachStacktrace: false,
+        dataCollection: expect.objectContaining({
+          userInfo: false,
+          cookies: false,
+          httpBodies: [],
+          databaseQueryData: false,
+        }),
+      }),
+    );
+  });
+
   it("queues captureException before load and replays it after", async () => {
     const mod = await freshModule("https://key@o0.ingest.sentry.io/1");
     const err = new Error("boundary");

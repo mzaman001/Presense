@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 // The service worker is built and served by src/app/serwist/[path]/route.ts;
 // withSerwist only keeps esbuild out of the server bundle.
 import { withSerwist } from "@serwist/turbopack";
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const sentryRelease =
   process.env.SENTRY_RELEASE ||
