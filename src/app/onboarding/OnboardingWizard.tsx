@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -84,13 +84,20 @@ export function OnboardingWizard({ initial }: OnboardingWizardProps) {
     if (saved > 1) setStep(saved);
   }, []);
 
+  // The look screen previews the selected mode on the page itself, so
+  // what's ticked is what's shown. A layout effect, so it runs during the
+  // commit: as a passive effect it could run after a tap on another mode
+  // and overwrite it with the mode this render saw (flaky in CI).
+  useLayoutEffect(() => {
+    if (step === 3) applyMode(colorMode);
+    // Step changes only; colorMode changes apply in onChange.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   // Each screen is one question: move focus to it so keyboard and screen
   // reader users land on the new content, not the old button.
   const mounted = useRef(false);
   useEffect(() => {
-    // The look screen previews the selected mode on the page itself, so
-    // what's ticked is what's shown.
-    if (step === 3) applyMode(colorMode);
     if (!mounted.current) {
       mounted.current = true;
       return;
@@ -98,8 +105,6 @@ export function OnboardingWizard({ initial }: OnboardingWizardProps) {
     const root = headingRef.current?.closest("form");
     const field = root?.querySelector<HTMLElement>("[data-autofocus]");
     (field ?? headingRef.current)?.focus();
-    // Runs on step changes only; colorMode changes apply in onChange.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   const save = async (patch: OnboardingPatch) => {
