@@ -137,9 +137,22 @@ export default async function AppLayout({
               </Suspense>
               <UpdatePrompt />
               <AmbientBackground />
-              <MobileTopBar />
-              <Sidebar />
-              <MobileDrawer />
+              {/* Progressive hydration: React hydrates each Suspense
+                  boundary as its own task instead of the whole shell in one
+                  long one, and hydrates the page first. These never suspend,
+                  so the server HTML is unchanged; on a phone the desktop
+                  sidebar is hidden yet still hydrated, now off the page's
+                  critical path. A tap on a not-yet-hydrated region hydrates
+                  it first (selective hydration). */}
+              <Suspense fallback={null}>
+                <MobileTopBar />
+              </Suspense>
+              <Suspense fallback={null}>
+                <Sidebar />
+              </Suspense>
+              <Suspense fallback={null}>
+                <MobileDrawer />
+              </Suspense>
               {/* DynamicModals: heavy modals loaded lazily via next/dynamic (ssr:false) to cut ~50-80KB from initial bundle */}
               <DynamicModals />
               {/* RitualOverlay is conditionally visible (ritual triage prompt)
@@ -149,7 +162,9 @@ export default async function AppLayout({
               <AppContentWrapper>
                 <NuqsAdapter>{children}</NuqsAdapter>
               </AppContentWrapper>
-              <BottomNav />
+              <Suspense fallback={null}>
+                <BottomNav />
+              </Suspense>
             </RealtimeProvider>
           </QueryProvider>
         </MotionProvider>

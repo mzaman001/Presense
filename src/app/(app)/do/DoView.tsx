@@ -6,6 +6,7 @@ import { useUserId } from "@/components/providers/SessionProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 import React, {
+  Suspense,
   use,
   useEffect,
   useState,
@@ -113,55 +114,63 @@ const Column = React.memo(
     fetchTasks: () => void;
     newTaskIds: Set<string>;
   }) => (
-    <section aria-label={title} className="min-w-0 flex-1">
-      {/* Section header: quiet, Things-style — tinted icon, title, count. */}
-      <div className="mb-2.5 flex h-7 items-center gap-2 px-1">
-        <Icon
-          aria-hidden="true"
-          className="h-3.5 w-3.5"
-          style={{ color: accent }}
-        />
-        <h2 className="text-[length:var(--text-ui)] font-semibold text-[var(--text-1)]">
-          {title}
-        </h2>
-        {colTasks.length > 0 && (
-          <span className="text-[length:var(--text-meta)] text-[var(--text-3)] tabular-nums">
-            {colTasks.length}
-          </span>
-        )}
-      </div>
-      <div className="space-y-2">
-        <AnimatePresence mode="popLayout">
-          {colTasks.length === 0 ? (
-            <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-subtle)] py-6 text-center text-[length:var(--text-ui)] text-[var(--text-3)]">
-              Nothing here
-            </div>
-          ) : (
-            colTasks.map((t) => (
-              <m.div
-                key={t.id}
-                layout
-                initial={
-                  newTaskIds.has(t.id)
-                    ? { opacity: 0, y: -12, scale: 0.97 }
-                    : false
-                }
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-              >
-                <TaskCard
-                  task={t}
-                  completing={completing}
-                  completeTask={completeTask}
-                  openEditPanel={openEditPanel}
-                  fetchTasks={fetchTasks}
-                />
-              </m.div>
-            ))
+    // Its own Suspense boundary, so each section's cards hydrate as a
+    // separate task rather than all in one long one. Never suspends; the
+    // server HTML is unchanged.
+    <Suspense fallback={null}>
+      <section aria-label={title} className="min-w-0 flex-1">
+        {/* Section header: quiet, Things-style — tinted icon, title, count. */}
+        <div className="mb-2.5 flex h-7 items-center gap-2 px-1">
+          <Icon
+            aria-hidden="true"
+            className="h-3.5 w-3.5"
+            style={{ color: accent }}
+          />
+          <h2 className="text-[length:var(--text-ui)] font-semibold text-[var(--text-1)]">
+            {title}
+          </h2>
+          {colTasks.length > 0 && (
+            <span className="text-[length:var(--text-meta)] text-[var(--text-3)] tabular-nums">
+              {colTasks.length}
+            </span>
           )}
-        </AnimatePresence>
-      </div>
-    </section>
+        </div>
+        <div className="space-y-2">
+          <AnimatePresence mode="popLayout">
+            {colTasks.length === 0 ? (
+              <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-subtle)] py-6 text-center text-[length:var(--text-ui)] text-[var(--text-3)]">
+                Nothing here
+              </div>
+            ) : (
+              colTasks.map((t) => (
+                <m.div
+                  key={t.id}
+                  layout
+                  initial={
+                    newTaskIds.has(t.id)
+                      ? { opacity: 0, y: -12, scale: 0.97 }
+                      : false
+                  }
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    duration: 0.25,
+                    ease: [0.25, 0.46, 0.45, 0.94],
+                  }}
+                >
+                  <TaskCard
+                    task={t}
+                    completing={completing}
+                    completeTask={completeTask}
+                    openEditPanel={openEditPanel}
+                    fetchTasks={fetchTasks}
+                  />
+                </m.div>
+              ))
+            )}
+          </AnimatePresence>
+        </div>
+      </section>
+    </Suspense>
   ),
 );
 Column.displayName = "Column";
