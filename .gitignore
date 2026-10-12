@@ -71,6 +71,9 @@ USER.md
 docs/AGENT_PROMPT.md
 
 lh-authed-report.json
+# Session cookie for the test account, written by lighthouse-authed.mjs and
+# left behind if a run is interrupted.
+.lh-headers.tmp.json
 .superpowers/
 .worktrees/
 

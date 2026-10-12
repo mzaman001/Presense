@@ -3,13 +3,12 @@
 import React, { use, useState, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserId } from "@/components/providers/SessionProvider";
-import { m, AnimatePresence } from "framer-motion";
+import { m } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
 import {
   Search,
   Plus,
-  Loader2,
   Clock,
   AlertCircle,
   MapPin,

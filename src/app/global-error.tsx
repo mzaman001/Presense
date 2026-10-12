@@ -132,6 +132,9 @@ export default function GlobalError({
               style={{ display: "flex", gap: "10px", justifyContent: "center" }}
             >
               <button
+                // A full load on purpose: the root layout failed, so a client-side
+                // navigation would reuse the broken tree.
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                 onClick={() => (window.location.href = "/")}
                 style={{
                   flex: 1,
