@@ -13,6 +13,13 @@ import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useVisualViewport } from "@/hooks/useVisualViewport";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import {
+  backdropMotion,
+  settleMotion,
+  softSheetMotion,
+  swipedSheetExit,
+} from "@/lib/panel-motion";
 
 interface SheetProps {
   isOpen: boolean;
@@ -54,6 +61,18 @@ export function Sheet({
   // renders this sheet; the sheet then closes like it does for isOpen=false.
   const isPresent = useIsPresent();
   useBodyScrollLock(isOpen);
+  // A bottom sheet on phones rises a little and fades in; the centred card
+  // on wider screens settles into place (src/lib/panel-motion.ts).
+  const isWide = useMediaQuery("(min-width: 768px)");
+  const motion = isWide ? settleMotion : softSheetMotion;
+  // Swiped down: the exit keeps going the way the finger went, instead of
+  // the short sink, which would pull a far-dragged sheet back up.
+  const [swiped, setSwiped] = useState(false);
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) setSwiped(false);
+  }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -88,10 +107,7 @@ export function Sheet({
       {isOpen && isPresent && (
         <>
           <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.16 } }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            {...backdropMotion}
             onClick={onClose}
             className="fixed inset-0 z-[100] bg-[var(--bg-overlay)]"
           />
@@ -108,15 +124,14 @@ export function Sheet({
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={{ top: 0, bottom: 0.4 }}
               onDragEnd={(e, info) => {
-                if (info.offset.y > 100 || info.velocity.y > 500) onClose();
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  setSwiped(true);
+                  onClose();
+                }
               }}
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{
-                y: "100%",
-                transition: { duration: 0.22, ease: [0.55, 0, 0.75, 0.2] },
-              }}
-              transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+              initial={motion.initial}
+              animate={motion.animate}
+              exit={swiped ? swipedSheetExit : motion.exit}
               className={cn(
                 "modal pointer-events-auto flex max-h-[92dvh] w-full flex-col overflow-hidden",
                 "rounded-t-[var(--sheet-radius)] rounded-b-none md:rounded-[var(--radius-xl)]",
