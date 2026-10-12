@@ -31,7 +31,7 @@ import { createClient, safeMutate } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 import { Task } from "@/types/calendar";

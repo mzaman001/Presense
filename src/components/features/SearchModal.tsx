@@ -20,7 +20,6 @@ import { useDebounce } from "use-debounce";
 import { useIsPresent } from "framer-motion";
 import { cn, ilikeContains } from "@/lib/utils";
 import { searchThreads, snippetAround } from "@/lib/think-threads";
-import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { Sheet } from "@/components/ui/Sheet";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -55,7 +54,6 @@ export function SearchModal() {
   const inputRef = useRef<HTMLInputElement>(null);
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
-  const dialogRef = useDialogFocus(isSearchModalOpen);
   const haptics = useHaptics();
 
   // Mounted only while open, so there is no closed state to reset — just

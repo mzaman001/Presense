@@ -1,20 +1,13 @@
 "use client";
 
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { format, addDays, isSameDay, isToday, parseISO } from "date-fns";
+import { format, addDays, isToday, parseISO } from "date-fns";
 import { CalendarTaskChip } from "./CalendarTaskChip";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 
 import { Task } from "@/types/calendar";
-import { useAppStore } from "@/store/useAppStore";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import { dateOnlyDeadline, isDateOnly } from "@/lib/date-only";
 
@@ -102,13 +95,11 @@ function DroppableSlot({
   id,
   hour,
   dayIndex,
-  dayDate,
   onClick,
 }: {
   id: string;
   hour: number;
   dayIndex: number;
-  dayDate: Date;
   onClick: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -392,7 +383,6 @@ export function WeekView({
                   id={`slot-${format(day, "yyyy-MM-dd")}-${String(hour).padStart(2, "0")}-00`}
                   hour={hour}
                   dayIndex={i}
-                  dayDate={day}
                   onClick={() => handleSlotClick(day, hour)}
                 />
               ))}

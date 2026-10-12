@@ -20,6 +20,16 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
+    // A leading underscore marks a parameter or variable as deliberately
+    // unused (a mock's signature, an argument kept for the API's shape).
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
+  {
     // CommonJS Node scripts (run directly, no bundler) — require() is correct here.
     files: ["scripts/**/*.js"],
     rules: {

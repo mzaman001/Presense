@@ -58,7 +58,7 @@ const mockRedirect = vi.fn((url) => {
   };
 });
 
-const mockNext = vi.fn((reqInfo) => {
+const mockNext = vi.fn((_reqInfo?: unknown) => {
   const cookieStore = new Map<string, any>();
   return {
     status: 200,
@@ -94,7 +94,6 @@ const mockSupabaseClient = {
   },
 };
 
-let cookiesSetInClientCallback: any[] = [];
 const mockCreateServerClient = vi.fn((url, key, config) => {
   // Store the config so we can simulate cookie operations
   mockCreateServerClientConfig = config;
@@ -113,7 +112,7 @@ function createMockRequest(
   pathname: string,
   searchParamsStr = "",
   initialCookies: any[] = [],
-  initialHeaders = new Map(),
+  _initialHeaders = new Map(),
 ) {
   const cookieMap = new Map<string, any>();
   initialCookies.forEach((c) => cookieMap.set(c.name, c));
@@ -162,7 +161,6 @@ describe("Edge Auth Middleware Challenger Verification Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreateServerClientConfig = null;
-    cookiesSetInClientCallback = [];
   });
 
   describe("Scenario 1: Malformed or Missing Auth Headers & Cookies", () => {
