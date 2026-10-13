@@ -32,12 +32,15 @@ export const SearchModal = withPreload(
   () => import("@/components/features/SearchModal"),
 );
 
-export const SettingsModal = dynamic(
-  () =>
-    import("@/components/features/SettingsModal").then((m) => ({
-      default: m.SettingsModal,
-    })),
-  { ssr: false, loading: () => null },
+export const SettingsModal = withPreload(
+  dynamic(
+    () =>
+      import("@/components/features/SettingsModal").then((m) => ({
+        default: m.SettingsModal,
+      })),
+    { ssr: false, loading: () => null },
+  ),
+  () => import("@/components/features/SettingsModal"),
 );
 
 export const StuckTaskHelp = dynamic(
@@ -55,6 +58,14 @@ export const PomodoroTimer = dynamic(
     })),
   { ssr: false, loading: () => null },
 );
+
+/**
+ * Fetch Settings' code when the pointer reaches (or focus lands on) a button
+ * that opens it, so its first open doesn't wait for the chunk. Not at idle
+ * after load: fetching and evaluating the panels then cost ~100 ms of TBT on
+ * /do and Home (measured 2026-10-13), for no earlier first paint.
+ */
+export const preloadSettingsModal = () => SettingsModal.preload();
 
 /**
  * Mounts each modal only while it is open.

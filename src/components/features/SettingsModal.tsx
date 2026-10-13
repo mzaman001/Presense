@@ -37,6 +37,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { useDebounce } from "use-debounce";
 import { cn } from "@/lib/utils";
+import { backdropMotion, settleMotion } from "@/lib/panel-motion";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ModalErrorBoundary } from "@/components/ui/ModalErrorBoundary";
 import { useForm, useWatch } from "react-hook-form";
@@ -1279,24 +1280,15 @@ function SettingsModalContent({
           one, which keeps Settings mounted until they've finished. */}
       <>
         <m.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          {...backdropMotion}
           className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)] p-0 md:p-6"
           onClick={() => onClose(false)}
         >
           <m.div
             ref={dialogRef}
-            initial={{ opacity: 0, scale: 0.98, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{
-              opacity: 0,
-              scale: 0.98,
-              y: 6,
-              transition: { duration: 0.14 },
-            }}
-            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            // Settles into place on every screen: full-screen on phones, a
+            // centred dialog on wider ones (src/lib/panel-motion.ts).
+            {...settleMotion}
             className="modal relative flex h-[100dvh] min-h-0 w-full max-w-[880px] flex-col overflow-hidden md:h-[min(760px,88vh)] md:flex-row md:rounded-[var(--radius-xl)]"
             onClick={(e) => e.stopPropagation()}
             role="dialog"

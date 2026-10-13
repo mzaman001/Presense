@@ -56,7 +56,11 @@ function Providers({ children }: { children: React.ReactNode }) {
 
 describe("modal exit animations", () => {
   beforeEach(() => {
-    window.matchMedia = vi.fn(() => ({ matches: false })) as never;
+    window.matchMedia = vi.fn(() => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as never;
     useAppStore.getState().setUserSettings({ ...storedSettings });
   });
 
