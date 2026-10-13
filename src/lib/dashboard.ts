@@ -149,6 +149,15 @@ export async function fetchDashboardRows(
  * hydrating render, then the device's (see display-clock). Days and weeks
  * are calendar dates in that zone ("YYYY-MM-DD"), weeks starting Monday.
  */
+/** Days this week the morning plan was done: the header's ritual badge. */
+export function plannedDaysIn(rows: DashboardRows, clock: Clock) {
+  const keyOf = (iso: string) => dateKeyIn(new Date(iso), clock.timeZone);
+  return daysPlannedInWeekEnding(
+    rows.ritualCompletedAt.map(keyOf),
+    dateKeyIn(new Date(clock.now), clock.timeZone),
+  );
+}
+
 export function summarizeDashboard(rows: DashboardRows, clock: Clock) {
   const now = clock.now;
   const zone = clock.timeZone;
@@ -227,10 +236,7 @@ export function summarizeDashboard(rows: DashboardRows, clock: Clock) {
       ),
     ),
     dayCounts,
-    plannedDays: daysPlannedInWeekEnding(
-      rows.ritualCompletedAt.map(keyOf),
-      todayKey,
-    ),
+    plannedDays: plannedDaysIn(rows, clock),
     locationsCount: rows.locationsCount,
   };
 }

@@ -1,8 +1,6 @@
-import { Suspense } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase-server";
 import { fetchDashboardRows } from "@/lib/dashboard";
-import { PageSkeleton } from "@/components/ui/Skeleton";
 import { getUserSettings } from "@/lib/user-settings-server";
 import { formatTimeOfDay, greetingFor, hourIn } from "@/lib/greeting";
 import { HomeView, type HomeHeader } from "./HomeView";
@@ -56,9 +54,7 @@ async function loadHeader(): Promise<{
 
 export default async function HomePage() {
   const { header, clock } = await loadHeader();
-  return (
-    <Suspense fallback={<PageSkeleton count={4} type="card" />}>
-      <HomeView rowsPromise={loadRows()} header={header} clock={clock} />
-    </Suspense>
-  );
+  // HomeView doesn't suspend as a whole: it draws its header at once and
+  // waits on the rows inside its own boundaries.
+  return <HomeView rowsPromise={loadRows()} header={header} clock={clock} />;
 }
