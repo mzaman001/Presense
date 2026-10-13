@@ -2,7 +2,7 @@
 
 import { removeTaskFromCaches, type TaskRecord } from "@/lib/task-cache";
 import { useUserId } from "@/components/providers/SessionProvider";
-import { use, useState, useMemo } from "react";
+import { Suspense, use, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Icon as UiIcon } from "@/components/ui/Icon";
 import {
   fetchDashboardRows,
+  plannedDaysIn,
   summarizeDashboard,
   type DashboardRows,
 } from "@/lib/dashboard";
@@ -146,9 +147,11 @@ export interface HomeHeader {
 }
 
 /**
- * Reads the rows the server streamed on a cold load; a return visit renders
- * straight from the client cache. Split from HomeDashboard so the hooks
- * below never sit after a suspending use() (see DoView).
+ * The header and the tip need no rows, so they paint with the page; only the
+ * dashboard body (and the ritual badge) wait for the rows the server
+ * streams. When the whole view waited, Home's largest paint was the tip,
+ * held back until every dashboard query had returned (3.6–4.5 s measured
+ * locally on 2026-10-13, the skeleton showing until then).
  */
 export function HomeView({
   rowsPromise,
@@ -160,10 +163,6 @@ export function HomeView({
   /** The saved timezone and request time the server drew Home with. */
   clock: Required<ListClock>;
 }) {
-  const queryClient = useQueryClient();
-  const serverRows = queryClient.getQueryData<DashboardRows>(["dashboard"])
-    ? undefined
-    : (use(rowsPromise) ?? undefined);
   // Home is drawn on the server in the saved timezone; the browser's first
   // render reuses that clock so hydration matches, then follows the device
   // (or the user's chosen zone when automatic timezone is off).
@@ -176,21 +175,178 @@ export function HomeView({
   const clock = useLiveClock(serverClock, () =>
     automatic || !savedZone ? deviceTimeZone() : savedZone,
   );
+  const [showReview, setShowReview] = useState(false);
   return (
     <DisplayClockProvider clock={clock}>
-      <HomeDashboard serverRows={serverRows} header={header} clock={clock} />
+      <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-300">
+        <HomeHeaderBar
+          header={header}
+          clock={clock}
+          showReview={showReview}
+          onToggleReview={() => setShowReview((shown) => !shown)}
+          badge={
+            <Suspense fallback={null}>
+              <StreamedRitualBadge rowsPromise={rowsPromise} clock={clock} />
+            </Suspense>
+          }
+        />
+
+        <ContextualTip
+          id="home"
+          title="You're all set"
+          description={`Quick Capture takes anything, typed, spoken or shared from another app. Your Evening review opens at ${header.eveningReview}. And there are no streaks here: miss a day and nothing breaks.`}
+        />
+
+        <Suspense fallback={<PageSkeleton count={4} type="card" />}>
+          <StreamedDashboard
+            rowsPromise={rowsPromise}
+            clock={clock}
+            showReview={showReview}
+          />
+        </Suspense>
+      </div>
     </DisplayClockProvider>
+  );
+}
+
+/**
+ * The rows the server streamed on a cold load, or undefined when the client
+ * cache already has them (a return visit renders from it at once).
+ */
+function useStreamedRows(rowsPromise: Promise<DashboardRows | null>) {
+  const queryClient = useQueryClient();
+  return queryClient.getQueryData<DashboardRows>(["dashboard"])
+    ? undefined
+    : (use(rowsPromise) ?? undefined);
+}
+
+function useDashboardRows(serverRows: DashboardRows | undefined) {
+  const userId = useUserId();
+  return useQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => fetchDashboardRows(createClient(), userId),
+    initialData: serverRows,
+  });
+}
+
+// The two Streamed* wrappers only resolve the rows and render a child with
+// plain data, so no hook sits after a suspending use() (see DoView).
+function StreamedDashboard({
+  rowsPromise,
+  clock,
+  showReview,
+}: {
+  rowsPromise: Promise<DashboardRows | null>;
+  clock: ListClock;
+  showReview: boolean;
+}) {
+  const serverRows = useStreamedRows(rowsPromise);
+  return (
+    <HomeDashboard
+      serverRows={serverRows}
+      clock={clock}
+      showReview={showReview}
+    />
+  );
+}
+
+function StreamedRitualBadge({
+  rowsPromise,
+  clock,
+}: {
+  rowsPromise: Promise<DashboardRows | null>;
+  clock: ListClock;
+}) {
+  const serverRows = useStreamedRows(rowsPromise);
+  return <HomeRitualBadge serverRows={serverRows} clock={clock} />;
+}
+
+function HomeRitualBadge({
+  serverRows,
+  clock,
+}: {
+  serverRows: DashboardRows | undefined;
+  clock: ListClock;
+}) {
+  const userSettings = useAppStore((s) => s.userSettings);
+  const { data: rows } = useDashboardRows(serverRows);
+  if (!rows) return null;
+  return (
+    <RitualStatusBadge
+      userSettings={userSettings}
+      plannedDays={plannedDaysIn(rows, clock)}
+    />
+  );
+}
+
+function HomeHeaderBar({
+  header,
+  clock,
+  showReview,
+  onToggleReview,
+  badge,
+}: {
+  header: HomeHeader;
+  clock: ListClock;
+  showReview: boolean;
+  onToggleReview: () => void;
+  badge: React.ReactNode;
+}) {
+  const displayName = useAppStore((s) => s.userSettings?.display_name);
+  // From the page's clock: the server's (the same as header.greeting) on the
+  // first render, so it matches the HTML, then the device's.
+  const greeting = greetingFor(hourIn(clock.timeZone, new Date(clock.now)));
+  const firstName = displayName?.split(" ")[0] || header.firstName;
+  // Follows the greeting text (not the clock) so the server HTML and the
+  // first client render always pick the same glyph.
+  const GreetingGlyph =
+    greeting === "Good morning"
+      ? Sunrise
+      : greeting === "Good afternoon"
+        ? Sun
+        : Moon;
+  return (
+    <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="space-y-2">
+        <h1 className="text-page-greeting font-heading text-[var(--text-1)]">
+          <GreetingGlyph
+            aria-hidden="true"
+            strokeWidth={1.5}
+            className="mr-2.5 inline-block size-[0.72em] -translate-y-[0.1em] text-[var(--accent-text)]"
+          />
+          {greeting}
+          <span className="text-[var(--text-3)]">
+            {firstName ? `, ${firstName}` : ", you"}.
+          </span>
+        </h1>
+        {/* Height reserved: the badge needs the data, and appearing
+            later must not push the page down. */}
+        <div className="min-h-9">{badge}</div>
+      </div>
+      <button
+        onClick={onToggleReview}
+        className={cn(
+          "-ml-3 flex min-h-9 shrink-0 items-center gap-1.5 self-start rounded-lg px-3 text-[length:var(--text-ui)] font-medium whitespace-nowrap transition-colors sm:ml-0 sm:self-auto",
+          showReview
+            ? "text-[var(--color-text-1)]"
+            : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]",
+        )}
+      >
+        <UiIcon className="h-3.5 w-3.5" icon={CalendarDays} />
+        {showReview ? "Back to Dashboard" : "Week in Review"}
+      </button>
+    </header>
   );
 }
 
 function HomeDashboard({
   serverRows,
-  header,
   clock,
+  showReview,
 }: {
   serverRows: DashboardRows | undefined;
-  header: HomeHeader;
   clock: ListClock;
+  showReview: boolean;
 }) {
   const userId = useUserId();
   const supabase = useMemo(() => createClient(), []);
@@ -204,7 +360,6 @@ function HomeDashboard({
 
   const [taskToEdit, setTaskToEdit] = useState<TaskItem | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
-  const [showReview, setShowReview] = useState(false);
   // FEAT-01 (Aug 17, 2026): optional weekly reflection, persisted
   // per week into a pinned "Weekly Note" thread — same storage
   // pattern as RitualOverlay's daily note.
@@ -212,11 +367,7 @@ function HomeDashboard({
   const [completing, setCompleting] = useState<string | null>(null);
   const haptics = useHaptics();
 
-  const { data: rows, isLoading: rowsLoading } = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: () => fetchDashboardRows(supabase, userId),
-    initialData: serverRows,
-  });
+  const { data: rows, isLoading: rowsLoading } = useDashboardRows(serverRows);
   // Week, day and planned-day boundaries in the clock's timezone, so the
   // server can draw Home with its data (it used to wait for hydration).
   const dashboardData = useMemo(
@@ -382,20 +533,6 @@ function HomeDashboard({
 
   const primaryTask = tasks.length > 0 ? tasks[0] : null;
 
-  // From the page's clock: the server's (the same as header.greeting) on the
-  // first render, so it matches the HTML, then the device's.
-  const greeting = greetingFor(hourIn(clock.timeZone, new Date(clock.now)));
-  const firstName =
-    userSettings?.display_name?.split(" ")[0] || header.firstName;
-  // Follows the greeting text (not the clock) so the server HTML and the
-  // first client render always pick the same glyph.
-  const GreetingGlyph =
-    greeting === "Good morning"
-      ? Sunrise
-      : greeting === "Good afternoon"
-        ? Sun
-        : Moon;
-
   let heroReason = "Earliest deadline";
   if (primaryTask) {
     // Dates as "Oct 3" in the page's timezone: the browser's own locale
@@ -416,650 +553,597 @@ function HomeDashboard({
   }
   return (
     <>
-      <div className="animate-in fade-in slide-in-from-bottom-4 mx-auto max-w-4xl space-y-6 duration-300">
-        <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-page-greeting font-heading text-[var(--text-1)]">
-              <GreetingGlyph
-                aria-hidden="true"
-                strokeWidth={1.5}
-                className="mr-2.5 inline-block size-[0.72em] -translate-y-[0.1em] text-[var(--accent-text)]"
-              />
-              {greeting}
-              <span className="text-[var(--text-3)]">
-                {firstName ? `, ${firstName}` : ", you"}.
+      {loading ? (
+        <PageSkeleton count={4} type="card" />
+      ) : showReview ? (
+        <div className="space-y-6">
+          <GlassCard className="flex items-center gap-3 p-4">
+            <UiIcon
+              className="h-4 w-4 text-[var(--accent)]"
+              icon={CalendarDays}
+            />
+            <div className="text-sm font-medium text-[var(--color-text-1)]">
+              {(() => {
+                const { mon, sun } = weekEnds();
+                return `${formatShortDate(mon, "UTC")} – ${formatShortDateWithYear(sun, "UTC")}`;
+              })()}
+              <span className="ml-2 font-normal text-[var(--color-text-3)]">
+                Week in Review
               </span>
-            </h1>
-            {/* Height reserved: the badge needs the data, and appearing
-                later must not push the page down. */}
-            <div className="min-h-9">
-              {!loading && (
-                <RitualStatusBadge
-                  userSettings={userSettings}
-                  plannedDays={plannedDays}
-                />
-              )}
             </div>
-          </div>
-          <button
-            onClick={() => setShowReview(!showReview)}
-            className={cn(
-              "-ml-3 flex min-h-9 shrink-0 items-center gap-1.5 self-start rounded-lg px-3 text-[length:var(--text-ui)] font-medium whitespace-nowrap transition-colors sm:ml-0 sm:self-auto",
-              showReview
-                ? "text-[var(--color-text-1)]"
-                : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)]",
-            )}
-          >
-            <UiIcon className="h-3.5 w-3.5" icon={CalendarDays} />
-            {showReview ? "Back to Dashboard" : "Week in Review"}
-          </button>
-        </header>
-
-        <ContextualTip
-          id="home"
-          title="You're all set"
-          description={`Quick Capture takes anything, typed, spoken or shared from another app. Your Evening review opens at ${header.eveningReview}. And there are no streaks here: miss a day and nothing breaks.`}
-        />
-
-        {loading ? (
-          <PageSkeleton count={4} type="card" />
-        ) : showReview ? (
-          <div className="space-y-6">
-            <GlassCard className="flex items-center gap-3 p-4">
-              <UiIcon
-                className="h-4 w-4 text-[var(--accent)]"
-                icon={CalendarDays}
-              />
-              <div className="text-sm font-medium text-[var(--color-text-1)]">
-                {(() => {
-                  const { mon, sun } = weekEnds();
-                  return `${formatShortDate(mon, "UTC")} – ${formatShortDateWithYear(sun, "UTC")}`;
-                })()}
-                <span className="ml-2 font-normal text-[var(--color-text-3)]">
-                  Week in Review
-                </span>
-              </div>
-            </GlassCard>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {/* FEAT-01: this vs last week, neutral tone — a dip is
+          </GlassCard>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* FEAT-01: this vs last week, neutral tone — a dip is
                   information, never a rebuke. */}
-              <GlassCard className="p-5">
-                <div className="text-xs tracking-wider text-[var(--color-text-3)] uppercase">
-                  Tasks Completed
-                </div>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-light text-[var(--color-text-1)]">
-                    {doneTasks.length}
-                  </span>
-                  <span className="text-xs text-[var(--color-text-3)]">
-                    {doneTasks.length > doneTasksLastWeek.length
-                      ? `${doneTasks.length - doneTasksLastWeek.length} more than last week`
-                      : doneTasks.length < doneTasksLastWeek.length
-                        ? `${doneTasksLastWeek.length - doneTasks.length} fewer than last week`
-                        : "same as last week"}
-                  </span>
-                </div>
-              </GlassCard>
-              <GlassCard className="p-5">
-                <div className="text-xs tracking-wider text-[var(--color-text-3)] uppercase">
-                  Focus Time
-                </div>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-light text-[var(--color-text-1)]">
-                    {Math.floor(focusMinutesThisWeek / 60)}h{" "}
-                    {focusMinutesThisWeek % 60}m
-                  </span>
-                  <span className="text-xs text-[var(--color-text-3)]">
-                    {focusMinutesThisWeek > focusMinutesLastWeek
-                      ? `${focusMinutesThisWeek - focusMinutesLastWeek} min more than last week`
-                      : focusMinutesThisWeek < focusMinutesLastWeek
-                        ? `${focusMinutesLastWeek - focusMinutesThisWeek} min fewer than last week`
-                        : "same as last week"}
-                  </span>
-                </div>
-              </GlassCard>
-            </div>
             <GlassCard className="p-5">
-              <div className="mb-3 text-xs tracking-wider text-[var(--color-text-3)] uppercase">
-                When you got things done
+              <div className="text-xs tracking-wider text-[var(--color-text-3)] uppercase">
+                Tasks Completed
               </div>
-              <div className="flex items-end gap-1.5">
-                {dayCounts.map((count, i) => {
-                  const labels = [
-                    "Mon",
-                    "Tue",
-                    "Wed",
-                    "Thu",
-                    "Fri",
-                    "Sat",
-                    "Sun",
-                  ];
-                  const max = Math.max(1, ...dayCounts);
-                  const h = Math.max(4, Math.round((count / max) * 56));
-                  return (
-                    <div
-                      key={labels[i]}
-                      className="flex flex-1 flex-col items-center gap-1.5"
-                    >
-                      <div
-                        className="w-full rounded-sm bg-[var(--accent)]/25"
-                        style={{ height: count > 0 ? h : 4 }}
-                      />
-                      <span className="text-caption text-[var(--text-3)]">
-                        {labels[i]}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              {doneTasks.length === 0 && (
-                <p className="mt-3 text-xs text-[var(--color-text-3)]">
-                  No completions this week yet — data appears here as tasks are
-                  finished.
-                </p>
-              )}
-            </GlassCard>
-            <GlassCard className="p-5">
-              <div className="mb-3 text-xs tracking-wider text-[var(--color-text-3)] uppercase">
-                Reflection{" "}
-                <span className="font-normal tracking-normal normal-case">
-                  (optional — write if you want to)
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-3xl font-light text-[var(--color-text-1)]">
+                  {doneTasks.length}
+                </span>
+                <span className="text-xs text-[var(--color-text-3)]">
+                  {doneTasks.length > doneTasksLastWeek.length
+                    ? `${doneTasks.length - doneTasksLastWeek.length} more than last week`
+                    : doneTasks.length < doneTasksLastWeek.length
+                      ? `${doneTasksLastWeek.length - doneTasks.length} fewer than last week`
+                      : "same as last week"}
                 </span>
               </div>
-              <textarea
-                value={weeklyReflection}
-                onChange={(e) => setWeeklyReflection(e.target.value)}
-                placeholder="What went well this week? What would you like to change?"
-                rows={3}
-                className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:border-[var(--accent)]/50 focus:outline-none"
-              />
-              <div className="mt-3 flex justify-end">
-                <button
-                  onClick={saveWeeklyReflection}
-                  disabled={!weeklyReflection.trim()}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                    weeklyReflection.trim()
-                      ? "bg-[var(--accent)]/15 text-[var(--accent)] hover:bg-[var(--accent)]/25"
-                      : "cursor-not-allowed text-[var(--color-text-3)]/50",
-                  )}
-                >
-                  <UiIcon className="h-3.5 w-3.5" icon={Save} /> Save reflection
-                </button>
+            </GlassCard>
+            <GlassCard className="p-5">
+              <div className="text-xs tracking-wider text-[var(--color-text-3)] uppercase">
+                Focus Time
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-3xl font-light text-[var(--color-text-1)]">
+                  {Math.floor(focusMinutesThisWeek / 60)}h{" "}
+                  {focusMinutesThisWeek % 60}m
+                </span>
+                <span className="text-xs text-[var(--color-text-3)]">
+                  {focusMinutesThisWeek > focusMinutesLastWeek
+                    ? `${focusMinutesThisWeek - focusMinutesLastWeek} min more than last week`
+                    : focusMinutesThisWeek < focusMinutesLastWeek
+                      ? `${focusMinutesLastWeek - focusMinutesThisWeek} min fewer than last week`
+                      : "same as last week"}
+                </span>
               </div>
             </GlassCard>
-            <h2 className="mb-4 text-xl font-semibold text-[var(--color-text-1)]">
-              Completed This Week
-            </h2>
-            {doneTasks.length === 0 ? (
-              <GlassCard className="border-dashed p-8 text-center text-[var(--color-text-3)]">
-                No tasks completed in the last 7 days.
-              </GlassCard>
-            ) : (
-              /* @todo: Untyped usage justified per TOOL-01 */
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              doneTasks.map((task: any) => (
-                <GlassCard
-                  key={task.id}
-                  className="flex items-center justify-between p-4 opacity-80"
-                >
-                  <div>
-                    <h4 className="text-card-title text-[var(--text-1)] line-through">
-                      {task.title}
-                    </h4>
-                    <p className="mt-0.5 text-xs text-[var(--color-text-3)]">
-                      Completed{" "}
-                      {task.completed_at
-                        ? formatShortDate(
-                            new Date(task.completed_at),
-                            clock.timeZone,
-                          )
-                        : ""}
-                    </p>
-                  </div>
-                  <UiIcon
-                    className="h-5 w-5 text-[var(--color-do)]"
-                    icon={CheckCircle2}
-                  />
-                </GlassCard>
-              ))
-            )}
           </div>
-        ) : (
-          <>
-            {/* Inbox banner removed, using Inbox Section below Up Next instead */}
-
-            {/* Focus Now Hero Card */}
-            {primaryTask ? (
-              <GlassCard
-                variant="hero"
-                className="relative overflow-hidden p-5 sm:p-8"
-              >
-                <div className="relative z-10 flex h-full flex-col items-center justify-center px-1 py-6 text-center sm:p-10">
-                  <span className="text-label mb-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1.5 text-[var(--accent-text)]">
-                    <Zap
-                      aria-hidden="true"
-                      className="size-3.5"
-                      strokeWidth={2}
-                    />
-                    Focus now
-                  </span>
-                  <h2 className="font-heading mb-1 text-[length:var(--text-title-3xl)] leading-tight font-medium text-balance text-[var(--text-1)]">
-                    {primaryTask.title}
-                  </h2>
-                  <p className="text-label mb-4 text-[var(--text-3)]">
-                    {heroReason}
-                  </p>
-                  <p className="mb-6 text-lg text-[var(--text-2)]">
-                    {primaryTask.first_step}
-                  </p>
-
-                  <Button
-                    variant="primary"
-                    onClick={() =>
-                      setActiveTimer({
-                        taskId: primaryTask.id,
-                        taskTitle: primaryTask.title,
-                        firstStep: primaryTask.first_step,
-                      })
-                    }
-                    className=""
-                  >
-                    <UiIcon
-                      className="h-4 w-4 fill-[currentColor]"
-                      icon={Play}
-                    />
-                    <span>Start session</span>
-                  </Button>
-                  <button
-                    onClick={async () => {
-                      const tomorrow = new Date();
-                      tomorrow.setDate(tomorrow.getDate() + 1);
-
-                      const snoozedTask = primaryTask;
-
-                      // Save current states for rollback
-                      const previousDashboard = queryClient.getQueryData([
-                        "dashboard",
-                      ]);
-                      const previousTasks = queryClient.getQueryData(["tasks"]);
-
-                      // Optimistic UI updates
-                      /* @todo: Untyped usage justified per TOOL-01 */
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      queryClient.setQueryData(["dashboard"], (old: any) => {
-                        if (!old) return old;
-                        return {
-                          ...old,
-                          /* @todo: Untyped usage justified per TOOL-01 */
-                          tasks: old.tasks.filter(
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            (t: any) => t.id !== snoozedTask.id,
-                          ),
-                        };
-                      });
-                      /* @todo: Untyped usage justified per TOOL-01 */
-                      queryClient.setQueryData(
-                        ["tasks"],
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (old: any[] | undefined) =>
-                          old?.filter((t) => t.id !== snoozedTask.id) ?? [],
-                      );
-
-                      try {
-                        useAppStore.getState().markMutation();
-                        const { error } = await supabase
-                          .from("items")
-                          .update({ snoozed_until: tomorrow.toISOString() })
-                          .eq("id", snoozedTask.id);
-                        if (error) throw error;
-
-                        queryClient.invalidateQueries({
-                          queryKey: ["dashboard"],
-                        });
-                        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-
-                        toast.success("Snoozed until tomorrow", {
-                          duration: 8000,
-                          action: {
-                            label: "Undo",
-                            onClick: async () => {
-                              const currentDashboard = queryClient.getQueryData(
-                                ["dashboard"],
-                              );
-                              const currentTasks = queryClient.getQueryData([
-                                "tasks",
-                              ]);
-
-                              // Optimistic restore (put task back)
-                              /* @todo: Untyped usage justified per TOOL-01 */
-                              queryClient.setQueryData(
-                                ["dashboard"],
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                (old: any) => {
-                                  if (!old) return old;
-                                  return {
-                                    ...old,
-                                    tasks: [
-                                      ...old.tasks,
-                                      { ...snoozedTask, snoozed_until: null },
-                                    ],
-                                  };
-                                },
-                              );
-                              /* @todo: Untyped usage justified per TOOL-01 */
-                              queryClient.setQueryData(
-                                ["tasks"],
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                (old: any[] | undefined) =>
-                                  old
-                                    ? [
-                                        ...old,
-                                        { ...snoozedTask, snoozed_until: null },
-                                      ]
-                                    : [],
-                              );
-
-                              try {
-                                useAppStore.getState().markMutation();
-                                const { error: undoError } = await supabase
-                                  .from("items")
-                                  .update({ snoozed_until: null })
-                                  .eq("id", snoozedTask.id);
-                                if (undoError) throw undoError;
-
-                                queryClient.invalidateQueries({
-                                  queryKey: ["dashboard"],
-                                });
-                                queryClient.invalidateQueries({
-                                  queryKey: ["tasks"],
-                                });
-                                toast.success("Snooze reversed");
-                              } catch {
-                                // Rollback undo
-                                queryClient.setQueryData(
-                                  ["dashboard"],
-                                  currentDashboard,
-                                );
-                                queryClient.setQueryData(
-                                  ["tasks"],
-                                  currentTasks,
-                                );
-                                toast.error("Failed to undo snooze");
-                              }
-                            },
-                          },
-                        });
-                      } catch {
-                        // Rollback snooze
-                        queryClient.setQueryData(
-                          ["dashboard"],
-                          previousDashboard,
-                        );
-                        queryClient.setQueryData(["tasks"], previousTasks);
-                        toast.error("Failed to snooze task");
-                      }
-                    }}
-                    className="mt-4 text-xs text-[var(--text-3)] underline decoration-dashed underline-offset-4 transition-colors hover:text-[var(--text-1)]"
-                  >
-                    Snooze until tomorrow
-                  </button>
-                  {/* Offered at the moment of putting it off again, never
-                      pushed: the stuck-task help (What's in the way?). */}
-                  {isStuck(primaryTask) && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        useAppStore.getState().setStuckHelpTask(primaryTask)
-                      }
-                      className="mt-4 ml-4 text-xs text-[var(--accent-text)] underline decoration-dotted underline-offset-4 transition-colors hover:text-[var(--accent-hot)]"
-                    >
-                      What&apos;s in the way?
-                    </button>
-                  )}
-                </div>
-              </GlassCard>
-            ) : (
-              <GlassCard className="font-heading p-10 text-center text-[length:var(--text-title-xl)] text-[var(--text-2)]">
-                No active tasks. Take a breath.
-              </GlassCard>
-            )}
-
-            {/* Bento 4-card overview — deliberately the lightest-weight row on
-                the page: small counters, muted (non-accent) icon tone, and
-                tight padding, so they read as minor context rather than
-                competing with the hero or the weekly-effort row below. */}
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              {[
-                {
-                  href: "/do",
-                  icon: CheckCircle2,
-                  value: activeTasksCount,
-                  label: "Active Tasks",
-                },
-                {
-                  href: null,
-                  icon: Sparkles,
-                  value: plannedDays,
-                  label: "of 7 days planned",
-                },
-                {
-                  href: "/think",
-                  icon: MessageSquare,
-                  value: threadsCount,
-                  label: "Open Threads",
-                },
-                {
-                  href: "/remember/locations",
-                  icon: MapPin,
-                  value: locationsCount,
-                  label: "Locations",
-                },
-              ].map((tile, i) => {
-                const card = (
-                  <GlassCard
-                    hoverable={!!tile.href}
-                    className="flex h-full flex-col justify-between p-4"
-                  >
-                    <UiIcon
-                      size={16}
-                      strokeWidth={1.5}
-                      className="mb-3 shrink-0 text-[var(--color-text-3)]"
-                      icon={tile.icon}
-                    />
-                    <div>
-                      <div className="font-heading text-[length:var(--text-title-2xl)] leading-none text-[var(--text-1)] tabular-nums">
-                        <AnimatedNumber value={tile.value} />
-                      </div>
-                      <div className="text-meta mt-1.5 text-[var(--text-3)]">
-                        {tile.label}
-                      </div>
-                    </div>
-                  </GlassCard>
-                );
+          <GlassCard className="p-5">
+            <div className="mb-3 text-xs tracking-wider text-[var(--color-text-3)] uppercase">
+              When you got things done
+            </div>
+            <div className="flex items-end gap-1.5">
+              {dayCounts.map((count, i) => {
+                const labels = [
+                  "Mon",
+                  "Tue",
+                  "Wed",
+                  "Thu",
+                  "Fri",
+                  "Sat",
+                  "Sun",
+                ];
+                const max = Math.max(1, ...dayCounts);
+                const h = Math.max(4, Math.round((count / max) * 56));
                 return (
-                  <m.div
-                    key={tile.label}
-                    className="h-full"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      delay: i * 0.05,
-                      duration: 0.2,
-                      ease: [0.25, 0.46, 0.45, 0.94],
-                    }}
+                  <div
+                    key={labels[i]}
+                    className="flex flex-1 flex-col items-center gap-1.5"
                   >
-                    {tile.href ? (
-                      <Link href={tile.href} className="block h-full">
-                        {card}
-                      </Link>
-                    ) : (
-                      card
-                    )}
-                  </m.div>
+                    <div
+                      className="w-full rounded-sm bg-[var(--accent)]/25"
+                      style={{ height: count > 0 ? h : 4 }}
+                    />
+                    <span className="text-caption text-[var(--text-3)]">
+                      {labels[i]}
+                    </span>
+                  </div>
                 );
               })}
             </div>
+            {doneTasks.length === 0 && (
+              <p className="mt-3 text-xs text-[var(--color-text-3)]">
+                No completions this week yet — data appears here as tasks are
+                finished.
+              </p>
+            )}
+          </GlassCard>
+          <GlassCard className="p-5">
+            <div className="mb-3 text-xs tracking-wider text-[var(--color-text-3)] uppercase">
+              Reflection{" "}
+              <span className="font-normal tracking-normal normal-case">
+                (optional — write if you want to)
+              </span>
+            </div>
+            <textarea
+              value={weeklyReflection}
+              onChange={(e) => setWeeklyReflection(e.target.value)}
+              placeholder="What went well this week? What would you like to change?"
+              rows={3}
+              className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:border-[var(--accent)]/50 focus:outline-none"
+            />
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={saveWeeklyReflection}
+                disabled={!weeklyReflection.trim()}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                  weeklyReflection.trim()
+                    ? "bg-[var(--accent)]/15 text-[var(--accent)] hover:bg-[var(--accent)]/25"
+                    : "cursor-not-allowed text-[var(--color-text-3)]/50",
+                )}
+              >
+                <UiIcon className="h-3.5 w-3.5" icon={Save} /> Save reflection
+              </button>
+            </div>
+          </GlassCard>
+          <h2 className="mb-4 text-xl font-semibold text-[var(--color-text-1)]">
+            Completed This Week
+          </h2>
+          {doneTasks.length === 0 ? (
+            <GlassCard className="border-dashed p-8 text-center text-[var(--color-text-3)]">
+              No tasks completed in the last 7 days.
+            </GlassCard>
+          ) : (
+            /* @todo: Untyped usage justified per TOOL-01 */
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            doneTasks.map((task: any) => (
+              <GlassCard
+                key={task.id}
+                className="flex items-center justify-between p-4 opacity-80"
+              >
+                <div>
+                  <h4 className="text-card-title text-[var(--text-1)] line-through">
+                    {task.title}
+                  </h4>
+                  <p className="mt-0.5 text-xs text-[var(--color-text-3)]">
+                    Completed{" "}
+                    {task.completed_at
+                      ? formatShortDate(
+                          new Date(task.completed_at),
+                          clock.timeZone,
+                        )
+                      : ""}
+                  </p>
+                </div>
+                <UiIcon
+                  className="h-5 w-5 text-[var(--color-do)]"
+                  icon={CheckCircle2}
+                />
+              </GlassCard>
+            ))
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Inbox banner removed, using Inbox Section below Up Next instead */}
 
-            {/* Weekly-effort summary — real secondary weight: bigger type
+          {/* Focus Now Hero Card */}
+          {primaryTask ? (
+            <GlassCard
+              variant="hero"
+              className="relative overflow-hidden p-5 sm:p-8"
+            >
+              <div className="relative z-10 flex h-full flex-col items-center justify-center px-1 py-6 text-center sm:p-10">
+                <span className="text-label mb-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1.5 text-[var(--accent-text)]">
+                  <Zap
+                    aria-hidden="true"
+                    className="size-3.5"
+                    strokeWidth={2}
+                  />
+                  Focus now
+                </span>
+                <h2 className="font-heading mb-1 text-[length:var(--text-title-3xl)] leading-tight font-medium text-balance text-[var(--text-1)]">
+                  {primaryTask.title}
+                </h2>
+                <p className="text-label mb-4 text-[var(--text-3)]">
+                  {heroReason}
+                </p>
+                <p className="mb-6 text-lg text-[var(--text-2)]">
+                  {primaryTask.first_step}
+                </p>
+
+                <Button
+                  variant="primary"
+                  onClick={() =>
+                    setActiveTimer({
+                      taskId: primaryTask.id,
+                      taskTitle: primaryTask.title,
+                      firstStep: primaryTask.first_step,
+                    })
+                  }
+                  className=""
+                >
+                  <UiIcon className="h-4 w-4 fill-[currentColor]" icon={Play} />
+                  <span>Start session</span>
+                </Button>
+                <button
+                  onClick={async () => {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+
+                    const snoozedTask = primaryTask;
+
+                    // Save current states for rollback
+                    const previousDashboard = queryClient.getQueryData([
+                      "dashboard",
+                    ]);
+                    const previousTasks = queryClient.getQueryData(["tasks"]);
+
+                    // Optimistic UI updates
+                    /* @todo: Untyped usage justified per TOOL-01 */
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    queryClient.setQueryData(["dashboard"], (old: any) => {
+                      if (!old) return old;
+                      return {
+                        ...old,
+                        /* @todo: Untyped usage justified per TOOL-01 */
+                        tasks: old.tasks.filter(
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          (t: any) => t.id !== snoozedTask.id,
+                        ),
+                      };
+                    });
+                    /* @todo: Untyped usage justified per TOOL-01 */
+                    queryClient.setQueryData(
+                      ["tasks"],
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      (old: any[] | undefined) =>
+                        old?.filter((t) => t.id !== snoozedTask.id) ?? [],
+                    );
+
+                    try {
+                      useAppStore.getState().markMutation();
+                      const { error } = await supabase
+                        .from("items")
+                        .update({ snoozed_until: tomorrow.toISOString() })
+                        .eq("id", snoozedTask.id);
+                      if (error) throw error;
+
+                      queryClient.invalidateQueries({
+                        queryKey: ["dashboard"],
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
+                      toast.success("Snoozed until tomorrow", {
+                        duration: 8000,
+                        action: {
+                          label: "Undo",
+                          onClick: async () => {
+                            const currentDashboard = queryClient.getQueryData([
+                              "dashboard",
+                            ]);
+                            const currentTasks = queryClient.getQueryData([
+                              "tasks",
+                            ]);
+
+                            // Optimistic restore (put task back)
+                            /* @todo: Untyped usage justified per TOOL-01 */
+                            queryClient.setQueryData(
+                              ["dashboard"],
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              (old: any) => {
+                                if (!old) return old;
+                                return {
+                                  ...old,
+                                  tasks: [
+                                    ...old.tasks,
+                                    { ...snoozedTask, snoozed_until: null },
+                                  ],
+                                };
+                              },
+                            );
+                            /* @todo: Untyped usage justified per TOOL-01 */
+                            queryClient.setQueryData(
+                              ["tasks"],
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              (old: any[] | undefined) =>
+                                old
+                                  ? [
+                                      ...old,
+                                      { ...snoozedTask, snoozed_until: null },
+                                    ]
+                                  : [],
+                            );
+
+                            try {
+                              useAppStore.getState().markMutation();
+                              const { error: undoError } = await supabase
+                                .from("items")
+                                .update({ snoozed_until: null })
+                                .eq("id", snoozedTask.id);
+                              if (undoError) throw undoError;
+
+                              queryClient.invalidateQueries({
+                                queryKey: ["dashboard"],
+                              });
+                              queryClient.invalidateQueries({
+                                queryKey: ["tasks"],
+                              });
+                              toast.success("Snooze reversed");
+                            } catch {
+                              // Rollback undo
+                              queryClient.setQueryData(
+                                ["dashboard"],
+                                currentDashboard,
+                              );
+                              queryClient.setQueryData(["tasks"], currentTasks);
+                              toast.error("Failed to undo snooze");
+                            }
+                          },
+                        },
+                      });
+                    } catch {
+                      // Rollback snooze
+                      queryClient.setQueryData(
+                        ["dashboard"],
+                        previousDashboard,
+                      );
+                      queryClient.setQueryData(["tasks"], previousTasks);
+                      toast.error("Failed to snooze task");
+                    }
+                  }}
+                  className="mt-4 text-xs text-[var(--text-3)] underline decoration-dashed underline-offset-4 transition-colors hover:text-[var(--text-1)]"
+                >
+                  Snooze until tomorrow
+                </button>
+                {/* Offered at the moment of putting it off again, never
+                      pushed: the stuck-task help (What's in the way?). */}
+                {isStuck(primaryTask) && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      useAppStore.getState().setStuckHelpTask(primaryTask)
+                    }
+                    className="mt-4 ml-4 text-xs text-[var(--accent-text)] underline decoration-dotted underline-offset-4 transition-colors hover:text-[var(--accent-hot)]"
+                  >
+                    What&apos;s in the way?
+                  </button>
+                )}
+              </div>
+            </GlassCard>
+          ) : (
+            <GlassCard className="font-heading p-10 text-center text-[length:var(--text-title-xl)] text-[var(--text-2)]">
+              No active tasks. Take a breath.
+            </GlassCard>
+          )}
+
+          {/* Bento 4-card overview — deliberately the lightest-weight row on
+                the page: small counters, muted (non-accent) icon tone, and
+                tight padding, so they read as minor context rather than
+                competing with the hero or the weekly-effort row below. */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[
+              {
+                href: "/do",
+                icon: CheckCircle2,
+                value: activeTasksCount,
+                label: "Active Tasks",
+              },
+              {
+                href: null,
+                icon: Sparkles,
+                value: plannedDays,
+                label: "of 7 days planned",
+              },
+              {
+                href: "/think",
+                icon: MessageSquare,
+                value: threadsCount,
+                label: "Open Threads",
+              },
+              {
+                href: "/remember/locations",
+                icon: MapPin,
+                value: locationsCount,
+                label: "Locations",
+              },
+            ].map((tile, i) => {
+              const card = (
+                <GlassCard
+                  hoverable={!!tile.href}
+                  className="flex h-full flex-col justify-between p-4"
+                >
+                  <UiIcon
+                    size={16}
+                    strokeWidth={1.5}
+                    className="mb-3 shrink-0 text-[var(--color-text-3)]"
+                    icon={tile.icon}
+                  />
+                  <div>
+                    <div className="font-heading text-[length:var(--text-title-2xl)] leading-none text-[var(--text-1)] tabular-nums">
+                      <AnimatedNumber value={tile.value} />
+                    </div>
+                    <div className="text-meta mt-1.5 text-[var(--text-3)]">
+                      {tile.label}
+                    </div>
+                  </div>
+                </GlassCard>
+              );
+              return (
+                <m.div
+                  key={tile.label}
+                  className="h-full"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: i * 0.05,
+                    duration: 0.2,
+                    ease: [0.25, 0.46, 0.45, 0.94],
+                  }}
+                >
+                  {tile.href ? (
+                    <Link href={tile.href} className="block h-full">
+                      {card}
+                    </Link>
+                  ) : (
+                    card
+                  )}
+                </m.div>
+              );
+            })}
+          </div>
+
+          {/* Weekly-effort summary — real secondary weight: bigger type
                 and an accent-tinted number, one visible step down from the
                 hero but clearly above the bento row's minor counters. */}
-            <m.div
-              className="mt-6"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                delay: 0.2,
-                duration: 0.24,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-            >
-              <GlassCard className="grid grid-cols-2 divide-x divide-[var(--border-subtle)] p-0">
-                {[
-                  { label: "Focus sessions", value: pomodorosThisWeek },
-                  { label: "Tasks finished", value: doneTasks.length },
-                ].map((stat) => (
-                  <div key={stat.label} className="flex flex-col gap-1.5 p-5">
-                    <span className="text-label text-[var(--text-3)]">
-                      This week
-                    </span>
-                    <span className="font-heading text-[length:var(--text-title-3xl)] leading-none text-[var(--accent-text)] tabular-nums">
-                      <AnimatedNumber value={stat.value} />
-                    </span>
-                    <span className="text-body text-[var(--text-2)]">
-                      {stat.label}
-                    </span>
-                  </div>
-                ))}
-              </GlassCard>
-            </m.div>
-
-            {userSettings?.daily_briefing !== false && (
-              <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Today's Tasks */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-section-title text-[var(--text-1)]">
-                      Up Next
-                    </h3>
-                    <Link
-                      href="/do"
-                      className="flex items-center gap-1 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
-                    >
-                      {tasks.length > 1
-                        ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — `
-                        : ""}
-                      View all <UiIcon className="h-3 w-3" icon={ArrowRight} />
-                    </Link>
-                  </div>
-                  <AnimatePresence initial={false} mode="popLayout">
-                    {tasks.slice(1, 6).map((task, i) => (
-                      <m.div
-                        key={task.id}
-                        layout
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{
-                          opacity: 0,
-                          scale: 0.97,
-                          x: -16,
-                          transition: { duration: 0.24, ease: [0.4, 0, 1, 1] },
-                        }}
-                        transition={{
-                          delay: i * 0.05,
-                          duration: 0.2,
-                          ease: [0.25, 0.46, 0.45, 0.94],
-                        }}
-                      >
-                        <GlassCard
-                          hoverable
-                          className="flex items-start justify-between gap-3 p-4"
-                          onClick={() => {
-                            setTaskToEdit(task);
-                            setIsTaskPanelOpen(true);
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => completeTask(e, task.id)}
-                            aria-label={`Complete ${task.title}`}
-                            aria-pressed={completing === task.id}
-                            className={cn(
-                              "task-check",
-                              completing === task.id && "checked",
-                            )}
-                          >
-                            {completing === task.id && <Enso size={28} draw />}
-                          </button>
-                          <div
-                            className={cn(
-                              "min-w-0 flex-1",
-                              completing === task.id && "is-done",
-                            )}
-                          >
-                            <h4 className="text-card-title text-[var(--text-1)]">
-                              <span className="task-title-strike">
-                                {task.title}
-                              </span>
-                            </h4>
-                            <p className="mt-0.5 truncate text-xs text-[var(--color-text-3)]">
-                              {task.first_step}
-                            </p>
-                          </div>
-                          <UiIcon
-                            className="mt-1 ml-2 h-4 w-4 shrink-0 text-[var(--color-text-3)]"
-                            icon={ArrowRight}
-                          />
-                        </GlassCard>
-                      </m.div>
-                    ))}
-                  </AnimatePresence>
-                  {tasks.length <= 1 && (
-                    <div className="rounded-2xl border border-[var(--border-subtle)] p-5 text-center text-[length:var(--text-body)] text-[var(--text-3)]">
-                      Nothing else waiting. Enjoy the quiet.
-                    </div>
-                  )}
+          <m.div
+            className="mt-6"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              delay: 0.2,
+              duration: 0.24,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          >
+            <GlassCard className="grid grid-cols-2 divide-x divide-[var(--border-subtle)] p-0">
+              {[
+                { label: "Focus sessions", value: pomodorosThisWeek },
+                { label: "Tasks finished", value: doneTasks.length },
+              ].map((stat) => (
+                <div key={stat.label} className="flex flex-col gap-1.5 p-5">
+                  <span className="text-label text-[var(--text-3)]">
+                    This week
+                  </span>
+                  <span className="font-heading text-[length:var(--text-title-3xl)] leading-none text-[var(--accent-text)] tabular-nums">
+                    <AnimatedNumber value={stat.value} />
+                  </span>
+                  <span className="text-body text-[var(--text-2)]">
+                    {stat.label}
+                  </span>
                 </div>
+              ))}
+            </GlassCard>
+          </m.div>
 
-                {/* Inbox Section */}
-                {inboxItems.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-section-title text-[var(--text-1)]">
-                          Inbox
-                        </h3>
-                        <div className="text-meta rounded-full bg-[var(--accent-dim)] px-2 py-0.5 font-medium text-[var(--accent-text)] tabular-nums">
-                          {inboxItems.length} new
-                        </div>
-                      </div>
-                      <Link
-                        href="/inbox"
-                        className="flex items-center gap-1 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
+          {userSettings?.daily_briefing !== false && (
+            <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+              {/* Today's Tasks */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-section-title text-[var(--text-1)]">
+                    Up Next
+                  </h3>
+                  <Link
+                    href="/do"
+                    className="flex items-center gap-1 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
+                  >
+                    {tasks.length > 1
+                      ? `${Math.min(5, tasks.length - 1)} of ${tasks.length - 1} tasks shown — `
+                      : ""}
+                    View all <UiIcon className="h-3 w-3" icon={ArrowRight} />
+                  </Link>
+                </div>
+                <AnimatePresence initial={false} mode="popLayout">
+                  {tasks.slice(1, 6).map((task, i) => (
+                    <m.div
+                      key={task.id}
+                      layout
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{
+                        opacity: 0,
+                        scale: 0.97,
+                        x: -16,
+                        transition: { duration: 0.24, ease: [0.4, 0, 1, 1] },
+                      }}
+                      transition={{
+                        delay: i * 0.05,
+                        duration: 0.2,
+                        ease: [0.25, 0.46, 0.45, 0.94],
+                      }}
+                    >
+                      <GlassCard
+                        hoverable
+                        className="flex items-start justify-between gap-3 p-4"
+                        onClick={() => {
+                          setTaskToEdit(task);
+                          setIsTaskPanelOpen(true);
+                        }}
                       >
-                        View all{" "}
-                        <UiIcon className="h-3 w-3" icon={ArrowRight} />
-                      </Link>
-                    </div>
-                    <p className="text-sm text-[var(--color-text-3)]">
-                      Items waiting to be sorted.
-                    </p>
+                        <button
+                          type="button"
+                          onClick={(e) => completeTask(e, task.id)}
+                          aria-label={`Complete ${task.title}`}
+                          aria-pressed={completing === task.id}
+                          className={cn(
+                            "task-check",
+                            completing === task.id && "checked",
+                          )}
+                        >
+                          {completing === task.id && <Enso size={28} draw />}
+                        </button>
+                        <div
+                          className={cn(
+                            "min-w-0 flex-1",
+                            completing === task.id && "is-done",
+                          )}
+                        >
+                          <h4 className="text-card-title text-[var(--text-1)]">
+                            <span className="task-title-strike">
+                              {task.title}
+                            </span>
+                          </h4>
+                          <p className="mt-0.5 truncate text-xs text-[var(--color-text-3)]">
+                            {task.first_step}
+                          </p>
+                        </div>
+                        <UiIcon
+                          className="mt-1 ml-2 h-4 w-4 shrink-0 text-[var(--color-text-3)]"
+                          icon={ArrowRight}
+                        />
+                      </GlassCard>
+                    </m.div>
+                  ))}
+                </AnimatePresence>
+                {tasks.length <= 1 && (
+                  <div className="rounded-2xl border border-[var(--border-subtle)] p-5 text-center text-[length:var(--text-body)] text-[var(--text-3)]">
+                    Nothing else waiting. Enjoy the quiet.
                   </div>
                 )}
               </div>
-            )}
-          </>
-        )}
-        <TaskAddPanel
-          isOpen={isTaskPanelOpen}
-          onClose={() => {
-            setIsTaskPanelOpen(false);
-            setTimeout(() => setTaskToEdit(null), 300);
-          }}
-          onTaskAdded={refreshData}
-          taskToEdit={taskToEdit}
-        />
-      </div>
+
+              {/* Inbox Section */}
+              {inboxItems.length > 0 && (
+                <div className="space-y-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-section-title text-[var(--text-1)]">
+                        Inbox
+                      </h3>
+                      <div className="text-meta rounded-full bg-[var(--accent-dim)] px-2 py-0.5 font-medium text-[var(--accent-text)] tabular-nums">
+                        {inboxItems.length} new
+                      </div>
+                    </div>
+                    <Link
+                      href="/inbox"
+                      className="flex items-center gap-1 text-xs text-[var(--color-text-3)] hover:text-[var(--color-text-1)]"
+                    >
+                      View all <UiIcon className="h-3 w-3" icon={ArrowRight} />
+                    </Link>
+                  </div>
+                  <p className="text-sm text-[var(--color-text-3)]">
+                    Items waiting to be sorted.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+      <TaskAddPanel
+        isOpen={isTaskPanelOpen}
+        onClose={() => {
+          setIsTaskPanelOpen(false);
+          setTimeout(() => setTaskToEdit(null), 300);
+        }}
+        onTaskAdded={refreshData}
+        taskToEdit={taskToEdit}
+      />
     </>
   );
 }
