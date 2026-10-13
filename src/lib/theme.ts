@@ -2,7 +2,7 @@ export type ThemeId = "warm" | "navy" | "forest";
 export type ColorMode = "dark" | "light" | "system";
 
 export const DEFAULT_THEME_ID: ThemeId = "warm";
-export const DEFAULT_COLOR_MODE: ColorMode = "dark";
+const DEFAULT_COLOR_MODE: ColorMode = "dark";
 
 /**
  * Browser-chrome colour per mode — must equal --bg-base in globals.css so

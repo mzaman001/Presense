@@ -74,7 +74,7 @@ const ReminderSheet = dynamic(
 // Heavy, closed-by-default surfaces loaded on demand (same pattern as
 // DynamicModals) so /do's initial bundle and hydration exclude them. The
 // task panel's lazy wrapper is shared with Home (TaskAddPanelLazy).
-export const CalendarView = withPreload(
+const CalendarView = withPreload(
   dynamic(
     () =>
       import("@/components/features/calendar/CalendarView").then((m) => ({

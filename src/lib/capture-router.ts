@@ -287,9 +287,7 @@ export interface RoutedItem {
   category?: string | null;
 }
 
-export function destinationToId(
-  destination: string,
-): RoutedItem["destinationId"] {
+function destinationToId(destination: string): RoutedItem["destinationId"] {
   if (destination === "Do") return "do";
   if (destination === "Inbox" || destination === "Choose space...")
     return "inbox";

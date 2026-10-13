@@ -11,7 +11,7 @@ import type { TaskRecord } from "@/lib/task-cache";
  * can be put off.
  */
 const DAY_MS = 86_400_000;
-export const STUCK_AFTER = { deferrals: 2, spanMs: 2 * DAY_MS, anyWindow: 3 };
+const STUCK_AFTER = { deferrals: 2, spanMs: 2 * DAY_MS, anyWindow: 3 };
 
 type StuckFields = Pick<
   TaskRecord,

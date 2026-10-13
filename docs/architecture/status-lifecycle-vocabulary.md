@@ -59,7 +59,6 @@ Mutations that already carried `user_id` by construction (`.insert()` of form da
 
 - **`SettingsModal` full-account wipe** — a permanent, multi-table `.delete()` on account deletion. This destroys data; it is not a lifecycle transition and is not expressed as a patch.
 - **Form-compensating deletes** — TaskAddPanel rolls back a freshly inserted subtask on save failure. That delete removes a row created seconds earlier; no status is involved.
-- **`permanentlyDeleteFilter`** — exists only so the Edge Function's purge cron has a named identity; it carries no status.
 
 ## 5. Enforcement & verification
 

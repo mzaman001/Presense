@@ -123,7 +123,7 @@ function patchDashboardCache(
  * Routing it through one place means a new task cache is registered above
  * once rather than in every handler.
  */
-export function patchTaskCaches(
+function patchTaskCaches(
   queryClient: QueryClient,
   update: (tasks: TaskRecord[]) => TaskRecord[],
 ): () => void {

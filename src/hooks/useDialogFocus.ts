@@ -25,7 +25,7 @@ function isShown(el: HTMLElement): boolean {
  * out: counting them made a hidden element the "last" stop, so Tab never
  * wrapped and walked out of the dialog.
  */
-export function focusableWithin(container: HTMLElement): HTMLElement[] {
+function focusableWithin(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
     isShown,
   );

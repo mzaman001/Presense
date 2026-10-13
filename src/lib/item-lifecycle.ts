@@ -80,7 +80,3 @@ export function newInboxItemInsert<T extends Record<string, unknown>>(
 ) {
   return { ...payload, status: "inbox" as const };
 }
-
-export function permanentlyDeleteFilter(id: string) {
-  return { id };
-}

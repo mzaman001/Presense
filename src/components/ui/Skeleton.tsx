@@ -58,19 +58,6 @@ export function CardSkeleton() {
   );
 }
 
-// Search result skeleton
-export function SearchResultSkeleton() {
-  return (
-    <div className="flex items-center gap-4 rounded-xl p-3">
-      <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
-      <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-3 w-1/4" />
-      </div>
-    </div>
-  );
-}
-
 // Page-level loading skeleton
 export function PageSkeleton({
   count = 5,

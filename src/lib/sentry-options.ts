@@ -8,7 +8,7 @@
 // v10's restrictive baseline, as written in Sentry's v10 -> v11 migration
 // guide ("If you want to keep the v10 default behavior"). Widen a category
 // deliberately, never by leaving this out.
-export const sentryDataCollection = {
+const sentryDataCollection = {
   userInfo: false,
   cookies: false,
   httpHeaders: {
