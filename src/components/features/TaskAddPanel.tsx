@@ -7,11 +7,10 @@ import {
   type TaskRecord,
 } from "@/lib/task-cache";
 import { useUserId } from "@/components/providers/SessionProvider";
-import { Textarea } from "../ui/Textarea";
 import { logger } from "@/lib/logger";
 import React, { useState, useEffect, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { m, AnimatePresence } from "framer-motion";
+import { m } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { taskSchema } from "@/lib/schemas";
@@ -171,12 +170,14 @@ export function TaskAddPanel({
     mode: "onChange",
   });
 
-  const titleValue = watch("title");
+  // Re-render on every keystroke in these fields: the unsaved-changes check
+  // (`dirty`, below) is computed during render and goes stale without it.
+  watch("title");
+  watch("notes");
+  watch("first_step");
   const deadlineValue = watch("deadline");
   const categoryValue = watch("category");
   const priorityValue = watch("priority");
-  const notesValue = watch("notes");
-  const firstStepValue = watch("first_step");
 
   const [freq, setFreq] = useState("Does not repeat");
   const [days, setDays] = useState<string[]>([]);
@@ -198,7 +199,6 @@ export function TaskAddPanel({
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoriesList, setCategoriesList] = useState<string[]>([]);
 
-  const [saving, setSaving] = useState(false);
   const [deleteTaskConfirm, setDeleteTaskConfirm] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const manualBaselineRef = useRef<ManualSnapshot | null>(null);
@@ -516,8 +516,6 @@ export function TaskAddPanel({
   };
 
   const onSubmit = async (data: TaskFormValues) => {
-    setSaving(true);
-
     try {
       const supabase = createClient();
 
@@ -645,8 +643,6 @@ export function TaskAddPanel({
       toast.error("Couldn't save the task", {
         description: friendlyError(err),
       });
-    } finally {
-      setSaving(false);
     }
   };
 

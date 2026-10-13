@@ -1,4 +1,3 @@
-import React from "react";
 import { renderHook } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { useUnsavedGuard } from "../useUnsavedGuard";

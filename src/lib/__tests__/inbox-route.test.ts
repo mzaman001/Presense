@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { routeInboxItem } from "@/lib/inbox-route";
 
 // Routing an inbox item to Think or Remember used to move the original to

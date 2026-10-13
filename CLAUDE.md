@@ -68,7 +68,7 @@ Run on `main` at `907fc03` (after #118). Toolchain: Next.js 16.3.8, React 19.3, 
 | Gate | Result |
 |---|---|
 | `npm ci` | ✅ clean with npm 10 and `--legacy-peer-deps=false` (as CI, Node 22, matching Vercel and `engines`) |
-| `npm run lint` | ✅ 0 errors, 32 warnings (ESLint 10; Next's config goes through `@eslint/compat`'s `fixupConfigRules` for eslint-plugin-react, see `eslint.config.mjs`) |
+| `npm run lint` | ✅ 0 errors, 7 warnings (4 `exhaustive-deps`, 3 React Compiler skips; ESLint 10; Next's config goes through `@eslint/compat`'s `fixupConfigRules` for eslint-plugin-react, see `eslint.config.mjs`) |
 | `npx tsc --noEmit` | ✅ clean, `tests/` included |
 | `npx -y deno check supabase/functions/*/index.ts` | ✅ clean, all four (`cron_cleanup`, `cron_recurrence`, `push_reminders`, `push_test`); CI's `edge-functions` job runs it with `--node-modules-dir=none` |
 | `npm test` | ✅ 956 passed / 104 files; `npm run test:coverage` 73.7% statements, thresholds met |

@@ -12,7 +12,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Archive,
   Plus,
-  Loader2,
   MessageCircleQuestion,
   Sparkles,
   Pin,

@@ -48,8 +48,6 @@ const nextConfig: NextConfig = {
       "framer-motion",
       "date-fns",
       "@dnd-kit/core",
-      "@dnd-kit/sortable",
-      "compromise",
       "@base-ui/react",
     ],
   },
