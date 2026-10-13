@@ -26,6 +26,7 @@ import { useInboxCount } from "@/hooks/useInboxCount";
 import { useHaptics } from "@/hooks/useHaptics";
 import { getRitualDecision, toDateKey } from "@/lib/rituals";
 import { preloadRitualOverlay } from "@/components/layout/RitualOverlayDynamic";
+import { preloadSettingsModal } from "@/components/layout/DynamicModals";
 
 const AVATAR_ACCENT_BY_MODE: Record<string, string> = {
   dark: "#e3875f",
@@ -353,6 +354,7 @@ export function Sidebar() {
               label="Settings"
               icon={Settings}
               onClick={() => useAppStore.getState().setSettingsModalOpen(true)}
+              onIntent={preloadSettingsModal}
             />
           </div>
         </div>
@@ -360,6 +362,8 @@ export function Sidebar() {
           type="button"
           aria-label="Account settings"
           className="sidebar-account"
+          onPointerEnter={preloadSettingsModal}
+          onFocus={preloadSettingsModal}
           onClick={() =>
             useAppStore.getState().setSettingsModalOpen(true, "account")
           }

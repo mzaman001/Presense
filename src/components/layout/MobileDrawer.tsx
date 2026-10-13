@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Plus, Settings, Search, Timer, Trash2, X } from "lucide-react";
 import { useShallow } from "zustand/shallow";
 import { useAppStore } from "@/store/useAppStore";
+import { preloadSettingsModal } from "@/components/layout/DynamicModals";
 import { cn } from "@/lib/utils";
 import { navItems, isNavActive } from "@/lib/nav-config";
 import { Avatar } from "@/components/ui/Avatar";
@@ -225,6 +226,7 @@ export function MobileDrawer() {
               </Link>
               <button
                 type="button"
+                onPointerDown={preloadSettingsModal}
                 onClick={() =>
                   handOff(() =>
                     useAppStore.getState().setSettingsModalOpen(true),
@@ -242,6 +244,7 @@ export function MobileDrawer() {
           <button
             type="button"
             aria-label="Account settings"
+            onPointerDown={preloadSettingsModal}
             onClick={() =>
               handOff(() =>
                 useAppStore.getState().setSettingsModalOpen(true, "account"),

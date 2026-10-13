@@ -60,48 +60,12 @@ export const PomodoroTimer = dynamic(
 );
 
 /**
- * Fetch the panels' code once the page has settled, one chunk per idle
- * period, so even the first open is immediate. Fetching on the tap itself
- * (the .preload() calls on shortcuts) came too late: the first open still
- * waited ~330–385 ms for its chunk and the panel appeared after a pause.
- * Starts a few seconds after load to stay out of start-up, and skips
- * Save-Data connections, where the bytes matter more than the pause.
+ * Fetch Settings' code when the pointer reaches (or focus lands on) a button
+ * that opens it, so its first open doesn't wait for the chunk. Not at idle
+ * after load: fetching and evaluating the panels then cost ~100 ms of TBT on
+ * /do and Home (measured 2026-10-13), for no earlier first paint.
  */
-function preloadPanelsWhenIdle(): () => void {
-  const connection = (
-    navigator as Navigator & { connection?: { saveData?: boolean } }
-  ).connection;
-  if (connection?.saveData) return () => {};
-
-  const queue = [CaptureModal, SearchModal, SettingsModal];
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let idle: number | undefined;
-  const next = () => {
-    const panel = queue.shift();
-    if (!panel) return;
-    const run = () => {
-      panel.preload();
-      next();
-    };
-    if ("requestIdleCallback" in window) {
-      idle = requestIdleCallback(run, { timeout: 4000 });
-    } else {
-      timer = setTimeout(run, 200);
-    }
-  };
-  const start = () => {
-    timer = setTimeout(next, 3000);
-  };
-  if (document.readyState === "complete") start();
-  else window.addEventListener("load", start, { once: true });
-
-  return () => {
-    window.removeEventListener("load", start);
-    clearTimeout(timer);
-    if (idle !== undefined) cancelIdleCallback(idle);
-    queue.length = 0;
-  };
-}
+export const preloadSettingsModal = () => SettingsModal.preload();
 
 /**
  * Mounts each modal only while it is open.
@@ -147,8 +111,6 @@ export function DynamicModals() {
       });
     }
   }, []);
-
-  useEffect(() => preloadPanelsWhenIdle(), []);
 
   return (
     <>
