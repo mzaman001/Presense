@@ -57,6 +57,9 @@ for (const viewport of [
 
       await page.setViewportSize(viewport);
       await page.context().addCookies([seedCookie(seed!)]);
+      // The welcome picture loops forever, so Axe could land mid-fade and read
+      // half-transparent text as a contrast failure. Reduced motion stops it.
+      await page.emulateMedia({ reducedMotion: "reduce" });
 
       await page.goto("/onboarding");
       await expect(
