@@ -74,7 +74,6 @@ import { clearLocalAccountData } from "@/lib/local-account-data";
    back into an object before it can be sent as a Supabase update payload. */
 const AUTOSAVE_FIELDS = [
   "display_name",
-  "avatar_color",
   "timezone",
   "timezone_auto",
   // Appearance was missing here, so a mode change only reached localStorage
@@ -83,15 +82,12 @@ const AUTOSAVE_FIELDS = [
   "reduce_motion",
   "notifications_enabled",
   "daily_briefing",
-  "pomodoro_sound",
   "pomodoro_duration",
   "short_break_duration",
   "long_break_duration",
   "auto_start_breaks",
   "default_view",
   "auto_archive_days",
-  "smart_routing_enabled",
-  "nlp_date_parsing",
   "nudge_time",
   "shutdown_time",
   "pomodoro_long_break_interval",
@@ -123,7 +119,7 @@ const TABS = [
     id: "notifications",
     label: "Reminders",
     icon: Bell,
-    description: "Planning reminders and the focus chime.",
+    description: "Task and planning reminders on this device.",
   },
   {
     id: "focus",
@@ -135,7 +131,7 @@ const TABS = [
     id: "tasks",
     label: "Tasks",
     icon: CheckSquare,
-    description: "Categories, and how captures are read and sorted.",
+    description: "Your task categories.",
   },
   {
     id: "data",
@@ -143,15 +139,6 @@ const TABS = [
     icon: Database,
     description: "Export or clear what you've stored.",
   },
-];
-
-const AVATAR_COLORS = [
-  "#F472B6",
-  "#4ADE80",
-  "#3B82F6",
-  "#FBBF24",
-  "#A855F7",
-  "#EF4444",
 ];
 
 const CATEGORY_COLORS = [
@@ -224,7 +211,6 @@ const TIME_OPTIONS = Array.from({ length: 96 }).map((_, i) => {
 interface SettingsState {
   [key: string]: unknown;
   display_name?: string;
-  avatar_color?: string;
   timezone?: string;
   timezone_auto?: boolean;
   theme?: string;
@@ -232,7 +218,6 @@ interface SettingsState {
   reduce_motion?: boolean;
   notifications_enabled?: boolean;
   daily_briefing?: boolean;
-  pomodoro_sound?: boolean;
   pomodoro_duration?: number;
   short_break_duration?: number;
   long_break_duration?: number;
@@ -241,8 +226,6 @@ interface SettingsState {
   auto_archive_days?: number;
   do_categories?: string[];
   do_category_colors?: Record<string, string>;
-  smart_routing_enabled?: boolean;
-  nlp_date_parsing?: boolean;
   nudge_time?: string;
   shutdown_time?: string;
   pomodoro_long_break_interval?: number;
@@ -873,7 +856,6 @@ function SettingsModalContent({
   const themeValue = useWatch({ control, name: "theme" });
   const colorModeValue = useWatch({ control, name: "color_mode" });
   const reduceMotionValue = useWatch({ control, name: "reduce_motion" });
-  const avatarColorValue = useWatch({ control, name: "avatar_color" });
   const timezoneValue = useWatch({ control, name: "timezone" });
   const timezoneAutoValue = useWatch({ control, name: "timezone_auto" });
   const notificationsEnabledValue = useWatch({
@@ -881,7 +863,6 @@ function SettingsModalContent({
     name: "notifications_enabled",
   });
   const dailyBriefingValue = useWatch({ control, name: "daily_briefing" });
-  const pomodoroSoundValue = useWatch({ control, name: "pomodoro_sound" });
   const pomodoroDurationValue = useWatch({
     control,
     name: "pomodoro_duration",
@@ -912,11 +893,6 @@ function SettingsModalContent({
     control,
     name: "daily_capacity_minutes",
   });
-  const smartRoutingEnabledValue = useWatch({
-    control,
-    name: "smart_routing_enabled",
-  });
-  const nlpDateParsingValue = useWatch({ control, name: "nlp_date_parsing" });
 
   /* BUG-45 — a derived view over selective useWatch subscriptions replaces
      the unselective `watch()` (which re-created its object every render).
@@ -926,12 +902,10 @@ function SettingsModalContent({
       theme: themeValue,
       color_mode: colorModeValue,
       reduce_motion: reduceMotionValue,
-      avatar_color: avatarColorValue,
       timezone: timezoneValue,
       timezone_auto: timezoneAutoValue,
       notifications_enabled: notificationsEnabledValue,
       daily_briefing: dailyBriefingValue,
-      pomodoro_sound: pomodoroSoundValue,
       pomodoro_duration: pomodoroDurationValue,
       short_break_duration: shortBreakDurationValue,
       long_break_duration: longBreakDurationValue,
@@ -941,19 +915,15 @@ function SettingsModalContent({
       shutdown_time: shutdownTimeValue,
       pomodoro_long_break_interval: pomodoroLongBreakIntervalValue,
       daily_capacity_minutes: dailyCapacityMinutesValue,
-      smart_routing_enabled: smartRoutingEnabledValue,
-      nlp_date_parsing: nlpDateParsingValue,
     }),
     [
       themeValue,
       colorModeValue,
       reduceMotionValue,
-      avatarColorValue,
       timezoneValue,
       timezoneAutoValue,
       notificationsEnabledValue,
       dailyBriefingValue,
-      pomodoroSoundValue,
       pomodoroDurationValue,
       shortBreakDurationValue,
       longBreakDurationValue,
@@ -963,8 +933,6 @@ function SettingsModalContent({
       shutdownTimeValue,
       pomodoroLongBreakIntervalValue,
       dailyCapacityMinutesValue,
-      smartRoutingEnabledValue,
-      nlpDateParsingValue,
     ],
   );
 
@@ -1429,32 +1397,6 @@ function SettingsModalContent({
                                 className="input"
                               />
                             </SettingRow>
-                            <SettingRow label="Avatar colour" stack>
-                              <div className="flex flex-wrap gap-1">
-                                {AVATAR_COLORS.map((color) => {
-                                  const selected =
-                                    settings.avatar_color?.toLowerCase() ===
-                                    color.toLowerCase();
-                                  return (
-                                    <button
-                                      type="button"
-                                      key={color}
-                                      aria-label={`Avatar colour ${color}`}
-                                      aria-pressed={selected}
-                                      onClick={() =>
-                                        updateSetting("avatar_color", color)
-                                      }
-                                      className="swatch"
-                                    >
-                                      <span
-                                        aria-hidden="true"
-                                        style={{ backgroundColor: color }}
-                                      />
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </SettingRow>
                             {/* Like a phone's "Set automatically": on by
                                 default, the saved zone follows this device
                                 (TimezoneSync). Off: the user picks one. */}
@@ -1665,18 +1607,6 @@ function SettingsModalContent({
                               updateSetting("notifications_enabled", v)
                             }
                           />
-                          <SettingRow
-                            label="Focus finish sound"
-                            description="A soft chime when a focus session ends."
-                          >
-                            <Switch
-                              label="Focus finish sound"
-                              checked={settings.pomodoro_sound !== false}
-                              onChange={(v) =>
-                                updateSetting("pomodoro_sound", v)
-                              }
-                            />
-                          </SettingRow>
                         </SettingsGroup>
                       )}
 
@@ -1794,36 +1724,6 @@ function SettingsModalContent({
                             setSettings={setSettings}
                             supabase={supabase}
                           />
-                          <SettingsGroup title="Capture">
-                            <SettingRow
-                              label="Smart routing"
-                              description="Send each capture to Do, Think or Remember based on what you wrote. Off sends everything to Inbox."
-                            >
-                              <Switch
-                                label="Smart routing"
-                                checked={
-                                  settings.smart_routing_enabled !== false
-                                }
-                                onChange={(v) =>
-                                  updateSetting("smart_routing_enabled", v)
-                                }
-                              />
-                            </SettingRow>
-                            <SettingRow
-                              label="Understand dates"
-                              description={
-                                'Pick up "tomorrow 3pm" from what you type.'
-                              }
-                            >
-                              <Switch
-                                label="Understand dates in task text"
-                                checked={settings.nlp_date_parsing !== false}
-                                onChange={(v) =>
-                                  updateSetting("nlp_date_parsing", v)
-                                }
-                              />
-                            </SettingRow>
-                          </SettingsGroup>
                         </>
                       )}
 

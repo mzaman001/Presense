@@ -201,6 +201,30 @@ export type Database = {
         }
         Relationships: []
       }
+      product_events: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          props: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          name: string
+          props?: Json
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          name?: string
+          props?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           app_origin: string | null

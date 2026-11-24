@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { syncPush } from "@/lib/push";
+import { trackAppOpen } from "@/lib/track";
 import { createClient } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 import { useShallow } from "zustand/shallow"; // PERF-14: partial subscription
@@ -96,6 +97,15 @@ export function AppInitializer() {
     }, 3000);
     return () => clearTimeout(timer);
   }, [remindersOn]);
+
+  // Funnel: one app_open per device per day, once the page has settled, so
+  // "did they come back?" can be read from product_events.
+  const signedIn = Object.keys(userSettings ?? {}).length > 0;
+  useEffect(() => {
+    if (!signedIn) return;
+    const timer = setTimeout(() => trackAppOpen(), 4000);
+    return () => clearTimeout(timer);
+  }, [signedIn]);
 
   useEffect(() => {
     const isPublicRoute =

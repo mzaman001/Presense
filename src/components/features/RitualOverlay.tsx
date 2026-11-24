@@ -39,6 +39,8 @@ import {
 } from "@/lib/item-lifecycle";
 import { flushOutbox } from "@/lib/capture-outbox";
 import { endFirstRun, isFirstRun } from "@/lib/first-run";
+import { offerReminders } from "@/lib/reminder-optin";
+import { track } from "@/lib/track";
 import {
   MindSweepPrompt,
   eveningSweepHints,
@@ -740,6 +742,9 @@ export function RitualOverlay({
       if (logError) console.error("Failed to log morning ritual:", logError);
 
       updateUserSetting("last_ritual_date", todayString);
+      if (firstRun) track("first_plan_finished");
+      // The moment a reminder is worth having: just planned a day.
+      setTimeout(() => offerReminders(userSettings?.nudge_time), 1200);
       toast.success("Morning planning done — have a focused day!", {
         icon: (
           <UiIcon className="h-4 w-4 text-[var(--accent-text)]" icon={Sun} />
