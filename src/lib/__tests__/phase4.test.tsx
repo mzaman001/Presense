@@ -216,12 +216,6 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
   describe("Phase 1 form correctness", () => {
     beforeEach(() => {
       vi.useRealTimers();
-      useAppStore.setState({
-        userSettings: {
-          ...useAppStore.getState().userSettings,
-          nlp_date_parsing: false,
-        },
-      });
     });
 
     it.each([
@@ -347,13 +341,6 @@ describe("Phase 4 - E2E & Integration Test Suite", () => {
     // failed an offset-only datetime check), so "Add task" stayed disabled;
     // repeats typed into the title were never read at all.
     it("reads a typed repeat and time, keeps Add task enabled, and saves a clean title", async () => {
-      // This block turns parsing off in beforeEach; this test is about it.
-      useAppStore.setState({
-        userSettings: {
-          ...useAppStore.getState().userSettings,
-          nlp_date_parsing: true,
-        },
-      });
       const onClose = vi.fn();
       const query = mockSupabaseQuery();
       mockSupabase.from.mockReturnValue(query);

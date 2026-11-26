@@ -14,7 +14,6 @@ export interface UserSettings {
   reduce_motion?: boolean;
   notifications_enabled?: boolean;
   daily_briefing?: boolean;
-  pomodoro_sound?: boolean;
   pomodoro_duration?: number;
   short_break_duration?: number;
   long_break_duration?: number;
@@ -23,8 +22,6 @@ export interface UserSettings {
   auto_archive_days?: number;
   do_categories?: string[];
   do_category_colors?: Record<string, string>;
-  smart_routing_enabled?: boolean;
-  nlp_date_parsing?: boolean;
   nudge_time?: string;
   pomodoro_long_break_interval?: number;
   last_ritual_date?: string;

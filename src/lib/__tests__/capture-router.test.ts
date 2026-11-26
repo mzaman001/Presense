@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { routeCapture } from "@/lib/capture-router";
 
 describe("routeCapture", () => {
-  const defaults = { nlp_date_parsing: true, smart_routing_enabled: true };
+  const defaults = {};
 
   describe("task routing", () => {
     it("returns stable destination ids alongside display labels", async () => {
@@ -344,16 +344,6 @@ describe("routeCapture", () => {
         "random thought with no keywords",
         defaults,
       );
-      expect(result[0].type).toBe("unknown");
-      expect(result[0].destination).toBe("Inbox");
-    });
-  });
-
-  describe("smart routing disabled", () => {
-    it("routes everything to Inbox when smart routing is off", async () => {
-      const result = await routeCapture("buy milk tomorrow", {
-        smart_routing_enabled: false,
-      });
       expect(result[0].type).toBe("unknown");
       expect(result[0].destination).toBe("Inbox");
     });

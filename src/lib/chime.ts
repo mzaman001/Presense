@@ -1,7 +1,7 @@
 /**
  * The focus-finished chime: two soft sine notes, synthesised with Web Audio.
  * It used to play /notification.mp3, a file that was never shipped; the 404
- * was swallowed, so "Focus finish sound" did nothing. Synthesis needs no
+ * was swallowed, so the chime never played. Synthesis needs no
  * asset and no network.
  */
 export function playChime() {

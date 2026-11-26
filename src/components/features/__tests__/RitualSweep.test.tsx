@@ -77,7 +77,7 @@ beforeEach(() => {
   db.inserts = [];
   db.reads = 0;
   useAppStore.setState({
-    userSettings: { smart_routing_enabled: true, nlp_date_parsing: true },
+    userSettings: {},
   });
 });
 afterEach(() => vi.useRealTimers());
@@ -319,8 +319,6 @@ describe("First run (straight from onboarding)", () => {
       activeTimer: null,
       userSettings: {
         display_name: "Sam Rivera",
-        smart_routing_enabled: true,
-        nlp_date_parsing: true,
       },
     });
   });
