@@ -26,6 +26,7 @@ import { Enso } from "@/components/ui/Enso";
 // INFRA-19: status writes on entity tables go through item-lifecycle.ts
 import { completeTaskPatch } from "@/lib/item-lifecycle";
 import { playChime } from "@/lib/chime";
+import { track } from "@/lib/track";
 import {
   loadFocusTimer,
   remainingSeconds,
@@ -350,6 +351,7 @@ export function PomodoroTimer() {
   const start = () => {
     const draft = firstStepDraft.trim();
     if (draft && !firstStep) void saveFirstStep(draft);
+    track("focus_started", { minutes: chosenMinutes });
     runPhase("work", sessionCount, chosenMinutes * 60, {
       running: true,
       short: chosenMinutes < workMinutes,

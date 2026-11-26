@@ -39,12 +39,41 @@ Google is the only sign-in method (`src/app/(auth)/login`). Email links were rem
 
 `types:check` is **not** wired into `build`. It used to run as a `prebuild` hook, which meant any build without Supabase CLI access — CI included — failed before it started. Run it deliberately after a migration.
 
+## Usage funnel
+
+`public.product_events` (migration `20261124120000_product_events.sql`) is first-party usage logging, so drop-off can be read straight from Supabase. Nothing goes to a third party and no content is stored: names are a closed list (a `CHECK`), props are a step number or a source, ≤512 bytes. Client code calls `track()` / `trackAppOpen()` from `src/lib/track.ts` (fire and forget, production builds only); onboarding uses the `trackOnboardingEvent` server action so supabase-js stays out of its bundle. The privacy policy says this; update it if you add an event that records something new.
+
+| Event | Where | Props |
+|---|---|---|
+| `onboarding_step` | each screen of `/onboarding` reached | `step` (1–7) |
+| `onboarding_finished` | Plan my day / Skip for now | `plan_now` |
+| `first_plan_finished` | the first morning plan after onboarding is done | |
+| `app_open` | once per device per local day, 4 s after the app shell loads | |
+| `focus_started` | Start in the focus view | `minutes` |
+| `reminders_offered` / `reminders_turned_on` | the post-plan offer, or "Turn them on" under Remind me | `source` |
+
+The rest of the funnel is already in `items`, `session_logs` and `ritual_logs`. Exclude the seeded test account (`email like '%@presense.app'`). Example, per real account:
+
+```sql
+select u.created_at::date as joined,
+  max((e.props->>'step')::int) filter (where e.name = 'onboarding_step') as furthest_step,
+  bool_or(e.name = 'onboarding_finished') as onboarded,
+  bool_or(e.name = 'first_plan_finished') as first_plan,
+  count(distinct e.created_at::date) filter (where e.name = 'app_open') as days_opened,
+  count(*) filter (where e.name = 'focus_started') as starts,
+  bool_or(e.name = 'reminders_turned_on') as reminders
+from auth.users u left join public.product_events e on e.user_id = u.id
+where u.email not like '%@presense.app'
+group by u.id order by joined desc;
+```
+
 ## Service worker and reminders
 
 - The worker is `src/app/sw.ts`, bundled and served at `/serwist/sw.js` by the route `src/app/serwist/[path]/route.ts` (`@serwist/turbopack`). Until 2026-10-03 production had **no** worker: `@serwist/next` only hooks webpack, and `next build` uses Turbopack. Don't bring `@serwist/next` back. `public/sw.js` is a stale local leftover if you see one.
 - It caches static assets only. Pages, RSC, `/api` and Supabase are network-only so no one's tasks stay in Cache Storage after sign-out; don't switch to Serwist's `defaultCache`. It's registered by a plain `register()` in `ServiceWorkerRegistrar`, not Serwist's provider: the provider ships `@serwist/window` (and would cache pages on navigation), and it pushed `/login` over its JS budget. `/serwist/` is outside the proxy matcher (a worker script can't redirect), `/~offline` is a public route (it's precached), and the CSP has `worker-src 'self'` (with `'strict-dynamic'`, `'self'` in script-src doesn't count).
 - **Reminders are Web Push from the server** (Phase 1, 2026-10-04). Two kinds, both opt-in at a time the user chose: a task's "Remind me" (`items.remind_at`, never derived from `deadline`) and the morning/evening ritual at `nudge_time`/`shutdown_time` in `user_settings.timezone`, skipped if that ritual is already done today. `notifications_enabled = false` silences both. The app never shows a notification itself any more.
 - Flow: `push_reminders` cron (every minute) → Edge Function `push_reminders` → `claim_push_reminders()` (marks rows sent as it returns them, `SKIP LOCKED`, drops anything >15 min late) → sends to every row in `push_subscriptions` for the user, deleting 404/410s. Devices register through `register_push_subscription()` (`src/lib/push.ts`) when the Settings switch is turned on, and again on every app open (`AppInitializer`), because browsers drop subscriptions silently. Sign-out unsubscribes.
+- Reminders are offered where they matter, not only in Settings (`src/lib/reminder-optin.ts`): "Turn them on" under a task's Remind me asks for permission in the same tap, and once per device, after the morning plan, a toast offers a nudge at the planning time. Neither asks again after the browser has blocked notifications, or if Reminders were switched off in Settings.
 - Payload is Safari's declarative format (`{ web_push: 8030, notification }`, built in `supabase/functions/_shared/push-payload.ts`); the worker's `push` handler shows it elsewhere. A task reminder opens `/do?remind=<id>` (`ReminderSheet`: Start, or Later at routine times). Later sets `snoozed_until` too, so repeated snoozes feed the stuck-task help; nothing ever pushes about a stuck or overdue task.
 - Secrets: `VAPID_KEYS` (private JWK pair) and `VAPID_SUBJECT` are Edge Function secrets; the public key is `VAPID_PUBLIC_KEY` in `src/lib/push.ts`. Rotating means changing both; devices re-subscribe on next open. Lockfile changes: see the legacy-peer-deps note in the PR #64 history (`npx -y npm@10 install --legacy-peer-deps=false`, the npm 10 that CI's Node 22 ships).
 

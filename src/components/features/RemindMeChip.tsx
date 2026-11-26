@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Bell } from "lucide-react";
 import { Popover } from "@/components/ui/Popover";
 import { getReminderAvailability } from "@/lib/reminders";
+import { announceReminderResult, turnOnReminders } from "@/lib/reminder-optin";
 import { formatReminderTime, reminderPresets } from "@/lib/reminder-times";
 import { useAppStore, type UserSettings } from "@/store/useAppStore";
 
@@ -30,9 +31,13 @@ export function RemindMeChip({
   const chosen = value ? new Date(value) : null;
   // Whether a reminder can reach this device at all, so setting one is
   // never a silent promise.
+  const availability = getReminderAvailability();
   const reachable =
-    getReminderAvailability() === "granted" &&
-    settings?.notifications_enabled !== false;
+    availability === "granted" && settings?.notifications_enabled !== false;
+  // Where the browser can still ask (or already allows), turn them on right
+  // here. Blocked or unsupported: Settings explains how to fix it.
+  const canTurnOnHere =
+    availability === "default" || availability === "granted";
 
   return (
     <Popover
@@ -85,7 +90,13 @@ export function RemindMeChip({
               <button
                 type="button"
                 className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                onClick={() => setSettingsModalOpen(true, "notifications")}
+                onClick={() => {
+                  if (canTurnOnHere) {
+                    void turnOnReminders("task").then(announceReminderResult);
+                  } else {
+                    setSettingsModalOpen(true, "notifications");
+                  }
+                }}
               >
                 Turn them on
               </button>

@@ -17,7 +17,7 @@ import {
   toDbTime,
   type OnboardingPatch,
 } from "@/lib/first-run";
-import { saveOnboardingSettings } from "./actions";
+import { saveOnboardingSettings, trackOnboardingEvent } from "./actions";
 
 export interface OnboardingInitial {
   name: string;
@@ -94,6 +94,16 @@ export function OnboardingWizard({ initial }: OnboardingWizardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // Funnel: which screen each new account reaches (and so where people
+  // stop). Best effort, after paint, never awaited.
+  useEffect(() => {
+    // A refresh renders step 1 before resuming: don't count that.
+    if (step === 1 && loadOnboardingStep(LAST_STEP) > 1) return;
+    void trackOnboardingEvent("onboarding_step", { step }).catch(
+      () => undefined,
+    );
+  }, [step]);
+
   // Each screen is one question: move focus to it so keyboard and screen
   // reader users land on the new content, not the old button.
   const mounted = useRef(false);
@@ -168,6 +178,9 @@ export function OnboardingWizard({ initial }: OnboardingWizardProps) {
       return;
     }
     saveOnboardingStep(null);
+    void trackOnboardingEvent("onboarding_finished", {
+      plan_now: planNow,
+    }).catch(() => undefined);
     if (planNow) startFirstRun();
     else endFirstRun();
     router.replace("/");

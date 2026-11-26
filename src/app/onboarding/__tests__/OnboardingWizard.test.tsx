@@ -10,9 +10,13 @@ vi.mock("next/navigation", () => ({
 
 const db = vi.hoisted(() => ({
   upserts: [] as Record<string, unknown>[],
+  events: [] as { name: string; props: unknown }[],
   fail: false,
 }));
 vi.mock("@/app/onboarding/actions", () => ({
+  trackOnboardingEvent: async (name: string, props: unknown) => {
+    db.events.push({ name, props });
+  },
   saveOnboardingSettings: async (patch: Record<string, unknown>) => {
     if (db.fail) return { ok: false, error: "offline" };
     db.upserts.push(patch);
@@ -37,6 +41,7 @@ beforeEach(() => {
   // jsdom has no matchMedia; the theme preview asks it about System mode.
   window.matchMedia = vi.fn().mockReturnValue({ matches: false });
   localStorage.clear();
+  db.events = [];
   sessionStorage.clear();
   db.upserts = [];
   db.fail = false;
@@ -95,6 +100,16 @@ describe("OnboardingWizard", () => {
     ]);
     expect(localStorage.getItem("presense_first_run")).toBe("1");
     expect(localStorage.getItem("presense_color_mode")).toBe("light");
+    // Funnel: every screen reached, then the finish and how it ended.
+    expect(
+      db.events
+        .filter((e) => e.name === "onboarding_step")
+        .map((e) => (e.props as { step: number }).step),
+    ).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(db.events.at(-1)).toEqual({
+      name: "onboarding_finished",
+      props: { plan_now: true },
+    });
   });
 
   it("stays on the screen when a save fails", async () => {

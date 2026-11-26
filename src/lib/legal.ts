@@ -5,5 +5,5 @@
 export const LEGAL = {
   operator: "Zaman",
   country: "India",
-  lastUpdated: "1 October 2026",
+  lastUpdated: "24 November 2026",
 } as const;

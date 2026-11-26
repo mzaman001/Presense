@@ -28,6 +28,13 @@ export default function PrivacyPage() {
           activity such as completed rituals.
         </li>
         <li>
+          <strong>How you use Presense:</strong> a few steps, such as opening
+          the app, reaching each setup screen, starting a focus session or
+          turning reminders on, with the time. This shows us where Presense is
+          hard to use. It is stored with your account like everything else,
+          never includes what you wrote, and is deleted with your account.
+        </li>
+        <li>
           <strong>Technical data:</strong> your IP address (to stop abuse),
           error reports when something breaks, and page-speed measurements.
           These include your browser type and the page you were on.
@@ -35,7 +42,7 @@ export default function PrivacyPage() {
       </ul>
       <p>
         We only use cookies that keep you signed in. There are no advertising or
-        analytics trackers.
+        third-party analytics trackers.
       </p>
 
       <h2>Why we use it</h2>
