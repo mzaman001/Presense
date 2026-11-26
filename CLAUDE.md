@@ -90,9 +90,9 @@ group by u.id order by joined desc;
 - **`cron.job_run_details` saying "succeeded" proves nothing**: pg_net only queues the request. Check the answer in `net._http_response` (kept ~6 h). Until 2026-10-02 the hourly job sent a placeholder key and got 401 on every run.
 - **Edge Functions don't deploy on merge.** After changing `supabase/functions/*`, deploy (`supabase functions deploy <name>` or the Supabase MCP) and confirm a 200. Type-check first: `npx -y deno check supabase/functions/<name>/index.ts`.
 
-## Verified state (2026-10-10)
+## Verified state (2026-11-26)
 
-Run on `main` at `907fc03` (after #118). Toolchain: Next.js 16.4.5 (security upgrade, 2026-11-07; other figures in this table predate it), React 19.3, TypeScript 5.9, ESLint 10.12, Vitest 5.0, Sentry 11.4, supabase-js 2.117, lucide-react 1.51.
+Re-run on `main` after #144, #143 and #133 (2026-11-26). Toolchain: Next.js 16.4.6, React 19.3.1, TypeScript 5.9, ESLint 10.15, Vitest 5.1, Sentry 11.12, supabase-js 2.119, lucide-react 1.73. Rows that carry their own date (bundle budgets, Playwright with the seed, Lighthouse, code scanning, push) weren't re-measured then; CI re-checks the budgets and the public Playwright tests on every PR.
 
 | Gate | Result |
 |---|---|
@@ -100,14 +100,14 @@ Run on `main` at `907fc03` (after #118). Toolchain: Next.js 16.4.5 (security upg
 | `npm run lint` | ✅ 0 errors, 7 warnings (4 `exhaustive-deps`, 3 React Compiler skips; ESLint 10; Next's config goes through `@eslint/compat`'s `fixupConfigRules` for eslint-plugin-react, see `eslint.config.mjs`) |
 | `npx tsc --noEmit` | ✅ clean, `tests/` included |
 | `npx -y deno check supabase/functions/*/index.ts` | ✅ clean, all four (`cron_cleanup`, `cron_recurrence`, `push_reminders`, `push_test`); CI's `edge-functions` job runs it with `--node-modules-dir=none` |
-| `npm test` | ✅ 956 passed / 104 files; `npm run test:coverage` 73.7% statements, thresholds met |
+| `npm test` | ✅ 976 passed / 107 files; `npm run test:coverage` 73.9% statements, thresholds met |
 | `npm run build` | ✅ |
 | Bundle budget gate (`check-budgets.mjs`, in CI) | ✅ `/login` 166.0 KiB gz vs 166.7 budget, after Next 16.4.5 (pino no longer ships to the browser, see *Known weak points*). CI measures a `--webpack` ANALYZE build, which counts lucide's core twice (page chunk and the layout's shared chunk); the Turbopack build production ships reads 201.6 KiB, so compare like with like. History of every budget change is in `perf-budgets.json` |
-| `npx playwright test` | ✅ 8 passed against `next start` with the seed; CI's `e2e` job runs the 3 public ones (login Axe + contrast, sanity) |
+| `npx playwright test` | ✅ 8 passed against `next start` with the seed (2026-10-10); CI's `e2e` job runs the 3 public ones (login Axe + contrast, sanity) |
 | Lighthouse, signed in (`lighthouse-authed.mjs --runs 5`, mobile, 4x CPU) | ✅ 2026-10-13 (`5c0115f`, two rounds): `/do` TBT 180 / 165 ms, LCP 2.1–2.2 s, Speed Index 2.4–2.5 s. Home TBT 166 / 168 ms, Speed Index 2.8–3.0 s, LCP 3.6–3.9 s (local only: see *Known weak points*). Medians; `next start` on :3111, `benchmarkIndex` 2372 |
-| Database migrations | ✅ `supabase migration list --linked`: local and production both list `20261009000000_baseline` and `20261010120000_search_threads`. The baseline is a verified copy of production; older history is in `supabase/migrations_archive/` |
-| `npm audit --omit=dev` | ✅ 0 vulnerabilities |
-| GitHub code scanning / Dependabot | ⚠️ 1 open / ✅ 0 open. The one is osv-scanner #82, `braces@3.0.3` (high), reached only through the ESLint chain (`@next/eslint-plugin-next` → `fast-glob` → `micromatch`); dev-only, nothing ships it, waits for upstream. Semgrep's `detect-non-literal-regexp` hits on `capture-router.ts`'s keyword patterns are dismissed as false positives (constant lists, escaped) |
+| Database migrations | ✅ local and production both list `20261009000000_baseline`, `20261010120000_search_threads` and `20261124120000_product_events` (production's `supabase_migrations.schema_migrations`, 2026-11-26). The baseline is a verified copy of production; older history is in `supabase/migrations_archive/` |
+| `npm audit --omit=dev` | ✅ 0 vulnerabilities (5 moderate in Sentry's `glob`/`minimatch` chain appeared with Sentry ≤ 11.10; fixed by 11.12 in #143) |
+| GitHub code scanning / Dependabot (2026-10-10; a Claude Code session can't read these alerts, so check them on GitHub) | ⚠️ 1 open / ✅ 0 open. The one is osv-scanner #82, `braces@3.0.3` (high), reached only through the ESLint chain (`@next/eslint-plugin-next` → `fast-glob` → `micromatch`); dev-only, nothing ships it, waits for upstream. Semgrep's `detect-non-literal-regexp` hits on `capture-router.ts`'s keyword patterns are dismissed as false positives (constant lists, escaped) |
 | Push reminders, end to end | ✅ real Microsoft Edge subscribed on the live site got a reminder from the deployed `push_reminders` within seconds (twice); Android (Brave) registered, got a test push and a task reminder. Not yet seen: iPhone, a ritual push at a real nudge/shutdown time (checked 2026-10-04) |
 
 The seeded test account signs in again since #69 (session minted with the service role, see *Sign-in* above), so `tests/authed-do.spec.ts` and `scripts/lighthouse-authed.mjs` reach signed-in pages. Pasting that session into a browser by hand is blocked by Claude Code's auto-mode credential check; go through Playwright, which injects the cookie itself.

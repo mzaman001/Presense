@@ -436,7 +436,6 @@ export function TaskAddPanel({
   }, [isOpen, taskToEdit, initialDeadline]);
 
   const handleTitleChange = async (val: string) => {
-    if (userSettings?.nlp_date_parsing === false) return;
     const parsed = await parseTaskText(val, { categories: categoriesList });
     // Priority, estimate and category follow the text only while they still
     // hold what the text last set, so a value picked by hand is never
@@ -536,12 +535,11 @@ export function TaskAddPanel({
 
         let finalTitle = data.title.trim();
         const parsedFromText =
-          userSettings?.nlp_date_parsing !== false &&
-          ((parsedDeadline && !isManualDate) ||
-            (!isManualRepeat && finalRecurrence) ||
-            parsedDetailsRef.current.priority !== null ||
-            parsedDetailsRef.current.estimate !== null ||
-            parsedDetailsRef.current.category !== null);
+          (parsedDeadline && !isManualDate) ||
+          (!isManualRepeat && finalRecurrence) ||
+          parsedDetailsRef.current.priority !== null ||
+          parsedDetailsRef.current.estimate !== null ||
+          parsedDetailsRef.current.category !== null;
         if (parsedFromText) {
           finalTitle = (
             await parseTaskText(finalTitle, {

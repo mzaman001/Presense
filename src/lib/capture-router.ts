@@ -331,21 +331,6 @@ export async function routeCapture(
   const lower = text.toLowerCase().trim();
   const results: RoutedItem[] = [];
 
-  // If smart routing is disabled, just return as Unknown (Inbox)
-  if (userSettings?.smart_routing_enabled === false) {
-    results.push(
-      routedItem({
-        type: "unknown",
-        title: text,
-        destination: "Inbox",
-        destinationId: "inbox",
-        confidence: 1,
-        reason: "smart_routing_disabled",
-      }),
-    );
-    return results;
-  }
-
   const segments = splitCapture(text);
 
   if (segments.length > 1) {
@@ -380,7 +365,6 @@ export async function routeCapture(
   // Task details, read once: a date means "the dentist is at 3pm" is an
   // appointment, not where something is kept.
   const parsed = await parseTaskText(text, {
-    parseDates: userSettings?.nlp_date_parsing !== false,
     categories: userSettings?.do_categories ?? DEFAULT_DO_CATEGORIES,
   });
 

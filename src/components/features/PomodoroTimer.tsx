@@ -249,7 +249,7 @@ export function PomodoroTimer() {
     setIsRunning(false);
     // Time's up needs attention: bring the full view back if minimised.
     setMinimized(false);
-    if (userSettings?.pomodoro_sound !== false) playChime();
+    playChime();
     // Once across tabs: each open tab finishes the same saved session.
     if (claimSessionLog(phase, startedAtRef.current + duration * 1000))
       logSession(phase, Math.round(duration / 60));
@@ -281,7 +281,6 @@ export function PomodoroTimer() {
     shortStart,
     logSession,
     advance,
-    userSettings,
     activeTimer,
     markTaskDone,
   ]);

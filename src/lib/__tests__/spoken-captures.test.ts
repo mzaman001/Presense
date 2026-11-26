@@ -10,8 +10,6 @@ import {
 } from "./fixtures/spoken-captures";
 
 const settings = {
-  nlp_date_parsing: true,
-  smart_routing_enabled: true,
   do_categories: SPOKEN_CATEGORIES,
 };
 
